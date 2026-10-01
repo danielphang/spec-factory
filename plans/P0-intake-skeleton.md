@@ -37,9 +37,10 @@ Bare repo, pre-receive hook, per-role keys, merge gate, gate-run, implementer, r
 
 ## Acceptance (run as written, on the green checkout)
 
-Black-box, numbered P0-1.. so they don't collide with the spec's 1–84. Each is NEW; today every one fails with `factory: command not found` or "no such workflow."
+Black-box, numbered P0-1.. so they don't collide with the spec's 1–84. Each is NEW; today every one fails with `factory: command not found` or "no such workflow", and P0-9 because no `.claude/agents/factory-*.md` file exists yet (its count is `0`).
 
 - P0-1 `factory ticket new --file knowledge_vault/specs/<any>.md` → `tickets/T-0001.yaml` exists with `status: ready-for-triage`, `round: {spec: 0}`.
+- P0-9 (after Part A, before P0-2; numbered last so P0-2..P0-8 keep their numbers) A fresh session in the green checkout registers every Part A agent: `ls .claude/agents/factory-*.md | wc -l` → `6`; `diff <(sed -n 's/^name: //p' .claude/agents/factory-*.md | sort) <(claude -p --model haiku --max-turns 1 --output-format stream-json --verbose ok </dev/null | grep '"subtype":"init"' | grep -o '"agents":\[[^]]*\]' | grep -oE '"factory-[^"]*"' | tr -d '"' | sort)` → no output, exit 0. Run P0-2..P0-8 in a session started after this check.
 - P0-2 `/factory run intake T-0001` with the `factory-stub` agents configured to emit `STATUS: ACCEPT` then `STATUS: READY-FOR-CRITIC` then `STATUS: APPROVE` → ticket ends `awaiting-spec-gate`; `runs/` holds three `meta.yaml` files, each with `role`, `model`, `started`, `finished`.
 - P0-3 Same, stubs emit `REVISE` twice → ticket ends `parked` with reason `max rounds`, `round.spec: 2`, and no `transition` call set the counter by hand (grep the run log).
 - P0-4 Stub emits `CLARIFY` → ticket `waiting-requester`; `factory resolve T-0001 --answer a.md` → `ready-for-triage`; `runs/` shows the answer in Triage's next `input.md`.
@@ -64,6 +65,7 @@ If ≥ 2 of 3 specs pass the gate unedited, the next walking step is BH-6 (the P
 
 - Protected paths touched: none (no infra, no keys, no dependencies beyond pyyaml).
 - Workflow under `claude -p` unverified; fallback is an interactive session (same script).
+- Role agents may not register mid-session. Claude Code loads `.claude/agents/` when a session starts and afterwards watches it only if the directory existed then, and it never watches the one inside a directory added with `--add-dir`; a session started before Part A's files were written may not see them (2026-10-01: `Agent(subagent_type: "factory-clerk")` → "Agent type 'factory-clerk' not found"). Start the session that runs P0-2..P0-8 in the green checkout after Part A's agent files exist, or restart it after writing them; P0-9 checks this before P0-2. Running every role as `general-purpose` with its prompt read from a file keeps each role's model but drops the `tools:` fences of R6, so R6 is not in force on such a run.
 - `agent()` model alias strings unverified; P0-2's `meta.yaml` check is where you find out.
 - The working-tree store has no identity on writes. Fine for P0; it is why P0 cannot be used for merges.
 
