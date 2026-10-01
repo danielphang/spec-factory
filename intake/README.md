@@ -34,6 +34,7 @@ Ticket ids are local to this store: T-0001 here is issue 01, not green's SPEC-21
 | T-0005 | `issues/05_protected_live_state.md` |
 | T-0006 | `issues/06_p05_grep_vs_inline_scripts.md` |
 | T-0007 | `issues/07_single_target_harness.md` |
+| T-0008 | `issues/08_openspec_schema.md` |
 
 ## Running
 

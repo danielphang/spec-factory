@@ -26,3 +26,7 @@ T-0007:
   source: /Users/dphang/dev/spec-factory/issues/07_single_target_harness.md
   hash: 6157249cea9c57c7
   imported: '2026-10-01T16:28:54+00:00'
+T-0008:
+  source: /Users/dphang/dev/spec-factory/issues/08_openspec_schema.md
+  hash: 7e3baeddc389822b
+  imported: '2026-10-01T20:14:51+00:00'

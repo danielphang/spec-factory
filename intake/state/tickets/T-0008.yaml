@@ -1,0 +1,17 @@
+id: T-0008
+type: null
+title: 08_openspec_schema
+request: requests/T-0008.md
+source: /Users/dphang/dev/spec-factory/issues/08_openspec_schema.md
+status: ready-for-triage
+round:
+  spec: 0
+  pr: 0
+spec:
+  version: 0
+  approved_version: null
+plan: null
+in_flight: []
+parked: null
+created: '2026-10-01T20:14:51+00:00'
+history: []
