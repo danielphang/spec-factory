@@ -1,0 +1,1 @@
+Operator (2026-10-01, in the intake session): "0007 and 0008 yeah confirm" — approve T-0007's spec at the gate if the critic APPROVEs the version now under review (v2) unchanged; any other outcome comes back to the operator.

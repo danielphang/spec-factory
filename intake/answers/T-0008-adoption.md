@@ -1,0 +1,1 @@
+Operator decision (2026-10-01, in the intake session): **adopt.** OpenSpec's storage model and lifecycle are adopted as a forked schema, keeping the spec factory's roles, verification and a repo-level decision log, as `issues/08_openspec_schema.md` proposes. Answered before Triage ran; if Triage parks on the adoption question, this is the answer.
