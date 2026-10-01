@@ -1,7 +1,10 @@
 """STATUS trailer parser: one implementation, used by `run finish`.
 
-The LAST line matching ^STATUS: wins; the next non-blank line must be CONFIDENCE:, the next
-ESCALATIONS:; everything after is the escalation list. `none` iff exactly `none`.
+The LAST line matching ^STATUS: wins. CONFIDENCE: is the next labelled line after it and
+ESCALATIONS: the next labelled line after that (models wrap and interleave commentary, so lines
+between are continuation). The escalation list is empty iff the ESCALATIONS head is exactly
+`none` (trailing period tolerated) with nothing after it; otherwise every non-blank line from
+the head on is an item, verbatim.
 """
 from __future__ import annotations
 
@@ -30,14 +33,14 @@ def parse(text: str) -> dict:
         return {"status": None, "error": "parse failure: no ESCALATIONS line after CONFIDENCE"}
     confidence = " ".join([nonblank[conf_i].split(":", 1)[1].strip()] + nonblank[conf_i + 1:esc_i]).strip()
     esc_head = nonblank[esc_i].split(":", 1)[1].strip()
-    tail = nonblank[esc_i + 1:]
-    items = []
-    if esc_head and not esc_head.lower().startswith("none"):
-        items.append(esc_head)
-    for ln in tail:
-        items.append(ln.lstrip("-* ").strip())
-    if esc_head.lower().startswith("none") and not tail:
+    tail = [ln.lstrip("-* ").strip() for ln in nonblank[esc_i + 1:]]
+    # Design rule: the list is empty iff the head is exactly `none` (a trailing period tolerated)
+    # and nothing follows. Anything else on or after the line is an escalation, verbatim, so no
+    # text is ever dropped; the human queue sorts "none, but…" prose from real items.
+    if re.fullmatch(r"none\.?", esc_head, re.I) and not tail:
         items = []
+    else:
+        items = [x for x in [esc_head, *tail] if x]
     return {"status": status, "confidence": confidence, "escalations": [i for i in items if i]}
 
 

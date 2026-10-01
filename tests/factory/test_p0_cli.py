@@ -217,4 +217,17 @@ def test_status_parse_skips_commentary_between_status_and_confidence(tmp_path, s
     r = js(run(store, "status", "parse", str(p)))
     assert r["status"] == "READY-FOR-CRITIC"
     assert r["confidence"] == "high — all re-run"
-    assert r["escalations"] == []
+    assert r["escalations"] == ["none. The boundary was observed throughout."]
+
+
+def test_status_parse_none_is_exact_so_real_escalations_survive(tmp_path, store):
+    p = tmp_path / "n.md"
+    for head, want in [
+        ("none", []), ("None.", []), ("NONE", []),
+        ("Nonetheless the auth path needs review", ["Nonetheless the auth path needs review"]),
+        ("None of the gate commands ran", ["None of the gate commands ran"]),
+    ]:
+        p.write_text(f"body\nSTATUS: APPROVE\nCONFIDENCE: high, ok\nESCALATIONS: {head}\n")
+        assert js(run(store, "status", "parse", str(p)))["escalations"] == want, head
+    p.write_text("body\nSTATUS: APPROVE\nCONFIDENCE: high, ok\nESCALATIONS: none. x\n- extra line\n")
+    assert js(run(store, "status", "parse", str(p)))["escalations"] == ["none. x", "extra line"]
