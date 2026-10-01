@@ -128,7 +128,8 @@ def test_status_parse_last_status_line_wins_and_needs_both_followers(tmp_path, s
     p = tmp_path / "m.md"
     p.write_text("body\nSTATUS: APPROVE\nmore\nSTATUS: REVISE\nCONFIDENCE: high, ok\nESCALATIONS:\n- one\n- two\n")
     cp = run(store, "status", "parse", str(p))
-    assert js(cp) == {"status": "REVISE", "confidence": "high, ok", "escalations": ["one", "two"]}
+    assert js(cp) == {"status": "REVISE", "confidence": "high, ok", "escalations": ["one", "two"],
+                      "escalations_note": None}
     p.write_text("body\nSTATUS: REVISE\nESCALATIONS: none\n")
     assert js(run(store, "status", "parse", str(p)))["status"] is None
 
@@ -217,17 +218,38 @@ def test_status_parse_skips_commentary_between_status_and_confidence(tmp_path, s
     r = js(run(store, "status", "parse", str(p)))
     assert r["status"] == "READY-FOR-CRITIC"
     assert r["confidence"] == "high — all re-run"
-    assert r["escalations"] == ["none. The boundary was observed throughout."]
+    assert r["escalations"] == []
+    assert r["escalations_note"] == "none. The boundary was observed throughout."
 
 
-def test_status_parse_none_is_exact_so_real_escalations_survive(tmp_path, store):
+def test_status_parse_none_head_rule_option_b(tmp_path, store):
     p = tmp_path / "n.md"
-    for head, want in [
-        ("none", []), ("None.", []), ("NONE", []),
-        ("Nonetheless the auth path needs review", ["Nonetheless the auth path needs review"]),
-        ("None of the gate commands ran", ["None of the gate commands ran"]),
+    for head, want, note in [
+        ("none", [], None), ("None.", [], None), ("NONE", [], None),
+        ("none. The boundary was observed", [], "none. The boundary was observed"),
+        ("none — the boundary held", [], "none — the boundary held"),
+        ("none, see above", [], "none, see above"),
+        ("Nonetheless the auth path needs review", ["Nonetheless the auth path needs review"], None),
+        ("None of the gate commands ran", ["None of the gate commands ran"], None),
+        ("none of it", ["none of it"], None),
+        ("nonexistent", ["nonexistent"], None),
     ]:
         p.write_text(f"body\nSTATUS: APPROVE\nCONFIDENCE: high, ok\nESCALATIONS: {head}\n")
-        assert js(run(store, "status", "parse", str(p)))["escalations"] == want, head
+        r = js(run(store, "status", "parse", str(p)))
+        assert (r["escalations"], r["escalations_note"]) == (want, note), head
     p.write_text("body\nSTATUS: APPROVE\nCONFIDENCE: high, ok\nESCALATIONS: none. x\n- extra line\n")
     assert js(run(store, "status", "parse", str(p)))["escalations"] == ["none. x", "extra line"]
+
+
+def test_run_finish_keeps_none_prose_with_the_run_and_queues_nothing(store, req):
+    run(store, "ticket", "new", "--file", str(req))
+    rid = js(run(store, "run", "start", "--role", "triage", "--ticket", "T-0001"))["run_id"]
+    run(store, "run", "compose", rid)
+    (store / "runs" / rid / "output.md").write_text(
+        "Type: feature\nTitle: T\nSummary: s\nEvidence: e\nAssumptions: a\n"
+        "STATUS: ACCEPT\nCONFIDENCE: high, x\nESCALATIONS: none. The boundary was observed\n")
+    assert js(run(store, "run", "finish", rid))["escalations"] == []
+    meta = yaml.safe_load((store / "runs" / rid / "meta.yaml").read_text())
+    assert meta["escalations_note"] == "none. The boundary was observed"
+    log = "".join(p.read_text() for p in (store / "log").glob("*.jsonl"))
+    assert "escalation.queued" not in log

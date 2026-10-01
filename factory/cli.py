@@ -213,7 +213,8 @@ def run_finish(a, root, cfg):
     fin = dt.datetime.fromisoformat(store.now())
     meta.update({"finished": fin.isoformat(), "wall_s": int((fin - started).total_seconds()),
                  "status": parsed["status"], "confidence": parsed.get("confidence"),
-                 "escalations": parsed.get("escalations", [])})
+                 "escalations": parsed.get("escalations", []),
+                 "escalations_note": parsed.get("escalations_note")})
     store.write_yaml(d / "meta.yaml", meta)
     if a.run in t["in_flight"]:
         t["in_flight"].remove(a.run)

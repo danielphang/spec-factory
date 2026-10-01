@@ -2,15 +2,17 @@
 
 The LAST line matching ^STATUS: wins. CONFIDENCE: is the next labelled line after it and
 ESCALATIONS: the next labelled line after that (models wrap and interleave commentary, so lines
-between are continuation). The escalation list is empty iff the ESCALATIONS head is exactly
-`none` (trailing period tolerated) with nothing after it; otherwise every non-blank line from
-the head on is an item, verbatim.
+between are continuation). A `none` head (`none` in any case, then end of line or punctuation) with
+nothing below it is no escalation; prose after it on that line is returned as `escalations_note`
+and kept with the run. A `none` head with further lines is a real list, every line from the head
+on an item verbatim; so is anything else (operator decision 2026-10-01, option (b)).
 """
 from __future__ import annotations
 
 import re
 
 STATUS_RE = re.compile(r"^STATUS:\s*(\S+)\s*$")
+NONE_HEAD_RE = re.compile(r"^none\s*($|[.,;:—–-])", re.I)
 
 
 def parse(text: str) -> dict:
@@ -34,14 +36,19 @@ def parse(text: str) -> dict:
     confidence = " ".join([nonblank[conf_i].split(":", 1)[1].strip()] + nonblank[conf_i + 1:esc_i]).strip()
     esc_head = nonblank[esc_i].split(":", 1)[1].strip()
     tail = [ln.lstrip("-* ").strip() for ln in nonblank[esc_i + 1:]]
-    # Design rule: the list is empty iff the head is exactly `none` (a trailing period tolerated)
-    # and nothing follows. Anything else on or after the line is an escalation, verbatim, so no
-    # text is ever dropped; the human queue sorts "none, but…" prose from real items.
-    if re.fullmatch(r"none\.?", esc_head, re.I) and not tail:
+    # Operator decision 2026-10-01, option (b): a `none` head is `none` in any case followed by end
+    # of line or punctuation (never a space and a word). A none head with prose and nothing below
+    # routes as no escalation and the prose is kept with the run (escalations_note). A none head
+    # with further lines is a real list; anything else is an item. Unsure text goes to the queue.
+    note = None
+    if not tail and (not esc_head or NONE_HEAD_RE.match(esc_head)):
         items = []
+        if esc_head and not re.fullmatch(r"none\.?", esc_head, re.I):
+            note = esc_head
     else:
         items = [x for x in [esc_head, *tail] if x]
-    return {"status": status, "confidence": confidence, "escalations": [i for i in items if i]}
+    return {"status": status, "confidence": confidence, "escalations": [i for i in items if i],
+            "escalations_note": note}
 
 
 def strip_trailer(text: str) -> str:
