@@ -49,13 +49,13 @@ The prompts say what each role does. The harness enforces the wiring rules: fres
 
 **What the harness itself owns** (no platform provides these): the routing table, the round counter and the max-round cutoff, composing each role's input from *only* its declared sources, choosing the model per role, and the escalation queue view for the daily human pass.
 
-**Model per role, starting point.** One rule: a role's model depends on what checks its output. Default Opus. Upgrade to Fable where the role's output is the feedback other roles are measured against. Downgrade to Sonnet only where the output is checked mechanically inside the same loop. Tune effort before changing model; record the model on every run so the retro can compare failure rates by model and propose changes through its own keep/revert loop. Never let an author and its checker share a model where you can avoid it.
+**Model per role, starting point.** One rule: a role's model depends on what checks its output. Default Opus. A checker is never weaker than the author it checks. Fable goes where a role's output is checked only by a human: the critic, the code reviewer, the retro. Sonnet only where the output is checked mechanically inside the same loop. Tune effort before changing model; record the model on every run so the retro can compare failure rates by model and propose changes through its own keep/revert loop. Never let an author and its checker share a model where you can avoid it.
 
 | Role | Default | Why |
 |---|---|---|
 | Triage | Opus | Judgment on vague input; measure before trying Sonnet |
-| Spec writer | Fable | The spec is the contract everything downstream trusts |
-| Spec critic | Opus | The check on the writer; must differ from the writer's model |
+| Spec writer | Opus | Investigation and writing; checked by the critic and the human gate |
+| Spec critic | Fable | The spec is the contract everything downstream trusts; the critic's own output is checked only by the human gate |
 | Planner | Opus | Decomposition judgment, runs once per spec |
 | Implementer | Opus; Sonnet when the sub-ticket is small, every criterion is runnable, and no protected path | Strongest external feedback in the pipeline: failing tests plus two checkers |
 | Code reviewer | Fable | The judgment-heavy check; catches what tests can't |
