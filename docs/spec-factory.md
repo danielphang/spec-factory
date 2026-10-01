@@ -49,6 +49,8 @@ The prompts say what each role does. The harness enforces the wiring rules: fres
 
 **What the harness itself owns** (no platform provides these): the routing table, the round counter and the max-round cutoff, composing each role's input from *only* its declared sources, choosing the model per role, and the escalation queue view for the daily human pass.
 
+**Role-context block.** Every role's input opens with a role-context block, ahead of the INPUT its role prompt declares and anything the routing table's "Receives" column adds. The block is per repo, like `{repo name}` and the protected paths: it says which repository the role works in, how to run commands and tests there, and what kind of request to expect. Its text is the same for every role. It is a declared input of every role, so composing from *only* declared sources includes it; it travels with the input (piece 3), not in the system prompt. A wrong block misdirects every role at once, and the checkers receive the same block, so they share the error instead of catching it. Where the block is kept, and how a harness serving more than one repo picks the right one, are not fixed here.
+
 **Model per role, starting point.** One rule: a role's model depends on what checks its output. Default Opus. A checker is never weaker than the author it checks, except the verifier, whose check is the commands. Fable goes where a role's output is checked only by a human: the critic, the code reviewer, the retro. Sonnet only where the output is checked mechanically inside the same loop. The verifier is the one checker whose check is the commands themselves; its probe step is judgment, so it drops to Sonnet only where probes rarely matter. Tune effort before changing model; record the model on every run so the retro can compare failure rates by model; this table is the harness's model config, so a retro diff to it is the proposal path. Never let an author and its checker share a model where you can avoid it; the verifier is again the exception.
 
 | Role | Default | Why |
@@ -65,7 +67,7 @@ The prompts say what each role does. The harness enforces the wiring rules: fres
 
 **Smallest thing that works.** A git server with per-user permissions and a pre-receive hook (pieces 4, 7, 8), a `tickets` branch of YAML as the store (1, 5, 6, 10), a cron loop that reads it and launches `claude -p` in a fresh container (2, 3); implementer and retro containers get secrets via env, every other role's container gets model access only through a proxy sidecar and no env secrets (12; the one extra component), the verifier running the gates (11), and your existing tracker as the human surface (9). Humans record approvals by pushing a row to the `tickets` branch under their own identity (the store CLI's record verb, run as themselves); the tracker is for notification and discussion only. Audit and retro counts come from the append-only log. A few hundred lines of harness. Move the store to a real DB when you want cost-per-issue numbers in one place.
 
-**Routing table.** The dispatcher (piece 2) is this table and nothing else. Each row: a STATUS a role emits, what runs next, and what it receives. "Receives" adds to the INPUT the role prompt already declares.
+**Routing table.** The dispatcher (piece 2) is this table and nothing else. Each row: a STATUS a role emits, what runs next, and what it receives. "Receives" adds to the INPUT the role prompt already declares. Both follow the role-context block (above).
 
 Rules the table relies on:
 
@@ -651,6 +653,7 @@ Six review rounds ran on this doc, using the reviewer prompt in the appendix. Ro
 35. After the P0 intake run: the clerk relays the store CLI's stdout verbatim with the exit code and stderr, and the workflow script parses the JSON itself; given a schema shaped like the command's output, a clerk re-typed a ticket read (an invented field, the nested object stringified), the answer still validated, and the ticket was misrouted.
 36. After the P0 run (2026-10-01): a question returns to the role that asked with the answer and that role's previous output, so a re-run Triage or Spec writer reads the answer against the question it asked instead of re-deriving it; a requester's CLARIFY answer follows the same rule, and two Answered rows in the routing table carry the same inputs.
 37. The spec FORMAT gains an optional Operator steps section: actions or checks on live or protected state that only the operator can perform after merge. They are not acceptance and change no routing; the human approves them at the spec gate, and critic rubric 2 checks that they sit there and not under Acceptance. No tracked post-merge obligation.
+38. After the intake run against this repo (2026-10-01): the role-context block is declared in the Harness section as a per-repo input every role receives first, ahead of its declared INPUT and the routing table's "Receives"; where the block is kept stays open.
 
 Declined: a dedicated merge agent (merging is gate config plus human gates, not a judgment call).
 
