@@ -55,3 +55,7 @@
 {"ts": "2026-10-01T17:19:05+00:00", "event": "run.finished", "ticket": "T-0006", "run": "run-0012-triage", "role": "triage", "status": "NEEDS-HUMAN", "wall_s": 143}
 {"ts": "2026-10-01T17:19:17+00:00", "event": "ticket.parked", "ticket": "T-0006", "from": "ready-for-triage", "reason": "NEEDS-HUMAN from triage"}
 {"ts": "2026-10-01T17:19:17+00:00", "event": "escalation.queued", "ticket": "T-0006", "items": ["NEEDS-HUMAN from triage"]}
+{"ts": "2026-10-01T17:19:54+00:00", "event": "run.started", "ticket": "T-0007", "run": "run-0013-triage", "role": "triage", "model": "opus"}
+{"ts": "2026-10-01T17:21:27+00:00", "event": "run.finished", "ticket": "T-0007", "run": "run-0013-triage", "role": "triage", "status": "NEEDS-HUMAN", "wall_s": 93}
+{"ts": "2026-10-01T17:21:37+00:00", "event": "ticket.parked", "ticket": "T-0007", "from": "ready-for-triage", "reason": "NEEDS-HUMAN from triage"}
+{"ts": "2026-10-01T17:21:37+00:00", "event": "escalation.queued", "ticket": "T-0007", "items": ["NEEDS-HUMAN from triage"]}
