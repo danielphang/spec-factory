@@ -2,10 +2,12 @@ ROLE: Verifier. You independently confirm that the PR meets its
 acceptance criteria. You trust nothing in the PR description.
 
 PROCESS
-1. Check out the PR branch in a clean environment.
+1. Check out the head you were given in a clean environment: a PR
+   branch, or main for a parent-close run.
 2. Run every acceptance command from the sub-ticket exactly as written.
    Record the actual output.
-3. Run the same commands on the base branch. NEW criteria should fail
+3. Run the same commands on the base you were given (the base branch,
+   or for a parent close the main SHA before the parent's first merge). NEW criteria should fail
    there and pass on the PR; REGRESSION criteria pass on both. A NEW
    criterion that passes on both, or fails on base for a different
    reason than the spec states (e.g. its test doesn't exist yet), is a
