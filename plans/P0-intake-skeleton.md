@@ -44,7 +44,7 @@ Black-box, numbered P0-1.. so they don't collide with the spec's 1–84. Each is
 - P0-2 `/factory run intake T-0001` with the `factory-stub` agents configured to emit `STATUS: ACCEPT` then `STATUS: READY-FOR-CRITIC` then `STATUS: APPROVE` → ticket ends `awaiting-spec-gate`; `runs/` holds three `meta.yaml` files, each with `role`, `model`, `started`, `finished`.
 - P0-3 Same, stubs emit `REVISE` twice → ticket ends `parked` with reason `max rounds`, `round.spec: 2`, and no `transition` call set the counter by hand (grep the run log).
 - P0-4 Stub emits `CLARIFY` → ticket `waiting-requester`; `factory resolve T-0001 --answer a.md` → `ready-for-triage`; `runs/` shows the answer in Triage's next `input.md`.
-- P0-5 Real models, one real faux-spec: ticket reaches `awaiting-spec-gate`; `knowledge_vault/sanitized_specs/T-0001.md` exists in the spec FORMAT; `grep -cE 'test_[a-z_]+\(|def |::' knowledge_vault/sanitized_specs/T-0001.md` → 0.
+- P0-5 Real models, one real faux-spec: ticket reaches `awaiting-spec-gate`; `knowledge_vault/sanitized_specs/T-0001.md` exists in the spec FORMAT; its Acceptance prose, with fenced code blocks stripped, names no test function or internal symbol: `awk '/^[[:space:]]*\140\140\140/{f=!f; next} !f && /^## /{a=/^## Acceptance/} a && !f' knowledge_vault/sanitized_specs/T-0001.md | grep -cE 'test_[a-z_]+\(|def |::'` → 0 (`\140` is a backtick, written as an octal escape so the command fits in one code span). Code inside fences (the writer prompt's inline-script allowance) is not gated; the package symbols it imports or calls are counted under What you measure.
 - P0-6 `factory approve-spec T-0001` as you → `ready-for-planner`; `/factory run intake T-0001` continues → `plans/T-0001.md` exists with a coverage map whose item count equals the spec's Acceptance count.
 - P0-7 Round-2 input: after a real REVISE, `runs/<critic round 2>/input.md` contains the round-1 findings text and the writer's Responses section.
 - P0-8 `transition T-0001 --to ready-for-implementer` from `ready-for-triage` → exit 2, "not a routing edge."
@@ -54,10 +54,46 @@ Black-box, numbered P0-1.. so they don't collide with the spec's 1–84. Each is
 | Metric | Baseline from the port | P0 target |
 |---|---|---|
 | Rounds to critic APPROVE | n/a | ≤ 2 (the cutoff) |
-| Code identifiers in acceptance | "doubled", ten relint commits | 0 (P0-5) |
+| Code identifiers in Acceptance prose (fenced blocks stripped) | "doubled", ten relint commits | 0 (P0-5) |
+| Package symbols that inline Acceptance scripts import or call | n/a | record, not gated: the line count of the symbol block below |
 | Your interventions per spec | "most interrupts were which-function questions" | count them; each one is a retro incident |
 | Cost per spec | n/a | record; per-(role, model) from `meta.yaml` |
 | Would you approve it at the gate unedited? | n/a | yes for ≥ 2 of 3 |
+
+The second number: from the green checkout, with `S` set to the spec file and `PKG=nanobot`, the block below prints the distinct fully-qualified package symbols that fenced code under `## Acceptance` imports, calls or patches, sorted, one per line. The recorded number is its line count; keep the list with it. Counted: `from PKG[.mod] import a, b as c` (each name), `import PKG.x [as A]`, any dotted `PKG.x[.y…]` reference elsewhere in fenced code (so `python -m PKG.x`, `PKG.x.f()` and `mock.patch("PKG.x.Y")`), and `name.attr` on a name bound by an import. Not counted: helpers the script defines, stdlib and third-party imports, attributes reached through an instance (`Cls().method`), and anything in prose or outside Acceptance. Names are distinct per spec, not per criterion, and string targets count: both are choices, visible here so the metric is read with them.
+
+~~~sh p05-symbols
+python3 - "$PKG" "$S" <<'PY'
+import re, sys
+pkg, path = sys.argv[1], sys.argv[2]
+code, fence, acc = [], False, False
+for line in open(path, encoding="utf-8"):
+    line = line.rstrip("\n")
+    if re.match(r"^\s*```", line):
+        fence = not fence
+        continue
+    if not fence and line.startswith("## "):
+        acc = line.startswith("## Acceptance")
+        continue
+    if acc and fence:
+        code.append(line)
+text, found, bound, P = "\n".join(code), set(), {}, re.escape(pkg)
+def take(m):  # from PKG[.mod] import a, b as c; the line is not re-scanned, the module path is not counted
+    mod, items = m.group(1), m.group(2).strip("()")
+    for parts in (it.split() for it in items.split(",")):
+        if parts:
+            found.add(mod + "." + parts[0]); bound[parts[2] if len(parts) == 3 else parts[0]] = mod + "." + parts[0]
+    return " "
+text = re.sub(r"^\s*from\s+(" + P + r"(?:\.\w+)*)\s+import\s+(\([^)]*\)|[^\n]+)", take, text, flags=re.M)
+def take2(m):  # import PKG.x [as A]
+    found.add(m.group(1)); bound[m.group(2) or m.group(1)] = m.group(1); return " "
+text = re.sub(r"^\s*import\s+(" + P + r"(?:\.\w+)+)(?:\s+as\s+(\w+))?\s*$", take2, text, flags=re.M)
+found.update(re.findall(r"\b" + P + r"(?:\.\w+)+", text))  # any other dotted PKG reference, as written
+for alias, target in bound.items():  # name.attr on a bound name; Cls().attr does not match
+    found.update(target + "." + a for a in re.findall(r"\b" + re.escape(alias) + r"\.(\w+)", text))
+print("\n".join(sorted(found)))
+PY
+~~~
 
 If ≥ 2 of 3 specs pass the gate unedited, the next walking step is BH-6 (the PR loop) on one of them, still without the hook. If not, the retro runs on the three transcripts before any more harness is built, and the fix is in the prompts, not the plan.
 
