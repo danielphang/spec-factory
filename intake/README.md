@@ -51,12 +51,9 @@ One ticket at a time: the store allocates run ids without a lock. The human gate
 
 Nothing here is pushed or filed on GitHub; that waits for `gh auth` (see `issues/README.md`).
 
-## Follow-ups owed outside this repo
+## Scope
 
-- **Green `factory/status.py` from (c) to (b)** (`none` + prose: route as none, keep the prose on
-  the run record). Owner: this intake's session, after T-0001's spec is approved at the gate;
-  committing on green needs the operator's go. Tests: `tests/factory/test_p0_cli.py`
-  (`test_status_parse_none_is_exact_so_real_escalations_survive` and the commentary test above
-  it) flip two expectations; add `none. x` with no tail → none, prose kept (e.g. a new
-  `escalations_note` key that `run finish` writes to `meta.yaml`). Until then the Driver reads any
-  "none, but …" queue item on its T-0001 as none.
+This instance works on the spec factory's own documents. Nanobot is a task source and the
+reference harness, read only. Nanobot-side follow-ups that come out of these tickets (for
+example green's `factory/status.py` adopting T-0001's `none` + prose rule) belong to the
+nanobot sessions, not to this intake.
