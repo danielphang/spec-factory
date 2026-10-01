@@ -130,3 +130,9 @@
 {"ts": "2026-10-01T20:43:01+00:00", "event": "ticket.transition", "ticket": "T-0007", "from": "ready-for-critic", "to": "awaiting-spec-gate", "by": "workflow", "round": {"spec": 1, "pr": 0}}
 {"ts": "2026-10-01T20:43:16+00:00", "event": "approval.recorded", "ticket": "T-0007", "kind": "spec", "version": 2, "by": "dphang"}
 {"ts": "2026-10-01T20:43:16+00:00", "event": "ticket.transition", "ticket": "T-0007", "from": "awaiting-spec-gate", "to": "ready-for-planner", "by": "dphang"}
+{"ts": "2026-10-01T20:43:43+00:00", "event": "run.started", "ticket": "T-0008", "run": "run-0027-triage", "role": "triage", "model": "opus"}
+{"ts": "2026-10-01T20:46:03+00:00", "event": "run.finished", "ticket": "T-0008", "run": "run-0027-triage", "role": "triage", "status": "NEEDS-HUMAN", "wall_s": 140}
+{"ts": "2026-10-01T20:46:03+00:00", "event": "escalation.queued", "ticket": "T-0008", "run": "run-0027-triage", "items": ["Part of the requested work (migrating green's T-0001/T-0003 pilot specs and replacing green's ROADMAP register) is in `~/dev/nanobot-upstream`, which is read-only for this repo. I have scoped it out as a Nanobot-side follow-up (A1); confirm this, or re-scope."]}
+{"ts": "2026-10-01T20:46:18+00:00", "event": "ticket.parked", "ticket": "T-0008", "from": "ready-for-triage", "reason": "NEEDS-HUMAN from triage"}
+{"ts": "2026-10-01T20:46:18+00:00", "event": "escalation.queued", "ticket": "T-0008", "items": ["NEEDS-HUMAN from triage"]}
+{"ts": "2026-10-01T20:48:06+00:00", "event": "human.resolved", "ticket": "T-0008", "kind": "answer", "by": "dphang", "from": "parked", "to": "ready-for-triage"}

@@ -1,3 +1,37 @@
+## Context for this run (composed by the harness, not part of the request)
+
+Repository: `spec-factory`, the design repo at `~/dev/spec-factory` (branch `main`). It holds
+documents, not code: `docs/spec-factory.md` (the design document, source of truth),
+`specs/build-harness.md` (the spec for building the harness), `plans/` (the Planner's
+decompositions; `plans/P0-intake-skeleton.md` is the walking skeleton), and `prompts/`
+(each file a verbatim copy of one prompt block in the design doc; it changes only by
+re-copying that block). Your shell may start in another directory: use absolute paths, or
+`cd ~/dev/spec-factory && <cmd>`.
+
+The REFERENCE implementation is the Nanobot-side harness at `~/dev/nanobot-upstream/factory/`
+(branch `feat/lionbot-v3`, built from `plans/P0-intake-skeleton.md`). Read it only to observe
+what a fix does today; never write there, and never copy its test names, line numbers or
+commit SHAs into a spec. Never read or write `~/.nanobot/` (live credentials).
+
+Acceptance commands must be runnable as written from `~/dev/spec-factory` (grep, sed, diff,
+`git diff --check` against the documents). A change to the design doc keeps its own
+conventions: the Changelog section at its end, `specs/build-harness.md` consistent with the
+new text, and any `prompts/` file whose block changed re-copied from it.
+
+The request is an issue draft, written from a real pipeline run: where in the documents,
+what happened (the evidence), why it matters, a proposed fix, and the Nanobot-side commit
+where a harness fix already exists. The evidence is the requirement; the proposed fix is the
+requester's suggestion, not a requirement. Verify the as-built fix in the reference harness
+before relying on it; a NEW criterion that already passes on this checkout proves nothing.
+
+Output: write your complete output, in your role's required format and ending with the
+STATUS / CONFIDENCE / ESCALATIONS trailer, to the file named under "Output file" below. That
+is the only file you may create or modify. Then return the same text as your final message.
+## Output file
+`/Users/dphang/dev/spec-factory/intake/state/runs/run-0027-triage/output.md`
+
+## Request (raw, with any answers appended)
+
 ---
 title: Adopt OpenSpec's storage model and lifecycle as a forked schema; keep the factory's roles, verification and decision log
 labels: design-doc, format, proposal
@@ -28,16 +62,3 @@ Lifecycle additions: the human spec gate pins the delta; parent close becomes Op
 **What this costs:** a FORMAT rewrite for the writer and planner prompts, one archive step, and a one-time migration of the P0 pilot specs (T-0001, T-0003) into the new shape. What it buys: a current-truth layer the lionbot port never had, deltas that make "what changed" mechanical, and an OpenSpec-compatible tree other tooling can read.
 
 **Open to the human:** whether `verification.md` is an artifact or lives inside the delta's scenarios; whether `decisions.md` is per repo or per capability.
-
-
-## Answer 1
-
-Answer to Triage's layout question. Taken by default under the operator's standing take-the-recommendation rule (the operator confirmed adoption itself directly, 2026-10-01); reversible at the spec gate.
-
-**(a) As the request's table draws it.** `changes/<id>/verification.md` is its own factory artifact (NEW/REGRESSION labels, critic rounds, verifier results per head), so round-to-round churn stays out of the delta that archive applies. `decisions.md` is one file per repo, appended at archive.
-
-Also settled for the spec writer:
-- A1 confirmed: migrating green's pilot specs (SPEC-21, SPEC-27) and replacing green's ROADMAP register with `decisions.md` are Nanobot-side follow-ups, outside this ticket. This ticket covers the design doc, `specs/build-harness.md`, re-copied `prompts/` files and the Changelog.
-- A4 confirmed: the already-approved specs T-0001..T-0007 in this store do not migrate.
-- A5: place T-0005's `## Operator steps` in the new artifact mapping; do not drop it.
-- A3 stays an Open question for the writer to answer with a recommendation.

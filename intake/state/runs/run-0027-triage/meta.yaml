@@ -1,0 +1,18 @@
+run_id: run-0027-triage
+role: triage
+ticket: T-0008
+model: opus
+round: 0
+spec_version: 0
+started: '2026-10-01T20:43:43+00:00'
+finished: '2026-10-01T20:46:03+00:00'
+wall_s: 140
+status: NEEDS-HUMAN
+input_sources:
+- requests/T-0008.md
+confidence: medium. The intent is clear and every location is confirmed. I did not verify the OpenSpec
+  facts, and the green-migration scope (A1) is my inference.
+escalations:
+- Part of the requested work (migrating green's T-0001/T-0003 pilot specs and replacing green's ROADMAP
+  register) is in `~/dev/nanobot-upstream`, which is read-only for this repo. I have scoped it out as
+  a Nanobot-side follow-up (A1); confirm this, or re-scope.
