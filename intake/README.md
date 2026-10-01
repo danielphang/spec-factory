@@ -38,6 +38,10 @@ Ticket ids are local to this store: T-0001 here is issue 01, not green's SPEC-21
 | T-0009 | `issues/09_run_id_allocation.md` |
 
 T-0001..T-0007: spec approved at the gate and applied on `main` (merges listed in `issues/README.md`).
+Closed 2026-10-01 as applied by hand. The Planner was run on T-0001..T-0003 anyway, as its first
+real test: each run found the spec already on `main` and escalated instead of planning no-op
+work, which is the right call. Lesson for the design (feeds T-0008's lifecycle): the store has no
+state for "approved and applied outside the pipeline"; `closed` via `resolve --close` stands in.
 T-0008: in intake.
 
 ## Running
