@@ -129,7 +129,10 @@ if (state === 'ready-for-spec-writer' || state === 'ready-for-critic') {
     if (state === 'ready-for-spec-writer') {
       const w = await runRole('spec_writer', 'Spec')
       if (!w) return { ticket: TICKET, state: 'parked' }
-      if (w.status === 'NEEDS-HUMAN') { await park('NEEDS-HUMAN from spec writer', [w.runId], 'Spec'); return { ticket: TICKET, state: 'parked' } }
+      if (w.status === 'NEEDS-HUMAN') {
+        await clerk(`${BIN} spec add ${TICKET} --from-run ${w.runId}`, 'Spec', 'spec add (draft with open questions)')
+        await park('NEEDS-HUMAN from spec writer', [w.runId], 'Spec'); return { ticket: TICKET, state: 'parked' }
+      }
       if (w.status !== 'READY-FOR-CRITIC' && w.status !== 'NEEDS-SPLIT') { await park(`harness-bug: unknown STATUS ${w.status} from spec writer`, [w.runId], 'Spec'); return { ticket: TICKET, state: 'parked' } }
       const added = await clerk(`${BIN} spec add ${TICKET} --from-run ${w.runId}`, 'Spec', 'spec add')
       if (!added.ok) { await park(`harness-bug: spec add: ${added.stderr || ''}`, [w.runId], 'Spec'); return { ticket: TICKET, state: 'parked' } }
