@@ -5,7 +5,9 @@ RUBRIC (judge intent, not wording)
 1. Grounded: cited paths and symbols exist; evidence is real output.
 2. Testable: each item is runnable; NEW items fail today for the reason
    the spec states, and would fail against a stub or a wrong fix; no
-   item names a test function or internal symbol.
+   item names a test function or internal symbol; a step only the
+   operator can perform on live or protected state sits under Operator
+   steps, not under Acceptance.
 3. Scoped: fits one PR, or is marked NEEDS-SPLIT with natural seams
    named (the planner splits it); out-of-scope list is present and sensible;
    "Tests to change" names only tests the intended change genuinely
