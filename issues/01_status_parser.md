@@ -21,3 +21,20 @@ A parser written to the spec's rule read `checkout and cited…` as "not ESCALAT
 **Proposed fix (design doc + spec H):** CONFIDENCE is the first non-blank line after the last STATUS line; ESCALATIONS is the *next labelled line* (`^ESCALATIONS:`) after it; lines between them are CONFIDENCE continuation. Keep the rest (last STATUS wins; `none` iff exactly `none`).
 
 **Fix as implemented on the Nanobot side:** `factory/status.py` at `0f2e29136` on `feat/lionbot-v3` (test `test_status_parse_accepts_a_wrapped_confidence_line`). Design-doc text not yet changed; awaiting review.
+
+**Second instance, same day (T-0001 v3, run-0006):** the Spec writer emitted
+
+```
+STATUS: READY-FOR-CRITIC
+(The change is still too large for one PR, so **Proposed change** stays marked NEEDS-SPLIT …)
+CONFIDENCE: high — …
+ESCALATIONS: none. The `~/.nanobot/**` boundary was observed throughout — …
+```
+
+Two more departures from the OUTPUT block: commentary between STATUS and CONFIDENCE, and
+prose after `none` on the ESCALATIONS line. Both were valid verdicts parked as harness bugs
+under the strict rule. The fix now on green (`factory/status.py`): CONFIDENCE is the next
+*labelled* line after the last STATUS, ESCALATIONS the next labelled line after that, lines
+between are continuation, and `none` followed by prose is still none. Proposed design-doc
+wording should match that, since the prompt's "one line of reason" is not something a
+parser can rely on.
