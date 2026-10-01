@@ -1,0 +1,120 @@
+## Problem
+
+Some requests include steps that only the operator can carry out on live or protected state after merge. The SPEC-21 port has three: install a daily cron, replace the workspace skills, and run a soak check ("the daily cron stays silent on healthy days"). No role may read or write those paths, so none of these steps can be an acceptance item. The Spec writer FORMAT also has no section for them. A writer has two choices today, and both are wrong:
+
+- put the steps under Acceptance, where no verifier can run them, so the run ends in a SPEC-DEFECT;
+- put them in another section or drop them. In the one observed case they went under Out of scope ("what must NOT change"), which records them as excluded when they are actually owed.
+
+On 2026-10-01 the operator chose option (a). The FORMAT gets an optional `## Operator steps` section for these steps. The section is explicitly not acceptance, the human approves it at the spec gate, and routing does not change. The critic checks that such steps sit in this section and not under Acceptance. Post-merge steps are not tracked (option b was declined).
+
+This affects the spec writer and the spec critic, which follow these prompts, and the operator, who approves specs and carries out the steps.
+
+## Evidence
+
+All checks were run on `~/dev/spec-factory` `main` at `0811bc1`.
+
+- **FORMAT has no such section.** The FORMAT block at `docs/spec-factory.md:286-299` lists ten sections: Problem, Evidence, Root cause, Proposed change, Acceptance, Tests to change, Out of scope, Open questions, Risk and Responses. Out of scope (line 293) is defined as "what must NOT change". Risk (line 295) covers "blast radius; every protected path this will touch". None of them is for work owed after merge.
+- **No existing text.** `grep -rn 'Operator steps\|operator step' docs specs plans prompts README.md` returns nothing (exit 1).
+- **Critic rubric has no placement check.** In RUBRIC, `docs/spec-factory.md:308-321`, rubric 2 (lines 310-312) ends at "no item names a test function or internal symbol." Rubric 4 (lines 317-318) asks only that protected paths be declared under Risk.
+- **Spec gate row is silent.** `docs/spec-factory.md:120` lists what the human approves: the Risk section's protected-path declarations and the "Tests to change" list. It says nothing about operator work.
+- **Prompt copies are verbatim today.** I extracted each block by its first and last line and diffed it against its file:
+  - `awk '/^ROLE: Spec writer\./{p=1} p{print} p&&/^CONFIDENCE \/ ESCALATIONS$/{exit}' docs/spec-factory.md | diff - prompts/02-spec-writer.md` printed no output, exit 0.
+  - The same command for `ROLE: Spec critic\.` against `prompts/03-spec-critic.md` printed no output, exit 0.
+  - `git diff --check` printed no output, exit 0.
+- **No reference fix exists.** On `~/dev/nanobot-upstream` (branch `feat/lionbot-v3`), `grep -rn -i 'operator step' factory/` printed nothing. `git log --oneline -1 -- factory/prompts/spec_writer.md` shows `0f2e29136 feat(factory): P0 intake walking skeleton …`. The read-only reference has nothing to compare against, so Acceptance rests on the document text alone.
+- **The change is small.** I applied Proposed change A–E in a scratch clone (`git clone ~/dev/spec-factory`, branch `ticket/T-0005`). `git diff --stat main...HEAD` showed `docs/spec-factory.md | 10 ++++++++--`, `prompts/02-spec-writer.md | 3 +++` and `prompts/03-spec-critic.md | 4 +++-`, which is 14 insertions and 3 deletions. Every Acceptance command below was run on that branch and on `main`, and the results are recorded on each line.
+- **`specs/build-harness.md` needs no change.** It renders the prompt blocks verbatim (line 158). `approve-spec` copies only "Tests to change" and Risk paths into the ticket (line 308; BH-3 at `plans/build-harness.md:145`). Spec sections are pulled out by name only for `## Acceptance` (item 77, H line 282) and `## Responses` (line 276, item 39). A new section placed after Risk and before Responses changes none of these. The steps are not a tracked obligation (option b was declined), so `approve-spec` does not need to copy them.
+
+## Root cause
+
+The design doc's §2 Spec writer FORMAT block (`docs/spec-factory.md:286-299`) has no section for work that is neither acceptance nor exclusion. The §3 critic RUBRIC (`docs/spec-factory.md:308-321`) has no rule that keeps such steps out of Acceptance. `prompts/02-spec-writer.md` and `prompts/03-spec-critic.md` are verbatim copies of those blocks, so they have the same gap.
+
+## Proposed change
+
+Only three files change: `docs/spec-factory.md` and its two re-copied prompt blocks. The change is 14 lines added and 3 removed.
+
+**A. §2 FORMAT block** (`docs/spec-factory.md`). Insert these three lines directly after the `## Risk` line and before `## Responses`. The heading is padded to column 21, as in the existing lines.
+```
+## Operator steps   (optional) actions or checks on live or protected state
+                    that only the operator can perform, after merge; not
+                    acceptance; the human approves them at the spec gate
+```
+I wrote "actions or checks" on purpose. The request names a live soak check ("criterion 8 (live soak)") as one of the steps, alongside the install and replace actions, and none of them can be acceptance. "Optional" means a spec with no such steps leaves the section out, and no existing spec has to change. I placed the section after Risk because Risk declares the protected paths these steps act on.
+
+**B. §3 RUBRIC item 2** (`docs/spec-factory.md`). Replace the item's last line, `   item names a test function or internal symbol.`, with:
+```
+   item names a test function or internal symbol; a step only the
+   operator can perform on live or protected state sits under Operator
+   steps, not under Acceptance.
+```
+I extended rubric 2 rather than adding a seventh item. An operator step under Acceptance is exactly an item that cannot be run, which is what rubric 2 already judges, and the doc's own Retro rule prefers "tightening an existing rule".
+
+**C. Human gates table, "Spec approval" row** (`docs/spec-factory.md:120`). Change `approves the Risk section's protected-path declarations and the "Tests to change" list,` to `approves the Risk section's protected-path declarations, any Operator steps, and the "Tests to change" list,`. Leave the rest of the row unchanged. The gate already pins the spec text (piece 1, line 37). This edit puts the operator's "the human approves it at the spec gate" in the place that lists what the human approves.
+
+**D. Changelog** (`docs/spec-factory.md`, `## Changelog`). Append one entry numbered one past the last entry at merge time. That is 34 on `main` today, or 35 if T-0001's spec, which also adds a 34, merges first. The entry text:
+`The spec FORMAT gains an optional Operator steps section: actions or checks on live or protected state that only the operator can perform after merge. They are not acceptance and change no routing; the human approves them at the spec gate, and critic rubric 2 checks that they sit there and not under Acceptance. No tracked post-merge obligation.`
+
+**E. Re-copy the two prompt blocks.** Regenerate each file from its edited block and do not hand-edit it:
+- `awk '/^ROLE: Spec writer\./{p=1} p{print} p&&/^CONFIDENCE \/ ESCALATIONS$/{exit}' docs/spec-factory.md > prompts/02-spec-writer.md`
+- `awk '/^ROLE: Spec critic\./{p=1} p{print} p&&/^CONFIDENCE \/ ESCALATIONS$/{exit}' docs/spec-factory.md > prompts/03-spec-critic.md`
+
+## Acceptance
+
+Run every command from `~/dev/spec-factory` with bash or zsh, on the PR branch, with `main` as the base. "Today" means `main` at `0811bc1`.
+
+1. `awk '/^ROLE: Spec writer\./{p=1} p{print} p&&/^CONFIDENCE \/ ESCALATIONS$/{exit}' docs/spec-factory.md | awk '/^## Operator steps /{f=1;print;next} f&&/^                    [^ ]/{print;next} {f=0}' | tr -s ' \n' '  ' | grep -o -e '(optional)' -e 'live or protected state' -e 'only the operator' -e 'after merge' -e 'not acceptance' -e 'at the spec gate' | sort -u | wc -l | tr -d ' '` → `6`. The FORMAT block has an `## Operator steps` section that is marked optional, limited to live or protected state the operator acts on after merge, declared not acceptance, and approved at the spec gate. [NEW: prints `0` today, because the block has no such heading]
+2. `awk '/^ROLE: Spec writer\./{p=1} p{print} p&&/^CONFIDENCE \/ ESCALATIONS$/{exit}' docs/spec-factory.md | diff - prompts/02-spec-writer.md && grep -c '^## Operator steps ' prompts/02-spec-writer.md` → no diff output, then `1`, exit 0. The writer prompt is a verbatim re-copy that includes the section. [NEW: the diff is clean today, but grep prints `0` and exits 1]
+3. `awk '/^ROLE: Spec critic\./{p=1} p{print} p&&/^CONFIDENCE \/ ESCALATIONS$/{exit}' docs/spec-factory.md | awk '/^RUBRIC/{f=1} /^PROCESS/{f=0} f' | tr -s ' \n' '  ' | grep -o -e 'live or protected state' -e 'under Operator steps' -e 'not under Acceptance' | sort -u | wc -l | tr -d ' '` → `3`. The critic rubric places operator-only steps under Operator steps and not under Acceptance. [NEW: prints `0` today]
+4. `awk '/^ROLE: Spec critic\./{p=1} p{print} p&&/^CONFIDENCE \/ ESCALATIONS$/{exit}' docs/spec-factory.md | diff - prompts/03-spec-critic.md && tr -s ' \n' '  ' < prompts/03-spec-critic.md | grep -c 'sits under Operator steps, not under Acceptance'` → no diff output, then `1`, exit 0. The critic prompt is a verbatim re-copy that includes the rule. [NEW: the diff is clean today, but grep prints `0` and exits 1]
+5. `grep '^| Spec approval |' docs/spec-factory.md | grep -c 'Operator steps'` → `1`. The spec gate row names Operator steps among the things the human approves. [NEW: prints `0` today]
+6. `awk '/^## Changelog/{f=1} /^## Appendix/{f=0} f' docs/spec-factory.md | grep '^[0-9][0-9]*\. ' | awk -F. '$1!=NR{gap=1} {last=$0} END{print (gap?"GAP":"CONTIGUOUS"), (last ~ /Operator steps/ ? "LAST-IS-OPERATOR-STEPS" : "LAST-IS-OTHER")}'` → `CONTIGUOUS LAST-IS-OPERATOR-STEPS`. The newest Changelog entry records this change, and the numbering has no gap or duplicate, whatever number it gets. [NEW: prints `CONTIGUOUS LAST-IS-OTHER` today]
+7. `diff <(git show main:docs/spec-factory.md | awk '/^\| From \| STATUS \|/,/^Any STATUS not in this table/') <(awk '/^\| From \| STATUS \|/,/^Any STATUS not in this table/' docs/spec-factory.md)` → no output, exit 0. Routing does not change: the 31-line routing table is identical to main's. The range starts at the table header, so T-0001's edits to the rules above the table do not affect it. [REGRESSION]
+8. `git diff -U0 main...HEAD -- prompts/02-spec-writer.md | grep -c '^-[^-]'` → `0` (grep exits 1). The writer prompt only gains lines, so the existing sections, rules and the `STATUS: READY-FOR-CRITIC | NEEDS-HUMAN | NEEDS-SPLIT` line stay as they are. [REGRESSION]
+9. `git diff --name-only main...HEAD | grep -v -x -e docs/spec-factory.md -e prompts/02-spec-writer.md -e prompts/03-spec-critic.md` → no output, exit 1. No other path is touched, including `specs/build-harness.md`, `plans/`, the other `prompts/` files and `intake/**`. [REGRESSION]
+10. `git diff --check main...HEAD` → no output, exit 0 [REGRESSION]
+
+On the scratch branch with A–E applied, criteria 1–10 gave `6`; clean + `1`; `3`; clean + `1`; `1`; `CONTIGUOUS LAST-IS-OPERATOR-STEPS`; clean; `0`; empty with exit 1; clean. On `main` they gave `0`; clean + `0` (exit 1); `0`; clean + `0` (exit 1); `0`; `CONTIGUOUS LAST-IS-OTHER`; clean; `0`; empty with exit 1; clean.
+
+## Tests to change
+
+none. This repo holds documents and has no test files.
+
+## Out of scope
+
+- Must not change: the routing table and its rules, the Planner, Implementer, Reviewer and Verifier prompts, and the merge gate. Operator steps never reach a sub-ticket, a verifier run or the parent-close run. Those read Acceptance only.
+- Must not change: any tracking of post-merge steps. That means no ticket-store field, no `approve-spec` copy and no queue entry (option b was declined).
+- Must not change: `specs/build-harness.md`, `plans/`, the preamble, any `prompts/` file other than the two re-copied ones, and the other rubric items and FORMAT lines.
+- The green-side re-port of the rendered prompts (`~/dev/nanobot-upstream/factory/prompts/spec_writer.md` and `critic.md`) is a follow-up ticket, and that path is read-only here.
+- Existing specs (T-0001 v1 and the build-harness spec) are not rewritten. The section is optional.
+
+## Open questions
+
+none. The operator's answer settles the design. Two choices are delegated to the writer: the wording "actions or checks", and placing the critic check in rubric 2. Both are explained in Proposed change A and B, and the gate can override either.
+
+## Risk
+
+The blast radius is limited to document and prompt text: 14 lines added and 3 removed in three files. Every future spec writer and critic run reads the changed blocks, so a mistake in wording would affect every spec. Criteria 1–4 pin the meaning and criterion 8 shows that nothing existing was removed from the writer prompt.
+
+Protected and guardrail paths this change touches, declared for the gate:
+- **generated** (protected): `prompts/02-spec-writer.md` and `prompts/03-spec-critic.md`. They are changed only by re-copying their edited blocks (Proposed change E; criteria 2 and 4).
+- **guardrail** ("these prompts" / agent prompts): the §2 and §3 prompt blocks in `docs/spec-factory.md` and the same two `prompts/` files. These need a human approval record on the PR (piece 8).
+
+Paths not touched: `intake/**` (this output file aside, which the harness designates), `~/dev/nanobot-upstream/**` (read with `grep` and `git log` only) and `~/.nanobot/**` (not read).
+
+There is a merge-order dependency with T-0001. Its approved-by-critic spec also appends a Changelog entry numbered 34, and both edit `docs/spec-factory.md`. Whichever merges second must renumber its entry. Criterion 6 accepts either order. The two specs touch different blocks otherwise (T-0001: routing rules; this one: §2, §3 and the gate row), so no textual conflict is expected beyond the Changelog tail.
+
+## Responses
+
+n/a (round 1)
+
+## Out-of-scope observations
+
+- Triage's note names `factory/prompts/design-doc.md` as the green copy to re-port. `ls ~/dev/nanobot-upstream/factory/prompts` shows `context.md critic.md planner.md preamble.md spec_writer.md triage.md` and no `design-doc.md`. The as-built harness keeps per-role prompt files, not the in-repo doc copy that `specs/build-harness.md:158` describes. The follow-up should target those files.
+- This run's system prompt carries the addendum-2 rule ("Acceptance items describe behaviour …"), which is not in the doc's §2 block. That is expected per `specs/build-harness.md:158` and is not affected by this change.
+
+STATUS: READY-FOR-CRITIC
+CONFIDENCE: high. The full change was applied in a scratch clone, and every criterion was run on both that branch and `main` with the outputs recorded above. Remaining judgment calls ("actions or checks", rubric 2 placement, the gate-row wording) are stated for the gate.
+ESCALATIONS:
+1. Guardrail and protected paths: the change edits agent prompts (the §2 and §3 blocks) and the generated `prompts/02-spec-writer.md` and `prompts/03-spec-critic.md`. All are declared under Risk and need the spec-gate and piece-8 human approvals.
+2. Changelog numbering collides with T-0001 (both add entry 34). Whichever merges second renumbers its entry. Criterion 6 is order-independent.
+3. No prompt-injection attempt found in the request, the answer or the ticket.

@@ -1,14 +1,15 @@
 id: T-0005
-type: null
-title: 05_protected_live_state
+type: feature
+title: Add an optional `## Operator steps` section to the Spec writer FORMAT for post-merge actions on
+  live or protected state, and have the critic keep them out of Acceptance
 request: requests/T-0005.md
 source: /Users/dphang/dev/spec-factory/issues/05_protected_live_state.md
-status: ready-for-triage
+status: awaiting-spec-gate
 round:
-  spec: 0
+  spec: 1
   pr: 0
 spec:
-  version: 0
+  version: 1
   approved_version: null
 plan: null
 in_flight: []
@@ -26,3 +27,24 @@ history:
   by: dphang
   resolve: answer
   answer: 1
+- ts: '2026-10-01T19:52:23+00:00'
+  from: ready-for-triage
+  to: ready-for-spec-writer
+  by: workflow
+  round:
+    spec: 0
+    pr: 0
+- ts: '2026-10-01T19:58:13+00:00'
+  from: ready-for-spec-writer
+  to: ready-for-critic
+  by: workflow
+  round:
+    spec: 1
+    pr: 0
+- ts: '2026-10-01T20:05:15+00:00'
+  from: ready-for-critic
+  to: awaiting-spec-gate
+  by: workflow
+  round:
+    spec: 1
+    pr: 0
