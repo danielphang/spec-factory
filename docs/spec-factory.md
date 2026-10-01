@@ -74,7 +74,7 @@ Rules the table relies on:
 - The dispatcher reads a role's trailer by its labels, not by line position. The last `STATUS:` line wins; CONFIDENCE is the next line labelled `CONFIDENCE:` after it, and ESCALATIONS the next line labelled `ESCALATIONS:` after that. Lines between labelled lines are continuation (a wrapped reason, a remark), so a verbose but well-formed verdict routes on its STATUS. A trailer with no CONFIDENCE or no ESCALATIONS line after its last STATUS is a parse failure, which routes as a STATUS not in this table.
 - A non-empty ESCALATIONS line is copied to the human queue without blocking the STATUS route. An ESCALATIONS line that starts with the word `none` followed by end of line or punctuation (so not `None of …`), with prose after it on that line and nothing below it, is empty for routing, and the prose is kept with the run for audit. A `none` line with further lines below it is a real list, copied verbatim from that line on. Only NEEDS-HUMAN, CLARIFY, BLOCKED, ESCALATE, SPEC-DEFECT, a max-round cutoff, a budget kill (piece 3), and a parent-close FAILED park the ticket. A parking STATUS from one checker wins over the other's REQUEST-CHANGES or FAILED; both outputs go to the queue.
 - When a human resolves a parked ticket:
-  - A question returns to the role that asked, with the answer; a requester's CLARIFY answer returns to Triage the same way.
+  - A question returns to the role that asked, with the answer and that role's previous output (the output that asked it); a requester's CLARIFY answer returns to Triage the same way.
   - BLOCKED, a critic ESCALATE, and a planner ESCALATE return to the role that emitted them with the ruling, same round, or the human re-scopes (spec gate or writer round reset) or closes.
   - A spec loop at max rounds goes to the spec gate.
   - A parent-close FAILED or SPEC-DEFECT, or a sub-ticket closed by the human, parks the parent: the human amends the spec and re-plans (new sub-tickets under the same parent) or closes the parent.
@@ -92,6 +92,8 @@ Rules the table relies on:
 | Critic | APPROVE | Human spec gate | Spec + critic output |
 | Critic | REVISE | Spec writer (round +1) if round < {2}, else Human queue | Findings, the spec version they apply to |
 | Critic | ESCALATE | Human queue | Findings |
+| Human queue, or requester (CLARIFY) | Answered (Triage asked) | Triage | The request with the answer, Triage's previous output (the question or missing-info list the answer is for) |
+| Human queue | Answered (Spec writer asked) | Spec writer | The ticket, the answer, the writer's previous output (the spec whose open questions the answer is for) |
 | Human spec gate | Approved | Planner | Approved spec, version pinned |
 | Human spec gate | Changes requested | Spec writer (round reset) | Human's notes |
 | Planner | PLANNED | Implementer, one run per sub-ticket. Each branches from main at dispatch; a sub-ticket dispatches only after its dependencies merge; parallel-safe ones run concurrently; one marked not parallel-safe dispatches only when no sibling of the same parent is in flight, and no sibling dispatches while it is in flight | Sub-ticket, parent spec, AGENTS.md; push to its own branch only |
@@ -642,6 +644,7 @@ Six review rounds ran on this doc, using the reviewer prompt in the appendix. Ro
 33. Round 2 of the full pass: the parent-close verifier run declares its inputs (head = main, base = main before the parent's first merge) and the verifier prompt accepts them; a parent-close failure or a closed sub-ticket parks the parent for re-plan or close; a not-parallel-safe sub-ticket excludes siblings in both directions; the no-sub-ticket row dispatches the gate runner; humans record approvals by pushing to the tickets branch as themselves; the verifier is the stated exception to the checker-model rules.
 34. After two real runs parked valid verdicts as harness bugs (2026-10-01), the trailer is read by its labels: a wrapped CONFIDENCE reason or a remark between STATUS and CONFIDENCE is continuation, not a parse failure; an ESCALATIONS line of `none` followed by prose routes as none and the prose is kept with the run; `none` with further lines below it is a real list.
 35. After the P0 intake run: the clerk relays the store CLI's stdout verbatim with the exit code and stderr, and the workflow script parses the JSON itself; given a schema shaped like the command's output, a clerk re-typed a ticket read (an invented field, the nested object stringified), the answer still validated, and the ticket was misrouted.
+36. After the P0 run (2026-10-01): a question returns to the role that asked with the answer and that role's previous output, so a re-run Triage or Spec writer reads the answer against the question it asked instead of re-deriving it; a requester's CLARIFY answer follows the same rule, and two Answered rows in the routing table carry the same inputs.
 
 Declined: a dedicated merge agent (merging is gate config plus human gates, not a judgment call).
 
