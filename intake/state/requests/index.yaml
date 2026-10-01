@@ -30,3 +30,7 @@ T-0008:
   source: /Users/dphang/dev/spec-factory/issues/08_openspec_schema.md
   hash: 7e3baeddc389822b
   imported: '2026-10-01T20:14:51+00:00'
+T-0009:
+  source: /Users/dphang/dev/spec-factory/issues/09_run_id_allocation.md
+  hash: 005fbd41937de6a0
+  imported: '2026-10-01T21:00:20+00:00'

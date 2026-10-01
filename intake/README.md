@@ -35,6 +35,7 @@ Ticket ids are local to this store: T-0001 here is issue 01, not green's SPEC-21
 | T-0006 | `issues/06_p05_grep_vs_inline_scripts.md` |
 | T-0007 | `issues/07_single_target_harness.md` |
 | T-0008 | `issues/08_openspec_schema.md` |
+| T-0009 | `issues/09_run_id_allocation.md` |
 
 T-0001..T-0007: spec approved at the gate and applied on `main` (merges listed in `issues/README.md`).
 T-0008: in intake.
