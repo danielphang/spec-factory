@@ -47,6 +47,9 @@ FORMAT
 ## Out of scope     what must NOT change
 ## Open questions   none | list
 ## Risk             blast radius; every protected path this will touch
+## Operator steps   (optional) actions or checks on live or protected state
+                    that only the operator can perform, after merge; not
+                    acceptance; the human approves them at the spec gate
 ## Responses        (round 2+) per finding: FIXED <what changed> |
                     DISAGREE <evidence>
 STATUS: READY-FOR-CRITIC | NEEDS-HUMAN | NEEDS-SPLIT

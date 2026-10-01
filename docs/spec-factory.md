@@ -120,7 +120,7 @@ Humans own the decisions agents are worst at: what to build, what's risky, and w
 
 | Gate | When | Human does |
 |---|---|---|
-| Spec approval | Every spec, before planning | Confirms intent and priority; answers open questions; approves the Risk section's protected-path declarations and the "Tests to change" list, which is the only authorization to alter an existing test |
+| Spec approval | Every spec, before planning | Confirms intent and priority; answers open questions; approves the Risk section's protected-path declarations, any Operator steps, and the "Tests to change" list, which is the only authorization to alter an existing test |
 | Protected paths | Any PR touching a protected path | Reviews the PR and records the piece-8 approval; the merge gate does not merge without it |
 | Escalations | Daily | Clears the queue; answers or re-scopes |
 | Guardrail changes | Any PR touching a guardrail path beyond the tests its spec lists; any retro or revert PR | Approves or rejects, including retro proposals and reverts |
@@ -296,6 +296,9 @@ FORMAT
 ## Out of scope     what must NOT change
 ## Open questions   none | list
 ## Risk             blast radius; every protected path this will touch
+## Operator steps   (optional) actions or checks on live or protected state
+                    that only the operator can perform, after merge; not
+                    acceptance; the human approves them at the spec gate
 ## Responses        (round 2+) per finding: FIXED <what changed> |
                     DISAGREE <evidence>
 STATUS: READY-FOR-CRITIC | NEEDS-HUMAN | NEEDS-SPLIT
@@ -312,7 +315,9 @@ RUBRIC (judge intent, not wording)
 1. Grounded: cited paths and symbols exist; evidence is real output.
 2. Testable: each item is runnable; NEW items fail today for the reason
    the spec states, and would fail against a stub or a wrong fix; no
-   item names a test function or internal symbol.
+   item names a test function or internal symbol; a step only the
+   operator can perform on live or protected state sits under Operator
+   steps, not under Acceptance.
 3. Scoped: fits one PR, or is marked NEEDS-SPLIT with natural seams
    named (the planner splits it); out-of-scope list is present and sensible;
    "Tests to change" names only tests the intended change genuinely
@@ -645,6 +650,7 @@ Six review rounds ran on this doc, using the reviewer prompt in the appendix. Ro
 34. After two real runs parked valid verdicts as harness bugs (2026-10-01), the trailer is read by its labels: a wrapped CONFIDENCE reason or a remark between STATUS and CONFIDENCE is continuation, not a parse failure; an ESCALATIONS line of `none` followed by prose routes as none and the prose is kept with the run; `none` with further lines below it is a real list.
 35. After the P0 intake run: the clerk relays the store CLI's stdout verbatim with the exit code and stderr, and the workflow script parses the JSON itself; given a schema shaped like the command's output, a clerk re-typed a ticket read (an invented field, the nested object stringified), the answer still validated, and the ticket was misrouted.
 36. After the P0 run (2026-10-01): a question returns to the role that asked with the answer and that role's previous output, so a re-run Triage or Spec writer reads the answer against the question it asked instead of re-deriving it; a requester's CLARIFY answer follows the same rule, and two Answered rows in the routing table carry the same inputs.
+37. The spec FORMAT gains an optional Operator steps section: actions or checks on live or protected state that only the operator can perform after merge. They are not acceptance and change no routing; the human approves them at the spec gate, and critic rubric 2 checks that they sit there and not under Acceptance. No tracked post-merge obligation.
 
 Declined: a dedicated merge agent (merging is gate config plus human gates, not a judgment call).
 
