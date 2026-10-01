@@ -3,7 +3,7 @@ type: null
 title: 01_status_parser
 request: requests/T-0001.md
 source: /Users/dphang/dev/spec-factory/issues/01_status_parser.md
-status: parked
+status: ready-for-triage
 round:
   spec: 0
   pr: 0
@@ -12,13 +12,7 @@ spec:
   approved_version: null
 plan: null
 in_flight: []
-parked:
-  reason: NEEDS-HUMAN from triage
-  since: '2026-10-01T16:31:55+00:00'
-  from: ready-for-triage
-  outputs:
-  - run-0001-triage
-  question: null
+parked: null
 created: '2026-10-01T16:28:24+00:00'
 history:
 - ts: '2026-10-01T16:31:55+00:00'
@@ -26,3 +20,9 @@ history:
   to: parked
   by: park
   reason: NEEDS-HUMAN from triage
+- ts: '2026-10-01T19:34:29+00:00'
+  from: parked
+  to: ready-for-triage
+  by: dphang
+  resolve: answer
+  answer: 1
