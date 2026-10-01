@@ -1,14 +1,16 @@
 id: T-0008
-type: null
-title: 08_openspec_schema
+type: feature
+title: Adopt OpenSpec's storage model and lifecycle as a forked `spec-factory` schema (current-truth specs,
+  change folders with deltas plus a factory `verification.md`, archive at parent close, repo-level `decisions.md`),
+  keeping the factory's roles, runnable verification and gates
 request: requests/T-0008.md
 source: /Users/dphang/dev/spec-factory/issues/08_openspec_schema.md
-status: ready-for-triage
+status: ready-for-spec-writer
 round:
   spec: 0
   pr: 0
 spec:
-  version: 0
+  version: 1
   approved_version: null
 plan: null
 in_flight: []
@@ -26,3 +28,21 @@ history:
   by: dphang
   resolve: answer
   answer: 1
+- ts: '2026-10-01T20:50:23+00:00'
+  from: ready-for-triage
+  to: ready-for-spec-writer
+  by: workflow
+  round:
+    spec: 0
+    pr: 0
+- ts: '2026-10-01T21:06:28+00:00'
+  from: ready-for-spec-writer
+  to: parked
+  by: park
+  reason: NEEDS-HUMAN from spec writer
+- ts: '2026-10-01T21:07:15+00:00'
+  from: parked
+  to: ready-for-spec-writer
+  by: dphang
+  resolve: answer
+  answer: 2

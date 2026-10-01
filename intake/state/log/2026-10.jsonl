@@ -136,3 +136,16 @@
 {"ts": "2026-10-01T20:46:18+00:00", "event": "ticket.parked", "ticket": "T-0008", "from": "ready-for-triage", "reason": "NEEDS-HUMAN from triage"}
 {"ts": "2026-10-01T20:46:18+00:00", "event": "escalation.queued", "ticket": "T-0008", "items": ["NEEDS-HUMAN from triage"]}
 {"ts": "2026-10-01T20:48:06+00:00", "event": "human.resolved", "ticket": "T-0008", "kind": "answer", "by": "dphang", "from": "parked", "to": "ready-for-triage"}
+{"ts": "2026-10-01T20:49:01+00:00", "event": "run.started", "ticket": "T-0008", "run": "run-0028-triage", "role": "triage", "model": "opus"}
+{"ts": "2026-10-01T20:50:13+00:00", "event": "run.finished", "ticket": "T-0008", "run": "run-0028-triage", "role": "triage", "status": "ACCEPT", "wall_s": 72}
+{"ts": "2026-10-01T20:50:13+00:00", "event": "escalation.queued", "ticket": "T-0008", "run": "run-0028-triage", "items": ["none. The read-only green scope from my previous run is resolved by the operator's A1 confirmation."]}
+{"ts": "2026-10-01T20:50:23+00:00", "event": "ticket.transition", "ticket": "T-0008", "from": "ready-for-triage", "to": "ready-for-spec-writer", "by": "workflow", "round": {"spec": 0, "pr": 0}}
+{"ts": "2026-10-01T20:50:38+00:00", "event": "run.started", "ticket": "T-0008", "run": "run-0029-spec_writer", "role": "spec_writer", "model": "opus"}
+{"ts": "2026-10-01T21:00:20+00:00", "event": "request.created", "ticket": "T-0009", "source": "/Users/dphang/dev/spec-factory/issues/09_run_id_allocation.md"}
+{"ts": "2026-10-01T21:00:20+00:00", "event": "ticket.created", "ticket": "T-0009", "status": "ready-for-triage"}
+{"ts": "2026-10-01T21:06:05+00:00", "event": "run.finished", "ticket": "T-0008", "run": "run-0029-spec_writer", "role": "spec_writer", "status": "NEEDS-HUMAN", "wall_s": 927}
+{"ts": "2026-10-01T21:06:05+00:00", "event": "escalation.queued", "ticket": "T-0008", "run": "run-0029-spec_writer", "items": ["Open questions 1–4 need the operator's ruling or the standing take-the-default. The spec is written against the defaults, so taking all four leaves it ready for the critic unchanged."]}
+{"ts": "2026-10-01T21:06:19+00:00", "event": "spec.added", "ticket": "T-0008", "version": 1, "source": "run-0029-spec_writer"}
+{"ts": "2026-10-01T21:06:28+00:00", "event": "ticket.parked", "ticket": "T-0008", "from": "ready-for-spec-writer", "reason": "NEEDS-HUMAN from spec writer"}
+{"ts": "2026-10-01T21:06:28+00:00", "event": "escalation.queued", "ticket": "T-0008", "items": ["NEEDS-HUMAN from spec writer"]}
+{"ts": "2026-10-01T21:07:15+00:00", "event": "human.resolved", "ticket": "T-0008", "kind": "answer", "by": "dphang", "from": "parked", "to": "ready-for-spec-writer"}

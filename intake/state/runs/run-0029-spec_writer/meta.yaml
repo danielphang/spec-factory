@@ -1,0 +1,20 @@
+run_id: run-0029-spec_writer
+role: spec_writer
+ticket: T-0008
+model: opus
+round: 0
+spec_version: 0
+started: '2026-10-01T20:50:38+00:00'
+finished: '2026-10-01T21:06:05+00:00'
+wall_s: 927
+status: NEEDS-HUMAN
+input_sources:
+- runs/run-0028-triage/output.md
+- requests/T-0008.md
+confidence: high. I applied every edit to a scratch clone of `366d469` and ran all 20 acceptance commands
+  on it and on `main`. I quoted the OpenSpec facts from its docs, downloaded today rather than taken from
+  the request. The remaining uncertainty is the four design defaults, which are the operator's to take
+  or change.
+escalations:
+- Open questions 1–4 need the operator's ruling or the standing take-the-default. The spec is written
+  against the defaults, so taking all four leaves it ready for the critic unchanged.
