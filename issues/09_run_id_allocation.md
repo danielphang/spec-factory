@@ -10,4 +10,4 @@ labels: harness, design-doc
 
 **Proposed fix (spec B and I):** state that `run start` reserves `runs/<id>/` atomically (create-exclusive; on collision take the next id) and that the id is final before `meta.yaml` is written; add an acceptance item that starts N runs concurrently on N tickets and checks N distinct run directories, each with its own `meta.yaml`. No design-doc text change needed unless §Harness wants one sentence under piece 2.
 
-**Fix as implemented on the Nanobot side:** green `feat/lionbot-v3`, `factory/store.py` `next_run_id` → mkdir-based allocation (commit per the Driver session, 2026-10-01). This repo's pinned copy (`intake/HARNESS_PIN`) predates it.
+**Fix as implemented on the Nanobot side:** green `feat/lionbot-v3`, `factory/store.py` `next_run_id` → mkdir-based allocation (`3dc4d6149`, 2026-10-01; retries on `FileExistsError`). This repo's pinned copy (`intake/HARNESS_PIN`) predates it.
