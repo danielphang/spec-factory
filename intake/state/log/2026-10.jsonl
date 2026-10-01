@@ -51,3 +51,7 @@
 {"ts": "2026-10-01T17:15:52+00:00", "event": "escalation.queued", "ticket": "T-0005", "run": "run-0011-triage", "items": ["1. The request asks for a change to an agent prompt (the Spec writer FORMAT). Agent prompts are a guardrail path, and `prompts/**` is generated. Whichever option is chosen, the spec must declare the guardrail and generated-path change under Risk, and `prompts/02-spec-writer.md` changes only by re-copying the block.", "2. Unlike the other drafts, this draft names no Nanobot-side fix commit, and none exists. No as-built behaviour is available to check a spec against.", "3. No prompt-injection attempt found in the request."]}
 {"ts": "2026-10-01T17:16:04+00:00", "event": "ticket.parked", "ticket": "T-0005", "from": "ready-for-triage", "reason": "NEEDS-HUMAN from triage"}
 {"ts": "2026-10-01T17:16:04+00:00", "event": "escalation.queued", "ticket": "T-0005", "items": ["NEEDS-HUMAN from triage"]}
+{"ts": "2026-10-01T17:16:42+00:00", "event": "run.started", "ticket": "T-0006", "run": "run-0012-triage", "role": "triage", "model": "opus"}
+{"ts": "2026-10-01T17:19:05+00:00", "event": "run.finished", "ticket": "T-0006", "run": "run-0012-triage", "role": "triage", "status": "NEEDS-HUMAN", "wall_s": 143}
+{"ts": "2026-10-01T17:19:17+00:00", "event": "ticket.parked", "ticket": "T-0006", "from": "ready-for-triage", "reason": "NEEDS-HUMAN from triage"}
+{"ts": "2026-10-01T17:19:17+00:00", "event": "escalation.queued", "ticket": "T-0006", "items": ["NEEDS-HUMAN from triage"]}
