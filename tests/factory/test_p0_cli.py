@@ -209,3 +209,12 @@ def test_status_parse_accepts_a_wrapped_confidence_line(tmp_path, store):
     assert r["status"] == "NEEDS-HUMAN"
     assert r["confidence"].endswith("one scope call open.")
     assert r["escalations"] == ["1. first", "2. second"]
+
+
+def test_status_parse_skips_commentary_between_status_and_confidence(tmp_path, store):
+    p = tmp_path / "c.md"
+    p.write_text("body\nSTATUS: READY-FOR-CRITIC\n(The change is still too large for one PR, so it\nstays NEEDS-SPLIT.)\nCONFIDENCE: high — all re-run\nESCALATIONS: none. The boundary was observed throughout.\n")
+    r = js(run(store, "status", "parse", str(p)))
+    assert r["status"] == "READY-FOR-CRITIC"
+    assert r["confidence"] == "high — all re-run"
+    assert r["escalations"] == []

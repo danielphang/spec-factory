@@ -20,21 +20,23 @@ def parse(text: str) -> dict:
         return {"status": None, "error": "parse failure: no STATUS line"}
     status = STATUS_RE.match(lines[idx].strip()).group(1)
     nonblank = [ln.strip() for ln in lines[idx + 1:] if ln.strip()]
-    if not nonblank or not nonblank[0].startswith("CONFIDENCE:"):
-        return {"status": None, "error": "parse failure: CONFIDENCE line missing after STATUS"}
-    # CONFIDENCE may wrap onto continuation lines; ESCALATIONS: is the next labelled line.
-    esc_i = next((i for i, ln in enumerate(nonblank) if i > 0 and ln.startswith("ESCALATIONS:")), None)
+    # Models interleave commentary and wrap lines: CONFIDENCE is the next *labelled* line after
+    # STATUS, ESCALATIONS the next labelled line after that; everything between is continuation.
+    conf_i = next((i for i, ln in enumerate(nonblank) if ln.startswith("CONFIDENCE:")), None)
+    if conf_i is None:
+        return {"status": None, "error": "parse failure: no CONFIDENCE line after STATUS"}
+    esc_i = next((i for i, ln in enumerate(nonblank) if i > conf_i and ln.startswith("ESCALATIONS:")), None)
     if esc_i is None:
-        return {"status": None, "error": "parse failure: ESCALATIONS line missing after CONFIDENCE"}
-    confidence = " ".join([nonblank[0].split(":", 1)[1].strip()] + nonblank[1:esc_i]).strip()
+        return {"status": None, "error": "parse failure: no ESCALATIONS line after CONFIDENCE"}
+    confidence = " ".join([nonblank[conf_i].split(":", 1)[1].strip()] + nonblank[conf_i + 1:esc_i]).strip()
     esc_head = nonblank[esc_i].split(":", 1)[1].strip()
     tail = nonblank[esc_i + 1:]
     items = []
-    if esc_head and esc_head.lower() != "none":
+    if esc_head and not esc_head.lower().startswith("none"):
         items.append(esc_head)
     for ln in tail:
         items.append(ln.lstrip("-* ").strip())
-    if esc_head.lower() == "none" and not tail:
+    if esc_head.lower().startswith("none") and not tail:
         items = []
     return {"status": status, "confidence": confidence, "escalations": [i for i in items if i]}
 
