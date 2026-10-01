@@ -1,14 +1,15 @@
 id: T-0006
-type: null
-title: 06_p05_grep_vs_inline_scripts
+type: bug
+title: P0-5 gates only on identifiers in Acceptance prose (fenced blocks stripped), and separately records
+  internal symbols that inline Acceptance scripts import or call
 request: requests/T-0006.md
 source: /Users/dphang/dev/spec-factory/issues/06_p05_grep_vs_inline_scripts.md
-status: ready-for-triage
+status: awaiting-spec-gate
 round:
-  spec: 0
+  spec: 1
   pr: 0
 spec:
-  version: 0
+  version: 1
   approved_version: null
 plan: null
 in_flight: []
@@ -26,3 +27,24 @@ history:
   by: dphang
   resolve: answer
   answer: 1
+- ts: '2026-10-01T20:08:30+00:00'
+  from: ready-for-triage
+  to: ready-for-spec-writer
+  by: workflow
+  round:
+    spec: 0
+    pr: 0
+- ts: '2026-10-01T20:16:26+00:00'
+  from: ready-for-spec-writer
+  to: ready-for-critic
+  by: workflow
+  round:
+    spec: 1
+    pr: 0
+- ts: '2026-10-01T20:25:00+00:00'
+  from: ready-for-critic
+  to: awaiting-spec-gate
+  by: workflow
+  round:
+    spec: 1
+    pr: 0

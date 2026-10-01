@@ -1,0 +1,16 @@
+run_id: run-0020-triage
+role: triage
+ticket: T-0006
+model: opus
+round: 0
+spec_version: 0
+started: '2026-10-01T20:06:43+00:00'
+finished: '2026-10-01T20:08:18+00:00'
+wall_s: 95
+status: ACCEPT
+input_sources:
+- requests/T-0006.md
+- runs/run-0012-triage/output.md
+confidence: high. I re-ran the current and restated greps on both checkouts this run. The operator's answer
+  settles the only open decision, and what's left is wording for the spec writer.
+escalations: []
