@@ -302,3 +302,7 @@ Out-of-scope observations:
 - The request says "OpenSpec's default schema". The built-in schema is named `spec-driven` (`customization.md:184`), and part A uses that name.
 - OpenSpec now lets a change retire a capability when its last requirement is REMOVED (`retire_capabilities: true`, `concepts.md:397`). Part J's archive deletes the requirement and leaves a capability file with no requirements. Whether the factory adopts retirement is a later design call, not taken here.
 - Acceptance commands in spec v0 used single-backtick code spans around commands that themselves contain backticks (items 3, 6, 10, 11), so the rendered Markdown split them. v1 delimits those four with double backticks; the command text is unchanged.
+
+STATUS: READY-FOR-CRITIC
+CONFIDENCE: high. I re-applied parts A–L by script to a scratch clone of `main` at `4cd8d12` (diff stat `4 files changed, 93 insertions(+), 26 deletions(-)`, `git diff --check` clean) and ran all 20 acceptance commands on it and on `main`, with the results quoted above. I re-fetched the cited OpenSpec docs; every cited line still contains the quoted text.
+ESCALATIONS: none

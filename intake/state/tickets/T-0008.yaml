@@ -7,14 +7,14 @@ request: requests/T-0008.md
 source: /Users/dphang/dev/spec-factory/issues/08_openspec_schema.md
 status: ready-for-spec-writer
 round:
-  spec: 0
+  spec: 2
   pr: 0
 spec:
-  version: 1
+  version: 2
   approved_version: null
 plan: null
 in_flight:
-- run-0033-spec_writer
+- run-0038-spec_writer
 parked: null
 created: '2026-10-01T20:14:51+00:00'
 history:
@@ -47,3 +47,17 @@ history:
   by: dphang
   resolve: answer
   answer: 2
+- ts: '2026-10-01T21:13:51+00:00'
+  from: ready-for-spec-writer
+  to: ready-for-critic
+  by: workflow
+  round:
+    spec: 1
+    pr: 0
+- ts: '2026-10-01T21:23:31+00:00'
+  from: ready-for-critic
+  to: ready-for-spec-writer
+  by: workflow
+  round:
+    spec: 2
+    pr: 0

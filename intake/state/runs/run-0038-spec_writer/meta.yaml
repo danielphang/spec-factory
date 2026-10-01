@@ -1,0 +1,15 @@
+run_id: run-0038-spec_writer
+role: spec_writer
+ticket: T-0008
+model: opus
+round: 2
+spec_version: 2
+started: '2026-10-01T21:23:40+00:00'
+finished: null
+wall_s: null
+status: running
+input_sources:
+- runs/run-0028-triage/output.md
+- requests/T-0008.md
+- runs/run-0036-critic/output.md
+- specs/T-0008/v2.md

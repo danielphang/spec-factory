@@ -172,3 +172,20 @@
 {"ts": "2026-10-01T21:10:33+00:00", "event": "human.resolved", "ticket": "T-0006", "kind": "close", "by": "dphang", "from": "ready-for-planner", "to": "closed"}
 {"ts": "2026-10-01T21:10:33+00:00", "event": "human.resolved", "ticket": "T-0007", "kind": "close", "by": "dphang", "from": "ready-for-planner", "to": "closed"}
 {"ts": "2026-10-01T21:10:46+00:00", "event": "human.resolved", "ticket": "T-0001", "kind": "close", "by": "dphang", "from": "parked", "to": "closed"}
+{"ts": "2026-10-01T21:11:18+00:00", "event": "run.started", "ticket": "T-0009", "run": "run-0034-triage", "role": "triage", "model": "opus"}
+{"ts": "2026-10-01T21:12:58+00:00", "event": "run.finished", "ticket": "T-0009", "run": "run-0034-triage", "role": "triage", "status": "ACCEPT", "wall_s": 100}
+{"ts": "2026-10-01T21:13:09+00:00", "event": "ticket.transition", "ticket": "T-0009", "from": "ready-for-triage", "to": "ready-for-spec-writer", "by": "workflow", "round": {"spec": 0, "pr": 0}}
+{"ts": "2026-10-01T21:13:18+00:00", "event": "run.started", "ticket": "T-0009", "run": "run-0035-spec_writer", "role": "spec_writer", "model": "opus"}
+{"ts": "2026-10-01T21:13:33+00:00", "event": "run.finished", "ticket": "T-0008", "run": "run-0033-spec_writer", "role": "spec_writer", "status": "READY-FOR-CRITIC", "wall_s": 329}
+{"ts": "2026-10-01T21:13:43+00:00", "event": "spec.added", "ticket": "T-0008", "version": 2, "source": "run-0033-spec_writer"}
+{"ts": "2026-10-01T21:13:51+00:00", "event": "ticket.transition", "ticket": "T-0008", "from": "ready-for-spec-writer", "to": "ready-for-critic", "by": "workflow", "round": {"spec": 1, "pr": 0}}
+{"ts": "2026-10-01T21:13:59+00:00", "event": "run.started", "ticket": "T-0008", "run": "run-0036-critic", "role": "critic", "model": "fable"}
+{"ts": "2026-10-01T21:21:50+00:00", "event": "run.finished", "ticket": "T-0009", "run": "run-0035-spec_writer", "role": "spec_writer", "status": "READY-FOR-CRITIC", "wall_s": 512}
+{"ts": "2026-10-01T21:22:03+00:00", "event": "spec.added", "ticket": "T-0009", "version": 1, "source": "run-0035-spec_writer"}
+{"ts": "2026-10-01T21:22:11+00:00", "event": "ticket.transition", "ticket": "T-0009", "from": "ready-for-spec-writer", "to": "ready-for-critic", "by": "workflow", "round": {"spec": 1, "pr": 0}}
+{"ts": "2026-10-01T21:22:21+00:00", "event": "run.started", "ticket": "T-0009", "run": "run-0037-critic", "role": "critic", "model": "fable"}
+{"ts": "2026-10-01T21:23:21+00:00", "event": "run.finished", "ticket": "T-0008", "run": "run-0036-critic", "role": "critic", "status": "REVISE", "wall_s": 562}
+{"ts": "2026-10-01T21:23:31+00:00", "event": "ticket.transition", "ticket": "T-0008", "from": "ready-for-critic", "to": "ready-for-spec-writer", "by": "workflow", "round": {"spec": 2, "pr": 0}}
+{"ts": "2026-10-01T21:23:40+00:00", "event": "run.started", "ticket": "T-0008", "run": "run-0038-spec_writer", "role": "spec_writer", "model": "opus"}
+{"ts": "2026-10-01T21:27:06+00:00", "event": "run.finished", "ticket": "T-0009", "run": "run-0037-critic", "role": "critic", "status": "APPROVE", "wall_s": 285}
+{"ts": "2026-10-01T21:27:17+00:00", "event": "ticket.transition", "ticket": "T-0009", "from": "ready-for-critic", "to": "awaiting-spec-gate", "by": "workflow", "round": {"spec": 1, "pr": 0}}
