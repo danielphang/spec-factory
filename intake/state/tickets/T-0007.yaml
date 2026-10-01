@@ -1,18 +1,25 @@
 id: T-0007
-type: null
-title: 07_single_target_harness
+type: feature
+title: Declare the per-repo role-context block in the design doc's Harness section as an input every role
+  receives first (document only; where the target lives stays open)
 request: requests/T-0007.md
 source: /Users/dphang/dev/spec-factory/issues/07_single_target_harness.md
-status: ready-for-triage
+status: parked
 round:
   spec: 0
   pr: 0
 spec:
-  version: 0
+  version: 1
   approved_version: null
 plan: null
 in_flight: []
-parked: null
+parked:
+  reason: NEEDS-HUMAN from spec writer
+  since: '2026-10-01T20:34:00+00:00'
+  from: ready-for-spec-writer
+  outputs:
+  - run-0024-spec_writer
+  question: null
 created: '2026-10-01T16:28:54+00:00'
 history:
 - ts: '2026-10-01T17:21:37+00:00'
@@ -26,3 +33,15 @@ history:
   by: dphang
   resolve: answer
   answer: 1
+- ts: '2026-10-01T20:27:20+00:00'
+  from: ready-for-triage
+  to: ready-for-spec-writer
+  by: workflow
+  round:
+    spec: 0
+    pr: 0
+- ts: '2026-10-01T20:34:00+00:00'
+  from: ready-for-spec-writer
+  to: parked
+  by: park
+  reason: NEEDS-HUMAN from spec writer
