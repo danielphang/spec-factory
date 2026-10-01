@@ -159,3 +159,7 @@ No critic findings yet; this is v2, written after Answer 2. Changes from v1:
 - Re-based on `main` `172a71e`; the documents are byte-identical to `28b3a74`. All 13 criteria were re-run on `main` and on a fresh scratch clone with A–D applied, with the same results as v1.
 - Corrected a citation: Changelog item 33 is at `docs/spec-factory.md:641`, not `:640`. The triage ticket and v1 both said `:640`.
 - Corrected the merge-order note: T-0002 also appends a Changelog item 34, and it edits other parts of `specs/build-harness.md`, without overlapping part D.
+
+STATUS: READY-FOR-CRITIC
+CONFIDENCE: high. I re-applied A–D on a fresh clone of `main` `172a71e` and ran all 13 criteria on both. I re-read the cited lines of both documents, the reference composer on `feat/lionbot-v3` (unchanged since the intake pin) and this run's own input and meta, and checked the other pending specs' Changelog and build-spec edits.
+ESCALATIONS: none

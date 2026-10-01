@@ -4,13 +4,13 @@ title: Declare the per-repo role-context block in the design doc's Harness secti
   receives first (document only; where the target lives stays open)
 request: requests/T-0007.md
 source: /Users/dphang/dev/spec-factory/issues/07_single_target_harness.md
-status: ready-for-spec-writer
+status: ready-for-planner
 round:
-  spec: 0
+  spec: 1
   pr: 0
 spec:
-  version: 1
-  approved_version: null
+  version: 2
+  approved_version: 2
 plan: null
 in_flight: []
 parked: null
@@ -45,3 +45,22 @@ history:
   by: dphang
   resolve: answer
   answer: 2
+- ts: '2026-10-01T20:38:17+00:00'
+  from: ready-for-spec-writer
+  to: ready-for-critic
+  by: workflow
+  round:
+    spec: 1
+    pr: 0
+- ts: '2026-10-01T20:43:01+00:00'
+  from: ready-for-critic
+  to: awaiting-spec-gate
+  by: workflow
+  round:
+    spec: 1
+    pr: 0
+- ts: '2026-10-01T20:43:16+00:00'
+  from: awaiting-spec-gate
+  to: ready-for-planner
+  by: dphang
+  approved_version: 2

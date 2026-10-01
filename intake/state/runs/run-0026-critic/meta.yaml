@@ -1,0 +1,16 @@
+run_id: run-0026-critic
+role: critic
+ticket: T-0007
+model: fable
+round: 1
+spec_version: 2
+started: '2026-10-01T20:38:26+00:00'
+finished: '2026-10-01T20:42:47+00:00'
+wall_s: 261
+status: APPROVE
+input_sources:
+- specs/T-0007/v2.md
+confidence: high — every cited line, the reference composer, five live run directories, and all 13 acceptance
+  commands were re-checked by command on `main` and on a scratch application of A–D, with outputs matching
+  the spec.
+escalations: []
