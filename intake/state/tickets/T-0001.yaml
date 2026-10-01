@@ -1,14 +1,15 @@
 id: T-0001
-type: null
-title: 01_status_parser
+type: bug
+title: STATUS parser parks valid verdicts as harness bugs when the trailer departs from the strict three-line
+  shape
 request: requests/T-0001.md
 source: /Users/dphang/dev/spec-factory/issues/01_status_parser.md
-status: ready-for-triage
+status: awaiting-spec-gate
 round:
-  spec: 0
+  spec: 1
   pr: 0
 spec:
-  version: 0
+  version: 1
   approved_version: null
 plan: null
 in_flight: []
@@ -26,3 +27,24 @@ history:
   by: dphang
   resolve: answer
   answer: 1
+- ts: '2026-10-01T19:37:09+00:00'
+  from: ready-for-triage
+  to: ready-for-spec-writer
+  by: workflow
+  round:
+    spec: 0
+    pr: 0
+- ts: '2026-10-01T19:44:44+00:00'
+  from: ready-for-spec-writer
+  to: ready-for-critic
+  by: workflow
+  round:
+    spec: 1
+    pr: 0
+- ts: '2026-10-01T19:50:14+00:00'
+  from: ready-for-critic
+  to: awaiting-spec-gate
+  by: workflow
+  round:
+    spec: 1
+    pr: 0
