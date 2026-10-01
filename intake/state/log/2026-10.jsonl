@@ -12,3 +12,7 @@
 {"ts": "2026-10-01T16:28:24+00:00", "event": "ticket.created", "ticket": "T-0006", "status": "ready-for-triage"}
 {"ts": "2026-10-01T16:28:54+00:00", "event": "request.created", "ticket": "T-0007", "source": "/Users/dphang/dev/spec-factory/issues/07_single_target_harness.md"}
 {"ts": "2026-10-01T16:28:54+00:00", "event": "ticket.created", "ticket": "T-0007", "status": "ready-for-triage"}
+{"ts": "2026-10-01T16:29:28+00:00", "event": "run.started", "ticket": "T-0001", "run": "run-0001-triage", "role": "triage", "model": "opus"}
+{"ts": "2026-10-01T16:31:41+00:00", "event": "run.finished", "ticket": "T-0001", "run": "run-0001-triage", "role": "triage", "status": "NEEDS-HUMAN", "wall_s": 133}
+{"ts": "2026-10-01T16:31:55+00:00", "event": "ticket.parked", "ticket": "T-0001", "from": "ready-for-triage", "reason": "NEEDS-HUMAN from triage"}
+{"ts": "2026-10-01T16:31:55+00:00", "event": "escalation.queued", "ticket": "T-0001", "items": ["NEEDS-HUMAN from triage"]}

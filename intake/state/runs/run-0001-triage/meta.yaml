@@ -1,0 +1,15 @@
+run_id: run-0001-triage
+role: triage
+ticket: T-0001
+model: opus
+round: 0
+spec_version: 0
+started: '2026-10-01T16:29:28+00:00'
+finished: '2026-10-01T16:31:41+00:00'
+wall_s: 133
+status: NEEDS-HUMAN
+input_sources:
+- requests/T-0001.md
+confidence: medium — the bug and the as-built fix were checked by file reads, `git show`, `diff` and running
+  the parser, but GitHub was not searched for duplicates and A1 (what "design doc" covers) is my inference
+escalations: []
