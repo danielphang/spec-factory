@@ -36,3 +36,13 @@
 {"ts": "2026-10-01T16:54:43+00:00", "event": "run.started", "ticket": "T-0003", "run": "run-0007-critic", "role": "critic", "model": "fable"}
 {"ts": "2026-10-01T16:59:14+00:00", "event": "run.finished", "ticket": "T-0003", "run": "run-0007-critic", "role": "critic", "status": "APPROVE", "wall_s": 271}
 {"ts": "2026-10-01T16:59:25+00:00", "event": "ticket.transition", "ticket": "T-0003", "from": "ready-for-critic", "to": "awaiting-spec-gate", "by": "workflow", "round": {"spec": 1, "pr": 0}}
+{"ts": "2026-10-01T16:59:58+00:00", "event": "run.started", "ticket": "T-0004", "run": "run-0008-triage", "role": "triage", "model": "opus"}
+{"ts": "2026-10-01T17:01:48+00:00", "event": "run.finished", "ticket": "T-0004", "run": "run-0008-triage", "role": "triage", "status": "ACCEPT", "wall_s": 110}
+{"ts": "2026-10-01T17:01:58+00:00", "event": "ticket.transition", "ticket": "T-0004", "from": "ready-for-triage", "to": "ready-for-spec-writer", "by": "workflow", "round": {"spec": 0, "pr": 0}}
+{"ts": "2026-10-01T17:02:06+00:00", "event": "run.started", "ticket": "T-0004", "run": "run-0009-spec_writer", "role": "spec_writer", "model": "opus"}
+{"ts": "2026-10-01T17:09:03+00:00", "event": "run.finished", "ticket": "T-0004", "run": "run-0009-spec_writer", "role": "spec_writer", "status": "READY-FOR-CRITIC", "wall_s": 417}
+{"ts": "2026-10-01T17:09:15+00:00", "event": "spec.added", "ticket": "T-0004", "version": 1, "source": "run-0009-spec_writer"}
+{"ts": "2026-10-01T17:09:24+00:00", "event": "ticket.transition", "ticket": "T-0004", "from": "ready-for-spec-writer", "to": "ready-for-critic", "by": "workflow", "round": {"spec": 1, "pr": 0}}
+{"ts": "2026-10-01T17:09:33+00:00", "event": "run.started", "ticket": "T-0004", "run": "run-0010-critic", "role": "critic", "model": "fable"}
+{"ts": "2026-10-01T17:12:55+00:00", "event": "run.finished", "ticket": "T-0004", "run": "run-0010-critic", "role": "critic", "status": "APPROVE", "wall_s": 202}
+{"ts": "2026-10-01T17:13:07+00:00", "event": "ticket.transition", "ticket": "T-0004", "from": "ready-for-critic", "to": "awaiting-spec-gate", "by": "workflow", "round": {"spec": 1, "pr": 0}}
