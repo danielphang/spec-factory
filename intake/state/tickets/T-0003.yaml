@@ -4,13 +4,13 @@ title: A role re-run after a human answers its question does not receive its own
   it asked)
 request: requests/T-0003.md
 source: /Users/dphang/dev/spec-factory/issues/03_triage_reask_input.md
-status: awaiting-spec-gate
+status: ready-for-planner
 round:
   spec: 1
   pr: 0
 spec:
   version: 1
-  approved_version: null
+  approved_version: 1
 plan: null
 in_flight: []
 parked: null
@@ -37,3 +37,8 @@ history:
   round:
     spec: 1
     pr: 0
+- ts: '2026-10-01T20:39:31+00:00'
+  from: awaiting-spec-gate
+  to: ready-for-planner
+  by: dphang
+  approved_version: 1
