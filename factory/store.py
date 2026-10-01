@@ -91,15 +91,24 @@ def next_ticket_id(root: Path, prefix: str = "T") -> str:
 
 
 def next_run_id(root: Path, role: str) -> str:
+    """Allocate a run id by creating its directory: mkdir is atomic, so two concurrent
+    workflows on one store cannot be handed the same id (listing-then-naming could)."""
     runs = root / "runs"
+    runs.mkdir(parents=True, exist_ok=True)
     nums = []
-    if runs.exists():
-        for p in runs.iterdir():
-            try:
-                nums.append(int(p.name.split("-")[1]))
-            except (IndexError, ValueError):
-                pass
-    return f"run-{(max(nums) + 1 if nums else 1):04d}-{role}"
+    for p in runs.iterdir():
+        try:
+            nums.append(int(p.name.split("-")[1]))
+        except (IndexError, ValueError):
+            pass
+    n = (max(nums) + 1) if nums else 1
+    while True:
+        rid = f"run-{n:04d}-{role}"
+        try:
+            (runs / rid).mkdir()
+            return rid
+        except FileExistsError:
+            n += 1
 
 
 def new_ticket(root: Path, tid: str, title: str, request_rel: str, source: str) -> dict:
