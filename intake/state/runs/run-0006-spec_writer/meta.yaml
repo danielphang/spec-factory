@@ -1,0 +1,17 @@
+run_id: run-0006-spec_writer
+role: spec_writer
+ticket: T-0003
+model: opus
+round: 0
+spec_version: 0
+started: '2026-10-01T16:49:15+00:00'
+finished: '2026-10-01T16:54:13+00:00'
+wall_s: 298
+status: READY-FOR-CRITIC
+input_sources:
+- runs/run-0005-triage/output.md
+- requests/T-0003.md
+confidence: 'high. I read every cited line on `main` at `1384157` and the reference composer at `0f2e29136`
+  with `git show`, and I ran each Acceptance command on this checkout: the NEW items return `0` today
+  and the REGRESSION items pass as stated.'
+escalations: []
