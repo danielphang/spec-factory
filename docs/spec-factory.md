@@ -49,6 +49,20 @@ The prompts say what each role does. The harness enforces the wiring rules: fres
 
 **What the harness itself owns** (no platform provides these): the routing table, the round counter and the max-round cutoff, composing each role's input from *only* its declared sources, choosing the model per role, and the escalation queue view for the daily human pass.
 
+**Model per role, starting point.** One rule: a role's model depends on what checks its output. Default Opus. Upgrade to Fable where the role's output is the feedback other roles are measured against. Downgrade to Sonnet only where the output is checked mechanically inside the same loop. Tune effort before changing model; record the model on every run so the retro can compare failure rates by model and propose changes through its own keep/revert loop. Never let an author and its checker share a model where you can avoid it.
+
+| Role | Default | Why |
+|---|---|---|
+| Triage | Opus | Judgment on vague input; measure before trying Sonnet |
+| Spec writer | Fable | The spec is the contract everything downstream trusts |
+| Spec critic | Opus | The check on the writer; must differ from the writer's model |
+| Planner | Opus | Decomposition judgment, runs once per spec |
+| Implementer | Opus; Sonnet when the sub-ticket is small, every criterion is runnable, and no protected path | Strongest external feedback in the pipeline: failing tests plus two checkers |
+| Code reviewer | Fable | The judgment-heavy check; catches what tests can't |
+| Verifier | Sonnet; Opus if probes matter for that repo | Mostly mechanical: run, compare, record |
+| Retro | Fable | Rare, high leverage, writes the rules |
+| Clerk, parsing, routing | Haiku, or no model | Code where possible |
+
 **Smallest thing that works.** A git server with per-user permissions and a pre-receive hook (pieces 4, 7, 8), a `tickets/` directory of YAML in the repo as the store (1, 5, 6, 10), a cron loop that reads it and launches `claude -p` in a fresh container with secrets injected via env (2, 3, 12), the verifier running the gates (11), and your existing tracker as the human surface (9). Audit and retro counts come from the append-only log. A few hundred lines of harness. Move the store to a real DB when you want cost-per-issue numbers in one place.
 
 **Routing table.** The dispatcher (piece 2) is this table and nothing else. Each row: a STATUS a role emits, what runs next, and what it receives. "Receives" adds to the INPUT the role prompt already declares.
