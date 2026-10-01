@@ -84,13 +84,13 @@ def take(m):  # from PKG[.mod] import a, b as c; the line is not re-scanned, the
         if parts:
             found.add(mod + "." + parts[0]); bound[parts[2] if len(parts) == 3 else parts[0]] = mod + "." + parts[0]
     return " "
-text = re.sub(r"^\s*from\s+(" + P + r"(?:\.\w+)*)\s+import\s+(\([^)]*\)|[^\n]+)", take, text, flags=re.M)
+text = re.sub(r"^\s*from\s+(" + P + r"(?:\.\w+)*)\s+import\s+(\([^)]*\)|[^\n;#]+)", take, text, flags=re.M)
 def take2(m):  # import PKG.x [as A]
     found.add(m.group(1)); bound[m.group(2) or m.group(1)] = m.group(1); return " "
 text = re.sub(r"^\s*import\s+(" + P + r"(?:\.\w+)+)(?:\s+as\s+(\w+))?\s*$", take2, text, flags=re.M)
 found.update(re.findall(r"\b" + P + r"(?:\.\w+)+", text))  # any other dotted PKG reference, as written
-for alias, target in bound.items():  # name.attr on a bound name; Cls().attr does not match
-    found.update(target + "." + a for a in re.findall(r"\b" + re.escape(alias) + r"\.(\w+)", text))
+for alias, target in bound.items():  # name.attr on a bound name, not inside another dotted path; Cls().attr does not match
+    found.update(target + "." + a for a in re.findall(r"(?<![\w.])" + re.escape(alias) + r"\.(\w+)", text))
 print("\n".join(sorted(found)))
 PY
 ~~~
