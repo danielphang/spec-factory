@@ -4,7 +4,7 @@ title: P0 plan does not warn that a session started before `.claude/agents/` exi
   factory-* role agents, and does not check for them before P0-2
 request: requests/T-0004.md
 source: /Users/dphang/dev/spec-factory/issues/04_p0_agents_dir.md
-status: ready-for-planner
+status: closed
 round:
   spec: 1
   pr: 0
@@ -42,3 +42,8 @@ history:
   to: ready-for-planner
   by: dphang
   approved_version: 1
+- ts: '2026-10-01T21:10:32+00:00'
+  from: ready-for-planner
+  to: closed
+  by: dphang
+  resolve: close

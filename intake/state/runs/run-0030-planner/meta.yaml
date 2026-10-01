@@ -1,0 +1,21 @@
+run_id: run-0030-planner
+role: planner
+ticket: T-0002
+model: opus
+round: 1
+spec_version: 1
+started: '2026-10-01T21:08:00+00:00'
+finished: '2026-10-01T21:09:48+00:00'
+wall_s: 108
+status: ESCALATE
+input_sources:
+- specs/T-0002/v1.md
+confidence: high, because I ran every parent Acceptance command on main and read the `d2866d2` diff and
+  its parent's Changelog.
+escalations:
+- '(1) The input contradicts the codebase: approved spec T-0002 v1 is already applied on main as `d2866d2`,
+  while the store still has the ticket at `ready-for-planner`. (2) Parent Acceptance item 8 (Changelog
+  `34`, `1`) cannot pass on main (actual `38`, `0`; the entry is item 35). (3) The landed text differs
+  from the pinned spec in part D (wording) and part F (an extra parenthetical). A human must choose (a)
+  close as applied, (b) spec v2, or (c) revert and re-apply.'
+escalations_note: null

@@ -4,7 +4,7 @@ title: Add an optional `## Operator steps` section to the Spec writer FORMAT for
   live or protected state, and have the critic keep them out of Acceptance
 request: requests/T-0005.md
 source: /Users/dphang/dev/spec-factory/issues/05_protected_live_state.md
-status: ready-for-planner
+status: closed
 round:
   spec: 1
   pr: 0
@@ -53,3 +53,8 @@ history:
   to: ready-for-planner
   by: dphang
   approved_version: 1
+- ts: '2026-10-01T21:10:33+00:00'
+  from: ready-for-planner
+  to: closed
+  by: dphang
+  resolve: close

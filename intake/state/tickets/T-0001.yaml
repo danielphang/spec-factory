@@ -4,7 +4,7 @@ title: STATUS parser parks valid verdicts as harness bugs when the trailer depar
   shape
 request: requests/T-0001.md
 source: /Users/dphang/dev/spec-factory/issues/01_status_parser.md
-status: ready-for-planner
+status: parked
 round:
   spec: 1
   pr: 0
@@ -13,7 +13,13 @@ spec:
   approved_version: 1
 plan: null
 in_flight: []
-parked: null
+parked:
+  reason: ESCALATE from planner
+  since: '2026-10-01T21:10:21+00:00'
+  from: ready-for-planner
+  outputs:
+  - run-0032-planner
+  question: null
 created: '2026-10-01T16:28:24+00:00'
 history:
 - ts: '2026-10-01T16:31:55+00:00'
@@ -53,3 +59,8 @@ history:
   to: ready-for-planner
   by: dphang
   approved_version: 1
+- ts: '2026-10-01T21:10:21+00:00'
+  from: ready-for-planner
+  to: parked
+  by: park
+  reason: ESCALATE from planner

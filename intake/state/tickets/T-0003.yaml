@@ -4,7 +4,7 @@ title: A role re-run after a human answers its question does not receive its own
   it asked)
 request: requests/T-0003.md
 source: /Users/dphang/dev/spec-factory/issues/03_triage_reask_input.md
-status: ready-for-planner
+status: closed
 round:
   spec: 1
   pr: 0
@@ -42,3 +42,13 @@ history:
   to: ready-for-planner
   by: dphang
   approved_version: 1
+- ts: '2026-10-01T21:09:58+00:00'
+  from: ready-for-planner
+  to: parked
+  by: park
+  reason: ESCALATE from planner
+- ts: '2026-10-01T21:10:32+00:00'
+  from: parked
+  to: closed
+  by: dphang
+  resolve: close
