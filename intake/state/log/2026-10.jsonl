@@ -1,0 +1,14 @@
+{"ts": "2026-10-01T16:28:24+00:00", "event": "request.created", "ticket": "T-0001", "source": "/Users/dphang/dev/spec-factory/issues/01_status_parser.md"}
+{"ts": "2026-10-01T16:28:24+00:00", "event": "ticket.created", "ticket": "T-0001", "status": "ready-for-triage"}
+{"ts": "2026-10-01T16:28:24+00:00", "event": "request.created", "ticket": "T-0002", "source": "/Users/dphang/dev/spec-factory/issues/02_clerk_schema.md"}
+{"ts": "2026-10-01T16:28:24+00:00", "event": "ticket.created", "ticket": "T-0002", "status": "ready-for-triage"}
+{"ts": "2026-10-01T16:28:24+00:00", "event": "request.created", "ticket": "T-0003", "source": "/Users/dphang/dev/spec-factory/issues/03_triage_reask_input.md"}
+{"ts": "2026-10-01T16:28:24+00:00", "event": "ticket.created", "ticket": "T-0003", "status": "ready-for-triage"}
+{"ts": "2026-10-01T16:28:24+00:00", "event": "request.created", "ticket": "T-0004", "source": "/Users/dphang/dev/spec-factory/issues/04_p0_agents_dir.md"}
+{"ts": "2026-10-01T16:28:24+00:00", "event": "ticket.created", "ticket": "T-0004", "status": "ready-for-triage"}
+{"ts": "2026-10-01T16:28:24+00:00", "event": "request.created", "ticket": "T-0005", "source": "/Users/dphang/dev/spec-factory/issues/05_protected_live_state.md"}
+{"ts": "2026-10-01T16:28:24+00:00", "event": "ticket.created", "ticket": "T-0005", "status": "ready-for-triage"}
+{"ts": "2026-10-01T16:28:24+00:00", "event": "request.created", "ticket": "T-0006", "source": "/Users/dphang/dev/spec-factory/issues/06_p05_grep_vs_inline_scripts.md"}
+{"ts": "2026-10-01T16:28:24+00:00", "event": "ticket.created", "ticket": "T-0006", "status": "ready-for-triage"}
+{"ts": "2026-10-01T16:28:54+00:00", "event": "request.created", "ticket": "T-0007", "source": "/Users/dphang/dev/spec-factory/issues/07_single_target_harness.md"}
+{"ts": "2026-10-01T16:28:54+00:00", "event": "ticket.created", "ticket": "T-0007", "status": "ready-for-triage"}

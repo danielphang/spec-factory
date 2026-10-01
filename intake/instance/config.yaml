@@ -1,0 +1,40 @@
+# Spec factory, scratch intake instance targeting the spec-factory design repo (intake/README.md).
+# Overlaid on a pinned copy of the Nanobot-side harness by intake/setup.sh; everything below
+# protected_paths is unchanged from that harness's config.yaml.
+repo_name: spec-factory
+state_dir: ../state
+request_dir: ../../issues
+protected_paths:
+  infra: ["intake/**"]
+  generated: ["prompts/**"]
+  reference_harness: ["~/dev/nanobot-upstream/**"]
+  credentials: ["~/.nanobot/**"]
+gate_commands:
+  - "git -C ~/dev/spec-factory diff --check"
+placeholders: {rounds: 2, spec_lines: 400, audit_n: 5, retro_min: 3}
+max_rounds: {spec: 2, pr: 2}
+models:
+  triage: opus
+  spec_writer: opus
+  critic: fable
+  planner: opus
+  implementer: opus
+  reviewer: fable
+  verifier: opus
+  retro: fable
+  clerk: haiku
+ready_state:
+  triage: ready-for-triage
+  spec_writer: ready-for-spec-writer
+  critic: ready-for-critic
+  planner: ready-for-planner
+# Routing edges (doc §Routing table, intake half, plus the resolution rules). Anything else is refused.
+routing:
+  ready-for-triage: [ready-for-spec-writer, waiting-requester, parked, closed]
+  waiting-requester: [ready-for-triage, closed]
+  ready-for-spec-writer: [ready-for-critic, parked, closed]
+  ready-for-critic: [ready-for-spec-writer, awaiting-spec-gate, parked, closed]
+  awaiting-spec-gate: [ready-for-planner, ready-for-spec-writer, closed]
+  ready-for-planner: [planned, parked, closed]
+  parked: [ready-for-triage, ready-for-spec-writer, ready-for-critic, ready-for-planner, awaiting-spec-gate, closed]
+  planned: [closed]

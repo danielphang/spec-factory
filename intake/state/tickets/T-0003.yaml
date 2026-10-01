@@ -1,0 +1,17 @@
+id: T-0003
+type: null
+title: 03_triage_reask_input
+request: requests/T-0003.md
+source: /Users/dphang/dev/spec-factory/issues/03_triage_reask_input.md
+status: ready-for-triage
+round:
+  spec: 0
+  pr: 0
+spec:
+  version: 0
+  approved_version: null
+plan: null
+in_flight: []
+parked: null
+created: '2026-10-01T16:28:24+00:00'
+history: []

@@ -1,0 +1,28 @@
+T-0001:
+  source: /Users/dphang/dev/spec-factory/issues/01_status_parser.md
+  hash: b9ad8c666fa86a7a
+  imported: '2026-10-01T16:28:24+00:00'
+T-0002:
+  source: /Users/dphang/dev/spec-factory/issues/02_clerk_schema.md
+  hash: 05941cc816d0a29d
+  imported: '2026-10-01T16:28:24+00:00'
+T-0003:
+  source: /Users/dphang/dev/spec-factory/issues/03_triage_reask_input.md
+  hash: da4dc57d43def7b1
+  imported: '2026-10-01T16:28:24+00:00'
+T-0004:
+  source: /Users/dphang/dev/spec-factory/issues/04_p0_agents_dir.md
+  hash: d8204eaebd71c189
+  imported: '2026-10-01T16:28:24+00:00'
+T-0005:
+  source: /Users/dphang/dev/spec-factory/issues/05_protected_live_state.md
+  hash: 261443851da0a35b
+  imported: '2026-10-01T16:28:24+00:00'
+T-0006:
+  source: /Users/dphang/dev/spec-factory/issues/06_p05_grep_vs_inline_scripts.md
+  hash: 670cd2ac5da6c54f
+  imported: '2026-10-01T16:28:24+00:00'
+T-0007:
+  source: /Users/dphang/dev/spec-factory/issues/07_single_target_harness.md
+  hash: 6157249cea9c57c7
+  imported: '2026-10-01T16:28:54+00:00'
