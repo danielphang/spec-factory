@@ -15,7 +15,7 @@ The pipeline, in order:
 5. **Planner** splits approved specs into ordered, mergeable sub-tickets.
 6. **Implementer** builds one sub-ticket per run.
 7. **Code reviewer** and **verifier** check the PR independently. Max {2} checker rounds.
-8. REQUEST-CHANGES, FAILED, CI failures, and merge conflicts go back to the implementer as findings; a verifier SPEC-DEFECT goes to the human queue. Merge only when CI is green and both the reviewer's APPROVE and the verifier's VERIFIED name the PR's current head commit. Any new commit, including a CI fix or rebase, re-runs both (harness piece 6).
+8. REQUEST-CHANGES, FAILED, CI failures, and merge conflicts go back to the implementer as findings; a verifier SPEC-DEFECT goes to the human queue. Merge only when CI is green, both the reviewer's APPROVE and the verifier's VERIFIED name the PR's current head commit, the head contains current main, and any piece-8 approval is recorded. Any new commit, including a CI fix or rebase, re-runs both (harness piece 6).
 9. **Retro** runs weekly after the audit, or on demand after a major block of work, and proposes instruction changes from failure patterns, as a PR. It is not optional: it is the only path by which the pipeline improves.
 
 The pipeline runs autonomously. A human is interrupted only at the five gates in "Human gates and convergence": spec approval, a PR touching a protected path, the daily escalation queue, a guardrail change, and the weekly audit. Everything else is dispatched by the harness without asking.
@@ -34,14 +34,14 @@ The prompts say what each role does. The harness enforces the wiring rules: fres
 
 | # | Piece | What it must do | GitHub gives you | Minimum portable substitute |
 |---|---|---|---|---|
-| 1 | Ticket store | One record per ticket and sub-ticket: status, type, spec text and version, PR link, round counter, history. The spec gate pins the version the human approved, including any edits made at the gate. This is the state machine's memory | Issues + labels | Any tracker (Jira, Linear) or a table in a DB. A directory of YAML files in a `tickets/` branch works to start |
-| 2 | Event dispatcher | Notice a state change and start the right role with the right inputs. Routes on the `STATUS:` line of the last output, per the routing table | Webhooks + Actions `on:` events | A loop (cron, every 1–5 min) that queries the store for tickets in a "ready for X" state and launches X. Polling is fine; nothing here is latency-sensitive. For a v0 inside one Claude Code session, a Workflow script: each agent() call is a fresh context, the fan-out, join, and round counters are plain code, and the same routing table lifts into the loop later. Two v0 limits: the script has no filesystem or clock, so store writes go through a clerk agent calling the CLI (put the round and routing guards in the CLI, not the clerk), and a hung agent blocks the join until a human skips it, so the piece-3 kill is post-hoc |
+| 1 | Ticket store | One record per ticket and sub-ticket: status, type, spec text and version, PR link, round counter, history. The spec gate pins the version the human approved, including any edits made at the gate. This is the state machine's memory. A store CLI (read, transition, record) fronts it and enforces the round and routing guards; the dispatcher and the clerk both go through it | Issues + labels | Any tracker (Jira, Linear) or a table in a DB. A `tickets` branch of YAML works to start: the pre-receive hook restricts it to harness and human identities and exempts it from the merge gate |
+| 2 | Event dispatcher | Notice a state change and start the right role with the right inputs. Routes on the `STATUS:` line of the last output, per the routing table | Webhooks + Actions `on:` events | A loop (cron, every 1–5 min) that queries the store for tickets in a "ready for X" state and launches X. Polling is fine; nothing here is latency-sensitive. For a v0 inside one Claude Code session, a Workflow script: each agent() call is a fresh context, the fan-out, join, and round counters are plain code, and the same routing table lifts into the loop later. Two v0 limits: the script has no filesystem or clock, so store writes go through a clerk agent calling the CLI (put the round and routing guards in the CLI, not the clerk), a hung agent blocks the join until a human skips it, so the piece-3 kill is post-hoc; and v0 gives fresh context, not isolation: every agent() call shares the session's checkout, credentials, and git identity. Use a worktree per call, run the clerk's CLI under a harness identity that has no verb for approval rows (humans write those directly), and treat v0 as exercising the routing table, not as producing trusted merges |
 | 3 | Isolated run per role | Every role invocation starts in a clean checkout with no memory of earlier runs and only its declared inputs. This is what "fresh context per checker" means in practice | Actions job on a fresh runner | A container or VM per run (Docker, Firecracker, K8s Job). Run `claude -p` with the preamble + role prompt as the system prompt and the inputs on stdin. Destroy the environment after. A run that exceeds {time budget, token budget} is killed, recorded as a result row for that head and role so no join waits on it, and its ticket parked |
-| 4 | Scoped credentials | Each role gets only the access its rules allow. Implementer: push to its own branch. Reviewer, verifier, and gate runner: read-only clone plus a shell, with no secrets in the environment, since they run PR code before any security check has passed (model access through a proxy the shell can't reach, no git write token, restricted egress). Retro: push a branch and open a PR, nothing else. No role can push to main. Only the harness identity and humans write the ticket store; role outputs enter it through the dispatcher, and the merge gate accepts an approval row only if a human identity pushed it | Job-level `permissions:` on a per-job `GITHUB_TOKEN` | One git user or deploy key per role, with server-side rights set on the git host. Secrets injected per job from a vault or env, never baked into the image |
+| 4 | Scoped credentials | Each role gets only the access its rules allow. Implementer: push to its own branch. Triage, spec writer, critic, planner, reviewer, verifier, and gate runner: read-only clone plus a shell, with no secrets in the environment, since they run PR code before any security check has passed (model access through a proxy the shell can't reach, no git write token, restricted egress). Retro: push a branch and open a PR, nothing else. No role can push to main. Only the harness identity and humans write the ticket store; role outputs enter it through the dispatcher, and the merge gate accepts an approval row only if a human identity pushed it, judged by the server's pusher identity, not the commit author | Job-level `permissions:` on a per-job `GITHUB_TOKEN` | One git user or deploy key per role, with server-side rights set on the git host. Secrets injected per job from a vault or env, never baked into the image |
 | 5 | Change proposal | A unit of review: a branch, its base, its head commit, and a place for the PR description and findings. Approvals attach to the head commit. Fix rounds push to the same branch, which is the ticket's identity | Pull requests | A branch naming convention (`ticket/<id>`) plus a record in the ticket store holding base, head SHA, and the description. GitLab MRs or Gerrit changes are direct equivalents |
 | 6 | Commit-bound results | Reviewer, verifier, and CI results are stored against a specific head SHA. A new push makes prior results stale; a result arriving for a head that is no longer current is discarded | Check runs and commit statuses; required checks re-run on push | A `results` table keyed by `(head_sha, role)`. The merge condition queries the *current* head only, so stale rows never match |
-| 7 | Merge gate | Nothing reaches main without CI green, APPROVE and VERIFIED on the current head, a head that contains current main, and a human approval record where piece 8 requires it. A bug in a prompt cannot bypass this. One exception, stated here and nowhere else, for two kinds of PR with no sub-ticket: a retro PR whose diff touches only non-test guardrail paths, and a revert the gate verifies is exactly git revert of one merged head recorded in the store. Either merges on CI green, head contains main, and a human approval on that head; the human reads the whole diff, which stands in for APPROVE and VERIFIED. Any other diff removes the exception | Branch protection with required checks and required reviews. Required checks cannot be waived per PR, so the exception needs a harness-emitted check that reports success for exception PRs | A server-side pre-receive hook on main that checks the results table, or a single merge bot that alone can write to main and checks the conditions before fast-forwarding. Either works; the hook is stricter |
-| 8 | Guardrail and protected paths | If the diff touches a guardrail or protected path, the merge gate requires an approval row signed by a human identity. For existing tests, the spec gate's approval of "Tests to change" is that row for exactly the tests listed; any other guardrail or protected path needs a human approval on the PR itself | CODEOWNERS with required owner review for CI config, AGENTS.md, skills, prompts, and protected paths. Not for tests: CODEOWNERS fires on added files too. Existing tests get a required check that fails when a test file is modified or deleted and not in the pinned spec's "Tests to change" (on a revert, files the reverted PR added are exempt) | A path list checked in the merge gate, with the same modified-or-deleted rule for test files. Keep the list in the repo so it is itself protected |
+| 7 | Merge gate | Nothing reaches main without CI green, APPROVE and VERIFIED on the current head, a head that contains current main, and a human approval record where piece 8 requires it. A bug in a prompt cannot bypass this. One exception, stated here and nowhere else, for two kinds of PR with no sub-ticket: a retro PR whose diff touches only non-test guardrail paths, and a human-authored revert whose diff the gate verifies is exactly the inverse of one merged change proposal's diff (main before that merge against main after it, both recorded in the store at merge time). Either merges on CI green, head contains main, and a human approval on that head recorded under the guardrail-changes gate; the human reads the whole diff, which stands in for APPROVE and VERIFIED. A no-sub-ticket PR that fails this test is closed and logged to the human queue | Branch protection with required checks and required reviews. Required checks cannot be waived per PR, so the exception needs a harness-emitted check that reports success for exception PRs | A server-side pre-receive hook on main that checks the results table, or a single merge bot that alone can write to main and checks the conditions before fast-forwarding. Either works; the hook is stricter |
+| 8 | Guardrail and protected paths | If the diff touches a guardrail or protected path, the merge gate requires an approval row signed by a human identity. For existing tests, the spec gate's approval of "Tests to change" is that row for exactly the tests listed; any other guardrail or protected path needs a human approval on the PR itself | CODEOWNERS with required owner review for CI config, AGENTS.md, skills, prompts, and protected paths. Not for tests: CODEOWNERS fires on added files too. Existing tests get a required check that fails when a test file is modified or deleted and not in the pinned spec's "Tests to change" (on a revert: files the reverted PR added and the tests its pinned spec listed under "Tests to change" are exempt, and the revert's human approval is the piece-8 row for them) | A path list checked in the merge gate, with the same modified-or-deleted rule for test files. Keep the list in the repo under CI config, so it is itself a guardrail path |
 | 9 | Human surface | Where people approve specs, answer escalations, review protected PRs, reply to requesters, and read the weekly audit sample. Every decision writes back to the store as a record: who, when, which spec version or head SHA | Issue comments, PR reviews, approvals | The tracker's UI plus notifications (Slack, email) with links. The approval must be a stored, attributable record the merge gate can check, not a chat message |
 | 10 | Audit log | Every transition, every agent output, every human decision, append-only. The weekly audit and the retro read from here | Issue and PR timelines, Actions logs | An append-only table or log stream. Store full agent outputs as artifacts keyed by run id. If it isn't logged, the retro can't see it |
 | 11 | Gate runner | Runs `{gate commands}` (build, lint, typecheck, tests) on a head SHA and records PASS/FAIL against it (piece 6) | Actions CI | Any CI. Without one, the verifier runs the gates as step 4 of its prompt, and its "Gate suite" line is recorded as the CI result. Separate CI is better because it isn't an agent |
@@ -49,7 +49,7 @@ The prompts say what each role does. The harness enforces the wiring rules: fres
 
 **What the harness itself owns** (no platform provides these): the routing table, the round counter and the max-round cutoff, composing each role's input from *only* its declared sources, choosing the model per role, and the escalation queue view for the daily human pass.
 
-**Model per role, starting point.** One rule: a role's model depends on what checks its output. Default Opus. A checker is never weaker than the author it checks. Fable goes where a role's output is checked only by a human: the critic, the code reviewer, the retro. Sonnet only where the output is checked mechanically inside the same loop. Tune effort before changing model; record the model on every run so the retro can compare failure rates by model and propose changes through its own keep/revert loop. Never let an author and its checker share a model where you can avoid it.
+**Model per role, starting point.** One rule: a role's model depends on what checks its output. Default Opus. A checker is never weaker than the author it checks. Fable goes where a role's output is checked only by a human: the critic, the code reviewer, the retro. Sonnet only where the output is checked mechanically inside the same loop. The verifier is the one checker whose check is the commands themselves; its probe step is judgment, so it drops to Sonnet only where probes rarely matter. Tune effort before changing model; record the model on every run so the retro can compare failure rates by model; this table is the harness's model config, so a retro diff to it is the proposal path. Never let an author and its checker share a model where you can avoid it.
 
 | Role | Default | Why |
 |---|---|---|
@@ -59,23 +59,24 @@ The prompts say what each role does. The harness enforces the wiring rules: fres
 | Planner | Opus | Decomposition judgment, runs once per spec |
 | Implementer | Opus; Sonnet when the sub-ticket is small, every criterion is runnable, and no protected path | Strongest external feedback in the pipeline: failing tests plus two checkers |
 | Code reviewer | Fable | The judgment-heavy check; catches what tests can't |
-| Verifier | Sonnet; Opus if probes matter for that repo | Mostly mechanical: run, compare, record |
+| Verifier | Opus; Sonnet only when the implementer ran on Opus and the repo's probes rarely matter | The commands do the checking; the probe step is judgment |
 | Retro | Fable | Rare, high leverage, writes the rules |
 | Clerk, parsing, routing | Haiku, or no model | Code where possible |
 
-**Smallest thing that works.** A git server with per-user permissions and a pre-receive hook (pieces 4, 7, 8), a `tickets/` directory of YAML in the repo as the store (1, 5, 6, 10), a cron loop that reads it and launches `claude -p` in a fresh container with secrets injected via env (2, 3, 12), the verifier running the gates (11), and your existing tracker as the human surface (9). Audit and retro counts come from the append-only log. A few hundred lines of harness. Move the store to a real DB when you want cost-per-issue numbers in one place.
+**Smallest thing that works.** A git server with per-user permissions and a pre-receive hook (pieces 4, 7, 8), a `tickets` branch of YAML as the store (1, 5, 6, 10), a cron loop that reads it and launches `claude -p` in a fresh container (2, 3); author containers get secrets via env, checker containers get model access only through a proxy sidecar and no env secrets (12; the one extra component), the verifier running the gates (11), and your existing tracker as the human surface (9). Audit and retro counts come from the append-only log. A few hundred lines of harness. Move the store to a real DB when you want cost-per-issue numbers in one place.
 
 **Routing table.** The dispatcher (piece 2) is this table and nothing else. Each row: a STATUS a role emits, what runs next, and what it receives. "Receives" adds to the INPUT the role prompt already declares.
 
 Rules the table relies on:
 
-- A round is one checker pass; the first check is round 1. Two loops carry a counter: the spec loop (writer ↔ critic) and the PR loop (implementer ↔ reviewer + verifier). The counter increments when the author re-enters after REVISE, REQUEST-CHANGES, or FAILED. A gate failure is a verifier FAILED and counts; the implementer ran the gates locally before pushing. Rebases do not count.
+- A round is one checker pass; the first check is round 1. Two loops carry a counter: the spec loop (writer ↔ critic) and the PR loop (implementer ↔ reviewer + verifier). The counter increments when the author re-enters after REVISE, REQUEST-CHANGES, or FAILED. A gate failure, whether CI reports it or the verifier's gate step does, counts: the implementer ran the gates locally before pushing. Rebases and merge-main rounds do not count.
 - The PR loop routes only after CI and both checker results for the current head are recorded. One implementer run then receives all three outputs. Never launch a second implementer run on a branch that already has one in flight.
-- A non-empty ESCALATIONS line is copied to the human queue without blocking the STATUS route. Only NEEDS-HUMAN, BLOCKED, ESCALATE, SPEC-DEFECT, a max-round cutoff, and a budget kill (piece 3) park the ticket. A parking STATUS from one checker wins over the other's REQUEST-CHANGES or FAILED; both outputs go to the queue.
+- A non-empty ESCALATIONS line is copied to the human queue without blocking the STATUS route. Only NEEDS-HUMAN, CLARIFY, BLOCKED, ESCALATE, SPEC-DEFECT, a max-round cutoff, and a budget kill (piece 3) park the ticket. A parking STATUS from one checker wins over the other's REQUEST-CHANGES or FAILED; both outputs go to the queue.
 - When a human resolves a parked ticket:
-  - A question returns to the role that asked, with the answer.
+  - A question returns to the role that asked, with the answer; a requester's CLARIFY answer returns to Triage the same way.
+  - BLOCKED, a critic ESCALATE, and a planner ESCALATE return to the role that emitted them with the ruling, same round, or the human re-scopes (spec gate or writer round reset) or closes.
   - A spec loop at max rounds goes to the spec gate.
-  - A PR loop at max rounds, a SPEC-DEFECT, or a reviewer ESCALATE returns to the implementer with the round reset and the human's ruling as findings, or the ticket closes. The human may amend the sub-ticket or the pinned spec first; the amended version is what the implementer and checkers receive. There is no merge-gate override. A budget-killed run re-dispatches the same role on the same inputs, same round, or the ticket closes.
+  - A PR loop at max rounds, a SPEC-DEFECT, or a reviewer ESCALATE returns to the implementer with the round reset and the human's ruling as findings, or the ticket closes. The human may amend the sub-ticket or the pinned spec first; the amended version is what the implementer and checkers receive. There is no merge-gate override. A budget-killed run re-dispatches the same role on the same inputs, same round (the human may raise that run's budget or amend the sub-ticket first), or the ticket closes. In-flight siblings keep the spec version they received; the human decides whether to re-plan.
 
 | From | STATUS | Next | Receives |
 |---|---|---|---|
@@ -91,21 +92,21 @@ Rules the table relies on:
 | Critic | ESCALATE | Human queue | Findings |
 | Human spec gate | Approved | Planner | Approved spec, version pinned |
 | Human spec gate | Changes requested | Spec writer (round reset) | Human's notes |
-| Planner | PLANNED | Implementer, one run per sub-ticket. Each branches from main at dispatch; a sub-ticket dispatches only after its dependencies merge; parallel-safe ones run concurrently | Sub-ticket, parent spec, AGENTS.md; push to its own branch only |
+| Planner | PLANNED | Implementer, one run per sub-ticket. Each branches from main at dispatch; a sub-ticket dispatches only after its dependencies merge; parallel-safe ones run concurrently; one marked not parallel-safe dispatches only when no sibling of the same parent is in flight | Sub-ticket, parent spec, AGENTS.md; push to its own branch only |
 | Planner | ESCALATE | Human queue | Planner output |
 | Implementer | READY-FOR-REVIEW | Gate runner, Reviewer, and Verifier, all on the same head, fresh contexts | Diff + PR description, sub-ticket, parent spec, repo read-only; verifier also gets a clean checkout and `{gate commands}`; round 2+: both checkers' prior findings and the implementer's responses |
 | Implementer | BLOCKED | Human queue | PR description |
 | Reviewer | APPROVE | Results table, keyed to head | — |
 | Verifier | VERIFIED | Results table, keyed to head | — |
-| Reviewer and/or Verifier | REQUEST-CHANGES and/or FAILED, once CI and both checkers have reported | Implementer (round +1) if round < {2}, else Human queue | Both checkers' outputs and the CI result |
+| Gate runner, Reviewer, and/or Verifier | CI FAIL and/or REQUEST-CHANGES and/or FAILED, once all three have reported | Implementer (round +1) if round < {2}, else Human queue | Both checkers' outputs and the CI result |
 | Reviewer | ESCALATE | Human queue | Output |
 | Verifier | SPEC-DEFECT | Human queue | Verifier output |
-| Merge gate | Head does not contain current main | Implementer (same round): merge main into the branch, or rebase where force-push to ticket branches is allowed | Conflict output; the new head re-runs CI and both checkers |
-| Merge gate | CI green + APPROVE + VERIFIED on current head + head contains main + piece-8 approvals | Merge; then dispatch sub-tickets that depended on this one; parent closes when all sub-tickets merge | — |
-| Weekly audit done, or on demand | — | Retro | Full outputs behind every outcome signal since the last retro (piece 10), current instruction files, every proposal still under evaluation with its metric, and per-role run and outcome counts for the period and for each prior proposal's window |
+| Merge gate | Head does not contain current main | Implementer (same round, conflict run): merge main into the branch, or rebase where {force-push allowed} | Conflict output; the new head re-runs CI and both checkers |
+| Merge gate | CI green + APPROVE + VERIFIED on current head + head contains main + piece-8 approvals | Merge; then dispatch sub-tickets that depended on this one. When all sub-tickets have merged, one verifier run on main against the parent's full Acceptance list: VERIFIED closes the parent; FAILED or SPEC-DEFECT goes to the human queue with the parent | — |
+| Weekly audit done, or on demand | — | Retro | Full outputs behind every outcome signal since the last retro (piece 10), current instruction files, every proposal still under evaluation with its metric, and per-role run and outcome counts, broken down by model, for the period and for each prior proposal's window |
 | Retro | PROPOSED | Guardrail-changes gate (human); on approval, the no-sub-ticket merge row | PR |
 | Retro | NO-CHANGES | Log only | — |
-| Retro or revert PR (no sub-ticket) | Human approval on current head | Merge on CI green + head contains main + that approval; no checkers (piece 7 exception) | — |
+| Retro or revert PR (no sub-ticket) | Guardrail-gate human approval on current head | Merge on CI green + head contains main + that approval; no checkers (piece 7 exception). Fails the exception test: closed, logged to the human queue | — |
 
 Any STATUS not in this table is a harness bug: park the ticket in the human queue and log it.
 
@@ -118,12 +119,13 @@ Humans own the decisions agents are worst at: what to build, what's risky, and w
 | Spec approval | Every spec, before planning | Confirms intent and priority; answers open questions; approves the Risk section's protected-path declarations and the "Tests to change" list, which is the only authorization to alter an existing test |
 | Protected paths | Any PR touching a protected path | Reviews the PR and records the piece-8 approval; the merge gate does not merge without it |
 | Escalations | Daily | Clears the queue; answers or re-scopes |
-| Guardrail changes | Any PR touching a guardrail path beyond the tests its spec lists | Approves or rejects, including retro proposals |
+| Guardrail changes | Any PR touching a guardrail path beyond the tests its spec lists; any retro or revert PR | Approves or rejects, including retro proposals and reverts |
 | Audit | Weekly | Reads {5} random merged PRs end to end; tracks failure rate and cost per issue |
 
 **Convergence protocol.** Author and checker loops need a defined exit.
 
 - Max {2} rounds per loop. After that, unresolved BLOCKING findings go to a human with both sides' last statements.
+- REVISE and REQUEST-CHANGES require at least one BLOCKING finding. SHOULD-FIX and NIT ride with APPROVE; the author may address them, and the retro sees them.
 - On later rounds, the critic and reviewer review only prior findings and changed content. New findings on unchanged content must be BLOCKING and labeled as missed earlier. The verifier re-runs everything on each head; its results are commit-bound.
 - Authors answer every finding with FIXED or DISAGREE plus evidence. Every FIXED must point to the change; a FIXED with no matching diff is a red flag for sycophancy.
 - Checkers answer each DISAGREE once, on the evidence: accept or rebut. No restating.
@@ -257,13 +259,16 @@ PROCESS
 
 RULES
 - Size: one spec must fit in one reviewable PR (roughly under
-  {400} changed lines). If it can't, say so and mark it for the planner.
+  {400} changed lines). If it can't, mark it NEEDS-SPLIT and name the
+  seams as lettered parts under Proposed change.
 - Acceptance criteria must be runnable. Label each NEW (must fail today)
   or REGRESSION (must pass today and after the change). A NEW criterion
   that already passes proves nothing. State how each NEW item fails
   today (the actual error or wrong output). One that fails only because
   its test or script doesn't exist yet also proves nothing: use a
-  black-box command, or put the failing test in the spec.
+  black-box command, or give the check as an inline script in the
+  Acceptance line itself, which the verifier runs verbatim on both base
+  and PR.
 - Test the behavior the ticket cares about, not the implementation you
   have in mind. Prefer end-to-end or integration checks over checks that
   would pass with a stub. Acceptance never names a test function or an
@@ -337,6 +342,8 @@ CONVERGENCE
 - After round {2}, unresolved BLOCKING findings go to a human. Never loop.
 
 OUTPUT
+REVISE requires at least one BLOCKING finding; otherwise APPROVE and list
+the rest.
 Findings, each:
   [BLOCKING | SHOULD-FIX | NIT] <rubric #> <location in spec>
   Problem: <one sentence>
@@ -401,7 +408,10 @@ PROCESS
 5. Run the full local gates: {gate commands}.
 6. Open a PR using the format below. On a fix round: check out the
    existing branch, push fix commits to it, and replace the PR
-   description, including Responses to findings.
+   description, including Responses to findings. On a conflict run:
+   merge main into the branch (rebase only if {force-push allowed}),
+   resolve, re-run the gates, push, and add one note on the resolution
+   to the description; nothing else changes.
 
 RULES
 - Never weaken, skip, delete, or rewrite an existing test to get green.
@@ -476,6 +486,8 @@ CONVERGENCE
 - After round {2}, unresolved BLOCKING findings go to a human.
 
 OUTPUT
+REQUEST-CHANGES requires at least one BLOCKING finding; otherwise APPROVE
+and list the rest.
 Commit: <head SHA you reviewed>
 Findings: [BLOCKING | SHOULD-FIX | NIT] file:line: problem → consequence
 Prior findings: RESOLVED | UNRESOLVED | WITHDRAWN (reason)
@@ -519,7 +531,7 @@ Commit: <head SHA you verified>
 Per criterion: NEW/REGRESSION | command | base | PR | PASS/FAIL
 Gate suite: PASS/FAIL, with failing output
 Probes: input → result → OK / CONCERN
-STATUS: VERIFIED | FAILED | SPEC-DEFECT
+STATUS: VERIFIED | FAILED | SPEC-DEFECT (precedence: SPEC-DEFECT > FAILED)
 CONFIDENCE / ESCALATIONS
 ```
 
@@ -537,7 +549,9 @@ verifier FAILED and SPEC-DEFECT results, reverted merges, human
 rejections and rulings, with the full agent outputs they came from.
 Also the current instruction files, and every proposal still under
 evaluation with the metric it was meant to move, and per-role run and outcome
-counts for the period, so every rate has a denominator.
+counts for the period, broken down by model, so every rate has a
+denominator. The model-per-role table is harness config: a diff to it
+is how you propose a model change.
 
 PROCESS
 1. For each incident, write the causal chain:
@@ -553,8 +567,9 @@ PROCESS
    a new global rule. Global instruction files stay short.
 4. Every proposal names the metric it should move (e.g. verifier FAILED
    rate on sub-tickets touching X) and its current value. The next retro
-   checks it. A rule whose metric has not moved after {2} retros is
-   proposed for reversion.
+   checks it. A rule whose metric has not moved after {2} retros whose
+   combined window holds at least {N} runs of the role it targets is
+   proposed for reversion; with fewer, report INSUFFICIENT-DATA and keep.
 5. Check existing rules: any that target a failure that can no longer
    happen (the code path, tool, or step no longer exists) get proposed
    for deletion, with evidence. A rule with no incidents is not evidence
@@ -578,14 +593,15 @@ Per proposal:
   Counterfactual: per incident, prevented? yes / no / unclear
   Metric: name, current value, expected direction
   Risk: what this could make worse
-Prior proposals: per rule, metric before -> after, KEEP | REVERT
+Prior proposals: per rule, metric before -> after, KEEP | REVERT |
+  INSUFFICIENT-DATA (n runs)
 STATUS: PROPOSED | NO-CHANGES
 CONFIDENCE / ESCALATIONS
 ```
 
 ## Changelog
 
-Five review rounds ran on this doc before scope lock, using the reviewer prompt in the appendix. Round 1 was a self-review by the drafting agent; rounds 2 and 3 were separate sessions; rounds 4 and 5 ran a reviewer, a critic, and a copy editor in parallel, each in a fresh context, with round 5 checking only prior findings and changed text. Findings applied, in order:
+Six review rounds ran on this doc, using the reviewer prompt in the appendix. Round 1 was a self-review by the drafting agent; rounds 2 and 3 were separate sessions; rounds 4 and 5 ran a reviewer, a critic, and a copy editor in parallel, each in a fresh context, with round 5 checking only prior findings and changed text; round 6 was a full pass after the bootstrap run. Findings applied, in order:
 
 1. Acceptance criteria are labeled NEW (must fail today) or REGRESSION (must pass before and after).
 2. Only existing tests are protected; adding tests is expected.
@@ -602,7 +618,7 @@ Five review rounds ran on this doc before scope lock, using the reviewer prompt 
 13. Protected paths no longer deadlock the merge: the spec's Risk section declares them, the human approves them at the spec gate, and the reviewer gives the STATUS the code earns instead of always escalating.
 14. The PR loop joins: the dispatcher waits for CI and both checkers on a head before routing, and one implementer run receives both outputs.
 15. Round-2 inputs are declared: prior findings and the author's responses reach the checkers, and both the spec and the PR description have a Responses section.
-16. A round is one checker pass; the counter increments on author re-entry, not on CI fixes or rebases.
+16. A round is one checker pass; the counter increments on author re-entry, not on rebases.
 17. Merge conflicts have a routing row; the merge gate requires the head to contain current main, so the last verification covers the merged state.
 18. New tests go in new files, matching path-based enforcement; the spec gate's "Tests to change" approval is the piece-8 record for exactly those files.
 19. Guardrail paths and protected paths are defined once and named everywhere else.
@@ -618,6 +634,7 @@ Five review rounds ran on this doc before scope lock, using the reviewer prompt 
 29. Retro PRs and verified git reverts can merge: the one stated exception to the merge gate, since a human reads the whole diff and there are no acceptance commands to verify.
 30. Budget kills are a parking state with a resolution path and placeholders; only the harness identity and humans write the ticket store.
 31. Retro receives run and outcome counts so its metrics have denominators; reversion waits {2} retros.
+32. Full pass after the bootstrap run: CI failure joins the PR-loop dispatch; a parent closes only after one verifier run on main against its full Acceptance list; a revert is the inverse of a recorded merge diff, human-authored, approved at the guardrail gate; the ticket store is a dedicated branch with a store CLI that holds the guards; checker containers hold no secrets even in the smallest build; the Workflow v0 note states it gives fresh context, not isolation; verifier defaults to Opus; REVISE and REQUEST-CHANGES require a BLOCKING finding; CLARIFY, BLOCKED, and ESCALATE resolutions defined; retro counts are broken down by model and reversion needs {N} runs.
 
 Declined: a dedicated merge agent (merging is gate config plus human gates, not a judgment call).
 

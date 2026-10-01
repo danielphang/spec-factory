@@ -31,5 +31,5 @@ Commit: <head SHA you verified>
 Per criterion: NEW/REGRESSION | command | base | PR | PASS/FAIL
 Gate suite: PASS/FAIL, with failing output
 Probes: input → result → OK / CONCERN
-STATUS: VERIFIED | FAILED | SPEC-DEFECT
+STATUS: VERIFIED | FAILED | SPEC-DEFECT (precedence: SPEC-DEFECT > FAILED)
 CONFIDENCE / ESCALATIONS

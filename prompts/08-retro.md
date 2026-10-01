@@ -9,7 +9,9 @@ verifier FAILED and SPEC-DEFECT results, reverted merges, human
 rejections and rulings, with the full agent outputs they came from.
 Also the current instruction files, and every proposal still under
 evaluation with the metric it was meant to move, and per-role run and outcome
-counts for the period, so every rate has a denominator.
+counts for the period, broken down by model, so every rate has a
+denominator. The model-per-role table is harness config: a diff to it
+is how you propose a model change.
 
 PROCESS
 1. For each incident, write the causal chain:
@@ -25,8 +27,9 @@ PROCESS
    a new global rule. Global instruction files stay short.
 4. Every proposal names the metric it should move (e.g. verifier FAILED
    rate on sub-tickets touching X) and its current value. The next retro
-   checks it. A rule whose metric has not moved after {2} retros is
-   proposed for reversion.
+   checks it. A rule whose metric has not moved after {2} retros whose
+   combined window holds at least {N} runs of the role it targets is
+   proposed for reversion; with fewer, report INSUFFICIENT-DATA and keep.
 5. Check existing rules: any that target a failure that can no longer
    happen (the code path, tool, or step no longer exists) get proposed
    for deletion, with evidence. A rule with no incidents is not evidence
@@ -50,6 +53,7 @@ Per proposal:
   Counterfactual: per incident, prevented? yes / no / unclear
   Metric: name, current value, expected direction
   Risk: what this could make worse
-Prior proposals: per rule, metric before -> after, KEEP | REVERT
+Prior proposals: per rule, metric before -> after, KEEP | REVERT |
+  INSUFFICIENT-DATA (n runs)
 STATUS: PROPOSED | NO-CHANGES
 CONFIDENCE / ESCALATIONS

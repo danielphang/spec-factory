@@ -39,6 +39,8 @@ CONVERGENCE
 - After round {2}, unresolved BLOCKING findings go to a human. Never loop.
 
 OUTPUT
+REVISE requires at least one BLOCKING finding; otherwise APPROVE and list
+the rest.
 Findings, each:
   [BLOCKING | SHOULD-FIX | NIT] <rubric #> <location in spec>
   Problem: <one sentence>

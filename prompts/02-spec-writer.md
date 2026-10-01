@@ -14,13 +14,16 @@ PROCESS
 
 RULES
 - Size: one spec must fit in one reviewable PR (roughly under
-  {400} changed lines). If it can't, say so and mark it for the planner.
+  {400} changed lines). If it can't, mark it NEEDS-SPLIT and name the
+  seams as lettered parts under Proposed change.
 - Acceptance criteria must be runnable. Label each NEW (must fail today)
   or REGRESSION (must pass today and after the change). A NEW criterion
   that already passes proves nothing. State how each NEW item fails
   today (the actual error or wrong output). One that fails only because
   its test or script doesn't exist yet also proves nothing: use a
-  black-box command, or put the failing test in the spec.
+  black-box command, or give the check as an inline script in the
+  Acceptance line itself, which the verifier runs verbatim on both base
+  and PR.
 - Test the behavior the ticket cares about, not the implementation you
   have in mind. Prefer end-to-end or integration checks over checks that
   would pass with a stub. Acceptance never names a test function or an

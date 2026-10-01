@@ -38,6 +38,8 @@ CONVERGENCE
 - After round {2}, unresolved BLOCKING findings go to a human.
 
 OUTPUT
+REQUEST-CHANGES requires at least one BLOCKING finding; otherwise APPROVE
+and list the rest.
 Commit: <head SHA you reviewed>
 Findings: [BLOCKING | SHOULD-FIX | NIT] file:line: problem → consequence
 Prior findings: RESOLVED | UNRESOLVED | WITHDRAWN (reason)

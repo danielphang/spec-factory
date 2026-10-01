@@ -11,7 +11,10 @@ PROCESS
 5. Run the full local gates: {gate commands}.
 6. Open a PR using the format below. On a fix round: check out the
    existing branch, push fix commits to it, and replace the PR
-   description, including Responses to findings.
+   description, including Responses to findings. On a conflict run:
+   merge main into the branch (rebase only if {force-push allowed}),
+   resolve, re-run the gates, push, and add one note on the resolution
+   to the description; nothing else changes.
 
 RULES
 - Never weaken, skip, delete, or rewrite an existing test to get green.
