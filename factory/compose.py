@@ -114,6 +114,11 @@ def compose(root: Path, cfg: dict, meta: dict, t: dict) -> tuple[str, list[str]]
                  + "; ".join(f"`{g}`" for g in cfg.get("gate_commands", [])) + "\n")
         parts.append(where)
         if role == "implementer":
+            if t.get("merge_refused"):
+                parts.append("\n## This is a conflict run\nThe merge gate refused your branch: " + str(t["merge_refused"])
+                             + ". The integration branch moved after you branched. Merge it into your branch, resolve any "
+                             "conflict, re-run the gates, commit, and add one note on the resolution to the PR description. "
+                             "Change nothing else.\n")
             add(f"specs/{tid}/subticket.md", f"Sub-ticket {tid}")
             add(f"specs/{parent}/v{av}.md", f"Parent spec (v{av}, pinned)")
             prnd = t["round"]["pr"]
@@ -141,10 +146,12 @@ def compose(root: Path, cfg: dict, meta: dict, t: dict) -> tuple[str, list[str]]
                 if (root / diff_rel).exists():
                     add(diff_rel, f"Diff `{meta.get('base')}...{meta.get('head')}`")
                 prnd = t["round"]["pr"]
-                if prnd >= 2:
-                    prev = _runs_for(root, tid, role, run_id)
-                    if prev:
-                        add(f"runs/{prev[-1]}/output.md", f"Your prior findings (round {prnd - 1})")
+                if prnd >= 2:  # both checkers' prior findings (doc §Routing table, Implementer row)
+                    for r in ("reviewer", "verifier"):
+                        prev = _runs_for(root, tid, r, run_id)
+                        if prev:
+                            who = "Your" if r == role else f"The {r}'s"
+                            add(f"runs/{prev[-1]}/output.md", f"{who} prior findings (round {prnd - 1})")
             for p in _approvals(root, tid, "ruling"):
                 add(str(p.relative_to(root)), "Human ruling")
     else:

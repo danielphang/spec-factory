@@ -12,7 +12,7 @@ PROCESS
 6. Open a PR using the format below. On a fix round: check out the
    existing branch, push fix commits to it, and replace the PR
    description, including Responses to findings. On a conflict run:
-   merge main into the branch (rebase only if no),
+   merge main into the branch (never rebase: force-push is not allowed here),
    resolve, re-run the gates, push, and add one note on the resolution
    to the description; nothing else changes.
 

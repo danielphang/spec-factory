@@ -13,10 +13,11 @@ from __future__ import annotations
 import re
 
 LABEL = r"(?:T-\d{4}[.-][A-Za-z0-9]+|ST-\d+)"
-HEAD_RE = re.compile(r"^\s*(?:#{1,4}\s+|[-*]\s+)?(" + LABEL + r")\s+/\s+(.+?)\s*$")
+HEAD_RE = re.compile(r"^(?:#{1,4}\s+)?\**(" + LABEL + r")\**\s+/\s+(.+?)\s*$")  # a heading or a line at column 0, never a bullet
 FIELD_RE = re.compile(r"^\s*\**\s*([A-Z][A-Za-z -]+?)\s*:\s*\**\s*(.*)$")
 REF_RE = re.compile(r"T-\d{4}(?:[.-][A-Za-z0-9]+)?|ST-\d+")
 SATISFIED = ("merged", "closed")
+IN_FLIGHT_STATES = ("checks-in-flight", "ready-for-merge")
 
 
 def _is_heading(line: str) -> bool:
@@ -35,6 +36,10 @@ def parse(planner_output: str, parent: str) -> list[dict]:
     heads = [(i, m) for i, line in enumerate(lines) if (m := HEAD_RE.match(line))]
     if not heads:
         return []
+    labels = [m.group(1) for _, m in heads]
+    dup = sorted({x for x in labels if labels.count(x) > 1})
+    if dup:
+        raise ValueError(f"sub-ticket id used more than once in the plan: {', '.join(dup)}")
     alias = {m.group(1): f"{parent}.{n}" for n, (_, m) in enumerate(heads, 1)}
 
     def block_end(start: int) -> int:
@@ -51,8 +56,9 @@ def parse(planner_output: str, parent: str) -> list[dict]:
     subs = []
     for i, m in heads:
         body = lines[i:block_end(i)]
+        # Parallel-safe defaults to no: a plan that does not say "yes" runs that sub-ticket alone.
         sub = {"id": alias[m.group(1)], "label": m.group(1), "title": m.group(2).strip(" :*"),
-               "depends_on": [], "parallel_safe": True}
+               "depends_on": [], "parallel_safe": False}
         for line in body[1:]:
             f = FIELD_RE.match(line)
             if not f:
@@ -61,8 +67,10 @@ def parse(planner_output: str, parent: str) -> list[dict]:
             if key == "depends on":
                 deps: list[str] = []
                 if not val.lower().startswith("none"):
-                    for ref in REF_RE.findall(val):
-                        if ref in alias:
+                    for ref in REF_RE.findall(val) + [f"{parent}{x}" for x in re.findall(r"(?<![\w-])\.\d+\b", val)]:
+                        if ref in alias.values():
+                            dep = ref
+                        elif ref in alias:
                             dep = alias[ref]
                         elif ref[:6] != parent and re.fullmatch(r"T-\d{4}.*", ref):
                             dep = ref[:6]  # another parent ticket (or one of its sub-tickets): wait for that parent
@@ -72,7 +80,7 @@ def parse(planner_output: str, parent: str) -> list[dict]:
                             deps.append(dep)
                 sub["depends_on"] = deps
             elif key == "parallel-safe":
-                sub["parallel_safe"] = not val.lower().startswith("no")
+                sub["parallel_safe"] = val.lower().startswith("yes")
         text = "\n".join(body).rstrip() + "\n"
         if preamble:
             text += "\n## Shared plan context (from the plan; applies to every sub-ticket)\n\n" + preamble + "\n"
@@ -92,10 +100,11 @@ def ready_implementers(subs: list[dict], status_of=None) -> list[str]:
     by_id = {s["id"]: s for s in subs}
 
     def met(dep: str) -> bool:
-        st = by_id[dep]["status"] if dep in by_id else (status_of(dep) if status_of else None)
-        return st in SATISFIED
+        if dep in by_id:  # a sibling must be merged; one the human closed parks the parent instead
+            return by_id[dep]["status"] == "merged"
+        return (status_of(dep) if status_of else None) in SATISFIED
 
-    in_flight = [s for s in subs if s.get("in_flight") or s.get("status") in ("checks-in-flight", "ready-for-merge")]
+    in_flight = [s for s in subs if s.get("in_flight") or s.get("status") in IN_FLIGHT_STATES]
     if any(not s.get("parallel_safe", True) for s in in_flight):
         return []
     ready = [s for s in subs

@@ -146,7 +146,7 @@ def test_a_dependency_on_another_parent_waits_until_that_parent_closes(tmp_path)
     first, _ = planned_parent(store, tmp_path, 21, PLAN_LETTERS)
     second, subs = planned_parent(store, tmp_path, 26, PLAN_ST)
     assert second == "T-0002" and subs == [{"id": "T-0002.1", "label": "ST-1", "state": "waiting-dependencies",
-                                           "depends_on": ["T-0001"], "parallel_safe": True}]
+                                           "depends_on": ["T-0001"], "parallel_safe": False}]  # "n/a" is not "yes": it runs alone
     assert js(run(store, "ticket", "ready-implementers", second))["ready"] == []
     js(run(store, "resolve", first, "--close"))
     r = js(run(store, "ticket", "ready-implementers", second))
@@ -173,3 +173,31 @@ def test_subticket_add_refuses_a_plan_with_no_sub_tickets_and_a_dependency_on_no
     cp = run(store, "subticket", "add", "T-0001", "--file", str(f))
     assert cp.returncode == 2 and "T-0099" in cp.stderr
     assert not (store / "tickets" / "T-0001.1.yaml").exists()
+
+
+def test_a_bullet_that_names_a_sub_ticket_is_not_a_head_and_a_repeated_id_is_refused(tmp_path):
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("factory_subtickets", REPO / "factory" / "subtickets.py")
+    subtickets = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(subtickets)
+    plan = ("## ST-1 / One\n**Depends on:** none\n**Parallel-safe:** yes\n  Acceptance:\n- ST-1 / not a head, just a bullet\n- T-0001.1 passes\n\n"
+            "## ST-2 / Two\n**Depends on:** .1\nSTATUS: PLANNED\n")
+    subs = subtickets.parse(plan, "T-0001")
+    assert [(s["id"], s["title"]) for s in subs] == [("T-0001.1", "One"), ("T-0001.2", "Two")]
+    assert "not a head, just a bullet" in subs[0]["text"]
+    assert subs[1]["depends_on"] == ["T-0001.1"] and subs[1]["parallel_safe"] is False  # no Parallel-safe line: runs alone
+    store = tmp_path / "state"
+    f = tmp_path / "dup.md"
+    f.write_text("## ST-1 / One\n**Depends on:** none\n\n## ST-1 / One again\n**Depends on:** none\n")
+    req = tmp_path / "r.md"
+    req.write_text("# SPEC-1: x\n\ny\n")
+    spec = tmp_path / "s.md"
+    spec.write_text("## Problem\nx\n")
+    js(run(store, "ticket", "new", "--file", str(req)))
+    js(run(store, "ticket", "transition", "T-0001", "--to", "ready-for-spec-writer", "--by", "t"))
+    js(run(store, "spec", "add", "T-0001", "--file", str(spec)))
+    js(run(store, "ticket", "transition", "T-0001", "--to", "ready-for-critic", "--by", "t", "--round", "spec:init"))
+    js(run(store, "ticket", "transition", "T-0001", "--to", "awaiting-spec-gate", "--by", "t"))
+    js(run(store, "approve-spec", "T-0001"))
+    cp = run(store, "subticket", "add", "T-0001", "--file", str(f))
+    assert cp.returncode == 2 and "used more than once" in cp.stderr

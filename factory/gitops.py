@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import os
 import subprocess
+import time
 from pathlib import Path
 
 from factory import store
@@ -88,24 +89,58 @@ def checkout_of(repo: Path, branch: str) -> Path | None:
     return None
 
 
-def merge_no_ff(repo: Path, branch: str, into: str, message: str) -> tuple[str, str]:
-    """Merge `branch` into `into` with --no-ff. Where `into` is checked out, the merge runs in that
-    checkout (git refuses if local changes would be overwritten, so a dirty tree is a refusal, not
-    a loss); otherwise in a temporary worktree. Returns (before, after) SHAs of `into`."""
+class MergeLock:
+    """One merge at a time per target repo: a lock directory (mkdir is atomic). Two sibling
+    sub-tickets that reach the merge gate together must not run `git merge` in one checkout at once."""
+
+    def __init__(self, repo: Path, wait_s: float = 120.0):
+        self.path = Path(git(repo, "rev-parse", "--git-common-dir"))
+        if not self.path.is_absolute():
+            self.path = repo / self.path
+        self.path = self.path / "factory-merge.lock"
+        self.wait_s = wait_s
+
+    def __enter__(self):
+        deadline = time.monotonic() + self.wait_s
+        while True:
+            try:
+                self.path.mkdir()
+                return self
+            except FileExistsError:
+                if time.monotonic() > deadline:
+                    raise store.Refused(f"merge lock held for more than {int(self.wait_s)}s: {self.path}") from None
+                time.sleep(0.2)
+
+    def __exit__(self, *exc):
+        try:
+            self.path.rmdir()
+        except OSError:
+            pass
+
+
+def merge_no_ff(repo: Path, sha: str, into: str, message: str) -> tuple[str, str]:
+    """Merge the commit `sha` (the head the checkers saw, not a branch name) into `into` with
+    --no-ff. Where `into` is checked out, the merge runs in that checkout (git refuses if local
+    changes would be overwritten: a refusal, not a loss, and a failed merge is aborted); otherwise
+    in a temporary worktree. The caller holds MergeLock. Returns (before, after) SHAs of `into`."""
     before = rev(repo, into)
     co = checkout_of(repo, into)
-    if co is not None:
-        git(co, "merge", "--no-ff", "-m", message, branch)
-        return before, rev(co, "HEAD")
-    wt = repo / ".factory-merge-wt"
-    remove_worktree(repo, wt)
-    git(repo, "worktree", "add", "-q", str(wt), into)
+    temp = None
+    if co is None:
+        temp = repo / ".factory-merge-wt"
+        remove_worktree(repo, temp)
+        git(repo, "worktree", "add", "-q", str(temp), into)
+        co = temp
     try:
-        git(wt, "merge", "--no-ff", "-m", message, branch)
-        after = rev(wt, "HEAD")
+        try:
+            git(co, "merge", "--no-ff", "-m", message, sha)
+        except store.Refused:
+            git(co, "merge", "--abort", check=False)
+            raise
+        return before, rev(co, "HEAD")
     finally:
-        remove_worktree(repo, wt)
-    return before, after
+        if temp is not None:
+            remove_worktree(repo, temp)
 
 
 def run_gates(cwd: Path, commands: list[str]) -> tuple[bool, str]:

@@ -10,8 +10,7 @@ export const meta = {
 // args: { ticket, repo, state, target?, integration?, stubs?, inlineRoles? }  — repo/state/stubs/inlineRoles as in intake.js.
 // Local-commit stand-in (operator, 2026-10-02): no remote, no CI. The gate suite is run by the
 // verifier and recorded as the ci row; the merge is a local --no-ff merge into the integration
-// branch. The routing is build spec part H, build.js, with the parallel()-free join written as a
-// sequential pair (the Workflow runtime runs the two checkers back to back; both are fresh contexts).
+// branch. The routing is build spec part H, build.js; the join itself is `factory ticket join`.
 
 const TICKET = args.ticket
 const REPO = args.repo
@@ -98,59 +97,59 @@ async function transition(ticket, to, roundOp, phase) {
   return clerk(`${BIN} ticket transition ${ticket} --to ${to} --by workflow${r}`, phase, `${ticket} -> ${to}`)
 }
 
-// --- one sub-ticket through the PR loop (build spec H.3)
+// --- one sub-ticket through the PR loop (build spec H.3). The routing decision after the checkers
+// is `factory ticket join`: the store reads the results table for the current head and says
+// merge | revise | conflict | wait | park. This script only carries the decision out.
 async function buildOne(st) {
   while (true) {
     const show = await clerk(`${BIN} ticket show ${st} --json`, 'Build', `ticket show ${st}`)
     if (!show.ok) return
-    let round = (show.round && show.round.pr) || 0
     if (show.state === 'ready-for-implementer') {
       const impl = await runRole('implementer', st, 'Build')
       if (!impl) return
+      if (impl.status === 'KILLED') { await park(st, 'budget kill: implementer', [impl.runId], 'Build'); return }
       if (impl.status === 'BLOCKED') { await park(st, 'BLOCKED from implementer', [impl.runId], 'Build'); return }
       if (impl.status !== 'READY-FOR-REVIEW') { await park(st, `harness-bug: unknown STATUS ${impl.status} from implementer`, [impl.runId], 'Build'); return }
-      const head = await clerk(`${BIN} ticket head ${st}`, 'Build', `ticket head ${st}`)
-      if (!head.ok) { await park(st, `harness-bug: ticket head: ${head.stderr || ''}`, [impl.runId], 'Build'); return }
+      const moved = await clerk(`${BIN} ticket head ${st}`, 'Build', `ticket head ${st}`)
+      if (!moved.ok) { await park(st, `harness-bug: ticket head: ${moved.stderr || ''}`, [impl.runId], 'Build'); return }
       const tr = await transition(st, 'checks-in-flight', 'pr:init', 'Build')
       if (!tr.ok) { await park(st, `harness-bug: transition to checks: ${tr.stderr || ''}`, [impl.runId], 'Build'); return }
-      round = (tr.round && typeof tr.round.pr === 'number') ? tr.round.pr : round
+    } else if (show.state !== 'checks-in-flight') {
+      return  // parked, merged, closed or waiting: nothing for this loop to do
     }
-    // Checkers on the same head, fresh contexts; each result recorded against that head.
-    const headNow = await clerk(`${BIN} ticket show ${st} --json`, 'Build', `ticket show ${st}`)
-    const sha = headNow.head
-    const results = {}
-    for (const role of ['reviewer', 'verifier']) {
+    // Both checkers on the same head, fresh contexts, in parallel; each result recorded against that head.
+    const headNow = await clerk(`${BIN} ticket head ${st}`, 'Build', `ticket head ${st}`)
+    const sha = headNow.ok ? headNow.head : null
+    if (!sha || !/^[0-9a-f]{40}$/.test(sha)) { await park(st, `harness-bug: no head for the checkers: ${headNow.stderr || ''}`, [], 'Build'); return }
+    const checked = await parallel(['reviewer', 'verifier'].map(role => async () => {
       const r = await runRole(role, st, 'Build')
-      if (!r) return
-      results[role] = r
+      if (!r) return null
       const rec = await clerk(`${BIN} results record ${st} --head ${sha} --role ${role} --output ${r.outputPath} --run ${r.runId}${r.status === 'KILLED' ? ' --killed' : ''}`, 'Build', `results record ${role}`)
-      if (!rec.ok) { await park(st, `harness-bug: results record ${role}: ${rec.stderr || ''}`, [r.runId], 'Build'); return }
-    }
-    // Join (H.3): KILLED → park; ESCALATE/SPEC-DEFECT → park; all green → merge; else round +1 or park.
-    const outs = Object.values(results).map(r => r.runId)
-    if (Object.values(results).some(r => r.status === 'KILLED')) { await park(st, 'budget kill: checker', outs, 'Build'); return }
-    if (results.reviewer.status === 'ESCALATE') { await park(st, 'ESCALATE from reviewer', outs, 'Build'); return }
-    if (results.verifier.status === 'SPEC-DEFECT') { await park(st, 'SPEC-DEFECT from verifier', outs, 'Build'); return }
-    const rows = await clerk(`${BIN} results show ${st}`, 'Build', `results show ${st}`)
-    const green = rows.ok && rows.rows && rows.rows.ci === 'PASS' && rows.rows.reviewer === 'APPROVE' && rows.rows.verifier === 'VERIFIED'
-    if (green) {
+      if (!rec.ok) { await park(st, `harness-bug: results record ${role}: ${rec.stderr || ''}`, [r.runId], 'Build'); return null }
+      return r
+    }))
+    if (checked.some(r => !r)) return
+    const outs = checked.map(r => r.runId)
+    const join = await clerk(`${BIN} ticket join ${st}`, 'Build', `join ${st}`)
+    if (!join.ok) { await park(st, `harness-bug: join: ${join.stderr || ''}`, outs, 'Build'); return }
+    log(`${st} join: ${join.decision} (${join.reason})`)
+    if (join.decision === 'merge') {
       await transition(st, 'ready-for-merge', null, 'Build')
       const m = await clerk(`${BIN} merge ${st}`, 'Build', `merge ${st}`)
       if (m.ok) { log(`${st} merged: ${m.main_after}`); return }
-      const msg = `${m.stderr || ''} ${m.error || ''}`
-      if (/head does not contain main/.test(msg)) {
-        // conflict run: the implementer merges the integration branch into its branch, same round
-        await transition(st, 'ready-for-implementer', null, 'Build')
-        continue
-      }
-      await park(st, `harness-bug: merge: ${m.stderr || ''}`, outs, 'Build'); return
+      // The gate refused. Ask the join again: a moved integration branch is a conflict run, bounded there.
+      const again = await clerk(`${BIN} ticket join ${st}`, 'Build', `join ${st} after refusal`)
+      if (again.ok && again.decision === 'conflict') { await transition(st, 'ready-for-implementer', null, 'Build'); continue }
+      await park(st, again.ok && again.decision === 'park' ? again.reason : `harness-bug: merge: ${m.stderr || ''}`, outs, 'Build'); return
     }
-    if (round < MAX_PR) {
-      const tr = await transition(st, 'ready-for-implementer', 'pr:+1', 'Build')
+    if (join.decision === 'revise') {
+      const tr = await transition(st, 'ready-for-implementer', join.round_op, 'Build')
       if (!tr.ok) { await park(st, `harness-bug: round increment refused: ${tr.stderr || ''}`, outs, 'Build'); return }
       continue
     }
-    await park(st, 'max rounds', outs, 'Build')
+    if (join.decision === 'conflict') { await transition(st, 'ready-for-implementer', null, 'Build'); continue }
+    // 'park', or 'wait' (a row is missing after both checkers reported: a harness bug, not a red round)
+    await park(st, join.decision === 'wait' ? `harness-bug: ${join.reason}` : join.reason, outs, 'Build')
     return
   }
 }
@@ -185,6 +184,8 @@ if (state === 'planned') {
   while (true) {
     const ready = await clerk(`${BIN} ticket ready-implementers ${TICKET}`, 'Build', 'ready-implementers')
     if (!ready.ok) { await park(TICKET, `harness-bug: ready-implementers: ${ready.stderr || ''}`, [], 'Build'); return { ticket: TICKET, state: 'parked' } }
+    // A sub-ticket the human closed parks the parent: amend the spec and re-plan, or close (doc §Routing rules).
+    if (ready.closed && ready.closed.length) { await park(TICKET, `sub-ticket closed by a human: ${ready.closed.join(', ')}`, [], 'Build'); return { ticket: TICKET, state: 'parked' } }
     if (ready.ready.length === 0) {
       if (ready.remaining.length) { log(`${TICKET}: ${ready.remaining.length} sub-ticket(s) parked or waiting on a human`); return { ticket: TICKET, state: 'planned', remaining: ready.remaining } }
       break

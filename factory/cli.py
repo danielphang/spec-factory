@@ -61,7 +61,10 @@ def ticket_show(a, root, cfg):
     t = store.load_ticket(root, a.id)
     if a.json:
         out({"ok": True, "id": t["id"], "state": t["status"], "round": t["round"], "title": t["title"],
-             "type": t["type"], "spec": t["spec"], "in_flight": t["in_flight"], "parked": t["parked"]})
+             "type": t["type"], "spec": t["spec"], "in_flight": t["in_flight"], "parked": t["parked"],
+             "parent": t.get("parent"), "label": t.get("label"), "depends_on": t.get("depends_on", []),
+             "parallel_safe": t.get("parallel_safe", True), "branch": t.get("branch"), "head": t.get("head"),
+             "merge": t.get("merge"), "parent_base": t.get("parent_base")})
     else:
         sys.stdout.write(yaml.safe_dump(t, sort_keys=False, allow_unicode=True))
 
@@ -135,7 +138,7 @@ def ticket_transition(a, root, cfg):
 def ticket_park(a, root, cfg):
     t = store.load_ticket(root, a.id)
     frm = t["status"]
-    if frm in ("closed", "planned", "parked"):
+    if frm in ("closed", "parked"):
         raise Refused(f"{t['id']} is {frm}; cannot park")
     t["status"] = "parked"
     t["parked"] = {"reason": a.reason, "since": store.now(), "from": frm,
@@ -332,7 +335,10 @@ def subticket_add(a, root, cfg):
         text = status.strip_trailer((d / "output.md").read_text(encoding="utf-8"))
     else:
         text = Path(a.file).read_text(encoding="utf-8")
-    subs = subtickets.parse(text, parent["id"])
+    try:
+        subs = subtickets.parse(text, parent["id"])
+    except ValueError as e:
+        raise Refused(str(e)) from None
     if not subs:
         raise Refused("no sub-tickets found (a head line `<id> / Title`, id like T-0001-A, ST-1 or T-0001.1, "
                       "then `Depends on:` and `Parallel-safe:`)")
@@ -373,7 +379,9 @@ def ticket_ready_implementers(a, root, cfg):
             store.log_event(root, "ticket.transition", ticket=s["id"], **{"from": "waiting-dependencies", "to": "ready-for-implementer", "by": "ready-implementers"})
     out({"ok": True, "parent": a.id, "ready": ready,
          "remaining": [s["id"] for s in subs if s["status"] not in ("merged", "parked", "closed")],
-         "in_flight": [s["id"] for s in subs if s["in_flight"] or s["status"] in ("checks-in-flight",)]})
+         "in_flight": [s["id"] for s in subs if s["in_flight"] or s["status"] in subtickets.IN_FLIGHT_STATES],
+         "parked": [s["id"] for s in subs if s["status"] == "parked"],
+         "closed": [s["id"] for s in subs if s["status"] == "closed"]})
 
 
 def ticket_head(a, root, cfg):
@@ -384,6 +392,8 @@ def ticket_head(a, root, cfg):
     head = gitops.rev(repo, t["branch"])
     changed = head != t.get("head")
     t["head"] = head
+    if t.get("merge_refused") and gitops.head_contains(repo, head, gitops.integration_branch(cfg, repo)):
+        t["merge_refused"] = None
     store.save_ticket(root, t)
     out({"ok": True, "id": t["id"], "head": head, "branch": t["branch"], "changed": changed})
 
@@ -392,12 +402,17 @@ def results_record(a, root, cfg):
     t = store.load_ticket(root, a.id)
     if a.role not in ("reviewer", "verifier"):
         raise Refused("results record: --role reviewer|verifier")
+    if not re.fullmatch(r"[0-9a-f]{40}", a.head or ""):
+        raise Refused(f"results record: --head must be a full commit SHA, got {a.head!r}")
     text = Path(a.output).read_text(encoding="utf-8") if a.output else ""
     if a.killed:
         st = "KILLED"
     else:
         parsed = status.parse(text)
         st = parsed["status"] or "UNKNOWN"
+    cm = re.search(r"^Commit:\s*`?([0-9a-fA-F]{7,40})`?\b", text, re.M)
+    if cm and not a.head.startswith(cm.group(1).lower()):
+        raise Refused(f"results record: the output says Commit: {cm.group(1)}, not the head {a.head[:12]}")
     stale = t.get("head") is not None and a.head != t.get("head")
     rows = [store.record_result(root, t["id"], a.head, a.role, st, a.run)]
     if a.role == "verifier" and not a.killed:
@@ -435,11 +450,14 @@ def merge_cmd(a, root, cfg):
         got = (rows.get(role) or {}).get("status")
         if got != want:
             raise Refused(f"{role} is {got or 'missing'} for {head[:9]}, need {want}")
-    if not gitops.head_contains(repo, head, integ):
-        t["merge_refused"] = "head does not contain main"
-        store.save_ticket(root, t)
-        raise Refused(f"head does not contain main ({integ} moved; merge it into {t['branch']} and re-check)")
-    before, after = gitops.merge_no_ff(repo, t["branch"], integ, f"Merge {t['branch']}: {t['title']} ({t['id']})")
+    with gitops.MergeLock(repo):
+        if not gitops.head_contains(repo, head, integ):
+            t["merge_refused"] = "head does not contain main"
+            t["conflict_runs"] = int(t.get("conflict_runs") or 0) + 1
+            store.save_ticket(root, t)
+            store.log_event(root, "merge.refused", ticket=t["id"], head=head, reason="head does not contain main")
+            raise Refused(f"head does not contain main ({integ} moved; merge it into {t['branch']} and re-check)")
+        before, after = gitops.merge_no_ff(repo, head, integ, f"Merge {t['branch']}: {t['title']} ({t['id']})")
     t.update({"status": "merged", "merge": {"base_before": before, "main_after": after}, "merge_refused": None})
     t["history"].append({"ts": store.now(), "from": "ready-for-merge", "to": "merged", "by": "merge", "head": head})
     store.save_ticket(root, t)
@@ -460,6 +478,51 @@ def merge_cmd(a, root, cfg):
                 released.append(s["id"])
     gitops.remove_worktree(repo, root / "worktrees" / t["id"])
     out({"ok": True, "id": t["id"], "state": "merged", "base_before": before, "main_after": after, "released": released})
+
+
+REVIEWER_STATUSES = ("APPROVE", "REQUEST-CHANGES", "ESCALATE", "KILLED")
+VERIFIER_STATUSES = ("VERIFIED", "FAILED", "SPEC-DEFECT", "KILLED")
+MAX_CONFLICT_RUNS = 2
+
+
+def ticket_join(a, root, cfg):
+    """The PR-loop join as a decision, read from the results table for the current head. The
+    dispatcher and the tests both ask here, so the routing lives in one place:
+    merge | revise (round +1) | conflict (same round) | wait | park, each with its reason."""
+    t = store.load_ticket(root, a.id)
+    head = t.get("head")
+    rows = store.results_for(root, head) if head else {}
+    st = {r: (rows.get(r) or {}).get("status") for r in store.RESULT_ROLES}
+    rnd, mx = t["round"]["pr"], cfg["max_rounds"]["pr"]
+
+    def decide(decision: str, reason: str, **extra):
+        out({"ok": True, "id": t["id"], "head": head, "rows": st, "round": rnd, "decision": decision, "reason": reason, **extra})
+
+    if t.get("merge_refused"):
+        if int(t.get("conflict_runs") or 0) > MAX_CONFLICT_RUNS:
+            return decide("park", f"conflict: head still does not contain main after {MAX_CONFLICT_RUNS} conflict runs")
+        return decide("conflict", "head does not contain main: the implementer merges the integration branch into its branch, same round")
+    missing = [r for r in ("reviewer", "verifier", "ci") if st[r] is None]
+    if st["verifier"] == "KILLED" and st["ci"] is None:
+        missing.remove("ci")  # a killed verifier writes no ci row
+    if missing:
+        return decide("wait", f"results missing for the current head: {', '.join(missing)}", missing=missing)
+    for role, known in (("reviewer", REVIEWER_STATUSES), ("verifier", VERIFIER_STATUSES)):
+        if st[role] not in known:
+            return decide("park", f"harness-bug: unknown STATUS {st[role]} from {role}")
+    killed = [r for r in ("reviewer", "verifier") if st[r] == "KILLED"]
+    if killed:
+        return decide("park", f"budget kill: {', '.join(killed)}")
+    if st["reviewer"] == "ESCALATE":
+        return decide("park", "ESCALATE from reviewer")
+    if st["verifier"] == "SPEC-DEFECT":
+        return decide("park", "SPEC-DEFECT from verifier")
+    if st == {"reviewer": "APPROVE", "verifier": "VERIFIED", "ci": "PASS"}:
+        return decide("merge", "ci PASS + APPROVE + VERIFIED on the current head")
+    red = ", ".join(f"{r} {v}" for r, v in st.items() if v not in ("APPROVE", "VERIFIED", "PASS"))
+    if rnd < mx:
+        return decide("revise", f"{red}; implementer round {rnd + 1}", round_op="pr:+1")
+    return decide("park", f"max-round cutoff ({red} at round {rnd})")
 
 
 def ticket_parent_check(a, root, cfg):
@@ -637,6 +700,20 @@ def _verifier_rows(root: Path, tid: str) -> list[str]:
     return rows
 
 
+def _parent_close_verified(root: Path, t: dict) -> bool:
+    """Every sub-ticket merged, and a finished verifier run on the parent itself said VERIFIED."""
+    if any(s["status"] != "merged" for s in store.subtickets_of(root, t["id"])):
+        return False
+    runs = root / "runs"
+    for d in sorted(runs.iterdir()) if runs.exists() else []:
+        mp = d / "meta.yaml"
+        if mp.exists():
+            m = store.read_yaml(mp)
+            if m.get("ticket") == t["id"] and m.get("role") == "verifier" and m.get("status") == "VERIFIED":
+                return True
+    return False
+
+
 def archive_cmd(a, root, cfg):
     t = store.load_ticket(root, a.id)
     if not specstore.is_active(root):
@@ -646,6 +723,8 @@ def archive_cmd(a, root, cfg):
     errors = specstore.applies(root, specstore.delta_ops_of_change(root, t["id"]))
     if errors:
         raise Refused("archive does not apply: " + "; ".join(errors))
+    if store.subtickets_of(root, t["id"]) and not _parent_close_verified(root, t):
+        raise Refused(f"{t['id']} has sub-tickets but no VERIFIED parent-close verifier run on the integration branch")
     res = specstore.archive(root, t["id"], _verifier_rows(root, t["id"]))
     store.log_event(root, "change.archived", ticket=t["id"], **res)
     out({"ok": True, "id": t["id"], **res})
@@ -709,6 +788,9 @@ def build_parser() -> argparse.ArgumentParser:
     p = tk.add_parser("head")
     p.add_argument("id")
     p.set_defaults(fn=ticket_head)
+    p = tk.add_parser("join")
+    p.add_argument("id")
+    p.set_defaults(fn=ticket_join)
     p = tk.add_parser("parent-check")
     p.add_argument("id")
     p.set_defaults(fn=ticket_parent_check)

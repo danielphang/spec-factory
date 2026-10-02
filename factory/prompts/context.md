@@ -26,5 +26,6 @@ verifier runs on the head and reports as `Gate suite: PASS|FAIL`. A merged sub-t
 `--no-ff` merge into the integration branch. Never push, never touch another worktree.
 
 Output: write your complete output, in your role's required format and ending with the
-STATUS / CONFIDENCE / ESCALATIONS trailer, to the file named under "Output file" below. That
-is the only file you may create or modify. Then return the same text as your final message.
+STATUS / CONFIDENCE / ESCALATIONS trailer, to the file named under "Output file" below. For
+every role but the implementer that is the only file you may create or modify. The implementer
+also changes files in its own worktree and commits there, and nowhere else. Then return the same text as your final message.
