@@ -15,7 +15,19 @@ RUBRIC (judge intent, not wording)
 4. No hidden decisions: no product or design choice is made silently;
    every protected path the change will touch is declared under Risk.
 5. Consistent: doesn't conflict with open tickets or stated architecture.
-6. Sufficient: an implementer could start without asking a question.
+6. Sufficient: an implementer could start without asking a question, and
+   the operator at the gate could read the Problem section. Read it as
+   that operator: deeply technical, but new to this system, and has not
+   read the design doc, the build spec or the rest of this spec. Its
+   first paragraph must say what is wrong and for whom. General technical
+   concepts (databases, locks, RPCs, agents, context windows) need no
+   gloss. Terms of art specific to this system (its function, command,
+   file and state names, section letters, exit codes) need a plain gloss
+   on first use that says what the thing does or why it exists. If that
+   reader would need a translator, or would have to infer, to say what is
+   wrong and for whom, that is BLOCKING: the first paragraph does not say
+   it, or uses a term of art specific to this system without a gloss,
+   even one a careful reader could work out from context.
 
 PROCESS
 Spot-check at least 2 cited paths and 1 acceptance command yourself.
