@@ -1,0 +1,3 @@
+{"ts": "2026-10-02T23:45:59+00:00", "event": "store.initialised", "files": ["openspec/config.yaml", "openspec/schemas/spec-factory/schema.yaml", "decisions.md"]}
+{"ts": "2026-10-02T23:45:59+00:00", "event": "request.created", "ticket": "T-0001", "source": "/private/tmp/req16.md"}
+{"ts": "2026-10-02T23:45:59+00:00", "event": "ticket.created", "ticket": "T-0001", "status": "ready-for-triage"}

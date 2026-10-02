@@ -69,3 +69,11 @@ This instance works on the spec factory's own documents. Nanobot is a task sourc
 reference harness, read only. Nanobot-side follow-ups that come out of these tickets (for
 example green's `factory/status.py` adopting T-0001's `none` + prose rule) belong to the
 nanobot sessions, not to this intake.
+
+## green-pilot/ — the first end-to-end pilot (2026-10-03)
+
+A second store, `intake/green-pilot/`, driven by this session through **green's own harness**
+(`~/dev/nanobot-upstream/bin/factory`, `factory/workflows/intake.js` then `build.js`), not the
+overlay in `harness/`: the ticket changes green's `factory/` code, so its roles need green's
+context and gate commands, and its build merges into `feat/lionbot-v3`. One ticket: T-0001 =
+GitHub #16. The Driver session owns green's store and stays off this one.
