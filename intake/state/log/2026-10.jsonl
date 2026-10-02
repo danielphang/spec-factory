@@ -201,3 +201,10 @@
 {"ts": "2026-10-02T01:47:55+00:00", "event": "approval.recorded", "ticket": "T-0008", "kind": "spec", "version": 3, "by": "dphang"}
 {"ts": "2026-10-02T01:47:55+00:00", "event": "ticket.transition", "ticket": "T-0008", "from": "awaiting-spec-gate", "to": "ready-for-planner", "by": "dphang"}
 {"ts": "2026-10-02T01:51:25+00:00", "event": "human.resolved", "ticket": "T-0008", "kind": "close", "by": "dphang", "from": "ready-for-planner", "to": "closed"}
+{"ts": "2026-10-02T06:25:11+00:00", "event": "request.created", "ticket": "T-0010", "source": "/Users/dphang/dev/spec-factory/issues/10_pre_init_pinned_specs.md"}
+{"ts": "2026-10-02T06:25:11+00:00", "event": "ticket.created", "ticket": "T-0010", "status": "ready-for-triage"}
+{"ts": "2026-10-02T06:25:44+00:00", "event": "run.started", "ticket": "T-0010", "run": "run-0040-triage", "role": "triage", "model": "opus"}
+{"ts": "2026-10-02T06:28:19+00:00", "event": "run.finished", "ticket": "T-0010", "run": "run-0040-triage", "role": "triage", "status": "NEEDS-HUMAN", "wall_s": 155}
+{"ts": "2026-10-02T06:28:28+00:00", "event": "ticket.parked", "ticket": "T-0010", "from": "ready-for-triage", "reason": "NEEDS-HUMAN from triage"}
+{"ts": "2026-10-02T06:28:28+00:00", "event": "escalation.queued", "ticket": "T-0010", "items": ["NEEDS-HUMAN from triage"]}
+{"ts": "2026-10-02T06:28:54+00:00", "event": "human.resolved", "ticket": "T-0010", "kind": "answer", "by": "dphang", "from": "parked", "to": "ready-for-triage"}

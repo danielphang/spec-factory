@@ -14,4 +14,15 @@ plan: null
 in_flight: []
 parked: null
 created: '2026-10-02T06:25:11+00:00'
-history: []
+history:
+- ts: '2026-10-02T06:28:28+00:00'
+  from: ready-for-triage
+  to: parked
+  by: park
+  reason: NEEDS-HUMAN from triage
+- ts: '2026-10-02T06:28:54+00:00'
+  from: parked
+  to: ready-for-triage
+  by: dphang
+  resolve: answer
+  answer: 1
