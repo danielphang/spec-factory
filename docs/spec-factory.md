@@ -295,13 +295,16 @@ RULES
 - Open questions stay open. Don't resolve product or design ambiguity
   yourself; list it, and the spec goes to NEEDS-HUMAN.
 - Write the Problem section for the operator who approves the spec at
-  the gate, not for the harness builder or the next role. That reader is
-  technical, a software engineer or product manager: keep the technical
-  substance, and drop only this pipeline's internal vocabulary. A reader
-  who has not read the design doc, the build spec or the rest of the
-  spec must be able to say what is wrong and for whom. Use plain words,
-  gloss each term of art on first use, and leave the detail to Evidence
-  and Root cause.
+  the gate, not for the harness builder or the next role. Write it the
+  way a design doc is written: for a deeply technical reader who does
+  not know this system's internals. That reader knows general concepts
+  (databases, tables, threading, locks, RPCs, agents, context windows);
+  they do not know this system's function, command, file or state
+  names, or why a particular line of code exists. A reader who has not
+  read the design doc, the build spec or the rest of the spec must be
+  able to say what is wrong and for whom. Use plain words, gloss each
+  term of art on first use by saying what it does or why it exists, and
+  leave the detail to Evidence and Root cause.
 - Anti-Goodharting: the critic scores you against a rubric. Satisfy the
   intent of each rubric item, not its wording. A spec padded with
   generic criteria to look thorough is a failed spec.
@@ -315,11 +318,10 @@ spec gate the harness writes each part to that file of the change folder
 openspec/changes/<ticket id>/ (schema spec-factory).
 === proposal.md
 ## Problem          what's wrong or missing, for whom, in plain words for
-                    the operator who approves it at the spec gate (a
-                    software engineer or product manager: keep the
-                    technical substance); each term of art glossed on
-                    first use; the detail goes under Evidence and Root
-                    cause
+                    the operator who approves it at the spec gate (deeply
+                    technical, but new to this system's internals); each
+                    term of art specific to this system glossed on first
+                    use; the detail goes under Evidence and Root cause
 ## Evidence         actual output, logs, metrics, repro steps
 ## Root cause       files and functions, if known; "unknown" is allowed
 ## Out of scope     what must NOT change
@@ -376,12 +378,17 @@ RUBRIC (judge intent, not wording)
 5. Consistent: doesn't conflict with open tickets or stated architecture.
 6. Sufficient: an implementer could start without asking a question, and
    the operator at the gate could read the Problem section. Read it as
-   that operator, a software engineer or product manager who has not read
-   the design doc, the build spec or the rest of this spec. Terms of art
-   (names of harness parts, commands, states, files, exit codes, section
-   letters) need a plain gloss on first use; ordinary software vocabulary
-   does not. If that reader would need a translator to say what is wrong
-   and for whom, that is BLOCKING.
+   that operator: deeply technical, but new to this system, and has not
+   read the design doc, the build spec or the rest of this spec. Its
+   first paragraph must say what is wrong and for whom. General technical
+   concepts (databases, locks, RPCs, agents, context windows) need no
+   gloss. Terms of art specific to this system (its function, command,
+   file and state names, section letters, exit codes) need a plain gloss
+   on first use that says what the thing does or why it exists. If that
+   reader would need a translator, or would have to infer, to say what is
+   wrong and for whom, that is BLOCKING: the first paragraph does not say
+   it, or uses a term of art specific to this system without a gloss,
+   even one a careful reader could work out from context.
 
 PROCESS
 Spot-check at least 2 cited paths and 1 acceptance command yourself.
@@ -712,7 +719,7 @@ Six review rounds ran on this doc, using the reviewer prompt in the appendix. Ro
 38. After the intake run against this repo (2026-10-01): the role-context block is declared in the Harness section as a per-repo input every role receives first, ahead of its declared INPUT and the routing table's "Receives"; where the block is kept stays open.
 39. Specs live in an OpenSpec tree under a forked `spec-factory` schema (Harness, Spec store): current truth per capability, one change folder per ticket (proposal, design, delta, tasks, and the factory-only `verification.md`), and a repo-level `decisions.md`. The spec writer's FORMAT is one document in those parts, and the delta's scenarios are the Acceptance items; the spec writer and the critic receive current truth; the planner's output is the change's `tasks.md`; the spec gate pins the change folder; parent close archives it (apply the deltas, move the folder, append the decisions). Roles, round limits, gates and harness pieces 1–12 are unchanged.
 40. After the pilot specs on Nanobot green (2026-10-01): archive has two more refusals, no change folder (a spec pinned before the repo had an `openspec/` tree) and no spec store. Each parks the parent like a delta that does not apply, but the human closes that parent as applied: current truth and `decisions.md` are not updated, and the spec is re-intaken as a new ticket if current truth should carry it.
-41. After the T-0010 spec gate (2026-10-02), where the operator could not read an approved Problem section without a translation: the spec writer writes the Problem section in plain words for the operator who approves the spec at the gate (a software engineer or product manager, so it stays technical), with each term of art glossed on first use and the detail left to Evidence and Root cause; critic rubric 6 reads the Problem as that operator, and one they would need a translator for is BLOCKING.
+41. After the T-0010 spec gate (2026-10-02), where the operator could not read an approved Problem section without a translation: the spec writer writes the Problem section in plain words for the operator who approves the spec at the gate, a deeply technical reader new to this system's internals, with each term of art specific to this system glossed on first use and the detail left to Evidence and Root cause; critic rubric 6 reads the Problem as that operator, and a first paragraph that does not say what is wrong and for whom, or uses an unglossed term specific to this system (even one a careful reader could infer), is BLOCKING.
 
 Declined: a dedicated merge agent (merging is gate config plus human gates, not a judgment call).
 
