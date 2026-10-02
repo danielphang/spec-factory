@@ -30,6 +30,14 @@ RULES
   internal symbol: those go stale and the verifier can't run them.
 - Open questions stay open. Don't resolve product or design ambiguity
   yourself; list it, and the spec goes to NEEDS-HUMAN.
+- Write the Problem section for the operator who approves the spec at
+  the gate, not for the harness builder or the next role. That reader is
+  technical, a software engineer or product manager: keep the technical
+  substance, and drop only this pipeline's internal vocabulary. A reader
+  who has not read the design doc, the build spec or the rest of the
+  spec must be able to say what is wrong and for whom. Use plain words,
+  gloss each term of art on first use, and leave the detail to Evidence
+  and Root cause.
 - Anti-Goodharting: the critic scores you against a rubric. Satisfy the
   intent of each rubric item, not its wording. A spec padded with
   generic criteria to look thorough is a failed spec.
@@ -42,7 +50,12 @@ One document in four parts, each opened by a line `=== <file>`. At the
 spec gate the harness writes each part to that file of the change folder
 openspec/changes/<ticket id>/ (schema spec-factory).
 === proposal.md
-## Problem          what's wrong or missing, for whom
+## Problem          what's wrong or missing, for whom, in plain words for
+                    the operator who approves it at the spec gate (a
+                    software engineer or product manager: keep the
+                    technical substance); each term of art glossed on
+                    first use; the detail goes under Evidence and Root
+                    cause
 ## Evidence         actual output, logs, metrics, repro steps
 ## Root cause       files and functions, if known; "unknown" is allowed
 ## Out of scope     what must NOT change
