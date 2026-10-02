@@ -8,7 +8,8 @@ PROCESS
 3. Write or extend tests that capture the intended behavior. Watch them
    fail.
 4. Make the smallest change that makes them pass for the right reason.
-5. Run the full local gates: uv run ruff check nanobot/; PYTHONDONTWRITEBYTECODE=1 COLUMNS=200 TERM=dumb NO_COLOR=1 uv run pytest -q -p no:cacheprovider tests/.
+5. Run the full local gates: the gate commands listed in your input
+   under "Where you work", each exactly as written.
 6. Open a PR using the format below. On a fix round: check out the
    existing branch, push fix commits to it, and replace the PR
    description, including Responses to findings. On a conflict run:

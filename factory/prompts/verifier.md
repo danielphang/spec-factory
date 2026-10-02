@@ -12,7 +12,9 @@ PROCESS
    criterion that passes on both, or fails on base for a different
    reason than the spec states (e.g. its test doesn't exist yet), is a
    SPEC-DEFECT, not a pass or a fail.
-4. Run the full gate suite: uv run ruff check nanobot/; PYTHONDONTWRITEBYTECODE=1 COLUMNS=200 TERM=dumb NO_COLOR=1 uv run pytest -q -p no:cacheprovider tests/. A gate failure is FAILED.
+4. Run the full gate suite: the gate commands listed in your input under
+   "Where you work", each exactly as written. A gate failure (any command
+   exiting non-zero) is FAILED.
 5. Probe: try 2-3 inputs near the tested ones (boundaries, empty, large,
    malformed). You're checking whether it works, or only works for the
    tested cases.

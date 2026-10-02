@@ -21,8 +21,9 @@ writing NEW criteria; a NEW criterion that already passes proves nothing.
 
 Build half, as this repo runs it today: there is no remote and no CI service. "Open a PR" means
 commit on your branch in your worktree and return the PR description; "push" means commit; the
-"CI result" is the gate suite (`uv run ruff check nanobot/` and the full pytest run), which the
-verifier runs on the head and reports as `Gate suite: PASS|FAIL`. A merged sub-ticket is a local
+"CI result" is the gate suite (the gate commands in your input: lint, and the full-suite gate,
+which passes when no test fails outside the port's known-failure baseline), which the verifier
+runs on the head and reports as `Gate suite: PASS|FAIL`. A merged sub-ticket is a local
 `--no-ff` merge into the integration branch. Never push, never touch another worktree.
 
 Output: write your complete output, in your role's required format and ending with the

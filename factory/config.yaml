@@ -9,9 +9,12 @@ protected_paths:
   dependencies: ["pyproject.toml", "uv.lock", "webui/package-lock.json"]
   credentials: ["~/.nanobot/**"]
   public_api: ["nanobot/api/**"]
+# The gate suite. The full-suite gate is baseline-relative (scripts/full_suite_baseline.txt): it
+# passes when the suite ran above its floor and no test fails outside the known baseline, so the
+# port's known failures block nothing and a new failure blocks the merge. Exit 0 = PASS.
 gate_commands:
   - "uv run ruff check nanobot/"
-  - "PYTHONDONTWRITEBYTECODE=1 COLUMNS=200 TERM=dumb NO_COLOR=1 uv run pytest -q -p no:cacheprovider tests/"
+  - "uv run scripts/full_suite_gate.py --isolated-home --pytest-args \"-n 2 --dist loadfile\""
 placeholders: {rounds: 2, spec_lines: 400, audit_n: 5, retro_min: 3}
 max_rounds: {spec: 2, pr: 2}
 # Build half, local-commit stand-in (operator, 2026-10-02): no remote, no CI. The merge gate is the
