@@ -168,6 +168,9 @@ if (state === 'ready-for-planner') {
   const p = await runRole('planner', 'Plan')
   if (!p) return { ticket: TICKET, state: 'parked' }
   if (p.status === 'PLANNED') {
+    // Spec store (build spec H, K): the plan is the change's tasks.md; a store without `factory init` reports skipped.
+    const tasks = await clerk(`${BIN} spec tasks ${TICKET} --run ${p.runId}`, 'Plan', 'spec tasks')
+    if (!tasks.ok) { await park(`harness-bug: spec tasks: ${tasks.stderr || ''}`, [p.runId], 'Plan'); return { ticket: TICKET, state: 'parked' } }
     const added = await clerk(`${BIN} plan add ${TICKET} --from-run ${p.runId}`, 'Plan', 'plan add')
     if (!added.ok) { await park(`harness-bug: plan add: ${added.stderr || ''}`, [p.runId], 'Plan'); return { ticket: TICKET, state: 'parked' } }
     await transition('planned', null, 'Plan')
