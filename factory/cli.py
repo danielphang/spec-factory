@@ -125,6 +125,13 @@ def ticket_transition(a, root, cfg):
     t = store.load_ticket(root, a.id)
     frm = t["status"]
     _check_edge(cfg, frm, a.to)
+    if a.to == "closed" and store.subtickets_of(root, t["id"]):
+        # A parent closes through its parent-close run (then archive). A human who wants it closed
+        # without one says so with `resolve --close`.
+        if not _parent_close_verified(root, cfg, t):
+            raise Refused(f"{t['id']} has sub-tickets: it closes after a VERIFIED parent-close run (or `resolve {t['id']} --close`)")
+        if specstore.is_active(root) and specstore.change_dir(root, t["id"]).exists():
+            raise Refused(f"{t['id']} is verified but not archived: run `archive {t['id']}` first")
     _apply_round(t, a.round, cfg)
     t["status"] = a.to
     if a.to != "parked":
@@ -392,10 +399,14 @@ def ticket_head(a, root, cfg):
     head = gitops.rev(repo, t["branch"])
     changed = head != t.get("head")
     t["head"] = head
-    if t.get("merge_refused") and gitops.head_contains(repo, head, gitops.integration_branch(cfg, repo)):
-        t["merge_refused"] = None
+    if t.get("merge_refused"):
+        if gitops.head_contains(repo, head, gitops.integration_branch(cfg, repo)):
+            t["merge_refused"] = None
+        else:  # a conflict run that did not merge the integration branch in: counted, so the loop is bounded
+            t["conflict_runs"] = int(t.get("conflict_runs") or 0) + 1
     store.save_ticket(root, t)
-    out({"ok": True, "id": t["id"], "head": head, "branch": t["branch"], "changed": changed})
+    out({"ok": True, "id": t["id"], "head": head, "branch": t["branch"], "changed": changed,
+         "merge_refused": t.get("merge_refused"), "conflict_runs": int(t.get("conflict_runs") or 0)})
 
 
 def results_record(a, root, cfg):
@@ -700,17 +711,23 @@ def _verifier_rows(root: Path, tid: str) -> list[str]:
     return rows
 
 
-def _parent_close_verified(root: Path, t: dict) -> bool:
-    """Every sub-ticket merged, and a finished verifier run on the parent itself said VERIFIED."""
-    if any(s["status"] != "merged" for s in store.subtickets_of(root, t["id"])):
+def _parent_close_verified(root: Path, cfg: dict, t: dict) -> bool:
+    """Every sub-ticket merged, and a finished verifier run on the parent itself said VERIFIED on a
+    head that contains every one of those merges (a run from before the last merge does not count)."""
+    subs = store.subtickets_of(root, t["id"])
+    if any(s["status"] != "merged" for s in subs):
         return False
+    repo = gitops.repo_root(cfg)
     runs = root / "runs"
     for d in sorted(runs.iterdir()) if runs.exists() else []:
         mp = d / "meta.yaml"
-        if mp.exists():
-            m = store.read_yaml(mp)
-            if m.get("ticket") == t["id"] and m.get("role") == "verifier" and m.get("status") == "VERIFIED":
-                return True
+        if not mp.exists():
+            continue
+        m = store.read_yaml(mp)
+        if m.get("ticket") != t["id"] or m.get("role") != "verifier" or m.get("status") != "VERIFIED" or not m.get("head"):
+            continue
+        if all(gitops.head_contains(repo, m["head"], s["merge"]["main_after"]) for s in subs if s["merge"].get("main_after")):
+            return True
     return False
 
 
@@ -723,7 +740,7 @@ def archive_cmd(a, root, cfg):
     errors = specstore.applies(root, specstore.delta_ops_of_change(root, t["id"]))
     if errors:
         raise Refused("archive does not apply: " + "; ".join(errors))
-    if store.subtickets_of(root, t["id"]) and not _parent_close_verified(root, t):
+    if store.subtickets_of(root, t["id"]) and not _parent_close_verified(root, cfg, t):
         raise Refused(f"{t['id']} has sub-tickets but no VERIFIED parent-close verifier run on the integration branch")
     res = specstore.archive(root, t["id"], _verifier_rows(root, t["id"]))
     store.log_event(root, "change.archived", ticket=t["id"], **res)

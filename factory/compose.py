@@ -146,9 +146,10 @@ def compose(root: Path, cfg: dict, meta: dict, t: dict) -> tuple[str, list[str]]
                 if (root / diff_rel).exists():
                     add(diff_rel, f"Diff `{meta.get('base')}...{meta.get('head')}`")
                 prnd = t["round"]["pr"]
-                if prnd >= 2:  # both checkers' prior findings (doc §Routing table, Implementer row)
+                if prnd >= 2:  # both checkers' findings from the previous round (doc §Routing table, Implementer row)
                     for r in ("reviewer", "verifier"):
-                        prev = _runs_for(root, tid, r, run_id)
+                        prev = [x for x in _runs_for(root, tid, r, run_id)
+                                if store.read_yaml(root / "runs" / x / "meta.yaml").get("round") == prnd - 1]
                         if prev:
                             who = "Your" if r == role else f"The {r}'s"
                             add(f"runs/{prev[-1]}/output.md", f"{who} prior findings (round {prnd - 1})")

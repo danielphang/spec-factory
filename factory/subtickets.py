@@ -74,10 +74,14 @@ def parse(planner_output: str, parent: str) -> list[dict]:
                             dep = alias[ref]
                         elif ref[:6] != parent and re.fullmatch(r"T-\d{4}.*", ref):
                             dep = ref[:6]  # another parent ticket (or one of its sub-tickets): wait for that parent
+                        elif re.fullmatch(re.escape(parent) + r"\.\d+", ref):
+                            raise ValueError(f"{sub['label']}: depends on {ref}, which is not a sub-ticket of this plan")
                         else:
                             continue
                         if dep != sub["id"] and dep not in deps:
                             deps.append(dep)
+                    if not deps:
+                        raise ValueError(f"{sub['label']}: cannot resolve `Depends on: {val}` to a sub-ticket of this plan or another ticket")
                 sub["depends_on"] = deps
             elif key == "parallel-safe":
                 sub["parallel_safe"] = val.lower().startswith("yes")

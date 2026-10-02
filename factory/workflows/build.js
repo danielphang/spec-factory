@@ -112,6 +112,12 @@ async function buildOne(st) {
       if (impl.status !== 'READY-FOR-REVIEW') { await park(st, `harness-bug: unknown STATUS ${impl.status} from implementer`, [impl.runId], 'Build'); return }
       const moved = await clerk(`${BIN} ticket head ${st}`, 'Build', `ticket head ${st}`)
       if (!moved.ok) { await park(st, `harness-bug: ticket head: ${moved.stderr || ''}`, [impl.runId], 'Build'); return }
+      if (moved.merge_refused) {
+        // A conflict run that did not merge the integration branch in: no point checking that head.
+        const j = await clerk(`${BIN} ticket join ${st}`, 'Build', `join ${st} (conflict run)`)
+        if (j.ok && j.decision === 'conflict') continue
+        await park(st, j.ok ? j.reason : `harness-bug: join: ${j.stderr || ''}`, [impl.runId], 'Build'); return
+      }
       const tr = await transition(st, 'checks-in-flight', 'pr:init', 'Build')
       if (!tr.ok) { await park(st, `harness-bug: transition to checks: ${tr.stderr || ''}`, [impl.runId], 'Build'); return }
     } else if (show.state !== 'checks-in-flight') {

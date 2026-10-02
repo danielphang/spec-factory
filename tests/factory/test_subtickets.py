@@ -201,3 +201,8 @@ def test_a_bullet_that_names_a_sub_ticket_is_not_a_head_and_a_repeated_id_is_ref
     js(run(store, "approve-spec", "T-0001"))
     cp = run(store, "subticket", "add", "T-0001", "--file", str(f))
     assert cp.returncode == 2 and "used more than once" in cp.stderr
+    for dep in (".5", "sub-ticket 1"):  # a dependency nobody can resolve is refused, never dropped
+        f.write_text(f"## ST-1 / One\n**Depends on:** none\n\n## ST-2 / Two\n**Depends on:** {dep}\n")
+        cp = run(store, "subticket", "add", "T-0001", "--file", str(f))
+        assert cp.returncode == 2 and ("not a sub-ticket of this plan" in cp.stderr or "cannot resolve" in cp.stderr), dep
+    assert not (store / "tickets" / "T-0001.1.yaml").exists()

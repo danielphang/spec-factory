@@ -384,6 +384,114 @@ def test_a_planned_parent_can_be_parked_and_a_closed_sibling_is_reported(tmp_pat
     assert f.state(tid) == "parked"
 
 
+def built_to_implementer(tmp_path, plan: str | None = None):
+    """A ticket approved, planned and split; returns the shepherd, the parent id and its sub-ticket ids."""
+    f = Shepherd(tmp_path, case="accept-approve", with_repo=True)
+    f.human_runs("init")
+    tid = f.request("# SPEC-99: Fixture\n\nThe bot should do the thing.\n")
+    for role in ("triage", "spec_writer", "critic"):
+        f.dispatch(role, tid)
+    f.human_approves(tid)
+    if plan:
+        p = f.tmp / "plan.md"
+        p.write_text(plan + "STATUS: PLANNED\nCONFIDENCE: high, fixture\nESCALATIONS: none\n")
+        f.dispatch("planner", tid, stub_path=p)
+    else:
+        f.dispatch("planner", tid)
+    return f, tid, list(f.ok("ticket", "parent-check", tid)["subtickets"])
+
+
+TWO_PARALLEL = "## ST-1 / First\n**Depends on:** none\n**Parallel-safe:** yes\n\n## ST-2 / Second\n**Depends on:** none\n**Parallel-safe:** yes\n\n"
+CHAIN = "## ST-1 / First\n**Depends on:** none\n**Parallel-safe:** yes\n\n## ST-2 / Second\n**Depends on:** ST-1\n**Parallel-safe:** yes\n\n"
+REQUEST_CHANGES = "Commit: HEAD\nFindings: [BLOCKING] thing.txt:1: FINDING-ROUND-{n} → wrong\nSTATUS: REQUEST-CHANGES\nCONFIDENCE: high, fixture\nESCALATIONS: none\n"
+FAILED = "Commit: HEAD\nPer criterion: NEW | x | base: FAIL | PR: FAIL | FAIL VERIFIER-ROUND-{n}\nGate suite: PASS\nSTATUS: FAILED\nCONFIDENCE: high, fixture\nESCALATIONS: none\n"
+
+
+def test_a_conflict_run_that_never_merges_main_parks_after_two_tries(tmp_path):
+    f, tid, (a, b) = built_to_implementer(tmp_path, TWO_PARALLEL)
+    f.dispatch("implementer", a, stub="accept-approve/implementer-1.md", file="a.txt")
+    f.dispatch("implementer", b, stub="accept-approve/implementer-1.md", file="b.txt")
+    for st in (a, b):
+        f.dispatch("reviewer", st, stub="accept-approve/reviewer-1.md")
+        f.dispatch("verifier", st, stub="accept-approve/verifier-1.md")
+    assert f.state(a) == "merged" and f.state(b) == "ready-for-implementer" and f.ticket(b)["conflict_runs"] == 1
+    runs_before = len(list((f.store / "runs").iterdir()))
+    f.dispatch("implementer", b, stub="accept-approve/implementer-1.md", no_change=True)  # returns without merging main
+    assert f.last_join["decision"] == "conflict" and f.state(b) == "ready-for-implementer" and f.ticket(b)["conflict_runs"] == 2
+    f.dispatch("implementer", b, stub="accept-approve/implementer-1.md", no_change=True)
+    assert f.state(b) == "parked" and "still does not contain main after 2 conflict runs" in f.ticket(b)["parked"]["reason"]
+    assert len(list((f.store / "runs").iterdir())) == runs_before + 2  # no checker ran on a head the gate would refuse
+    assert f.ticket(b)["round"]["pr"] == 1  # a conflict run is not a round
+
+
+def test_a_killed_checker_parks_as_a_budget_kill_and_the_round_does_not_move(tmp_path):
+    f, tid, (st,) = built_to_implementer(tmp_path)
+    f.dispatch("implementer", st)
+    f.dispatch("reviewer", st)
+    f.dispatch("verifier", st, killed=True)
+    assert f.results(st) == {"reviewer": "APPROVE", "verifier": "KILLED"}  # a killed verifier writes no ci row
+    assert f.state(st) == "parked" and f.ticket(st)["parked"]["reason"] == "budget kill: verifier"
+    assert f.ticket(st)["round"]["pr"] == 1
+
+
+def test_the_pr_loop_stops_at_the_round_limit_and_each_round_sees_the_previous_round_only(tmp_path):
+    f, tid, (st,) = built_to_implementer(tmp_path)
+    red = {}
+    for n in (1, 2):
+        for role, body in (("reviewer", REQUEST_CHANGES), ("verifier", FAILED)):
+            red[role, n] = f.tmp / f"{role}-{n}.md"
+            red[role, n].write_text(body.format(n=n))
+    f.dispatch("implementer", st)
+    f.dispatch("reviewer", st, stub_path=red["reviewer", 1])
+    f.dispatch("verifier", st, stub_path=red["verifier", 1])
+    assert f.state(st) == "ready-for-implementer" and f.ticket(st)["round"]["pr"] == 2
+    impl2 = f.dispatch("implementer", st, stub="accept-approve/implementer-1.md", file="second.txt")
+    assert "FINDING-ROUND-1" in impl2.input and "VERIFIER-ROUND-1" in impl2.input and "Gate suite on your previous head" in impl2.input
+    rev2 = f.dispatch("reviewer", st, stub_path=red["reviewer", 2])
+    assert "Your prior findings (round 1)" in rev2.input and "FINDING-ROUND-1" in rev2.input and "VERIFIER-ROUND-1" in rev2.input
+    ver2 = f.dispatch("verifier", st, stub_path=red["verifier", 2])
+    # the verifier composes after the round-2 reviewer finished: it must still get round 1's findings, not round 2's
+    assert "The reviewer's prior findings (round 1)" in ver2.input and "FINDING-ROUND-1" in ver2.input and "FINDING-ROUND-2" not in ver2.input
+    assert f.state(st) == "parked" and f.ticket(st)["parked"]["reason"].startswith("max-round cutoff")
+    assert f.ticket(st)["round"]["pr"] == 2
+
+
+def test_a_dependant_is_released_when_its_dependency_merges(tmp_path):
+    f, tid, (a, b) = built_to_implementer(tmp_path, CHAIN)
+    assert f.state(b) == "waiting-dependencies" and f.ready_implementers(tid) == [a]
+    cp = f.cli("run", "start", "--role", "implementer", "--ticket", b)
+    assert cp.returncode == 2 and "waiting-dependencies, not ready-for-implementer" in cp.stderr
+    f.dispatch("implementer", a, stub="accept-approve/implementer-1.md", file="a.txt")
+    cp = f.cli("run", "start", "--role", "implementer", "--ticket", a)  # one implementer run per branch
+    assert cp.returncode == 2
+    f.dispatch("reviewer", a, stub="accept-approve/reviewer-1.md")
+    f.dispatch("verifier", a, stub="accept-approve/verifier-1.md")
+    assert f.state(a) == "merged" and f.state(b) == "ready-for-implementer" and f.ready_implementers(tid) == [b]
+    impl = f.dispatch("implementer", b, stub="accept-approve/implementer-1.md", file="b.txt")
+    assert f.git("merge-base", "--is-ancestor", f.ticket(a)["merge"]["main_after"], f"factory/{b}") == ""  # b branched from main after a merged
+    assert impl.status == "READY-FOR-REVIEW"
+
+
+def test_a_parent_does_not_close_by_a_plain_transition_before_its_parent_close_run(tmp_path):
+    f, tid, (st,) = built_to_implementer(tmp_path)
+    cp = f.cli("ticket", "transition", tid, "--to", "closed", "--by", "workflow")
+    assert cp.returncode == 2 and "closes after a VERIFIED parent-close run" in cp.stderr and f.state(tid) == "planned"
+    f.dispatch("implementer", st)
+    f.dispatch("reviewer", st)
+    f.dispatch("verifier", st)
+    assert f.parent_check(tid) == "ready-for-parent-verify"
+    cp = f.cli("ticket", "transition", tid, "--to", "closed", "--by", "workflow")
+    assert cp.returncode == 2 and f.state(tid) == "ready-for-parent-verify"
+    bad = f.tmp / "failed.md"
+    bad.write_text("Commit: HEAD\nGate suite: FAIL\nSTATUS: FAILED\nCONFIDENCE: high, fixture\nESCALATIONS: none\n")
+    f.dispatch("verifier", tid, stub_path=bad)
+    # | parent-close FAILED | parks the parent: the human amends the spec and re-plans, or closes |
+    assert f.state(tid) == "parked" and f.ticket(tid)["parked"]["reason"] == "FAILED from parent-close verifier"
+    assert list((f.store / "openspec" / "specs").iterdir()) == []  # current truth untouched
+    f.human_runs("resolve", tid, "--close")  # the human's own close is always available
+    assert f.state(tid) == "closed"
+
+
 # ----- the shepherd: the routing table applied to the store CLI ----------------------------------
 
 class Run:
@@ -467,7 +575,7 @@ class Shepherd:
 
     # --- one role run, then the routing table's row for its STATUS (as intake.js does)
     def dispatch(self, role: str, tid: str, stub: str | None = None, finish: bool = True, stub_path: Path | None = None, route: bool = True,
-                 file: str = "thing.txt", merge_main: bool = False) -> Run:
+                 file: str = "thing.txt", merge_main: bool = False, no_change: bool = False, killed: bool = False) -> Run:
         self.count[role] = self.count.get(role, 0) + 1
         stub_path = stub_path or STUBS / (stub or f"{self.case}/{role}-{self.count[role]}.md")
         rid = self.ok("run", "start", "--role", role, "--ticket", tid)["run_id"]
@@ -480,10 +588,18 @@ class Shepherd:
             wt = Path(meta["worktree"])
             if merge_main:  # a conflict run: merge the integration branch into the branch, nothing else
                 self.git("merge", "-q", "--no-edit", "main", cwd=wt)
+            elif no_change:
+                pass  # an implementer that returns without touching its branch
             else:
                 (wt / file).write_text("the thing\n")
                 self.git("add", file, cwd=wt)
                 self.git("commit", "-q", "-m", f"{tid}: the thing", cwd=wt)
+        if killed:  # the run returned nothing (budget kill): no output, a KILLED row
+            status = self.ok("run", "finish", rid, "--status-override", "KILLED")["status"]
+            self.ok("run", "cleanup", rid)
+            self.ok("results", "record", tid, "--head", self.ok("ticket", "head", tid)["head"], "--role", role, "--run", rid, "--killed")
+            self.act_on_join(tid, rid)
+            return Run(rid, input_text, composed["sources"], status)
         text = stub_path.read_text().replace("Commit: HEAD", f"Commit: {meta.get('head')}")
         (self.store / "runs" / rid / "output.md").write_text(text)
         status = self.ok("run", "finish", rid)["status"]
@@ -530,8 +646,11 @@ class Shepherd:
                 park("BLOCKED from implementer")
             else:
                 assert status == "READY-FOR-REVIEW", status
-                self.ok("ticket", "head", tid)
-                go("checks-in-flight", "pr:init")
+                moved = self.ok("ticket", "head", tid)
+                if moved["merge_refused"]:  # a conflict run that did not merge main in: ask the join, skip the checkers
+                    self.act_on_join(tid, rid)
+                else:
+                    go("checks-in-flight", "pr:init")
         elif role in ("reviewer", "verifier"):
             if self.ticket(tid)["status"] == "ready-for-parent-verify":
                 # | parent-close | VERIFIED archives the change, then closes; anything else parks the parent |
@@ -564,7 +683,8 @@ class Shepherd:
         elif join["decision"] == "revise":
             go("ready-for-implementer", join["round_op"])
         elif join["decision"] == "conflict":
-            go("ready-for-implementer")
+            if self.state(tid) != "ready-for-implementer":
+                go("ready-for-implementer")
         elif join["decision"] == "park":
             self.ok("ticket", "park", tid, "--reason", join["reason"], *(["--outputs", rid] if rid else []))
         return join  # "wait": the other checker has not reported on this head yet

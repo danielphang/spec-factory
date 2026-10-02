@@ -93,6 +93,8 @@ class MergeLock:
     """One merge at a time per target repo: a lock directory (mkdir is atomic). Two sibling
     sub-tickets that reach the merge gate together must not run `git merge` in one checkout at once."""
 
+    STALE_S = 600.0
+
     def __init__(self, repo: Path, wait_s: float = 120.0):
         self.path = Path(git(repo, "rev-parse", "--git-common-dir"))
         if not self.path.is_absolute():
@@ -107,6 +109,12 @@ class MergeLock:
                 self.path.mkdir()
                 return self
             except FileExistsError:
+                try:  # a merge that died leaves its lock; one older than STALE_S is broken
+                    if time.time() - self.path.stat().st_mtime > self.STALE_S:
+                        self.path.rmdir()
+                        continue
+                except OSError:
+                    continue
                 if time.monotonic() > deadline:
                     raise store.Refused(f"merge lock held for more than {int(self.wait_s)}s: {self.path}") from None
                 time.sleep(0.2)
