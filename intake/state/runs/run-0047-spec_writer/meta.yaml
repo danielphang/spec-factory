@@ -1,0 +1,18 @@
+run_id: run-0047-spec_writer
+role: spec_writer
+ticket: T-0011
+model: opus
+round: 0
+spec_version: 0
+started: '2026-10-02T07:42:12+00:00'
+finished: '2026-10-02T08:20:38+00:00'
+wall_s: 2306
+status: READY-FOR-CRITIC
+input_sources:
+- runs/run-0046-triage/output.md
+- requests/T-0011.md
+confidence: high. Every citation was re-checked on `f0f7fa8`, and all ten acceptance items were run on
+  the applied change and on `main` with the results recorded. The one soft spot is that items 5 and 6
+  are model-dependent and statistical, which Risk states.
+escalations: []
+escalations_note: null

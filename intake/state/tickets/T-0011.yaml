@@ -1,18 +1,39 @@
 id: T-0011
-type: null
-title: 11_plain_language_problem
+type: feature
+title: 'Spec writer and critic: the Problem section must be readable, in plain language, by the operator
+  who approves the spec at the gate'
 request: requests/T-0011.md
 source: /Users/dphang/dev/spec-factory/intake/requests/11_plain_language_problem.md
-status: ready-for-triage
+status: awaiting-spec-gate
 round:
-  spec: 0
+  spec: 1
   pr: 0
 spec:
-  version: 0
+  version: 1
   approved_version: null
 plan: null
-in_flight:
-- run-0046-triage
+in_flight: []
 parked: null
 created: '2026-10-02T07:39:30+00:00'
-history: []
+history:
+- ts: '2026-10-02T07:42:00+00:00'
+  from: ready-for-triage
+  to: ready-for-spec-writer
+  by: workflow
+  round:
+    spec: 0
+    pr: 0
+- ts: '2026-10-02T08:21:01+00:00'
+  from: ready-for-spec-writer
+  to: ready-for-critic
+  by: workflow
+  round:
+    spec: 1
+    pr: 0
+- ts: '2026-10-02T08:27:27+00:00'
+  from: ready-for-critic
+  to: awaiting-spec-gate
+  by: workflow
+  round:
+    spec: 1
+    pr: 0
