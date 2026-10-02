@@ -1,7 +1,7 @@
 # intake/ — SCRATCH
 
 **Scratch area, not part of the design.** A throwaway spec-factory intake instance that runs
-the issue drafts in `../issues/` through intake (Triage → Spec writer ⇄ Critic → human gate →
+this repo's GitHub issues (index: `../issues/README.md`) through intake (Triage → Spec writer ⇄ Critic → human gate →
 Planner) against this repo. Delete the whole directory once the issues are filed and closed;
 nothing outside it depends on it.
 
@@ -25,18 +25,18 @@ its live store (`knowledge_vault/spec_factory/`, T-0001 = SPEC-21 mid-intake) ar
 
 Ticket ids are local to this store: T-0001 here is issue 01, not green's SPEC-21 ticket.
 
-| Ticket | Issue draft |
+| Ticket | GitHub issue |
 |---|---|
-| T-0001 | `issues/01_status_parser.md` |
-| T-0002 | `issues/02_clerk_schema.md` |
-| T-0003 | `issues/03_triage_reask_input.md` |
-| T-0004 | `issues/04_p0_agents_dir.md` |
-| T-0005 | `issues/05_protected_live_state.md` |
-| T-0006 | `issues/06_p05_grep_vs_inline_scripts.md` |
-| T-0007 | `issues/07_single_target_harness.md` |
-| T-0008 | `issues/08_openspec_schema.md` |
-| T-0009 | `issues/09_run_id_allocation.md` |
-| T-0010 | `issues/10_pre_init_pinned_specs.md` |
+| T-0001 | [#1](https://github.com/danielphang/spec-factory/issues/1) |
+| T-0002 | [#2](https://github.com/danielphang/spec-factory/issues/2) |
+| T-0003 | [#3](https://github.com/danielphang/spec-factory/issues/3) |
+| T-0004 | [#4](https://github.com/danielphang/spec-factory/issues/4) |
+| T-0005 | [#5](https://github.com/danielphang/spec-factory/issues/5) |
+| T-0006 | [#6](https://github.com/danielphang/spec-factory/issues/6) |
+| T-0007 | [#7](https://github.com/danielphang/spec-factory/issues/7) |
+| T-0008 | [#8](https://github.com/danielphang/spec-factory/issues/8) |
+| T-0009 | [#9](https://github.com/danielphang/spec-factory/issues/9) |
+| T-0010 | [#10](https://github.com/danielphang/spec-factory/issues/10) |
 
 T-0001..T-0007: spec approved at the gate and applied on `main` (merges listed in `issues/README.md`).
 Closed 2026-10-01 as applied by hand. The Planner was run on T-0001..T-0003 anyway, as its first
@@ -59,7 +59,7 @@ run through Claude Code's Workflow tool with
 One ticket at a time: the store allocates run ids without a lock. The human gate is
 `bin/factory approve-spec T-000N` or `request-changes`, as on green.
 
-Nothing here is pushed or filed on GitHub; that waits for `gh auth` (see `issues/README.md`).
+A new issue enters intake as a file: `gh issue view N --json body -q .body > /tmp/N.md` then `bin/factory ticket new --file /tmp/N.md`.
 
 ## Scope
 
