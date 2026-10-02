@@ -332,35 +332,46 @@ def subticket_add(a, root, cfg):
         text = status.strip_trailer((d / "output.md").read_text(encoding="utf-8"))
     else:
         text = Path(a.file).read_text(encoding="utf-8")
-    subs = subtickets.parse(text)
+    subs = subtickets.parse(text, parent["id"])
     if not subs:
-        raise Refused("no sub-tickets found (lines like `T-0001.1 / Title` with `Depends on:` and `Parallel-safe:`)")
+        raise Refused("no sub-tickets found (a head line `<id> / Title`, id like T-0001-A, ST-1 or T-0001.1, "
+                      "then `Depends on:` and `Parallel-safe:`)")
     ids = {s["id"] for s in subs}
     made = []
     for sdef in subs:
-        if not sdef["id"].startswith(parent["id"] + "."):
-            raise Refused(f"sub-ticket {sdef['id']} does not belong to {parent['id']}")
         for dep in sdef["depends_on"]:
-            if dep not in ids:
-                raise Refused(f"{sdef['id']} depends on {dep}, which is not in this plan")
+            if dep not in ids and not store.ticket_path(root, dep).exists():
+                raise Refused(f"{sdef['id']} ({sdef['label']}) depends on {dep}, which is neither in this plan nor a ticket in the store")
         if store.ticket_path(root, sdef["id"]).exists():
             raise Refused(f"{sdef['id']} already exists")
     for sdef in subs:
         st = store.new_ticket(root, sdef["id"], sdef["title"], parent["request"], f"plan:{a.run or a.file}")
-        st.update({"type": "sub-ticket", "parent": parent["id"], "depends_on": sdef["depends_on"],
+        st.update({"type": "sub-ticket", "parent": parent["id"], "label": sdef["label"], "depends_on": sdef["depends_on"],
                    "parallel_safe": sdef["parallel_safe"],
                    "status": "ready-for-implementer" if not sdef["depends_on"] else "waiting-dependencies"})
         st["spec"] = {"version": parent["spec"]["version"], "approved_version": parent["spec"]["approved_version"]}
         store.write_text(root / "specs" / sdef["id"] / "subticket.md", sdef["text"])
         store.save_ticket(root, st)
         store.log_event(root, "ticket.created", ticket=sdef["id"], parent=parent["id"], status=st["status"])
-        made.append({"id": sdef["id"], "state": st["status"], "depends_on": sdef["depends_on"], "parallel_safe": sdef["parallel_safe"]})
+        made.append({"id": sdef["id"], "label": sdef["label"], "state": st["status"], "depends_on": sdef["depends_on"], "parallel_safe": sdef["parallel_safe"]})
     out({"ok": True, "parent": parent["id"], "subtickets": made})
 
 
 def ticket_ready_implementers(a, root, cfg):
     subs = store.subtickets_of(root, a.id)
-    out({"ok": True, "parent": a.id, "ready": subtickets.ready_implementers(subs),
+
+    def status_of(tid: str):
+        p = store.ticket_path(root, tid)
+        return store.read_yaml(p)["status"] if p.exists() else None
+
+    ready = subtickets.ready_implementers(subs, status_of)
+    for s in subs:  # a dependency that just became met releases its dependant (siblings at merge; other parents here)
+        if s["id"] in ready and s["status"] == "waiting-dependencies":
+            s["status"] = "ready-for-implementer"
+            s["history"].append({"ts": store.now(), "from": "waiting-dependencies", "to": "ready-for-implementer", "by": "ready-implementers"})
+            store.save_ticket(root, s)
+            store.log_event(root, "ticket.transition", ticket=s["id"], **{"from": "waiting-dependencies", "to": "ready-for-implementer", "by": "ready-implementers"})
+    out({"ok": True, "parent": a.id, "ready": ready,
          "remaining": [s["id"] for s in subs if s["status"] not in ("merged", "parked", "closed")],
          "in_flight": [s["id"] for s in subs if s["in_flight"] or s["status"] in ("checks-in-flight",)]})
 
@@ -441,7 +452,7 @@ def merge_cmd(a, root, cfg):
             store.save_ticket(root, parent)
         for s in store.subtickets_of(root, t["parent"]):
             if s["status"] == "waiting-dependencies" and all(
-                    store.load_ticket(root, dep)["status"] == "merged" for dep in s["depends_on"]):
+                    store.load_ticket(root, dep)["status"] in subtickets.SATISFIED for dep in s["depends_on"]):
                 s["status"] = "ready-for-implementer"
                 s["history"].append({"ts": store.now(), "from": "waiting-dependencies", "to": "ready-for-implementer", "by": "merge"})
                 store.save_ticket(root, s)

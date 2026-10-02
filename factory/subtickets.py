@@ -3,77 +3,106 @@ build spec part B `subticket add`, part G dependants, part H `ready-implementers
 
 A sub-ticket is a ticket record like any other (tickets/<PARENT>.<n>.yaml) with `parent`,
 `depends_on`, `parallel_safe`, `branch` and `head`, and its text at specs/<ID>/subticket.md.
+
+The planner prompt asks for "ID / Title" without fixing the id's form, so real plans use
+`T-0001-A`, `ST-1` or `T-0001.1`, usually under a `##` heading, with bold field names. The store
+numbers them <PARENT>.1, .2, … in plan order and keeps the planner's own id as `label`.
 """
 from __future__ import annotations
 
 import re
 
-HEAD_RE = re.compile(r"^\s*(?:[-*]\s+|#{1,4}\s+)?(T-\d{4}\.\d+)\s*(?:[/:–—-]\s*)?(.*?)\s*$")
-FIELD_RE = re.compile(r"^\s*([A-Z][A-Za-z -]+?):\s*(.*)$")
-DEPENDS = "depends on"
-PARALLEL = "parallel-safe"
+LABEL = r"(?:T-\d{4}[.-][A-Za-z0-9]+|ST-\d+)"
+HEAD_RE = re.compile(r"^\s*(?:#{1,4}\s+|[-*]\s+)?(" + LABEL + r")\s+/\s+(.+?)\s*$")
+FIELD_RE = re.compile(r"^\s*\**\s*([A-Z][A-Za-z -]+?)\s*:\s*\**\s*(.*)$")
+REF_RE = re.compile(r"T-\d{4}(?:[.-][A-Za-z0-9]+)?|ST-\d+")
+SATISFIED = ("merged", "closed")
 
 
-def parse(planner_output: str) -> list[dict]:
-    """Split a PLANNED planner output into sub-tickets, in order. Each: id, title, depends_on
-    (list of ids), parallel_safe (bool), text (the sub-ticket's own block, verbatim)."""
-    subs: list[dict] = []
-    cur: dict | None = None
-    buf: list[str] = []
-    in_coverage = False
+def _is_heading(line: str) -> bool:
+    return bool(re.match(r"^#{1,4}\s+\S", line))
 
-    def flush() -> None:
-        nonlocal cur, buf
-        if cur is not None:
-            cur["text"] = "\n".join(buf).rstrip() + "\n"
-            subs.append(cur)
-        cur, buf = None, []
 
-    for line in planner_output.splitlines():
-        if re.match(r"^\s*(#+\s*)?Coverage map", line):
-            flush()
-            in_coverage = True
-            continue
+def parse(planner_output: str, parent: str) -> list[dict]:
+    """Split a PLANNED planner output into sub-tickets, in plan order. Each: id (<parent>.<n>),
+    label (the planner's id), title, depends_on (sibling ids, plus other parents' ids for a
+    cross-ticket dependency), parallel_safe, text (its block, then the plan's shared sections)."""
+    lines = planner_output.splitlines()
+    for i, line in enumerate(lines):
         if line.startswith("STATUS:"):
-            flush()
+            lines = lines[:i]
             break
-        m = HEAD_RE.match(line)
-        if m and not in_coverage:
-            flush()
-            cur = {"id": m.group(1), "title": m.group(2).strip(" :"), "depends_on": [], "parallel_safe": True}
-            buf = [line]
-            continue
-        if cur is None:
-            continue
-        buf.append(line)
-        f = FIELD_RE.match(line)
-        if not f:
-            continue
-        key, val = f.group(1).strip().lower(), f.group(2).strip()
-        if key == DEPENDS:
-            cur["depends_on"] = [] if val.lower().startswith("none") else re.findall(r"T-\d{4}\.\d+", val)
-        elif key == PARALLEL:
-            cur["parallel_safe"] = val.lower().startswith("yes")
-    flush()
+    heads = [(i, m) for i, line in enumerate(lines) if (m := HEAD_RE.match(line))]
+    if not heads:
+        return []
+    alias = {m.group(1): f"{parent}.{n}" for n, (_, m) in enumerate(heads, 1)}
+
+    def block_end(start: int) -> int:
+        for j in range(start + 1, len(lines)):
+            if HEAD_RE.match(lines[j]) or _is_heading(lines[j]) or re.match(r"^\s*Coverage map", lines[j]):
+                return j
+        return len(lines)
+
+    # Shared sections: everything before the first sub-ticket (grounding, fixture preludes) minus
+    # the plan's title line. Every sub-ticket needs them, so each sub-ticket text carries them.
+    preamble = "\n".join(lines[:heads[0][0]]).strip()
+    preamble = re.sub(r"\A#\s+.*\n?", "", preamble).strip()
+
+    subs = []
+    for i, m in heads:
+        body = lines[i:block_end(i)]
+        sub = {"id": alias[m.group(1)], "label": m.group(1), "title": m.group(2).strip(" :*"),
+               "depends_on": [], "parallel_safe": True}
+        for line in body[1:]:
+            f = FIELD_RE.match(line)
+            if not f:
+                continue
+            key, val = f.group(1).strip().lower(), f.group(2).strip()
+            if key == "depends on":
+                deps: list[str] = []
+                if not val.lower().startswith("none"):
+                    for ref in REF_RE.findall(val):
+                        if ref in alias:
+                            dep = alias[ref]
+                        elif ref[:6] != parent and re.fullmatch(r"T-\d{4}.*", ref):
+                            dep = ref[:6]  # another parent ticket (or one of its sub-tickets): wait for that parent
+                        else:
+                            continue
+                        if dep != sub["id"] and dep not in deps:
+                            deps.append(dep)
+                sub["depends_on"] = deps
+            elif key == "parallel-safe":
+                sub["parallel_safe"] = not val.lower().startswith("no")
+        text = "\n".join(body).rstrip() + "\n"
+        if preamble:
+            text += "\n## Shared plan context (from the plan; applies to every sub-ticket)\n\n" + preamble + "\n"
+        sub["text"] = text
+        subs.append(sub)
     return subs
 
 
-def ready_implementers(subs: list[dict]) -> list[str]:
-    """Doc §Routing table, Planner row: sub-tickets in ready-for-implementer whose dependencies
-    are merged, minus any with a run in flight; a parallel_safe=false one runs alone (listed only
-    when no sibling is in flight, and nothing is listed with it; nothing is listed while it is).
+def ready_implementers(subs: list[dict], status_of=None) -> list[str]:
+    """Doc §Routing table, Planner row: sub-tickets whose dependencies are merged (a dependency on
+    another parent ticket: closed), minus any with a run in flight; a parallel_safe=false one runs
+    alone (listed only when no sibling is in flight, and nothing is listed with it; nothing is
+    listed while it is in flight).
 
-    `subs` are the parent's sub-ticket records (status, depends_on, parallel_safe, in_flight)."""
+    `subs` are the parent's sub-ticket records. `status_of(ticket_id)` resolves a dependency that
+    is not a sibling; without it such a dependency counts as unmet."""
     by_id = {s["id"]: s for s in subs}
-    in_flight = [s for s in subs if s.get("in_flight") or s.get("status") in ("checks-in-flight", "ready-for-checks")]
+
+    def met(dep: str) -> bool:
+        st = by_id[dep]["status"] if dep in by_id else (status_of(dep) if status_of else None)
+        return st in SATISFIED
+
+    in_flight = [s for s in subs if s.get("in_flight") or s.get("status") in ("checks-in-flight", "ready-for-merge")]
     if any(not s.get("parallel_safe", True) for s in in_flight):
         return []
     ready = [s for s in subs
-             if s.get("status") == "ready-for-implementer" and not s.get("in_flight")
-             and all(by_id.get(d, {}).get("status") == "merged" for d in s.get("depends_on", []))]
+             if s.get("status") in ("ready-for-implementer", "waiting-dependencies") and not s.get("in_flight")
+             and all(met(d) for d in s.get("depends_on", []))]
     if in_flight:
         ready = [s for s in ready if s.get("parallel_safe", True)]
     elif any(not s.get("parallel_safe", True) for s in ready):
-        solo = next(s for s in ready if not s.get("parallel_safe", True))
-        return [solo["id"]]
+        return [next(s for s in ready if not s.get("parallel_safe", True))["id"]]
     return [s["id"] for s in ready]
