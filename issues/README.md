@@ -16,7 +16,7 @@ A fix closes its issue through a reviewed change on `main`; the merge column is 
 | [8](https://github.com/danielphang/spec-factory/issues/8) | Adopt OpenSpec's storage model as a forked schema | T-0008 | `03d8835` | 39 |
 | [9](https://github.com/danielphang/spec-factory/issues/9) | `run start` must reserve the run id atomically | T-0009 | `f2576ca` | spec only |
 | [10](https://github.com/danielphang/spec-factory/issues/10) | A spec pinned before `factory init` has no change folder | T-0010 | `3890a2f` | 40 |
-| [12](https://github.com/danielphang/spec-factory/issues/12) | Spec writer: the Problem section must be readable by the operator at the gate (p0) | T-0011 | in intake | — |
+| [11](https://github.com/danielphang/spec-factory/issues/11) | Spec writer: the Problem section must be readable by the operator at the gate (p0) | T-0011 | in intake | — |
 
-Issues 1–10 are applied and can be closed against their merge; 12 stays open until T-0011 lands.
+Issues 1–10 are applied and can be closed against their merge; 11 stays open until T-0011 lands.
 New findings go straight to GitHub issues; this file is the index.
