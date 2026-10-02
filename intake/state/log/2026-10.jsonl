@@ -225,3 +225,5 @@
 {"ts": "2026-10-02T06:46:08+00:00", "event": "run.started", "ticket": "T-0010", "run": "run-0045-critic", "role": "critic", "model": "fable"}
 {"ts": "2026-10-02T06:50:33+00:00", "event": "run.finished", "ticket": "T-0010", "run": "run-0045-critic", "role": "critic", "status": "APPROVE", "wall_s": 265}
 {"ts": "2026-10-02T06:50:46+00:00", "event": "ticket.transition", "ticket": "T-0010", "from": "ready-for-critic", "to": "awaiting-spec-gate", "by": "workflow", "round": {"spec": 2, "pr": 0}}
+{"ts": "2026-10-02T07:38:42+00:00", "event": "approval.recorded", "ticket": "T-0010", "kind": "spec", "version": 2, "by": "dphang"}
+{"ts": "2026-10-02T07:38:42+00:00", "event": "ticket.transition", "ticket": "T-0010", "from": "awaiting-spec-gate", "to": "ready-for-planner", "by": "dphang"}
