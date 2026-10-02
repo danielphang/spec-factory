@@ -1,0 +1,19 @@
+run_id: run-0044-spec_writer
+role: spec_writer
+ticket: T-0010
+model: opus
+round: 2
+spec_version: 1
+started: '2026-10-02T06:40:48+00:00'
+finished: '2026-10-02T06:45:38+00:00'
+wall_s: 290
+status: READY-FOR-CRITIC
+input_sources:
+- runs/run-0041-triage/output.md
+- requests/T-0010.md
+- runs/run-0043-critic/output.md
+- specs/T-0010/v1.md
+confidence: high, because every anchor and "today" value was re-run on `555c119`, and both refusals in
+  item 91 were reproduced against the reference CLI in a scratch store
+escalations: []
+escalations_note: null
