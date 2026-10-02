@@ -36,6 +36,7 @@ Ticket ids are local to this store: T-0001 here is issue 01, not green's SPEC-21
 | T-0007 | `issues/07_single_target_harness.md` |
 | T-0008 | `issues/08_openspec_schema.md` |
 | T-0009 | `issues/09_run_id_allocation.md` |
+| T-0010 | `issues/10_pre_init_pinned_specs.md` |
 
 T-0001..T-0007: spec approved at the gate and applied on `main` (merges listed in `issues/README.md`).
 Closed 2026-10-01 as applied by hand. The Planner was run on T-0001..T-0003 anyway, as its first
