@@ -28,5 +28,5 @@ is back, file each and close it against its merge in the same step.
 | 05 operator steps | `ac66b2c` | 37 |
 | 06 P0-5 two numbers | `366d469` | plan only |
 | 07 single-target harness | `b9379ec` | 38 |
-| 08 OpenSpec schema | at the gate (T-0008) | — |
+| 08 OpenSpec schema | `03d8835` | 39 |
 | 09 run-id reservation | `f2576ca` | spec only |

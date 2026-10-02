@@ -5,7 +5,7 @@ title: Adopt OpenSpec's storage model and lifecycle as a forked `spec-factory` s
   keeping the factory's roles, runnable verification and gates
 request: requests/T-0008.md
 source: /Users/dphang/dev/spec-factory/issues/08_openspec_schema.md
-status: ready-for-planner
+status: closed
 round:
   spec: 2
   pr: 0
@@ -79,3 +79,8 @@ history:
   to: ready-for-planner
   by: dphang
   approved_version: 3
+- ts: '2026-10-02T01:51:25+00:00'
+  from: ready-for-planner
+  to: closed
+  by: dphang
+  resolve: close

@@ -42,7 +42,7 @@ Closed 2026-10-01 as applied by hand. The Planner was run on T-0001..T-0003 anyw
 real test: each run found the spec already on `main` and escalated instead of planning no-op
 work, which is the right call. Lesson for the design (feeds T-0008's lifecycle): the store has no
 state for "approved and applied outside the pipeline"; `closed` via `resolve --close` stands in.
-T-0008: spec v3 awaiting the gate.
+T-0008: approved (v3), applied (`03d8835`), closed. All nine drafts are applied; the backlog is empty.
 T-0009: approved, applied (`f2576ca`), closed.
 
 ## Running
