@@ -198,3 +198,5 @@
 {"ts": "2026-10-02T01:44:32+00:00", "event": "approval.recorded", "ticket": "T-0009", "kind": "spec", "version": 1, "by": "dphang"}
 {"ts": "2026-10-02T01:44:32+00:00", "event": "ticket.transition", "ticket": "T-0009", "from": "awaiting-spec-gate", "to": "ready-for-planner", "by": "dphang"}
 {"ts": "2026-10-02T01:45:46+00:00", "event": "human.resolved", "ticket": "T-0009", "kind": "close", "by": "dphang", "from": "ready-for-planner", "to": "closed"}
+{"ts": "2026-10-02T01:47:55+00:00", "event": "approval.recorded", "ticket": "T-0008", "kind": "spec", "version": 3, "by": "dphang"}
+{"ts": "2026-10-02T01:47:55+00:00", "event": "ticket.transition", "ticket": "T-0008", "from": "awaiting-spec-gate", "to": "ready-for-planner", "by": "dphang"}
