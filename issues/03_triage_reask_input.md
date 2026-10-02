@@ -9,3 +9,5 @@ labels: design-doc, routing
 **Proposed fix:** in §Routing rules, "A question returns to the role that asked, with the answer **and that role's prior output**" and add the same to the Receives column for Triage and Spec writer NEEDS-HUMAN re-entries (the Spec writer round-2 row already does this for the critic loop; the human-question path should be symmetric).
 
 **Fix as implemented on the Nanobot side:** `factory/compose.py` (triage sources: request + last Triage output) at `0f2e29136`.
+
+**Spec writer half, implemented 2026-10-01:** green `4c68ef5db` (factory/compose.py: a writer re-run after a NEEDS-HUMAN answer receives the output that asked).

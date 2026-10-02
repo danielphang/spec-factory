@@ -28,3 +28,5 @@ Lifecycle additions: the human spec gate pins the delta; parent close becomes Op
 **What this costs:** a FORMAT rewrite for the writer and planner prompts, one archive step, and a one-time migration of the P0 pilot specs (T-0001, T-0003) into the new shape. What it buys: a current-truth layer the lionbot port never had, deltas that make "what changed" mechanical, and an OpenSpec-compatible tree other tooling can read.
 
 **Open to the human:** whether `verification.md` is an artifact or lives inside the delta's scenarios; whether `decisions.md` is per repo or per capability.
+
+**Fix as implemented on the Nanobot side:** green `feat/lionbot-v3` `fffeddcf6` (factory/specstore.py; `init`, gate pinning, `spec tasks`, `archive`), `4c68ef5db` (compose: current truth), `8281f9929` (prompts), `a7ef49ef6` (intake.js). Tests `tests/factory/test_spec_store.py`.
