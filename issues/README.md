@@ -20,6 +20,8 @@ A fix closes its issue through a reviewed change on `main`; the merge column is 
 | [13](https://github.com/danielphang/spec-factory/issues/13) | Planner: sub-ticket id form, cross-ticket dependencies and shared plan sections are unspecified | not in intake yet | — | — |
 | [14](https://github.com/danielphang/spec-factory/issues/14) | Build half as built: local-commit mode, the join in the store, bounded conflict runs, serialised merges, baseline-relative gate | not in intake yet | — | — |
 | [15](https://github.com/danielphang/spec-factory/issues/15) | A simplifier role: replay a task set against a simplified harness, measure, propose (after the T-0003 pilot) | not in intake yet | — | — |
+| [16](https://github.com/danielphang/spec-factory/issues/16) | Harness: a checker result with no or a non-SHA Commit: line is recorded against the current commit (first end-to-end pilot) | pilot, in intake | — | — |
+| [17](https://github.com/danielphang/spec-factory/issues/17) | Harness: `factory report TICKET` status page | not in intake yet | — | — |
 
 Issues 1–10 are applied and can be closed against their merge; 11 applied (`9168ce1`); 13 is open (harness side fixed on green `70de00d45`). #12 was a duplicate of #11.
 New findings go straight to GitHub issues; this file is the index.
