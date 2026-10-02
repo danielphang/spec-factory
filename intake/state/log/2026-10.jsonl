@@ -227,3 +227,7 @@
 {"ts": "2026-10-02T06:50:46+00:00", "event": "ticket.transition", "ticket": "T-0010", "from": "ready-for-critic", "to": "awaiting-spec-gate", "by": "workflow", "round": {"spec": 2, "pr": 0}}
 {"ts": "2026-10-02T07:38:42+00:00", "event": "approval.recorded", "ticket": "T-0010", "kind": "spec", "version": 2, "by": "dphang"}
 {"ts": "2026-10-02T07:38:42+00:00", "event": "ticket.transition", "ticket": "T-0010", "from": "awaiting-spec-gate", "to": "ready-for-planner", "by": "dphang"}
+{"ts": "2026-10-02T07:39:30+00:00", "event": "request.created", "ticket": "T-0011", "source": "/Users/dphang/dev/spec-factory/intake/requests/11_plain_language_problem.md"}
+{"ts": "2026-10-02T07:39:30+00:00", "event": "ticket.created", "ticket": "T-0011", "status": "ready-for-triage"}
+{"ts": "2026-10-02T07:40:01+00:00", "event": "run.started", "ticket": "T-0011", "run": "run-0046-triage", "role": "triage", "model": "opus"}
+{"ts": "2026-10-02T07:40:57+00:00", "event": "human.resolved", "ticket": "T-0010", "kind": "close", "by": "dphang", "from": "ready-for-planner", "to": "closed"}

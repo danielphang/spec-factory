@@ -1,0 +1,12 @@
+run_id: run-0046-triage
+role: triage
+ticket: T-0011
+model: opus
+round: 0
+spec_version: 0
+started: '2026-10-02T07:40:01+00:00'
+finished: null
+wall_s: null
+status: running
+input_sources:
+- requests/T-0011.md

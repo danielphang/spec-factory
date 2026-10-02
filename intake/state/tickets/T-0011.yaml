@@ -11,7 +11,8 @@ spec:
   version: 0
   approved_version: null
 plan: null
-in_flight: []
+in_flight:
+- run-0046-triage
 parked: null
 created: '2026-10-02T07:39:30+00:00'
 history: []

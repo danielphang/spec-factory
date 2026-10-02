@@ -15,7 +15,7 @@ A fix closes its issue through a reviewed change on `main`; the merge column is 
 | [7](https://github.com/danielphang/spec-factory/issues/7) | Harness instance is single-target | T-0007 | `b9379ec` | 38 |
 | [8](https://github.com/danielphang/spec-factory/issues/8) | Adopt OpenSpec's storage model as a forked schema | T-0008 | `03d8835` | 39 |
 | [9](https://github.com/danielphang/spec-factory/issues/9) | `run start` must reserve the run id atomically | T-0009 | `f2576ca` | spec only |
-| [10](https://github.com/danielphang/spec-factory/issues/10) | A spec pinned before `factory init` has no change folder | T-0010 | in intake | — |
+| [10](https://github.com/danielphang/spec-factory/issues/10) | A spec pinned before `factory init` has no change folder | T-0010 | `3890a2f` | 40 |
 
-Issues 1–9 are applied and can be closed against their merge; 10 stays open until T-0010 lands.
+Issues 1–10 are applied and can be closed against their merge. Pending filing (gh auth): intake/requests/11_plain_language_problem.md (T-0011, p0).
 New findings go straight to GitHub issues; this file is the index.

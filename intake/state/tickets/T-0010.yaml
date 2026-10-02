@@ -4,7 +4,7 @@ title: 'Build spec / design doc / P0 plan: a parent whose pinned spec has no cha
   has no spec store) closes as applied after its archive refusal, instead of leaving an unexplained park'
 request: requests/T-0010.md
 source: /Users/dphang/dev/spec-factory/issues/10_pre_init_pinned_specs.md
-status: ready-for-planner
+status: closed
 round:
   spec: 2
   pr: 0
@@ -67,3 +67,8 @@ history:
   to: ready-for-planner
   by: dphang
   approved_version: 2
+- ts: '2026-10-02T07:40:57+00:00'
+  from: ready-for-planner
+  to: closed
+  by: dphang
+  resolve: close
