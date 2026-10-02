@@ -4,13 +4,13 @@ title: 'Build spec: `factory run start` must reserve its run id atomically so co
   store get distinct run directories'
 request: requests/T-0009.md
 source: /Users/dphang/dev/spec-factory/issues/09_run_id_allocation.md
-status: awaiting-spec-gate
+status: ready-for-planner
 round:
   spec: 1
   pr: 0
 spec:
   version: 1
-  approved_version: null
+  approved_version: 1
 plan: null
 in_flight: []
 parked: null
@@ -37,3 +37,8 @@ history:
   round:
     spec: 1
     pr: 0
+- ts: '2026-10-02T01:44:32+00:00'
+  from: awaiting-spec-gate
+  to: ready-for-planner
+  by: dphang
+  approved_version: 1
