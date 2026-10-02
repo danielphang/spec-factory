@@ -7,7 +7,7 @@ export const meta = {
     { title: 'Close', detail: 'one verifier run on the integration branch against the parent spec; VERIFIED archives, then closes' },
   ],
 }
-// args: { ticket, repo, state, stubs?, inlineRoles? }  — same conventions as intake.js.
+// args: { ticket, repo, state, target?, integration?, stubs?, inlineRoles? }  — repo/state/stubs/inlineRoles as in intake.js.
 // Local-commit stand-in (operator, 2026-10-02): no remote, no CI. The gate suite is run by the
 // verifier and recorded as the ci row; the merge is a local --no-ff merge into the integration
 // branch. The routing is build spec part H, build.js, with the parallel()-free join written as a
@@ -16,7 +16,10 @@ export const meta = {
 const TICKET = args.ticket
 const REPO = args.repo
 const STATE = args.state
-const BIN = `FACTORY_STATE=${STATE} ${REPO}/bin/factory`
+// target = the repo the implementer works in (default: the checkout bin/factory lives in);
+// integration = the branch merged into (default: config integration_branch, else the target's current branch).
+const ENV = `FACTORY_STATE=${STATE}` + (args.target ? ` FACTORY_REPO=${args.target}` : '') + (args.integration ? ` FACTORY_INTEGRATION_BRANCH=${args.integration}` : '')
+const BIN = `${ENV} ${REPO}/bin/factory`
 const PREFIX = args.agentPrefix || 'factory-'
 const INLINE = !!args.inlineRoles
 const CLERK_RULES = 'You are the store clerk of the spec factory: run the one command you are given, once, unchanged, from the repository root; run nothing else, edit nothing, interpret nothing. '
