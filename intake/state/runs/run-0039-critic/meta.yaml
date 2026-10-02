@@ -1,0 +1,20 @@
+run_id: run-0039-critic
+role: critic
+ticket: T-0008
+model: fable
+round: 2
+spec_version: 3
+started: '2026-10-01T21:33:15+00:00'
+finished: '2026-10-01T21:40:11+00:00'
+wall_s: 416
+status: APPROVE
+input_sources:
+- specs/T-0008/v3.md
+- runs/run-0036-critic/output.md
+- specs/T-0008/v2.md
+confidence: high — every anchor, the diff stat and all 20 commands reproduced on my own clone on both
+  sides; the one BLOCKING finding from round 1 is resolved by text I verified against the build spec's
+  compose mechanism; the remaining findings are clarifications an implementer can resolve from items 87
+  and 83 without changing the outcome.
+escalations: []
+escalations_note: null

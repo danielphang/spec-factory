@@ -361,3 +361,7 @@ Out-of-scope observations:
 - OpenSpec now lets a change retire a capability when its last requirement is REMOVED (`retire_capabilities: true`, `concepts.md:397`). Part J's archive deletes the requirement and leaves a capability file with no requirements. Whether the factory adopts retirement is a later design call, not taken here.
 - From the critic: the reference harness already stores the planner's output as `plans/<ID>.md` via `factory plan add`, which the build spec does not mention. Part I's `factory spec tasks` would make a second copy. That is build-spec/reference drift, not this ticket's change. Whoever builds the spec store should keep one of the two.
 - From the critic: the spec-approval row of the Human gates table does not name the `## Decisions` lines among what the human approves. The gate approves the whole pinned version, Decisions included, so this is wording only. It is left unchanged because Out of scope keeps the Human gates table.
+
+STATUS: READY-FOR-CRITIC
+CONFIDENCE: high. All five findings are addressed in the text. Every OLD anchor matched exactly once under a script that asserts it. All 20 Acceptance commands were run as written on `main` and on the trial clone, and the results are quoted above. The OpenSpec grammar is cited from its docs and was confirmed by the critic.
+ESCALATIONS: none
