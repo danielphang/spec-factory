@@ -37,7 +37,7 @@ Ticket ids are local to this store: T-0001 here is issue 01, not green's SPEC-21
 | T-0008 | [#8](https://github.com/danielphang/spec-factory/issues/8) |
 | T-0009 | [#9](https://github.com/danielphang/spec-factory/issues/9) |
 | T-0010 | [#10](https://github.com/danielphang/spec-factory/issues/10) |
-| T-0011 | pending filing: `intake/requests/11_plain_language_problem.md` |
+| T-0011 | [#12](https://github.com/danielphang/spec-factory/issues/12) |
 
 T-0001..T-0007: spec approved at the gate and applied on `main` (merges listed in `issues/README.md`).
 Closed 2026-10-01 as applied by hand. The Planner was run on T-0001..T-0003 anyway, as its first
