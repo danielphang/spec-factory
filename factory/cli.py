@@ -1,4 +1,4 @@
-"""`factory` store CLI (P0 subset of the build-harness spec, part B/K).
+"""`factory` store CLI (P0 subset of the build-harness spec, part B/K, plus the spec store).
 
 Exit 0 success, 2 refused precondition (store unchanged, nothing logged), 1 error.
 Every command prints one JSON object on stdout; refusals also print {"ok": false, "error"}.
@@ -16,7 +16,7 @@ from pathlib import Path
 
 import yaml
 
-from factory import compose, status, store
+from factory import compose, specstore, status, store
 from factory.store import Refused
 
 ROLES = ("triage", "spec_writer", "critic", "planner")
@@ -295,21 +295,36 @@ def approve_spec(a, root, cfg):
     if t["status"] != "awaiting-spec-gate":
         raise Refused(f"{t['id']} is {t['status']}, not awaiting-spec-gate")
     if a.edit:
-        n = _add_spec_version(root, t, Path(a.edit).read_text(encoding="utf-8"), f"gate edit {a.edit}")
+        text = Path(a.edit).read_text(encoding="utf-8")
     else:
         n = a.version or t["spec"]["version"]
         if not (root / "specs" / t["id"] / f"v{n}.md").exists():
             raise Refused(f"{t['id']} has no spec v{n}")
+        text = (root / "specs" / t["id"] / f"v{n}.md").read_text(encoding="utf-8")
+    pinned: list[str] = []
+    if specstore.is_active(root):
+        # Part K: refuse a malformed version or a delta that does not apply; nothing is written.
+        _, deltas, errors = specstore.validate(text)
+        errors += specstore.applies(root, deltas) if not errors else []
+        if errors:
+            raise Refused("spec not pinned: " + "; ".join(errors))
+    if a.edit:
+        n = _add_spec_version(root, t, text, f"gate edit {a.edit}")
+    if specstore.is_active(root):
+        pinned = specstore.pin(root, t["id"], text)
     t["spec"]["approved_version"] = n
-    store.write_text(root / "specs" / f"{t['id']}.md", (root / "specs" / t["id"] / f"v{n}.md").read_text(encoding="utf-8"))
+    store.write_text(root / "specs" / f"{t['id']}.md", text)
     store.write_yaml(_approval_dir(root, t["id"]) / f"spec-v{n}.yaml", {"by": _by(), "at": store.now(), "version": n})
     frm = t["status"]
     t["status"] = "ready-for-planner"
     t["history"].append({"ts": store.now(), "from": frm, "to": "ready-for-planner", "by": _by(), "approved_version": n})
     store.save_ticket(root, t)
     store.log_event(root, "approval.recorded", ticket=t["id"], kind="spec", version=n, by=_by())
+    if pinned:
+        store.log_event(root, "change.pinned", ticket=t["id"], version=n, files=pinned)
     store.log_event(root, "ticket.transition", ticket=t["id"], **{"from": frm, "to": "ready-for-planner", "by": _by()})
-    out({"ok": True, "id": t["id"], "approved_version": n, "state": "ready-for-planner", "spec": f"specs/{t['id']}.md"})
+    out({"ok": True, "id": t["id"], "approved_version": n, "state": "ready-for-planner", "spec": f"specs/{t['id']}.md",
+         "change": pinned})
 
 
 def request_changes(a, root, cfg):
@@ -377,6 +392,59 @@ def resolve(a, root, cfg):
         move("closed", "close", {})
     else:
         raise Refused("resolve needs one of --answer F | --ruling F | --to spec-gate | --close")
+
+
+# ----- spec store (doc §Harness, Spec store; part K) ----------------------------------
+
+def init_cmd(a, root, cfg):
+    written = specstore.init(root)
+    store.log_event(root, "store.initialised", files=written)
+    out({"ok": True, "written": written, "active": True})
+
+
+def spec_tasks(a, root, cfg):
+    t = store.load_ticket(root, a.id)
+    if not specstore.is_active(root):
+        out({"ok": True, "id": t["id"], "skipped": "no spec store (factory init not run)"})
+        return
+    d = _run_dir(root, a.run)
+    meta = store.read_yaml(d / "meta.yaml")
+    if meta.get("ticket") != t["id"] or meta.get("role") != "planner" or meta.get("status") != "PLANNED":
+        raise Refused(f"{a.run} is not a PLANNED planner run of {t['id']}")
+    if not specstore.change_dir(root, t["id"]).exists():
+        raise Refused(f"{t['id']} has no change folder (no pinned version)")
+    text = status.strip_trailer((d / "output.md").read_text(encoding="utf-8"))
+    dest = specstore.change_dir(root, t["id"]) / "tasks.md"
+    store.write_text(dest, text)
+    store.log_event(root, "tasks.written", ticket=t["id"], run=a.run)
+    out({"ok": True, "id": t["id"], "path": _rel(root, dest)})
+
+
+def _verifier_rows(root: Path, tid: str) -> list[str]:
+    """`<head> · <ticket> · <STATUS> · <run_id>` per verifier row in results/ for the parent and
+    its sub-tickets, oldest first. results/ is a later build item; absent → no rows."""
+    res = root / "results"
+    rows = []
+    if res.exists():
+        for p in sorted(res.rglob("*.yaml")):
+            r = store.read_yaml(p) or {}
+            if str(r.get("ticket", "")).split(".")[0] == tid and r.get("role") == "verifier":
+                rows.append(f"{r.get('head')} · {r.get('ticket')} · {r.get('status')} · {r.get('run_id')}")
+    return rows
+
+
+def archive_cmd(a, root, cfg):
+    t = store.load_ticket(root, a.id)
+    if not specstore.is_active(root):
+        raise Refused("no spec store (factory init not run)")
+    if not specstore.change_dir(root, t["id"]).exists():
+        raise Refused(f"{t['id']} has no change folder to archive")
+    errors = specstore.applies(root, specstore.delta_ops_of_change(root, t["id"]))
+    if errors:
+        raise Refused("archive does not apply: " + "; ".join(errors))
+    res = specstore.archive(root, t["id"], _verifier_rows(root, t["id"]))
+    store.log_event(root, "change.archived", ticket=t["id"], **res)
+    out({"ok": True, "id": t["id"], **res})
 
 
 # ----- misc ---------------------------------------------------------------------
@@ -459,6 +527,16 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--from-run")
     p.add_argument("--file")
     p.set_defaults(fn=plan_add)
+
+    p = sc.add_parser("tasks")
+    p.add_argument("id")
+    p.add_argument("--run", required=True)
+    p.set_defaults(fn=spec_tasks)
+    p = sp.add_parser("init")
+    p.set_defaults(fn=init_cmd)
+    p = sp.add_parser("archive")
+    p.add_argument("id")
+    p.set_defaults(fn=archive_cmd)
 
     p = sp.add_parser("approve-spec")
     p.add_argument("id")
