@@ -97,6 +97,8 @@ PY
 
 If ≥ 2 of 3 specs pass the gate unedited, the next walking step is BH-6 (the PR loop) on one of them, still without the hook. If not, the retro runs on the three transcripts before any more harness is built, and the fix is in the prompts, not the plan.
 
+The three pilots are SPEC-21, SPEC-26 and SPEC-27 (green's T-0001, T-0002, T-0003). Their specs were pinned before `factory init` created `openspec/` (2026-10-01), so they have no change folder: each parent-close `factory archive` refuses with `no change folder`, the parent parks, and the human closes it as applied (build spec K).
+
 ## Risk
 
 - Protected paths touched: none (no infra, no keys, no dependencies beyond pyyaml).
