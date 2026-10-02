@@ -67,6 +67,18 @@ The prompts say what each role does. The harness enforces the wiring rules: fres
 
 **Smallest thing that works.** A git server with per-user permissions and a pre-receive hook (pieces 4, 7, 8), a `tickets` branch of YAML as the store (1, 5, 6, 10), a cron loop that reads it and launches `claude -p` in a fresh container (2, 3); implementer and retro containers get secrets via env, every other role's container gets model access only through a proxy sidecar and no env secrets (12; the one extra component), the verifier running the gates (11), and your existing tracker as the human surface (9). Humans record approvals by pushing a row to the `tickets` branch under their own identity (the store CLI's record verb, run as themselves); the tracker is for notification and discussion only. Audit and retro counts come from the append-only log. A few hundred lines of harness. Move the store to a real DB when you want cost-per-issue numbers in one place.
 
+**Spec store: the `spec-factory` schema.** The ticket store (piece 1) keeps specs in OpenSpec's tree (Fission-AI, MIT; layout and grammar as its `docs/concepts.md` and `docs/customization.md` give them), under a schema forked from OpenSpec's built-in `spec-driven` and named `spec-factory` (`openspec/schemas/spec-factory/schema.yaml`, selected by `openspec/config.yaml`). Current truth is `openspec/specs/<capability>/spec.md`: what each capability does now, as `### Requirement: <name>` blocks, each one SHALL or MUST sentence followed by `#### Scenario: <name>` items whose WHEN is a runnable command and THEN its expected result. A ticket's change is the folder `openspec/changes/<ticket id>/`:
+
+| Artifact | Holds | Author |
+|---|---|---|
+| `proposal.md` | Problem, Evidence, Root cause, Out of scope, Open questions, Decisions, Risk, Operator steps | Spec writer |
+| `design.md` | Proposed change, Tests to change | Spec writer |
+| `specs/<capability>/spec.md` (delta) | Requirements under `## ADDED Requirements`, `## MODIFIED Requirements` or `## REMOVED Requirements`; its scenarios are the Acceptance items | Spec writer; the critic reviews it |
+| `tasks.md` | The sub-tickets and coverage map | Planner |
+| `verification.md` (the artifact the fork adds) | The NEW or REGRESSION label of each scenario and the writer's Responses; every critic round's output; at archive, every verifier result recorded per head for the parent and its sub-tickets | Spec writer (labels, Responses), critic, verifier |
+
+`decisions.md`, one per repo beside `openspec/`, is the decision log: one line per decision, with its ticket id. Roles return text and never write the tree; the harness writes it. The spec writer returns one document in parts (§2 FORMAT), and the store keeps every version. The human spec gate pins one version: it refuses a delta that does not apply to current truth, and writes the pinned version as the change folder, so the planner, implementer and verifier work from the delta the human approved. Labels and round-to-round churn stay in `verification.md`, out of the delta. **Archive** is the parent-close step. After the parent-close run returns VERIFIED, the harness applies each delta to current truth (ADDED appends the requirement, MODIFIED replaces the requirement of that name whole, REMOVED deletes it), moves the folder to `openspec/changes/archive/<YYYY-MM-DD>-<ticket id>/`, and appends each line of the proposal's Decisions to `decisions.md` with the date and ticket id; then the parent closes. A delta that no longer applies (an ADDED name already in current truth, a MODIFIED or REMOVED name missing) writes nothing and parks the parent. Only the archive step writes current truth and `decisions.md`. The spec writer and the critic receive every current-truth spec with their input (routing table).
+
 **Routing table.** The dispatcher (piece 2) is this table and nothing else. Each row: a STATUS a role emits, what runs next, and what it receives. "Receives" adds to the INPUT the role prompt already declares. Both follow the role-context block (above).
 
 Rules the table relies on:
@@ -74,22 +86,22 @@ Rules the table relies on:
 - A round is one checker pass; the first check is round 1. Two loops carry a counter: the spec loop (writer ↔ critic) and the PR loop (implementer ↔ reviewer + verifier). The counter increments when the author re-enters after REVISE, REQUEST-CHANGES, or FAILED. A gate failure, whether CI reports it or the verifier's gate step does, counts: the implementer ran the gates locally before pushing. Rebases and merge-main rounds do not count.
 - The PR loop routes only after CI and both checker results for the current head are recorded. One implementer run then receives all three outputs. Never launch a second implementer run on a branch that already has one in flight.
 - The dispatcher reads a role's trailer by its labels, not by line position. The last `STATUS:` line wins; CONFIDENCE is the next line labelled `CONFIDENCE:` after it, and ESCALATIONS the next line labelled `ESCALATIONS:` after that. Lines between labelled lines are continuation (a wrapped reason, a remark), so a verbose but well-formed verdict routes on its STATUS. A trailer with no CONFIDENCE or no ESCALATIONS line after its last STATUS is a parse failure, which routes as a STATUS not in this table.
-- A non-empty ESCALATIONS line is copied to the human queue without blocking the STATUS route. An ESCALATIONS line that starts with the word `none` followed by end of line or punctuation (so not `None of …`), with prose after it on that line and nothing below it, is empty for routing, and the prose is kept with the run for audit. A `none` line with further lines below it is a real list, copied verbatim from that line on. Only NEEDS-HUMAN, CLARIFY, BLOCKED, ESCALATE, SPEC-DEFECT, a max-round cutoff, a budget kill (piece 3), and a parent-close FAILED park the ticket. A parking STATUS from one checker wins over the other's REQUEST-CHANGES or FAILED; both outputs go to the queue.
+- A non-empty ESCALATIONS line is copied to the human queue without blocking the STATUS route. An ESCALATIONS line that starts with the word `none` followed by end of line or punctuation (so not `None of …`), with prose after it on that line and nothing below it, is empty for routing, and the prose is kept with the run for audit. A `none` line with further lines below it is a real list, copied verbatim from that line on. Only NEEDS-HUMAN, CLARIFY, BLOCKED, ESCALATE, SPEC-DEFECT, a max-round cutoff, a budget kill (piece 3), a parent-close FAILED, and an archive that does not apply (Spec store) park the ticket. A parking STATUS from one checker wins over the other's REQUEST-CHANGES or FAILED; both outputs go to the queue.
 - When a human resolves a parked ticket:
   - A question returns to the role that asked, with the answer and that role's previous output (the output that asked it); a requester's CLARIFY answer returns to Triage the same way.
   - BLOCKED, a critic ESCALATE, and a planner ESCALATE return to the role that emitted them with the ruling, same round, or the human re-scopes (spec gate or writer round reset) or closes.
   - A spec loop at max rounds goes to the spec gate.
-  - A parent-close FAILED or SPEC-DEFECT, or a sub-ticket closed by the human, parks the parent: the human amends the spec and re-plans (new sub-tickets under the same parent) or closes the parent.
+  - A parent-close FAILED or SPEC-DEFECT, an archive that does not apply, or a sub-ticket closed by the human, parks the parent: the human amends the spec and re-plans (new sub-tickets under the same parent) or closes the parent.
   - A PR loop at max rounds, a SPEC-DEFECT, or a reviewer ESCALATE returns to the implementer with the round reset and the human's ruling as findings, or the ticket closes. The human may amend the sub-ticket or the pinned spec first; the amended version is what the implementer and checkers receive. There is no merge-gate override. A budget-killed run re-dispatches the same role on the same inputs, same round (the human may raise that run's budget or amend the sub-ticket first), or the ticket closes. In-flight siblings keep the spec version they received; the human decides whether to re-plan.
 
 | From | STATUS | Next | Receives |
 |---|---|---|---|
 | New request | — | Triage | The request, ticket search |
-| Triage | ACCEPT | Spec writer | The ticket |
+| Triage | ACCEPT | Spec writer | The ticket; current truth (Spec store), read-only |
 | Triage | NEEDS-HUMAN | Human queue | The question |
 | Triage | CLARIFY | Requester, via piece 9; ticket parks until answered | The missing-info list |
 | Triage | REJECT | Closed | — |
-| Spec writer | READY-FOR-CRITIC / NEEDS-SPLIT | Critic | Spec, repo read-only; round 2+: prior findings, the writer's responses, previous spec version |
+| Spec writer | READY-FOR-CRITIC / NEEDS-SPLIT | Critic | Spec, repo and current truth read-only; round 2+: prior findings, the writer's responses, previous spec version |
 | Spec writer | NEEDS-HUMAN | Human queue | Open questions |
 | Critic | APPROVE | Human spec gate | Spec + critic output |
 | Critic | REVISE | Spec writer (round +1) if round < {2}, else Human queue | Findings, the spec version they apply to |
@@ -108,7 +120,7 @@ Rules the table relies on:
 | Reviewer | ESCALATE | Human queue | Output |
 | Verifier | SPEC-DEFECT | Human queue | Verifier output |
 | Merge gate | Head does not contain current main | Implementer (same round, conflict run): merge main into the branch, or rebase where {force-push allowed} | Conflict output; the new head re-runs CI and both checkers |
-| Merge gate | CI green + APPROVE + VERIFIED on current head + head contains main + piece-8 approvals | Merge; then dispatch sub-tickets that depended on this one. When all sub-tickets have merged, one verifier run on main against the parent's full Acceptance list: VERIFIED closes the parent; FAILED or SPEC-DEFECT parks the parent in the human queue | Parent-close run: pinned parent spec; head = current main; base = the main SHA recorded before the parent's first sub-ticket merged; `{gate commands}` |
+| Merge gate | CI green + APPROVE + VERIFIED on current head + head contains main + piece-8 approvals | Merge; then dispatch sub-tickets that depended on this one. When all sub-tickets have merged, one verifier run on main against the parent's full Acceptance list (every scenario of its pinned delta, with its `verification.md` label): VERIFIED archives the change (Spec store), then closes the parent; FAILED, SPEC-DEFECT or an archive that does not apply parks the parent in the human queue | Parent-close run: pinned parent spec; head = current main; base = the main SHA recorded before the parent's first sub-ticket merged; `{gate commands}` |
 | Weekly audit done, or on demand | — | Retro | Full outputs behind every outcome signal since the last retro (piece 10), current instruction files, every proposal still under evaluation with its metric, and per-role run and outcome counts, broken down by model, for the period and for each prior proposal's window |
 | Retro | PROPOSED | Guardrail-changes gate (human); on approval, the no-sub-ticket merge row | PR |
 | Retro | NO-CHANGES | Log only | — |
@@ -273,7 +285,7 @@ RULES
   today (the actual error or wrong output). One that fails only because
   its test or script doesn't exist yet also proves nothing: use a
   black-box command, or give the check as an inline script in the
-  Acceptance line itself, which the verifier runs verbatim on both base
+  WHEN line of its scenario, which the verifier runs verbatim on both base
   and PR.
 - Test the behavior the ticket cares about, not the implementation you
   have in mind. Prefer end-to-end or integration checks over checks that
@@ -289,18 +301,39 @@ RULES
   wrong just to get approved.
 
 FORMAT
+One document in four parts, each opened by a line `=== <file>`. At the
+spec gate the harness writes each part to that file of the change folder
+openspec/changes/<ticket id>/ (schema spec-factory).
+=== proposal.md
 ## Problem          what's wrong or missing, for whom
 ## Evidence         actual output, logs, metrics, repro steps
 ## Root cause       files and functions, if known; "unknown" is allowed
-## Proposed change  lettered parts (A, B, C), specific enough to follow
-## Acceptance       - `command` → expected result [NEW | REGRESSION]
-## Tests to change  none | existing tests the intended change breaks, and why
 ## Out of scope     what must NOT change
 ## Open questions   none | list
+## Decisions        none | one line per design call this change makes,
+                    including each answered open question
 ## Risk             blast radius; every protected path this will touch
 ## Operator steps   (optional) actions or checks on live or protected state
                     that only the operator can perform, after merge; not
                     acceptance; the human approves them at the spec gate
+=== design.md
+## Proposed change  lettered parts (A, B, C), specific enough to follow
+## Tests to change  none | existing tests the intended change breaks, and why
+=== specs/<capability>/spec.md
+                    one part per capability changed; reuse a current-truth
+                    capability where the behaviour already lives
+## ADDED Requirements | ## MODIFIED Requirements | ## REMOVED Requirements
+### Requirement: <name>   one sentence with SHALL or MUST
+#### Scenario: <name>     one Acceptance item; names unique in the change
+- WHEN `command`          (GIVEN lines first, if it needs a fixture)
+- THEN expected result
+                    MODIFIED restates the whole requirement. MODIFIED and
+                    REMOVED name a requirement in current truth; behaviour
+                    current truth lacks is ADDED. REMOVED gives the name
+                    and a one-line reason.
+=== verification.md
+## Acceptance       - <scenario name> → NEW | REGRESSION; for NEW, how it
+                    fails today
 ## Responses        (round 2+) per finding: FIXED <what changed> |
                     DISAGREE <evidence>
 STATUS: READY-FOR-CRITIC | NEEDS-HUMAN | NEEDS-SPLIT
@@ -388,17 +421,19 @@ RULES
   it makes review or rollback easier. Every merge forces in-flight
   siblings to re-verify, so parallel sub-tickets are not free.
 
-OUTPUT
+OUTPUT (the harness writes it to the change's tasks.md)
 For each sub-ticket:
   ID / Title
   Depends on: none | IDs
   Parallel-safe: yes | no (reason)
   Scope: lettered parts from the parent it covers
-  Acceptance: commands + expected results
+  Acceptance: the parent's scenarios it covers, each as its WHEN command,
+    THEN result and verification.md label, plus any intermediate checks
+    it needs, labelled NEW or REGRESSION the same way
   Tests to change: none | the subset of the parent's list this one touches
   Protected paths: none | the subset of the parent's Risk list this one touches
   Out of scope:
-Coverage map: parent criterion → sub-ticket ID
+Coverage map: parent scenario → sub-ticket ID
 STATUS: PLANNED | ESCALATE
 CONFIDENCE / ESCALATIONS
 ```
@@ -654,6 +689,7 @@ Six review rounds ran on this doc, using the reviewer prompt in the appendix. Ro
 36. After the P0 run (2026-10-01): a question returns to the role that asked with the answer and that role's previous output, so a re-run Triage or Spec writer reads the answer against the question it asked instead of re-deriving it; a requester's CLARIFY answer follows the same rule, and two Answered rows in the routing table carry the same inputs.
 37. The spec FORMAT gains an optional Operator steps section: actions or checks on live or protected state that only the operator can perform after merge. They are not acceptance and change no routing; the human approves them at the spec gate, and critic rubric 2 checks that they sit there and not under Acceptance. No tracked post-merge obligation.
 38. After the intake run against this repo (2026-10-01): the role-context block is declared in the Harness section as a per-repo input every role receives first, ahead of its declared INPUT and the routing table's "Receives"; where the block is kept stays open.
+39. Specs live in an OpenSpec tree under a forked `spec-factory` schema (Harness, Spec store): current truth per capability, one change folder per ticket (proposal, design, delta, tasks, and the factory-only `verification.md`), and a repo-level `decisions.md`. The spec writer's FORMAT is one document in those parts, and the delta's scenarios are the Acceptance items; the spec writer and the critic receive current truth; the planner's output is the change's `tasks.md`; the spec gate pins the change folder; parent close archives it (apply the deltas, move the folder, append the decisions). Roles, round limits, gates and harness pieces 1–12 are unchanged.
 
 Declined: a dedicated merge agent (merging is gate config plus human gates, not a judgment call).
 
