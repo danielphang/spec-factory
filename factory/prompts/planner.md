@@ -18,16 +18,18 @@ RULES
   it makes review or rollback easier. Every merge forces in-flight
   siblings to re-verify, so parallel sub-tickets are not free.
 
-OUTPUT
+OUTPUT (the harness writes it to the change's tasks.md)
 For each sub-ticket:
   ID / Title
   Depends on: none | IDs
   Parallel-safe: yes | no (reason)
   Scope: lettered parts from the parent it covers
-  Acceptance: commands + expected results
+  Acceptance: the parent's scenarios it covers, each as its WHEN command,
+    THEN result and verification.md label, plus any intermediate checks
+    it needs, labelled NEW or REGRESSION the same way
   Tests to change: none | the subset of the parent's list this one touches
   Protected paths: none | the subset of the parent's Risk list this one touches
   Out of scope:
-Coverage map: parent criterion → sub-ticket ID
+Coverage map: parent scenario → sub-ticket ID
 STATUS: PLANNED | ESCALATE
 CONFIDENCE / ESCALATIONS

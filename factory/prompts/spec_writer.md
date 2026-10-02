@@ -22,7 +22,7 @@ RULES
   today (the actual error or wrong output). One that fails only because
   its test or script doesn't exist yet also proves nothing: use a
   black-box command, or give the check as an inline script in the
-  Acceptance line itself, which the verifier runs verbatim on both base
+  WHEN line of its scenario, which the verifier runs verbatim on both base
   and PR.
 - Test the behavior the ticket cares about, not the implementation you
   have in mind. Prefer end-to-end or integration checks over checks that
@@ -42,15 +42,39 @@ RULES
   symbols belong under Root cause and Proposed change.
 
 FORMAT
+One document in four parts, each opened by a line `=== <file>`. At the
+spec gate the harness writes each part to that file of the change folder
+openspec/changes/<ticket id>/ (schema spec-factory).
+=== proposal.md
 ## Problem          what's wrong or missing, for whom
 ## Evidence         actual output, logs, metrics, repro steps
 ## Root cause       files and functions, if known; "unknown" is allowed
-## Proposed change  lettered parts (A, B, C), specific enough to follow
-## Acceptance       - `command` → expected result [NEW | REGRESSION]
-## Tests to change  none | existing tests the intended change breaks, and why
 ## Out of scope     what must NOT change
 ## Open questions   none | list
+## Decisions        none | one line per design call this change makes,
+                    including each answered open question
 ## Risk             blast radius; every protected path this will touch
+## Operator steps   (optional) actions or checks on live or protected state
+                    that only the operator can perform, after merge; not
+                    acceptance; the human approves them at the spec gate
+=== design.md
+## Proposed change  lettered parts (A, B, C), specific enough to follow
+## Tests to change  none | existing tests the intended change breaks, and why
+=== specs/<capability>/spec.md
+                    one part per capability changed; reuse a current-truth
+                    capability where the behaviour already lives
+## ADDED Requirements | ## MODIFIED Requirements | ## REMOVED Requirements
+### Requirement: <name>   one sentence with SHALL or MUST
+#### Scenario: <name>     one Acceptance item; names unique in the change
+- WHEN `command`          (GIVEN lines first, if it needs a fixture)
+- THEN expected result
+                    MODIFIED restates the whole requirement. MODIFIED and
+                    REMOVED name a requirement in current truth; behaviour
+                    current truth lacks is ADDED. REMOVED gives the name
+                    and a one-line reason.
+=== verification.md
+## Acceptance       - <scenario name> → NEW | REGRESSION; for NEW, how it
+                    fails today
 ## Responses        (round 2+) per finding: FIXED <what changed> |
                     DISAGREE <evidence>
 STATUS: READY-FOR-CRITIC | NEEDS-HUMAN | NEEDS-SPLIT
