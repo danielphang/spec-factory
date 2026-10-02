@@ -207,7 +207,7 @@ def validate(text: str) -> tuple[dict[str, str], dict[str, dict[str, dict[str, s
     if "verification.md" not in parts:
         errors.append("no verification.md part")
     else:
-        for n in names:
+        for n in dict.fromkeys(names):
             if n not in labels:
                 errors.append(f"scenario {n!r} has no NEW/REGRESSION label in verification.md")
         for n in labels:
@@ -319,6 +319,8 @@ def archive(root: Path, tid: str, verifier_rows: list[str], today: str | None = 
     for sub in sorted(d.glob("specs/*/spec.md")):
         cap = sub.parent.name
         ops, _ = parse_delta(sub.read_text(encoding="utf-8"))
+        if not any(ops.values()):
+            continue  # an op heading with nothing under it changes no current truth
         tp = truth_path(root, cap)
         cur = tp.read_text(encoding="utf-8") if tp.exists() else ""
         store.write_text(tp, apply_delta(cur, cap, ops))
