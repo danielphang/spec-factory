@@ -102,6 +102,51 @@ def compose(root: Path, cfg: dict, meta: dict, t: dict) -> tuple[str, list[str]]
         add(f"specs/{tid}/v{av}.md", f"Approved spec (v{av}, pinned)")
         for p in _approvals(root, tid, "ruling"):
             add(str(p.relative_to(root)), "Human ruling")
+    elif role in ("implementer", "reviewer", "verifier"):
+        parent = t.get("parent") or tid  # the parent-close verifier runs on the parent itself
+        pt = store.load_ticket(root, parent) if parent != tid else t
+        av = pt["spec"]["approved_version"]
+        if av is None:
+            raise store.Refused(f"{parent} has no approved spec version")
+        where = (f"\n## Where you work\nWorktree: `{meta.get('worktree')}` (branch `{meta.get('branch')}`, "
+                 f"base `{meta.get('base')}`, head `{meta.get('head')}`). There is no remote: commit on the "
+                 f"branch; the PR is the branch plus the description you return. Gate commands: "
+                 + "; ".join(f"`{g}`" for g in cfg.get("gate_commands", [])) + "\n")
+        parts.append(where)
+        if role == "implementer":
+            add(f"specs/{tid}/subticket.md", f"Sub-ticket {tid}")
+            add(f"specs/{parent}/v{av}.md", f"Parent spec (v{av}, pinned)")
+            prnd = t["round"]["pr"]
+            if prnd >= 1 and t.get("head"):
+                for r in ("reviewer", "verifier"):
+                    rows = store.results_for(root, t["head"])
+                    rid = (rows.get(r) or {}).get("run_id")
+                    if rid:
+                        add(f"runs/{rid}/output.md", f"{r.capitalize()} findings on your previous head")
+                ci = store.results_for(root, t["head"]).get("ci")
+                if ci:
+                    parts.append(f"\n## Gate suite on your previous head\n{ci.get('status')}\n{ci.get('detail') or ''}\n")
+            for p in _approvals(root, tid, "ruling"):
+                add(str(p.relative_to(root)), "Human ruling")
+        else:
+            if parent == tid:
+                add(f"specs/{tid}/v{av}.md", f"Parent spec (v{av}, pinned): verify every scenario on main")
+            else:
+                add(f"specs/{tid}/subticket.md", f"Sub-ticket {tid}")
+                add(f"specs/{parent}/v{av}.md", f"Parent spec (v{av}, pinned)")
+                impl = _runs_for(root, tid, "implementer", run_id)
+                if impl:
+                    add(f"runs/{impl[-1]}/output.md", "PR description (the implementer's output)")
+                diff_rel = f"runs/{run_id}/diff.patch"
+                if (root / diff_rel).exists():
+                    add(diff_rel, f"Diff `{meta.get('base')}...{meta.get('head')}`")
+                prnd = t["round"]["pr"]
+                if prnd >= 2:
+                    prev = _runs_for(root, tid, role, run_id)
+                    if prev:
+                        add(f"runs/{prev[-1]}/output.md", f"Your prior findings (round {prnd - 1})")
+            for p in _approvals(root, tid, "ruling"):
+                add(str(p.relative_to(root)), "Human ruling")
     else:
         raise store.Refused(f"compose: role {role} not supported yet")
     return "".join(parts), sources

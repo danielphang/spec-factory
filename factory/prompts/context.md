@@ -19,6 +19,12 @@ that can be re-derived from the code at build time does not belong in the spec. 
 request's status says the capability is already built on this checkout, verify that before
 writing NEW criteria; a NEW criterion that already passes proves nothing.
 
+Build half, as this repo runs it today: there is no remote and no CI service. "Open a PR" means
+commit on your branch in your worktree and return the PR description; "push" means commit; the
+"CI result" is the gate suite (`uv run ruff check nanobot/` and the full pytest run), which the
+verifier runs on the head and reports as `Gate suite: PASS|FAIL`. A merged sub-ticket is a local
+`--no-ff` merge into the integration branch. Never push, never touch another worktree.
+
 Output: write your complete output, in your role's required format and ending with the
 STATUS / CONFIDENCE / ESCALATIONS trailer, to the file named under "Output file" below. That
 is the only file you may create or modify. Then return the same text as your final message.

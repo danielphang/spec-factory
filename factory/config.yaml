@@ -14,6 +14,11 @@ gate_commands:
   - "PYTHONDONTWRITEBYTECODE=1 COLUMNS=200 TERM=dumb NO_COLOR=1 uv run pytest -q -p no:cacheprovider tests/"
 placeholders: {rounds: 2, spec_lines: 400, audit_n: 5, retro_min: 3}
 max_rounds: {spec: 2, pr: 2}
+# Build half, local-commit stand-in (operator, 2026-10-02): no remote, no CI. The merge gate is the
+# gate suite on the branch plus the two checkers; then a local --no-ff merge into integration_branch
+# (null = the target repo's current branch). FACTORY_REPO / FACTORY_INTEGRATION_BRANCH override.
+integration_branch: null
+force_push_allowed: false
 models:
   triage: opus
   spec_writer: opus
@@ -29,7 +34,10 @@ ready_state:
   spec_writer: ready-for-spec-writer
   critic: ready-for-critic
   planner: ready-for-planner
-# Routing edges (doc §Routing table, intake half, plus the resolution rules). Anything else is refused.
+  implementer: ready-for-implementer
+  reviewer: checks-in-flight
+  verifier: checks-in-flight
+# Routing edges (doc §Routing table, both halves, plus the resolution rules). Anything else is refused.
 routing:
   ready-for-triage: [ready-for-spec-writer, waiting-requester, parked, closed]
   waiting-requester: [ready-for-triage, closed]
@@ -37,5 +45,13 @@ routing:
   ready-for-critic: [ready-for-spec-writer, awaiting-spec-gate, parked, closed]
   awaiting-spec-gate: [ready-for-planner, ready-for-spec-writer, closed]
   ready-for-planner: [planned, parked, closed]
-  parked: [ready-for-triage, ready-for-spec-writer, ready-for-critic, ready-for-planner, awaiting-spec-gate, closed]
-  planned: [closed]
+  parked: [ready-for-triage, ready-for-spec-writer, ready-for-critic, ready-for-planner, awaiting-spec-gate, ready-for-implementer, ready-for-parent-verify, closed]
+  planned: [ready-for-parent-verify, parked, closed]
+  # sub-tickets
+  waiting-dependencies: [ready-for-implementer, parked, closed]
+  ready-for-implementer: [checks-in-flight, parked, closed]
+  checks-in-flight: [ready-for-merge, ready-for-implementer, parked, closed]
+  ready-for-merge: [merged, ready-for-implementer, parked, closed]
+  merged: [closed]
+  # parent, after every sub-ticket merged
+  ready-for-parent-verify: [closed, parked]

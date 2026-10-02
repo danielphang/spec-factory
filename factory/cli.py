@@ -16,10 +16,11 @@ from pathlib import Path
 
 import yaml
 
-from factory import compose, specstore, status, store
+from factory import compose, gitops, specstore, status, store, subtickets
 from factory.store import Refused
 
-ROLES = ("triage", "spec_writer", "critic", "planner")
+ROLES = ("triage", "spec_writer", "critic", "planner", "implementer", "reviewer", "verifier")
+BUILD_ROLES = ("implementer", "reviewer", "verifier")
 PROMPTS = Path(__file__).resolve().parent / "prompts"
 
 
@@ -157,12 +158,17 @@ def _run_dir(root: Path, rid: str) -> Path:
 
 def run_start(a, root, cfg):
     if a.role not in ROLES:
-        raise Refused(f"unknown role {a.role}; P0 roles: {', '.join(ROLES)}")
+        raise Refused(f"unknown role {a.role}; roles: {', '.join(ROLES)}")
     t = store.load_ticket(root, a.ticket)
+    parent_close = a.role == "verifier" and t["status"] == "ready-for-parent-verify"
     ready = cfg["ready_state"][a.role]
-    if t["status"] != ready:
+    if t["status"] != ready and not parent_close:
         raise Refused(f"{t['id']} is {t['status']}, not {ready}")
-    if t["in_flight"]:
+    if a.role == "implementer" and t["in_flight"]:
+        raise Refused(f"{t['id']} already has run {t['in_flight'][0]} in flight")
+    if a.role in ("reviewer", "verifier") and any(a.role in r for r in t["in_flight"]):
+        raise Refused(f"{t['id']} already has a {a.role} run in flight")
+    if a.role in ("triage", "spec_writer", "critic", "planner") and t["in_flight"]:
         raise Refused(f"{t['id']} already has run {t['in_flight'][0]} in flight")
     rid = store.next_run_id(root, a.role)
     model = a.model or cfg["models"][a.role]
@@ -170,14 +176,52 @@ def run_start(a, root, cfg):
     meta = {"run_id": rid, "role": a.role, "ticket": t["id"], "model": model, "round": t["round"]["spec"],
             "spec_version": t["spec"]["version"], "started": store.now(), "finished": None,
             "wall_s": None, "status": "running", "input_sources": None}
+    if a.role in BUILD_ROLES:
+        _start_build_run(root, cfg, t, meta, d, parent_close)
     store.write_yaml(d / "meta.yaml", meta)
-    prompt_name = {"triage": "triage", "spec_writer": "spec_writer", "critic": "critic", "planner": "planner"}[a.role]
+    prompt_name = a.role
     sysp = (PROMPTS / "preamble.md").read_text(encoding="utf-8").rstrip() + "\n\n" + (PROMPTS / f"{prompt_name}.md").read_text(encoding="utf-8")
     store.write_text(d / "system-prompt.txt", sysp)
     t["in_flight"].append(rid)
     store.save_ticket(root, t)
     store.log_event(root, "run.started", ticket=t["id"], run=rid, role=a.role, model=model)
     out({"ok": True, "run_id": rid, "role": a.role, "model": model})
+
+
+def _start_build_run(root: Path, cfg: dict, t: dict, meta: dict, d: Path, parent_close: bool) -> None:
+    """Worktrees for the build roles (build spec I.3, local stand-in): the implementer gets the
+    ticket's branch (created from the integration branch at first dispatch); each checker gets a
+    detached checkout of the head it checks, plus the diff written as runs/<id>/diff.patch."""
+    repo = gitops.repo_root(cfg)
+    integ = gitops.integration_branch(cfg, repo)
+    meta["round"] = t["round"]["pr"]
+    if meta["role"] == "implementer":
+        branch = t.get("branch") or gitops.branch_of(t["id"])
+        wt = root / "worktrees" / t["id"]
+        if not wt.exists():
+            gitops.add_worktree(repo, wt, branch, integ, new_branch=t.get("branch") is None)
+        t["branch"] = branch
+        meta.update({"branch": branch, "base": gitops.rev(repo, integ), "head": gitops.rev(repo, branch),
+                     "worktree": str(wt), "resolution": "conflict" if t.get("merge_refused") else None})
+    else:
+        head = gitops.rev(repo, integ) if parent_close else t.get("head")
+        base = (t.get("parent_base") or head) if parent_close else gitops.rev(repo, integ)
+        if not head:
+            raise Refused(f"{t['id']} has no head to check")
+        wt = d / "wt"
+        gitops.add_detached_worktree(repo, wt, head)
+        if not parent_close:
+            store.write_text(d / "diff.patch", gitops.diff(repo, base, head))
+        meta.update({"branch": t.get("branch"), "base": base, "head": head, "worktree": str(wt)})
+
+
+def run_cleanup(a, root, cfg):
+    d = _run_dir(root, a.run)
+    meta = store.read_yaml(d / "meta.yaml")
+    wt = Path(meta.get("worktree") or "")
+    if meta.get("role") in ("reviewer", "verifier") and wt.exists():
+        gitops.remove_worktree(gitops.repo_root(cfg), wt)
+    out({"ok": True, "run_id": a.run, "removed": str(wt) if wt else None})
 
 
 def run_compose(a, root, cfg):
@@ -272,6 +316,155 @@ def plan_add(a, root, cfg):
     store.save_ticket(root, t)
     store.log_event(root, "plan.added", ticket=t["id"], source=a.from_run or a.file)
     out({"ok": True, "id": t["id"], "path": rel})
+
+
+# ----- build half: sub-tickets, results, merge (parts B, D, G; local stand-in) -------------------
+
+def subticket_add(a, root, cfg):
+    parent = store.load_ticket(root, a.id)
+    if parent["spec"]["approved_version"] is None:
+        raise Refused(f"{parent['id']} has no approved spec")
+    if a.run:
+        d = _run_dir(root, a.run)
+        meta = store.read_yaml(d / "meta.yaml")
+        if meta.get("ticket") != parent["id"] or meta.get("role") != "planner" or meta.get("status") != "PLANNED":
+            raise Refused(f"{a.run} is not a PLANNED planner run of {parent['id']}")
+        text = status.strip_trailer((d / "output.md").read_text(encoding="utf-8"))
+    else:
+        text = Path(a.file).read_text(encoding="utf-8")
+    subs = subtickets.parse(text)
+    if not subs:
+        raise Refused("no sub-tickets found (lines like `T-0001.1 / Title` with `Depends on:` and `Parallel-safe:`)")
+    ids = {s["id"] for s in subs}
+    made = []
+    for sdef in subs:
+        if not sdef["id"].startswith(parent["id"] + "."):
+            raise Refused(f"sub-ticket {sdef['id']} does not belong to {parent['id']}")
+        for dep in sdef["depends_on"]:
+            if dep not in ids:
+                raise Refused(f"{sdef['id']} depends on {dep}, which is not in this plan")
+        if store.ticket_path(root, sdef["id"]).exists():
+            raise Refused(f"{sdef['id']} already exists")
+    for sdef in subs:
+        st = store.new_ticket(root, sdef["id"], sdef["title"], parent["request"], f"plan:{a.run or a.file}")
+        st.update({"type": "sub-ticket", "parent": parent["id"], "depends_on": sdef["depends_on"],
+                   "parallel_safe": sdef["parallel_safe"],
+                   "status": "ready-for-implementer" if not sdef["depends_on"] else "waiting-dependencies"})
+        st["spec"] = {"version": parent["spec"]["version"], "approved_version": parent["spec"]["approved_version"]}
+        store.write_text(root / "specs" / sdef["id"] / "subticket.md", sdef["text"])
+        store.save_ticket(root, st)
+        store.log_event(root, "ticket.created", ticket=sdef["id"], parent=parent["id"], status=st["status"])
+        made.append({"id": sdef["id"], "state": st["status"], "depends_on": sdef["depends_on"], "parallel_safe": sdef["parallel_safe"]})
+    out({"ok": True, "parent": parent["id"], "subtickets": made})
+
+
+def ticket_ready_implementers(a, root, cfg):
+    subs = store.subtickets_of(root, a.id)
+    out({"ok": True, "parent": a.id, "ready": subtickets.ready_implementers(subs),
+         "remaining": [s["id"] for s in subs if s["status"] not in ("merged", "parked", "closed")],
+         "in_flight": [s["id"] for s in subs if s["in_flight"] or s["status"] in ("checks-in-flight",)]})
+
+
+def ticket_head(a, root, cfg):
+    t = store.load_ticket(root, a.id)
+    if not t.get("branch"):
+        raise Refused(f"{t['id']} has no branch yet")
+    repo = gitops.repo_root(cfg)
+    head = gitops.rev(repo, t["branch"])
+    changed = head != t.get("head")
+    t["head"] = head
+    store.save_ticket(root, t)
+    out({"ok": True, "id": t["id"], "head": head, "branch": t["branch"], "changed": changed})
+
+
+def results_record(a, root, cfg):
+    t = store.load_ticket(root, a.id)
+    if a.role not in ("reviewer", "verifier"):
+        raise Refused("results record: --role reviewer|verifier")
+    text = Path(a.output).read_text(encoding="utf-8") if a.output else ""
+    if a.killed:
+        st = "KILLED"
+    else:
+        parsed = status.parse(text)
+        st = parsed["status"] or "UNKNOWN"
+    stale = t.get("head") is not None and a.head != t.get("head")
+    rows = [store.record_result(root, t["id"], a.head, a.role, st, a.run)]
+    if a.role == "verifier" and not a.killed:
+        m = re.search(r"^Gate suite:\s*(PASS|FAIL)\b(.*)$", text, re.M)
+        ci = (m.group(1), m.group(2).strip() or None) if m else ("FAIL", "missing Gate suite line")
+        rows.append(store.record_result(root, t["id"], a.head, "ci", ci[0], a.run, ci[1]))
+    ev = "result.stale-discarded" if stale else "result.recorded"
+    for r in rows:
+        store.log_event(root, ev, ticket=t["id"], head=a.head, role=r["role"], status=r["status"], run=a.run)
+    out({"ok": True, "id": t["id"], "head": a.head, "stale": stale, "rows": [{k: r[k] for k in ("role", "status")} for r in rows]})
+
+
+def results_show(a, root, cfg):
+    t = store.load_ticket(root, a.id)
+    head = t.get("head")
+    rows = store.results_for(root, head) if head else {}
+    missing = [r for r in store.RESULT_ROLES if r not in rows]
+    out({"ok": True, "id": t["id"], "head": head, "rows": {k: v["status"] for k, v in rows.items()}, "missing": missing})
+
+
+def merge_cmd(a, root, cfg):
+    """Rule-4 checks (part G) in the local stand-in: ci PASS + APPROVE + VERIFIED on the current
+    head, head contains the integration branch; then a local --no-ff merge. Exit 2 names the
+    first failing condition; 'head does not contain main' is the conflict-run signal."""
+    t = store.load_ticket(root, a.id)
+    if t["status"] not in ("ready-for-merge", "checks-in-flight"):
+        raise Refused(f"{t['id']} is {t['status']}, not ready-for-merge")
+    repo = gitops.repo_root(cfg)
+    integ = gitops.integration_branch(cfg, repo)
+    head = t.get("head")
+    if not head or gitops.rev(repo, t["branch"]) != head:
+        raise Refused(f"{t['id']} head {head} is not the branch tip; run ticket head")
+    rows = store.results_for(root, head)
+    for role, want in (("ci", "PASS"), ("reviewer", "APPROVE"), ("verifier", "VERIFIED")):
+        got = (rows.get(role) or {}).get("status")
+        if got != want:
+            raise Refused(f"{role} is {got or 'missing'} for {head[:9]}, need {want}")
+    if not gitops.head_contains(repo, head, integ):
+        t["merge_refused"] = "head does not contain main"
+        store.save_ticket(root, t)
+        raise Refused(f"head does not contain main ({integ} moved; merge it into {t['branch']} and re-check)")
+    before, after = gitops.merge_no_ff(repo, t["branch"], integ, f"Merge {t['branch']}: {t['title']} ({t['id']})")
+    t.update({"status": "merged", "merge": {"base_before": before, "main_after": after}, "merge_refused": None})
+    t["history"].append({"ts": store.now(), "from": "ready-for-merge", "to": "merged", "by": "merge", "head": head})
+    store.save_ticket(root, t)
+    store.log_event(root, "merge.done", ticket=t["id"], head=head, base_before=before, main_after=after)
+    released = []
+    if t.get("parent"):
+        parent = store.load_ticket(root, t["parent"])
+        if parent.get("parent_base") is None:
+            parent["parent_base"] = before
+            store.save_ticket(root, parent)
+        for s in store.subtickets_of(root, t["parent"]):
+            if s["status"] == "waiting-dependencies" and all(
+                    store.load_ticket(root, dep)["status"] == "merged" for dep in s["depends_on"]):
+                s["status"] = "ready-for-implementer"
+                s["history"].append({"ts": store.now(), "from": "waiting-dependencies", "to": "ready-for-implementer", "by": "merge"})
+                store.save_ticket(root, s)
+                store.log_event(root, "ticket.transition", ticket=s["id"], **{"from": "waiting-dependencies", "to": "ready-for-implementer", "by": "merge"})
+                released.append(s["id"])
+    gitops.remove_worktree(repo, root / "worktrees" / t["id"])
+    out({"ok": True, "id": t["id"], "state": "merged", "base_before": before, "main_after": after, "released": released})
+
+
+def ticket_parent_check(a, root, cfg):
+    """When every sub-ticket is merged, the parent moves to ready-for-parent-verify (part G)."""
+    parent = store.load_ticket(root, a.id)
+    subs = store.subtickets_of(root, parent["id"])
+    if not subs:
+        raise Refused(f"{parent['id']} has no sub-tickets")
+    if all(s["status"] == "merged" for s in subs) and parent["status"] == "planned":
+        frm = parent["status"]
+        parent["status"] = "ready-for-parent-verify"
+        parent["history"].append({"ts": store.now(), "from": frm, "to": "ready-for-parent-verify", "by": "parent-check"})
+        store.save_ticket(root, parent)
+        store.log_event(root, "ticket.transition", ticket=parent["id"], **{"from": frm, "to": "ready-for-parent-verify", "by": "parent-check"})
+    out({"ok": True, "id": parent["id"], "state": parent["status"],
+         "subtickets": {s["id"]: s["status"] for s in subs}})
 
 
 # ----- human surface (K-lite) -----------------------------------------------------
@@ -499,6 +692,15 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--outputs")
     p.add_argument("--question")
     p.set_defaults(fn=ticket_park)
+    p = tk.add_parser("ready-implementers")
+    p.add_argument("id")
+    p.set_defaults(fn=ticket_ready_implementers)
+    p = tk.add_parser("head")
+    p.add_argument("id")
+    p.set_defaults(fn=ticket_head)
+    p = tk.add_parser("parent-check")
+    p.add_argument("id")
+    p.set_defaults(fn=ticket_parent_check)
 
     rn = sp.add_parser("run").add_subparsers(dest="sub", required=True)
     p = rn.add_parser("start")
@@ -514,6 +716,9 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--output-file")
     p.add_argument("--status-override")
     p.set_defaults(fn=run_finish)
+    p = rn.add_parser("cleanup")
+    p.add_argument("run")
+    p.set_defaults(fn=run_cleanup)
 
     sc = sp.add_parser("spec").add_subparsers(dest="sub", required=True)
     p = sc.add_parser("add")
@@ -532,6 +737,27 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("id")
     p.add_argument("--run", required=True)
     p.set_defaults(fn=spec_tasks)
+    sb = sp.add_parser("subticket").add_subparsers(dest="sub", required=True)
+    p = sb.add_parser("add")
+    p.add_argument("id")
+    p.add_argument("--run")
+    p.add_argument("--file")
+    p.set_defaults(fn=subticket_add)
+    rs = sp.add_parser("results").add_subparsers(dest="sub", required=True)
+    p = rs.add_parser("record")
+    p.add_argument("id")
+    p.add_argument("--head", required=True)
+    p.add_argument("--role", required=True)
+    p.add_argument("--output")
+    p.add_argument("--run")
+    p.add_argument("--killed", action="store_true")
+    p.set_defaults(fn=results_record)
+    p = rs.add_parser("show")
+    p.add_argument("id")
+    p.set_defaults(fn=results_show)
+    p = sp.add_parser("merge")
+    p.add_argument("id")
+    p.set_defaults(fn=merge_cmd)
     p = sp.add_parser("init")
     p.set_defaults(fn=init_cmd)
     p = sp.add_parser("archive")

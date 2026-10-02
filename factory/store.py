@@ -18,7 +18,11 @@ CONFIG_PATH = Path(__file__).resolve().parent / "config.yaml"
 STATES = [
     "ready-for-triage", "waiting-requester", "ready-for-spec-writer", "ready-for-critic",
     "awaiting-spec-gate", "ready-for-planner", "planned", "parked", "closed",
+    # build half (sub-tickets, and the parent after all of them merged)
+    "waiting-dependencies", "ready-for-implementer", "checks-in-flight", "ready-for-merge",
+    "merged", "ready-for-parent-verify",
 ]
+RESULT_ROLES = ("reviewer", "verifier", "ci")
 
 
 class Refused(Exception):  # noqa: N818
@@ -126,6 +130,11 @@ def new_ticket(root: Path, tid: str, title: str, request_rel: str, source: str) 
         "parked": None,
         "created": now(),
         "history": [],
+        # build half
+        "parent": None, "depends_on": [], "parallel_safe": True,
+        "branch": None, "head": None,
+        "merge": {"base_before": None, "main_after": None},
+        "parent_base": None,
     }
 
 
@@ -140,3 +149,36 @@ def index_path(root: Path) -> Path:
 def load_index(root: Path) -> dict:
     p = index_path(root)
     return read_yaml(p) or {} if p.exists() else {}
+
+
+def subtickets_of(root: Path, parent: str) -> list[dict]:
+    """The parent's sub-ticket records, in id order (T-0001.1, T-0001.2, …)."""
+    d = root / "tickets"
+    out = []
+    if d.exists():
+        for p in d.glob(f"{parent}.*.yaml"):
+            out.append(read_yaml(p))
+    return sorted(out, key=lambda t: int(t["id"].rsplit(".", 1)[1]))
+
+
+# ----- commit-bound results table (build spec part D) -----------------------------------------
+
+def result_path(root: Path, head: str, role: str) -> Path:
+    return root / "results" / head / f"{role}.yaml"
+
+
+def record_result(root: Path, tid: str, head: str, role: str, status: str, run_id: str | None, detail: str | None = None) -> dict:
+    row = {"ticket": tid, "head": head, "role": role, "status": status, "run_id": run_id, "at": now()}
+    if detail:
+        row["detail"] = detail
+    write_yaml(result_path(root, head, role), row)
+    return row
+
+
+def results_for(root: Path, head: str) -> dict[str, dict]:
+    d = root / "results" / head
+    out = {}
+    if d.exists():
+        for p in d.glob("*.yaml"):
+            out[p.stem] = read_yaml(p)
+    return out
