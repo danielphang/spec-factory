@@ -1,32 +1,21 @@
-# Issue drafts (parked)
+# Issues
 
-Findings against the design doc, spec, or P0 plan, each from a real pipeline run, written in
-GitHub-issue shape (front-matter `title`/`labels`, then body). Parked here until `gh auth` is
-restored on the operator's machine, then filed with:
+Findings against the design doc, build spec or P0 plan, each from a real pipeline run. Filed on
+GitHub 2026-10-02; the drafts that lived here were removed in the commit that recorded the numbers.
+A fix closes its issue through a reviewed change on `main`; the merge column is that change.
 
-```
-for f in issues/0*.md; do gh issue create -R danielphang/spec-factory \
-  --title "$(sed -n 's/^title: //p' $f)" --body-file <(awk 'c>=2{print} /^---$/{c++}' $f); done
-```
+| # | Issue | Intake ticket | Merge on `main` | Changelog |
+|---|---|---|---|---|
+| [1](https://github.com/danielphang/spec-factory/issues/1) | STATUS parser rejects a wrapped CONFIDENCE line | T-0001 | `fdefa22` + `3bd8641` | 34 |
+| [2](https://github.com/danielphang/spec-factory/issues/2) | Clerk-via-schema re-encodes the CLI's JSON | T-0002 | `b83e883` | 35 |
+| [3](https://github.com/danielphang/spec-factory/issues/3) | Re-asked role does not receive its own prior output | T-0003 | `32cf6f6` | 36 |
+| [4](https://github.com/danielphang/spec-factory/issues/4) | `.claude/agents/` created mid-session is invisible to that session | T-0004 | `e321117` | plan only |
+| [5](https://github.com/danielphang/spec-factory/issues/5) | Faux-spec live-state steps sit under a protected path | T-0005 | `ac66b2c` | 37 |
+| [6](https://github.com/danielphang/spec-factory/issues/6) | P0-5 grep contradicts the inline-script allowance | T-0006 | `366d469` | plan only |
+| [7](https://github.com/danielphang/spec-factory/issues/7) | Harness instance is single-target | T-0007 | `b9379ec` | 38 |
+| [8](https://github.com/danielphang/spec-factory/issues/8) | Adopt OpenSpec's storage model as a forked schema | T-0008 | `03d8835` | 39 |
+| [9](https://github.com/danielphang/spec-factory/issues/9) | `run start` must reserve the run id atomically | T-0009 | `f2576ca` | spec only |
+| [10](https://github.com/danielphang/spec-factory/issues/10) | A spec pinned before `factory init` has no change folder | T-0010 | in intake | — |
 
-After filing, delete the draft in the same commit that records the issue number. A fix to the
-design doc closes the issue through a reviewed PR; each draft names the Nanobot-side commit
-where the fix already exists.
-
-## Applied on `main` (2026-10-01), filing pending
-
-Drafts 01–07 went through the scratch intake (`intake/README.md`), were approved at the gate
-and applied; each merge below is the reviewed change a filed issue would close. When `gh auth`
-is back, file each and close it against its merge in the same step.
-
-| Draft | Merge | Changelog |
-|---|---|---|
-| 01 status parser | `fdefa22` (+ `3bd8641` fix) | 34 |
-| 02 clerk schema | `b83e883` | 35 |
-| 03 re-asked role input | `32cf6f6` | 36 |
-| 04 agents dir | `e321117` | plan only |
-| 05 operator steps | `ac66b2c` | 37 |
-| 06 P0-5 two numbers | `366d469` | plan only |
-| 07 single-target harness | `b9379ec` | 38 |
-| 08 OpenSpec schema | `03d8835` | 39 |
-| 09 run-id reservation | `f2576ca` | spec only |
+Issues 1–9 are applied and can be closed against their merge; 10 stays open until T-0010 lands.
+New findings go straight to GitHub issues; this file is the index.
