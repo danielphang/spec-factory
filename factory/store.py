@@ -45,6 +45,20 @@ def now() -> str:
     return dt.datetime.now(dt.timezone.utc).replace(microsecond=0).isoformat()
 
 
+STORE_GITIGNORE = "# git worktrees the build half creates; they are checkouts, never store content\nworktrees/\nruns/*/wt/\n"
+
+
+def ensure_gitignore(root: Path) -> None:
+    """The store keeps implementer worktrees under worktrees/ and checker checkouts under runs/<id>/wt/.
+    Both are nested git checkouts: a store committed by directory must not pick them up."""
+    p = root / ".gitignore"
+    have = p.read_text(encoding="utf-8") if p.exists() else ""
+    missing = [ln for ln in ("worktrees/", "runs/*/wt/") if ln not in have.splitlines()]
+    if missing:
+        root.mkdir(parents=True, exist_ok=True)
+        p.write_text((have.rstrip() + "\n\n" if have.strip() else "") + STORE_GITIGNORE, encoding="utf-8")
+
+
 def write_text(path: Path, text: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(text, encoding="utf-8")

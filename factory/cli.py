@@ -204,6 +204,7 @@ def _start_build_run(root: Path, cfg: dict, t: dict, meta: dict, d: Path, parent
     detached checkout of the head it checks, plus the diff written as runs/<id>/diff.patch."""
     repo = gitops.repo_root(cfg)
     integ = gitops.integration_branch(cfg, repo)
+    store.ensure_gitignore(root)
     meta["round"] = t["round"]["pr"]
     if meta["role"] == "implementer":
         branch = t.get("branch") or gitops.branch_of(t["id"])

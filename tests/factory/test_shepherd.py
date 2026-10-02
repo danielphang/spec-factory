@@ -196,6 +196,8 @@ def test_the_planned_ticket_is_built_checked_merged_and_archived(tmp_path):
     # | Implementer | READY-FOR-REVIEW | Gate runner, Reviewer, and Verifier, all on the same head |
     main_at_dispatch = f.repo_rev("main")
     impl = f.dispatch("implementer", st)
+    ignore = (f.store / ".gitignore").read_text().splitlines()
+    assert "worktrees/" in ignore and "runs/*/wt/" in ignore  # nested checkouts never ride along with the store
     assert "Sub-ticket T-0001.1" in impl.input and "### Requirement: the-thing" in impl.input
     assert "There is no remote" in impl.input
     assert f.git("merge-base", "main", f"factory/{st}").strip() == main_at_dispatch  # branched from main at dispatch
