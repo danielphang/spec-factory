@@ -29,6 +29,18 @@ def _approvals(root: Path, ticket: str, kind: str) -> list[Path]:
     return sorted(d.glob(f"{kind}-*.md")) if d.exists() else []
 
 
+def current_truth(root: Path) -> list[Path]:
+    """Every current-truth spec in the store (doc §Harness, Spec store), in path order.
+    Empty until `factory init` has created openspec/specs/ and an archive has filled it."""
+    d = root / "openspec" / "specs"
+    return sorted(d.glob("*/spec.md")) if d.exists() else []
+
+
+def _last_run_meta(root: Path, ticket: str, role: str, exclude: str) -> dict | None:
+    runs = _runs_for(root, ticket, role, exclude)
+    return store.read_yaml(root / "runs" / runs[-1] / "meta.yaml") if runs else None
+
+
 def compose(root: Path, cfg: dict, meta: dict, t: dict) -> tuple[str, list[str]]:
     role, run_id, tid = meta["role"], meta["run_id"], t["id"]
     out_path = root / "runs" / run_id / "output.md"
@@ -44,6 +56,10 @@ def compose(root: Path, cfg: dict, meta: dict, t: dict) -> tuple[str, list[str]]
 
     version = t["spec"]["version"]
     rnd = t["round"]["spec"]
+
+    def add_truth() -> None:
+        for p in current_truth(root):
+            add(str(p.relative_to(root)), f"Current truth: {p.parent.name}")
     if role == "triage":
         add(t["request"], "Request (raw, with any answers appended)")
         prior = _runs_for(root, tid, "triage", run_id)
@@ -54,6 +70,12 @@ def compose(root: Path, cfg: dict, meta: dict, t: dict) -> tuple[str, list[str]]
         if tri:
             add(f"runs/{tri[-1]}/output.md", "Ticket (Triage output)")
         add(t["request"], "Request (raw)")
+        add_truth()
+        # An answered question returns to the role that asked with its own previous output
+        # (doc §Routing rules): the writer run that parked NEEDS-HUMAN is the one that asked.
+        prev = _last_run_meta(root, tid, "spec_writer", run_id)
+        if prev and prev.get("status") == "NEEDS-HUMAN":
+            add(f"runs/{prev['run_id']}/output.md", "Your previous output (the question you asked is answered in the request above)")
         if rnd >= 1 and version >= 1:
             crit = _runs_for(root, tid, "critic", run_id)
             if crit:
@@ -65,6 +87,7 @@ def compose(root: Path, cfg: dict, meta: dict, t: dict) -> tuple[str, list[str]]
             add(str(p.relative_to(root)), "Human ruling")
     elif role == "critic":
         add(f"specs/{tid}/v{version}.md", f"Spec under review (v{version})")
+        add_truth()
         if rnd >= 2 and version >= 2:
             crit = _runs_for(root, tid, "critic", run_id)
             if crit:
