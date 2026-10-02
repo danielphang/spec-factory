@@ -38,3 +38,7 @@ T-0010:
   source: /Users/dphang/dev/spec-factory/issues/10_pre_init_pinned_specs.md
   hash: d0c62403e634eb93
   imported: '2026-10-02T06:25:11+00:00'
+T-0011:
+  source: /Users/dphang/dev/spec-factory/intake/requests/11_plain_language_problem.md
+  hash: 71c49a6986922655
+  imported: '2026-10-02T07:39:30+00:00'
