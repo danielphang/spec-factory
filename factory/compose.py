@@ -71,16 +71,16 @@ def compose(root: Path, cfg: dict, meta: dict, t: dict) -> tuple[str, list[str]]
             add(f"runs/{tri[-1]}/output.md", "Ticket (Triage output)")
         add(t["request"], "Request (raw)")
         add_truth()
-        # An answered question returns to the role that asked with its own previous output
-        # (doc §Routing rules): the writer run that parked NEEDS-HUMAN is the one that asked.
-        prev = _last_run_meta(root, tid, "spec_writer", run_id)
-        if prev and prev.get("status") == "NEEDS-HUMAN":
-            add(f"runs/{prev['run_id']}/output.md", "Your previous output (the question you asked is answered in the request above)")
         if rnd >= 1 and version >= 1:
             crit = _runs_for(root, tid, "critic", run_id)
             if crit:
                 add(f"runs/{crit[-1]}/output.md", "Critic findings on your previous version")
             add(f"specs/{tid}/v{version}.md", f"Your previous spec (v{version})")
+        # An answered question returns to the role that asked with its own previous output
+        # (doc §Routing rules): the writer run that parked NEEDS-HUMAN is the one that asked.
+        prev = _last_run_meta(root, tid, "spec_writer", run_id)
+        if prev and prev.get("status") == "NEEDS-HUMAN":
+            add(f"runs/{prev['run_id']}/output.md", "Your previous output (the question you asked is answered in the request above)")
         for p in _approvals(root, tid, "changes"):
             add(str(p.relative_to(root)), "Human gate: changes requested")
         for p in _approvals(root, tid, "ruling"):

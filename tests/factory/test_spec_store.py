@@ -159,11 +159,15 @@ def test_item_88_gate_writes_the_change_folder_with_critic_rounds(store):
     d = store / "openspec" / "changes" / "T-0001"
     assert sorted(str(p.relative_to(d)) for p in d.rglob("*") if p.is_file()) == [
         "design.md", "proposal.md", "specs/status-parser/spec.md", "verification.md"]
-    assert (d / "design.md").read_text() == "## Proposed change\nA. Read labels.\n"
-    assert (d / "specs" / "status-parser" / "spec.md").read_text().startswith("## ADDED Requirements\n### Requirement: trailer-read")
+    parts = {}
+    for chunk in FOUR_PART.split("=== ")[1:]:
+        path, _, body = chunk.partition("\n")
+        parts[path] = body
+    for path in ("proposal.md", "design.md", "specs/status-parser/spec.md"):
+        assert (d / path).read_text() == parts[path], path
     v = (d / "verification.md").read_text()
     assert v.startswith("## Acceptance\n- wrapped confidence → NEW; today it parks\n## Responses\nnone\n")
-    assert "## Critic rounds" in v and v.count("### round 1 · spec v1 · run-") == 1 and "[NIT] 2 wording" in v
+    assert "## Critic rounds" in v and v.count("round 1 · spec v1 · run-") == 1 and "[NIT] 2 wording" in v
     assert '"event": "change.pinned"' in log_text(store)
     assert list((store / "openspec" / "specs").iterdir()) == [] and (store / "decisions.md").read_text() == ""
 
@@ -171,15 +175,17 @@ def test_item_88_gate_writes_the_change_folder_with_critic_rounds(store):
 def test_item_88_gate_refuses_a_delta_that_does_not_apply_and_a_malformed_version(store, tmp_path):
     run(store, "init")
     to_gate(store, FOUR_PART)
+    assert run(store, "approve-spec", "T-0001", "--version", "1").returncode == 0
     bad = FOUR_PART.replace("## ADDED Requirements", "## MODIFIED Requirements").replace("trailer-read", "no-such-req")
     f = tmp_path / "v2.md"
     f.write_text(bad)
-    cp = run(store, "approve-spec", "T-0001", "--edit", str(f))
+    assert run(store, "spec", "add", "T-0001", "--file", str(f)).returncode == 0
+    cp = run(store, "approve-spec", "T-0001", "--version", "2")
     assert cp.returncode == 2 and "no-such-req" in cp.stderr
     t = yaml.safe_load((store / "tickets" / "T-0001.yaml").read_text())
-    assert t["spec"] == {"version": 1, "approved_version": None} and t["status"] == "awaiting-spec-gate"
+    assert t["spec"]["approved_version"] == 1
     assert not (store / "approvals" / "T-0001" / "spec-v2.yaml").exists()
-    assert not (store / "openspec" / "changes" / "T-0001").exists()
+    assert (store / "openspec" / "changes" / "T-0001" / "proposal.md").exists()  # v1's folder stands
     # malformed: no delta part; and a scenario without a label
     f.write_text("=== proposal.md\n## Problem\nx\n=== verification.md\n## Acceptance\n")
     cp = run(store, "approve-spec", "T-0001", "--edit", str(f))
@@ -223,6 +229,8 @@ def test_spec_tasks_is_a_no_op_without_a_spec_store(store):
     pid = planned(store)
     cp = run(store, "spec", "tasks", "T-0001", "--run", pid)
     assert cp.returncode == 0 and "skipped" in js(cp)
+    wid = [p.name for p in (store / "runs").iterdir() if "spec_writer" in p.name][0]
+    assert run(store, "spec", "tasks", "T-0001", "--run", wid).returncode == 2
 
 
 def test_item_89_archive_applies_the_delta_moves_the_folder_and_appends_decisions(store):
@@ -311,3 +319,48 @@ def test_modified_and_removed_rewrite_current_truth_whole(store, tmp_path):
     assert "trimmed." in truth and "wrapped confidence" not in truth and "### Requirement: none-head" in truth
     assert truth.count("### Requirement:") == 2
     assert (store / "decisions.md").read_text().splitlines().__len__() == 2  # "none" adds nothing
+
+
+# ----- adversarial shapes (validator fixtures a, e, f, g, d) ------------------------------------
+
+def test_a_heading_inside_a_fenced_block_does_not_end_the_requirement(store):
+    run(store, "init")
+    fenced = FOUR_PART.replace("- WHEN `factory status parse t.md`\n",
+                               "- WHEN this script runs:\n  ```\n  cat > t.md <<'EOF'\n  ## Not a heading\n  EOF\n  ```\n")
+    to_gate(store, fenced)
+    assert run(store, "approve-spec", "T-0001").returncode == 0
+    assert run(store, "archive", "T-0001").returncode == 0
+    truth = (store / "openspec" / "specs" / "status-parser" / "spec.md").read_text()
+    assert "## Not a heading" in truth and "- THEN status is NEEDS-HUMAN" in truth and truth.count("```") == 2
+
+
+def test_the_part_path_is_the_first_token_after_the_marker(store):
+    run(store, "init")
+    to_gate(store, FOUR_PART.replace("=== proposal.md\n", "=== proposal.md (the proposal)\n"))
+    assert run(store, "approve-spec", "T-0001").returncode == 0
+    assert (store / "openspec" / "changes" / "T-0001" / "proposal.md").read_text().startswith("## Problem\n")
+
+
+def test_an_empty_op_heading_counts_as_a_heading_and_a_slash_label_is_no_label(store, tmp_path):
+    run(store, "init")
+    to_gate(store, FOUR_PART.replace("## ADDED Requirements\n", "## REMOVED Requirements\n## ADDED Requirements\n"))
+    assert run(store, "approve-spec", "T-0001").returncode == 0
+    f = tmp_path / "v2.md"
+    f.write_text(FOUR_PART.replace("→ NEW; today it parks", "→ NEW / REGRESSION"))
+    run(store, "spec", "add", "T-0001", "--file", str(f))
+    cp = run(store, "approve-spec", "T-0001", "--version", "2")
+    assert cp.returncode == 2 and "no NEW/REGRESSION label" in cp.stderr
+    f.write_text(FOUR_PART.replace("- THEN status is NEEDS-HUMAN\n", "- THEN status is NEEDS-HUMAN\n#### Scenario: wrapped confidence\n- WHEN `y`\n- THEN z\n"))
+    run(store, "spec", "add", "T-0001", "--file", str(f))
+    cp = run(store, "approve-spec", "T-0001", "--version", "3")
+    assert cp.returncode == 2 and "named more than once" in cp.stderr
+
+
+def test_decisions_keep_markdown_join_wrapped_lines_and_skip_none(store):
+    run(store, "init")
+    to_gate(store, FOUR_PART.replace("- Trailer read by labels.\n- none-plus-prose routes as none.\n",
+                                     "**Bold** decision one\n- Decision two wraps\n  onto a second line.\nNone.\n"))
+    run(store, "approve-spec", "T-0001")
+    assert run(store, "archive", "T-0001").returncode == 0
+    dec = [ln.split(" T-0001 ", 1)[1] for ln in (store / "decisions.md").read_text().splitlines()]
+    assert dec == ["**Bold** decision one", "Decision two wraps onto a second line."]

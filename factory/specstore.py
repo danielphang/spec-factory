@@ -19,10 +19,10 @@ from factory import store
 OPS = ("ADDED", "MODIFIED", "REMOVED")
 FIXED_PARTS = ("proposal.md", "design.md", "verification.md")
 DELTA_RE = re.compile(r"^specs/([a-z0-9]+(?:-[a-z0-9]+)*)/spec\.md$")
-PART_RE = re.compile(r"^=== (\S+)\s*$", re.M)
+PART_RE = re.compile(r"^=== (\S+).*$", re.M)  # the path is the first token after "=== "
 REQ_RE = re.compile(r"^### Requirement: (.+?)\s*$")
 SCEN_RE = re.compile(r"^#### Scenario: (.+?)\s*$")
-LABEL_RE = re.compile(r"^- (.+?) → (NEW|REGRESSION)\b")
+LABEL_RE = re.compile(r"^- (.+?) → (NEW|REGRESSION)\s*(?:;.*)?$")  # "NEW / REGRESSION" is no label
 
 SCHEMA_YAML = """# Forked from OpenSpec's built-in `spec-driven` (doc §Harness, Spec store).
 name: spec-factory
@@ -73,6 +73,22 @@ def init(root: Path) -> list[str]:
 
 # ----- parsing ------------------------------------------------------------------------------
 
+def lines_outside_fences(text: str):
+    """(line, in_fence) for each line; a ``` fence at any indentation toggles. Headings and
+    requirement lines inside a fence are text, not structure."""
+    fence = False
+    for line in text.splitlines():
+        if re.match(r"^\s*```", line):
+            fence = not fence
+            yield line, True
+            continue
+        yield line, fence
+
+
+def _heading(line: str, in_fence: bool) -> bool:
+    return not in_fence and (line.startswith("## ") or line.startswith("### ") or line.startswith("#### "))
+
+
 def split_parts(text: str) -> list[tuple[str, str]]:
     """(path, body) per `=== <path>` line, in order; text before the first line is dropped."""
     ms = list(PART_RE.finditer(text))
@@ -88,11 +104,11 @@ def requirement_blocks(text: str) -> dict[str, str]:
     `### ` or `## ` heading), for a current-truth file or one delta section."""
     out: dict[str, str] = {}
     name, buf = None, []
-    for line in text.splitlines():
-        if REQ_RE.match(line) or line.startswith("## ") or (line.startswith("### ") and not REQ_RE.match(line)):
+    for line, in_fence in lines_outside_fences(text):
+        m = REQ_RE.match(line) if not in_fence else None
+        if m or (not in_fence and (line.startswith("## ") or line.startswith("### "))):
             if name is not None:
                 out[name] = "\n".join(buf).rstrip() + "\n"
-            m = REQ_RE.match(line)
             name, buf = (m.group(1), [line]) if m else (None, [])
             continue
         if name is not None:
@@ -109,9 +125,9 @@ def parse_delta(text: str) -> tuple[dict[str, dict[str, str]], list[str]]:
     errors: list[str] = []
     cur, sect = None, []
     sections: list[tuple[str | None, list[str]]] = []
-    for line in text.splitlines():
-        m = re.match(r"^## (ADDED|MODIFIED|REMOVED) Requirements\s*$", line)
-        if m or line.startswith("## "):
+    for line, in_fence in lines_outside_fences(text):
+        m = re.match(r"^## (ADDED|MODIFIED|REMOVED) Requirements\s*$", line) if not in_fence else None
+        if m or (not in_fence and line.startswith("## ")):
             sections.append((cur, sect))
             cur, sect = (m.group(1) if m else None), []
             continue
@@ -124,18 +140,19 @@ def parse_delta(text: str) -> tuple[dict[str, dict[str, str]], list[str]]:
             for n in blocks:
                 errors.append(f"requirement {n!r} is not under an ADDED, MODIFIED or REMOVED heading")
             continue
+        ops.setdefault(op, {})
         for n, b in blocks.items():
             if n in seen:
                 errors.append(f"requirement {n!r} appears more than once in the part")
             seen.add(n)
-            ops.setdefault(op, {})[n] = b
+            ops[op][n] = b
     if not ops:
         errors.append("no `## ADDED|MODIFIED|REMOVED Requirements` heading")
     return ops, errors
 
 
 def scenario_names(text: str) -> list[str]:
-    return [m.group(1) for line in text.splitlines() if (m := SCEN_RE.match(line))]
+    return [m.group(1) for line, f in lines_outside_fences(text) if not f and (m := SCEN_RE.match(line))]
 
 
 def acceptance_labels(verification: str) -> tuple[dict[str, str], list[str]]:
@@ -144,7 +161,9 @@ def acceptance_labels(verification: str) -> tuple[dict[str, str], list[str]]:
     labels: dict[str, str] = {}
     errors: list[str] = []
     inside = False
-    for line in verification.splitlines():
+    for line, in_fence in lines_outside_fences(verification):
+        if in_fence:
+            continue
         if line.startswith("## "):
             inside = line.startswith("## Acceptance")
             continue
@@ -181,6 +200,8 @@ def validate(text: str) -> tuple[dict[str, str], dict[str, dict[str, dict[str, s
     if not deltas:
         errors.append("no delta part (specs/<capability>/spec.md)")
     names = [n for p, b in parts.items() if DELTA_RE.match(p) for n in scenario_names(b)]
+    for n in sorted({n for n in names if names.count(n) > 1}):
+        errors.append(f"scenario {n!r} is named more than once in the change")
     labels, errs = acceptance_labels(parts.get("verification.md", ""))
     errors.extend(errs)
     if "verification.md" not in parts:
@@ -235,7 +256,7 @@ def critic_rounds(root: Path, tid: str) -> str:
             if m.get("ticket") != tid or m.get("role") != "critic" or not m.get("finished"):
                 continue
             body = (d / "output.md").read_text(encoding="utf-8") if (d / "output.md").exists() else ""
-            entries.append(f"### round {m.get('round')} · spec v{m.get('spec_version')} · {m['run_id']} · {m.get('status')}\n\n"
+            entries.append(f"round {m.get('round')} · spec v{m.get('spec_version')} · {m['run_id']} · {m.get('status')}\n\n"
                            + status.strip_trailer(body).rstrip() + "\n")
     return "## Critic rounds\n\n" + ("\n".join(entries) if entries else "none\n")
 
@@ -258,14 +279,18 @@ def pin(root: Path, tid: str, text: str) -> list[str]:
 
 def decisions_of(proposal: str) -> list[str]:
     inside, out = False, []
-    for line in proposal.splitlines():
-        if line.startswith("## "):
+    for line, in_fence in lines_outside_fences(proposal):
+        if not in_fence and line.startswith("## "):
             inside = line.startswith("## Decisions")
             continue
-        if inside and line.strip():
-            s = line.strip().lstrip("-* ").strip()
-            if s and s.lower() != "none":
-                out.append(s)
+        if not inside or not line.strip():
+            continue
+        if line[:1].isspace() and out:  # a wrapped continuation of the previous decision
+            out[-1] = out[-1] + " " + line.strip()
+            continue
+        s = re.sub(r"^[-*]\s+", "", line.strip())
+        if s.lower().rstrip(".") != "none":
+            out.append(s)
     return out
 
 

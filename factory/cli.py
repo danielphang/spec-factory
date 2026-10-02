@@ -292,8 +292,6 @@ def _next_n(d: Path, kind: str) -> int:
 
 def approve_spec(a, root, cfg):
     t = store.load_ticket(root, a.id)
-    if t["status"] != "awaiting-spec-gate":
-        raise Refused(f"{t['id']} is {t['status']}, not awaiting-spec-gate")
     if a.edit:
         text = Path(a.edit).read_text(encoding="utf-8")
     else:
@@ -308,6 +306,8 @@ def approve_spec(a, root, cfg):
         errors += specstore.applies(root, deltas) if not errors else []
         if errors:
             raise Refused("spec not pinned: " + "; ".join(errors))
+    if t["status"] != "awaiting-spec-gate":
+        raise Refused(f"{t['id']} is {t['status']}, not awaiting-spec-gate")
     if a.edit:
         n = _add_spec_version(root, t, text, f"gate edit {a.edit}")
     if specstore.is_active(root):
@@ -404,13 +404,13 @@ def init_cmd(a, root, cfg):
 
 def spec_tasks(a, root, cfg):
     t = store.load_ticket(root, a.id)
-    if not specstore.is_active(root):
-        out({"ok": True, "id": t["id"], "skipped": "no spec store (factory init not run)"})
-        return
     d = _run_dir(root, a.run)
     meta = store.read_yaml(d / "meta.yaml")
     if meta.get("ticket") != t["id"] or meta.get("role") != "planner" or meta.get("status") != "PLANNED":
         raise Refused(f"{a.run} is not a PLANNED planner run of {t['id']}")
+    if not specstore.is_active(root):
+        out({"ok": True, "id": t["id"], "skipped": "no spec store (factory init not run)"})
+        return
     if not specstore.change_dir(root, t["id"]).exists():
         raise Refused(f"{t['id']} has no change folder (no pinned version)")
     text = status.strip_trailer((d / "output.md").read_text(encoding="utf-8"))
