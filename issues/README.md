@@ -16,10 +16,10 @@ A fix closes its issue through a reviewed change on `main`; the merge column is 
 | [8](https://github.com/danielphang/spec-factory/issues/8) | Adopt OpenSpec's storage model as a forked schema | T-0008 | `03d8835` | 39 |
 | [9](https://github.com/danielphang/spec-factory/issues/9) | `run start` must reserve the run id atomically | T-0009 | `f2576ca` | spec only |
 | [10](https://github.com/danielphang/spec-factory/issues/10) | A spec pinned before `factory init` has no change folder | T-0010 | `3890a2f` | 40 |
-| [11](https://github.com/danielphang/spec-factory/issues/11) | Spec writer: the Problem section must be readable by the operator at the gate (p0) | T-0011 | in intake | — |
+| [11](https://github.com/danielphang/spec-factory/issues/11) | Spec writer: the Problem section must be readable by the operator at the gate (p0) | T-0011 | `9168ce1` | 41 |
 | [13](https://github.com/danielphang/spec-factory/issues/13) | Planner: sub-ticket id form, cross-ticket dependencies and shared plan sections are unspecified | not in intake yet | — | — |
 | [14](https://github.com/danielphang/spec-factory/issues/14) | Build half as built: local-commit mode, the join in the store, bounded conflict runs, serialised merges, baseline-relative gate | not in intake yet | — | — |
 | [15](https://github.com/danielphang/spec-factory/issues/15) | A simplifier role: replay a task set against a simplified harness, measure, propose (after the T-0003 pilot) | not in intake yet | — | — |
 
-Issues 1–10 are applied and can be closed against their merge; 11 stays open until T-0011 lands; 13 is open (harness side fixed on green `70de00d45`). #12 was a duplicate of #11.
+Issues 1–10 are applied and can be closed against their merge; 11 applied (`9168ce1`); 13 is open (harness side fixed on green `70de00d45`). #12 was a duplicate of #11.
 New findings go straight to GitHub issues; this file is the index.

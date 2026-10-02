@@ -4,7 +4,7 @@ title: 'Spec writer and critic: the Problem section must be readable, in plain l
   who approves the spec at the gate'
 request: requests/T-0011.md
 source: /Users/dphang/dev/spec-factory/intake/requests/11_plain_language_problem.md
-status: ready-for-planner
+status: closed
 round:
   spec: 1
   pr: 0
@@ -42,3 +42,8 @@ history:
   to: ready-for-planner
   by: dphang
   approved_version: 2
+- ts: '2026-10-02T23:33:44+00:00'
+  from: ready-for-planner
+  to: closed
+  by: dphang
+  resolve: close
