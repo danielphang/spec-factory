@@ -195,7 +195,7 @@ def run_start(a, root, cfg):
     t["in_flight"].append(rid)
     store.save_ticket(root, t)
     store.log_event(root, "run.started", ticket=t["id"], run=rid, role=a.role, model=model)
-    out({"ok": True, "run_id": rid, "role": a.role, "model": model})
+    out({"ok": True, "run_id": rid, "role": a.role, "model": model, "worktree": meta.get("worktree"), "head": meta.get("head")})
 
 
 def _start_build_run(root: Path, cfg: dict, t: dict, meta: dict, d: Path, parent_close: bool) -> None:
@@ -402,8 +402,14 @@ def ticket_head(a, root, cfg):
     if t.get("merge_refused"):
         if gitops.head_contains(repo, head, gitops.integration_branch(cfg, repo)):
             t["merge_refused"] = None
-        else:  # a conflict run that did not merge the integration branch in: counted, so the loop is bounded
-            t["conflict_runs"] = int(t.get("conflict_runs") or 0) + 1
+            t["conflict_runs"] = 0
+        else:
+            # A conflict run that did not merge the integration branch in. Counted once per
+            # implementer run (this command may be called more than once), so the loop is bounded.
+            last = compose._runs_for(root, t["id"], "implementer", "")
+            if last and last[-1] != t.get("conflict_counted_run"):
+                t["conflict_runs"] = int(t.get("conflict_runs") or 0) + 1
+                t["conflict_counted_run"] = last[-1]
     store.save_ticket(root, t)
     out({"ok": True, "id": t["id"], "head": head, "branch": t["branch"], "changed": changed,
          "merge_refused": t.get("merge_refused"), "conflict_runs": int(t.get("conflict_runs") or 0)})
@@ -464,7 +470,7 @@ def merge_cmd(a, root, cfg):
     with gitops.MergeLock(repo):
         if not gitops.head_contains(repo, head, integ):
             t["merge_refused"] = "head does not contain main"
-            t["conflict_runs"] = int(t.get("conflict_runs") or 0) + 1
+            t["conflict_runs"] = 0  # unfixed conflict runs since this refusal
             store.save_ticket(root, t)
             store.log_event(root, "merge.refused", ticket=t["id"], head=head, reason="head does not contain main")
             raise Refused(f"head does not contain main ({integ} moved; merge it into {t['branch']} and re-check)")
@@ -510,7 +516,7 @@ def ticket_join(a, root, cfg):
         out({"ok": True, "id": t["id"], "head": head, "rows": st, "round": rnd, "decision": decision, "reason": reason, **extra})
 
     if t.get("merge_refused"):
-        if int(t.get("conflict_runs") or 0) > MAX_CONFLICT_RUNS:
+        if int(t.get("conflict_runs") or 0) >= MAX_CONFLICT_RUNS:
             return decide("park", f"conflict: head still does not contain main after {MAX_CONFLICT_RUNS} conflict runs")
         return decide("conflict", "head does not contain main: the implementer merges the integration branch into its branch, same round")
     missing = [r for r in ("reviewer", "verifier", "ci") if st[r] is None]

@@ -17,6 +17,7 @@ HEAD_RE = re.compile(r"^(?:#{1,4}\s+)?\**(" + LABEL + r")\**\s+/\s+(.+?)\s*$")  
 FIELD_RE = re.compile(r"^\s*\**\s*([A-Z][A-Za-z -]+?)\s*:\s*\**\s*(.*)$")
 REF_RE = re.compile(r"T-\d{4}(?:[.-][A-Za-z0-9]+)?|ST-\d+")
 SATISFIED = ("merged", "closed")
+NONE_RE = re.compile(r"^\W*(none|n/?a|nothing|no dependenc)|^\W*$", re.I)  # "none.", "n/a", "— (none)", "-"
 IN_FLIGHT_STATES = ("checks-in-flight", "ready-for-merge")
 
 
@@ -66,7 +67,7 @@ def parse(planner_output: str, parent: str) -> list[dict]:
             key, val = f.group(1).strip().lower(), f.group(2).strip()
             if key == "depends on":
                 deps: list[str] = []
-                if not val.lower().startswith("none"):
+                if not NONE_RE.match(val):
                     for ref in REF_RE.findall(val) + [f"{parent}{x}" for x in re.findall(r"(?<![\w-])\.\d+\b", val)]:
                         if ref in alias.values():
                             dep = ref

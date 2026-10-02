@@ -414,10 +414,11 @@ def test_a_conflict_run_that_never_merges_main_parks_after_two_tries(tmp_path):
     for st in (a, b):
         f.dispatch("reviewer", st, stub="accept-approve/reviewer-1.md")
         f.dispatch("verifier", st, stub="accept-approve/verifier-1.md")
-    assert f.state(a) == "merged" and f.state(b) == "ready-for-implementer" and f.ticket(b)["conflict_runs"] == 1
+    assert f.state(a) == "merged" and f.state(b) == "ready-for-implementer" and f.ticket(b)["conflict_runs"] == 0
     runs_before = len(list((f.store / "runs").iterdir()))
     f.dispatch("implementer", b, stub="accept-approve/implementer-1.md", no_change=True)  # returns without merging main
-    assert f.last_join["decision"] == "conflict" and f.state(b) == "ready-for-implementer" and f.ticket(b)["conflict_runs"] == 2
+    assert f.last_join["decision"] == "conflict" and f.state(b) == "ready-for-implementer" and f.ticket(b)["conflict_runs"] == 1
+    assert f.ok("ticket", "head", b)["conflict_runs"] == 1  # asking again does not count the same run twice
     f.dispatch("implementer", b, stub="accept-approve/implementer-1.md", no_change=True)
     assert f.state(b) == "parked" and "still does not contain main after 2 conflict runs" in f.ticket(b)["parked"]["reason"]
     assert len(list((f.store / "runs").iterdir())) == runs_before + 2  # no checker ran on a head the gate would refuse
@@ -462,8 +463,8 @@ def test_a_dependant_is_released_when_its_dependency_merges(tmp_path):
     cp = f.cli("run", "start", "--role", "implementer", "--ticket", b)
     assert cp.returncode == 2 and "waiting-dependencies, not ready-for-implementer" in cp.stderr
     f.dispatch("implementer", a, stub="accept-approve/implementer-1.md", file="a.txt")
-    cp = f.cli("run", "start", "--role", "implementer", "--ticket", a)  # one implementer run per branch
-    assert cp.returncode == 2
+    cp = f.cli("run", "start", "--role", "implementer", "--ticket", a)
+    assert cp.returncode == 2 and "checks-in-flight, not ready-for-implementer" in cp.stderr
     f.dispatch("reviewer", a, stub="accept-approve/reviewer-1.md")
     f.dispatch("verifier", a, stub="accept-approve/verifier-1.md")
     assert f.state(a) == "merged" and f.state(b) == "ready-for-implementer" and f.ready_implementers(tid) == [b]
@@ -490,6 +491,48 @@ def test_a_parent_does_not_close_by_a_plain_transition_before_its_parent_close_r
     assert list((f.store / "openspec" / "specs").iterdir()) == []  # current truth untouched
     f.human_runs("resolve", tid, "--close")  # the human's own close is always available
     assert f.state(tid) == "closed"
+
+
+def test_a_sibling_refused_three_times_and_fixed_each_time_still_merges(tmp_path):
+    """The last of four parallel siblings can be refused once per sibling that merges ahead of it.
+    The bound is on conflict runs that fail to fix the branch, not on refusals."""
+    four = "".join(f"## ST-{n} / File {n}\n**Depends on:** none\n**Parallel-safe:** yes\n\n" for n in (1, 2, 3, 4))
+    f, tid, (a, b, c, d) = built_to_implementer(tmp_path, four)
+    for st, name in ((a, "a.txt"), (b, "b.txt"), (c, "c.txt"), (d, "d.txt")):
+        f.dispatch("implementer", st, stub="accept-approve/implementer-1.md", file=name)
+    for st in (a, b, c, d):
+        f.dispatch("reviewer", st, stub="accept-approve/reviewer-1.md")
+        f.dispatch("verifier", st, stub="accept-approve/verifier-1.md")
+    assert [f.state(x) for x in (a, b, c, d)] == ["merged"] + ["ready-for-implementer"] * 3  # refusal 1 for b, c, d
+    for ahead in (b, c):  # d fixes its branch, but a sibling merges before d's checks finish: refusals 2 and 3
+        f.dispatch("implementer", d, stub="accept-approve/implementer-1.md", merge_main=True)
+        f.dispatch("reviewer", d, stub="accept-approve/reviewer-1.md")
+        f.dispatch("implementer", ahead, stub="accept-approve/implementer-1.md", merge_main=True)
+        f.dispatch("reviewer", ahead, stub="accept-approve/reviewer-1.md")
+        f.dispatch("verifier", ahead, stub="accept-approve/verifier-1.md")
+        assert f.state(ahead) == "merged"
+        f.dispatch("verifier", d, stub="accept-approve/verifier-1.md")
+        assert f.state(d) == "ready-for-implementer" and f.last_join["decision"] == "conflict"
+    f.dispatch("implementer", d, stub="accept-approve/implementer-1.md", merge_main=True)
+    f.dispatch("reviewer", d, stub="accept-approve/reviewer-1.md")
+    f.dispatch("verifier", d, stub="accept-approve/verifier-1.md")
+    assert f.state(d) == "merged" and f.ticket(d)["round"]["pr"] == 1
+    assert [f.git("show", f"main:{n}").strip() for n in ("a.txt", "b.txt", "c.txt", "d.txt")] == ["the thing"] * 4
+    assert f.parent_check(tid) == "ready-for-parent-verify"
+
+
+def test_a_killed_reviewer_parks_and_a_second_implementer_run_on_one_branch_is_refused(tmp_path):
+    f, tid, (st,) = built_to_implementer(tmp_path)
+    rid = f.ok("run", "start", "--role", "implementer", "--ticket", st)["run_id"]
+    cp = f.cli("run", "start", "--role", "implementer", "--ticket", st)  # never two implementer runs on one branch
+    assert cp.returncode == 2 and f"already has run {rid} in flight" in cp.stderr
+    f.ok("run", "finish", rid, "--status-override", "KILLED")
+    assert f.ticket(st)["in_flight"] == []
+    f.dispatch("implementer", st)
+    f.dispatch("reviewer", st, killed=True)
+    assert f.last_join["decision"] == "wait"  # the verifier has not reported yet
+    f.dispatch("verifier", st)
+    assert f.state(st) == "parked" and f.ticket(st)["parked"]["reason"] == "budget kill: reviewer"
 
 
 # ----- the shepherd: the routing table applied to the store CLI ----------------------------------

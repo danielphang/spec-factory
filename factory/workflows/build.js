@@ -75,6 +75,12 @@ async function runRole(role, ticket, phase) {
       `If it does not exist, write nothing and return an empty message.` +
       (INLINE ? ' You are a test stub: do exactly this and nothing else; run no other command.' : ''),
       { agentType: INLINE ? 'general-purpose' : `${PREFIX}stub`, model: 'haiku', effort: 'low', phase, label: `${role} (stub) ${ticket}` })
+    // Stub seam for the build half: `<role>-<n>.sh` beside the stub, run in the run's worktree, lets a stub
+    // implementer make its commit (or merge the integration branch on a conflict run).
+    if (role === 'implementer' && start.worktree) {
+      const sh = `${args.stubs}/${role}-${stubCount[role]}.sh`
+      await clerk(`if [ -f ${sh} ]; then (cd ${start.worktree} && sh ${sh}) >/dev/null 2>&1; fi; echo '{"ok": true}'`, phase, `stub script ${role}-${stubCount[role]}`)
+    }
   } else {
     out = await agent(
       (INLINE ? `First read ${STATE}/runs/${runId}/system-prompt.txt: it is your role and your rules for this run; follow it exactly, including the preamble at its top. ` : '') +
