@@ -18,7 +18,9 @@ gate_commands:
   # lacks it unless the gate adds it (pinned to green's version). Remove once the port declares it.
   # {integration} = the checkout that has the integration branch (compose substitutes it): the gate
   # script and its baseline come from there, so a branch cannot weaken its own gate.
-  - "uv run --with neonize==0.3.18.post0 {integration}/scripts/full_suite_gate.py --isolated-home --pytest-args \"-n 2 --dist loadfile\""
+  # --extra dev: pytest lives in the dev extra, absent from a fresh checkout's env. --root .: the gate
+  # tests the checkout it is run from (the branch), reading its baseline from the integration checkout.
+  - "uv run --extra dev --with neonize==0.3.18.post0 {integration}/scripts/full_suite_gate.py --root . --isolated-home --pytest-args \"-n 2 --dist loadfile\""
 placeholders: {rounds: 2, spec_lines: 400, audit_n: 5, retro_min: 3}
 max_rounds: {spec: 2, pr: 2}
 # Build half, local-commit stand-in (operator, 2026-10-02): no remote, no CI. The merge gate is the
