@@ -1,0 +1,198 @@
+"""Ticket store on disk: tickets/, requests/, specs/, plans/, runs/, log/ under the state dir.
+
+Every write goes through here so a later sub-ticket can add commit-and-push in one place.
+"""
+from __future__ import annotations
+
+import datetime as dt
+import hashlib
+import json
+import os
+from pathlib import Path
+
+import yaml
+
+REPO_ROOT = Path(__file__).resolve().parent.parent
+CONFIG_PATH = Path(__file__).resolve().parent / "config.yaml"
+
+STATES = [
+    "ready-for-triage", "waiting-requester", "ready-for-spec-writer", "ready-for-critic",
+    "awaiting-spec-gate", "ready-for-planner", "planned", "parked", "closed",
+    # build half (sub-tickets, and the parent after all of them merged)
+    "waiting-dependencies", "ready-for-implementer", "checks-in-flight", "ready-for-merge",
+    "merged", "ready-for-parent-verify",
+]
+RESULT_ROLES = ("reviewer", "verifier", "ci")
+
+
+class Refused(Exception):  # noqa: N818
+    """A guard refused the operation: exit 2, store unchanged, nothing logged."""
+
+
+def load_config() -> dict:
+    return yaml.safe_load(CONFIG_PATH.read_text(encoding="utf-8"))
+
+
+def state_root(cfg: dict | None = None) -> Path:
+    env = os.environ.get("FACTORY_STATE")
+    if env:
+        return Path(env).expanduser().resolve()
+    cfg = cfg or load_config()
+    return (REPO_ROOT / cfg["state_dir"]).resolve()
+
+
+def now() -> str:
+    return dt.datetime.now(dt.timezone.utc).replace(microsecond=0).isoformat()
+
+
+STORE_GITIGNORE = "# git worktrees the build half creates; they are checkouts, never store content\nworktrees/\nruns/*/wt/\n"
+
+
+def ensure_gitignore(root: Path) -> None:
+    """The store keeps implementer worktrees under worktrees/ and checker checkouts under runs/<id>/wt/.
+    Both are nested git checkouts: a store committed by directory must not pick them up."""
+    p = root / ".gitignore"
+    have = p.read_text(encoding="utf-8") if p.exists() else ""
+    missing = [ln for ln in ("worktrees/", "runs/*/wt/") if ln not in have.splitlines()]
+    if missing:
+        root.mkdir(parents=True, exist_ok=True)
+        p.write_text((have.rstrip() + "\n\n" if have.strip() else "") + STORE_GITIGNORE, encoding="utf-8")
+
+
+def write_text(path: Path, text: str) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(text, encoding="utf-8")
+
+
+def write_yaml(path: Path, obj) -> None:
+    write_text(path, yaml.safe_dump(obj, sort_keys=False, allow_unicode=True, width=100))
+
+
+def read_yaml(path: Path):
+    return yaml.safe_load(path.read_text(encoding="utf-8"))
+
+
+def log_event(root: Path, event: str, **fields) -> dict:
+    line = {"ts": now(), "event": event, **fields}
+    p = root / "log" / f"{line['ts'][:7]}.jsonl"
+    p.parent.mkdir(parents=True, exist_ok=True)
+    with p.open("a", encoding="utf-8") as fh:
+        fh.write(json.dumps(line, ensure_ascii=False) + "\n")
+    return line
+
+
+def ticket_path(root: Path, tid: str) -> Path:
+    return root / "tickets" / f"{tid}.yaml"
+
+
+def load_ticket(root: Path, tid: str) -> dict:
+    p = ticket_path(root, tid)
+    if not p.exists():
+        raise Refused(f"no ticket {tid}")
+    return read_yaml(p)
+
+
+def save_ticket(root: Path, t: dict) -> None:
+    write_yaml(ticket_path(root, t["id"]), t)
+
+
+def next_ticket_id(root: Path, prefix: str = "T") -> str:
+    tickets = root / "tickets"
+    nums = []
+    if tickets.exists():
+        for p in tickets.glob(f"{prefix}-*.yaml"):
+            try:
+                nums.append(int(p.stem.split("-", 1)[1]))
+            except ValueError:
+                pass
+    return f"{prefix}-{(max(nums) + 1 if nums else 1):04d}"
+
+
+def next_run_id(root: Path, role: str) -> str:
+    """Allocate a run id by creating its directory: mkdir is atomic, so two concurrent
+    workflows on one store cannot be handed the same id (listing-then-naming could)."""
+    runs = root / "runs"
+    runs.mkdir(parents=True, exist_ok=True)
+    nums = []
+    for p in runs.iterdir():
+        try:
+            nums.append(int(p.name.split("-")[1]))
+        except (IndexError, ValueError):
+            pass
+    n = (max(nums) + 1) if nums else 1
+    while True:
+        rid = f"run-{n:04d}-{role}"
+        try:
+            (runs / rid).mkdir()
+            return rid
+        except FileExistsError:
+            n += 1
+
+
+def new_ticket(root: Path, tid: str, title: str, request_rel: str, source: str) -> dict:
+    return {
+        "id": tid,
+        "type": None,
+        "title": title,
+        "request": request_rel,
+        "source": source,
+        "status": "ready-for-triage",
+        "round": {"spec": 0, "pr": 0},
+        "spec": {"version": 0, "approved_version": None},
+        "plan": None,
+        "in_flight": [],
+        "parked": None,
+        "created": now(),
+        "history": [],
+        # build half
+        "parent": None, "depends_on": [], "parallel_safe": True,
+        "branch": None, "head": None,
+        "merge": {"base_before": None, "main_after": None},
+        "parent_base": None,
+    }
+
+
+def content_hash(text: str) -> str:
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()[:16]
+
+
+def index_path(root: Path) -> Path:
+    return root / "requests" / "index.yaml"
+
+
+def load_index(root: Path) -> dict:
+    p = index_path(root)
+    return read_yaml(p) or {} if p.exists() else {}
+
+
+def subtickets_of(root: Path, parent: str) -> list[dict]:
+    """The parent's sub-ticket records, in id order (T-0001.1, T-0001.2, …)."""
+    d = root / "tickets"
+    out = []
+    if d.exists():
+        for p in d.glob(f"{parent}.*.yaml"):
+            out.append(read_yaml(p))
+    return sorted(out, key=lambda t: int(t["id"].rsplit(".", 1)[1]))
+
+
+# ----- commit-bound results table (build spec part D) -----------------------------------------
+
+def result_path(root: Path, head: str, role: str) -> Path:
+    return root / "results" / head / f"{role}.yaml"
+
+
+def record_result(root: Path, tid: str, head: str, role: str, status: str, run_id: str | None, detail: str | None = None) -> dict:
+    row = {"ticket": tid, "head": head, "role": role, "status": status, "run_id": run_id, "at": now()}
+    if detail:
+        row["detail"] = detail
+    write_yaml(result_path(root, head, role), row)
+    return row
+
+
+def results_for(root: Path, head: str) -> dict[str, dict]:
+    d = root / "results" / head
+    out = {}
+    if d.exists():
+        for p in d.glob("*.yaml"):
+            out[p.stem] = read_yaml(p)
+    return out

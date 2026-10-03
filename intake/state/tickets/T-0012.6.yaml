@@ -1,0 +1,31 @@
+id: T-0012.6
+type: sub-ticket
+title: 'Instance B cutover: `.factory/`, README rewrite, `intake/` reduced to the live store'
+request: requests/T-0012.md
+source: plan:run-0054-planner
+status: waiting-dependencies
+round:
+  spec: 0
+  pr: 0
+spec:
+  version: 3
+  approved_version: 3
+plan: null
+in_flight: []
+parked: null
+created: '2026-10-03T07:49:00+00:00'
+history: []
+parent: T-0012
+depends_on:
+- T-0012.3
+- T-0012.4
+- T-0012.2
+- T-0012.1
+parallel_safe: false
+branch: null
+head: null
+merge:
+  base_before: null
+  main_after: null
+parent_base: null
+label: T-0012.6

@@ -1,0 +1,28 @@
+id: T-0012.5
+type: sub-ticket
+title: Design-doc and build-spec text for `.factory/` instances
+request: requests/T-0012.md
+source: plan:run-0054-planner
+status: waiting-dependencies
+round:
+  spec: 0
+  pr: 0
+spec:
+  version: 3
+  approved_version: 3
+plan: null
+in_flight: []
+parked: null
+created: '2026-10-03T07:49:00+00:00'
+history: []
+parent: T-0012
+depends_on:
+- T-0012.2
+parallel_safe: true
+branch: null
+head: null
+merge:
+  base_before: null
+  main_after: null
+parent_base: null
+label: T-0012.5

@@ -266,3 +266,42 @@
 {"ts": "2026-10-03T07:39:06+00:00", "event": "spec.added", "ticket": "T-0012", "version": 3, "source": "gate edit /Users/dphang/dev/spec-factory/intake/answers/T-0012-gate-edit.md"}
 {"ts": "2026-10-03T07:39:06+00:00", "event": "approval.recorded", "ticket": "T-0012", "kind": "spec", "version": 3, "by": "dphang"}
 {"ts": "2026-10-03T07:39:06+00:00", "event": "ticket.transition", "ticket": "T-0012", "from": "awaiting-spec-gate", "to": "ready-for-planner", "by": "dphang"}
+{"ts": "2026-10-03T07:39:43+00:00", "event": "run.started", "ticket": "T-0012", "run": "run-0054-planner", "role": "planner", "model": "opus"}
+{"ts": "2026-10-03T07:48:34+00:00", "event": "run.finished", "ticket": "T-0012", "run": "run-0054-planner", "role": "planner", "status": "PLANNED", "wall_s": 531}
+{"ts": "2026-10-03T07:48:52+00:00", "event": "plan.added", "ticket": "T-0012", "source": "run-0054-planner"}
+{"ts": "2026-10-03T07:49:00+00:00", "event": "ticket.created", "ticket": "T-0012.1", "parent": "T-0012", "status": "ready-for-implementer"}
+{"ts": "2026-10-03T07:49:00+00:00", "event": "ticket.created", "ticket": "T-0012.2", "parent": "T-0012", "status": "ready-for-implementer"}
+{"ts": "2026-10-03T07:49:00+00:00", "event": "ticket.created", "ticket": "T-0012.3", "parent": "T-0012", "status": "waiting-dependencies"}
+{"ts": "2026-10-03T07:49:00+00:00", "event": "ticket.created", "ticket": "T-0012.4", "parent": "T-0012", "status": "waiting-dependencies"}
+{"ts": "2026-10-03T07:49:00+00:00", "event": "ticket.created", "ticket": "T-0012.5", "parent": "T-0012", "status": "waiting-dependencies"}
+{"ts": "2026-10-03T07:49:00+00:00", "event": "ticket.created", "ticket": "T-0012.6", "parent": "T-0012", "status": "waiting-dependencies"}
+{"ts": "2026-10-03T07:49:09+00:00", "event": "ticket.transition", "ticket": "T-0012", "from": "ready-for-planner", "to": "planned", "by": "workflow", "round": {"spec": 2, "pr": 0}}
+{"ts": "2026-10-03T07:49:36+00:00", "event": "run.started", "ticket": "T-0012.2", "run": "run-0055-implementer", "role": "implementer", "model": "opus"}
+{"ts": "2026-10-03T07:49:36+00:00", "event": "run.started", "ticket": "T-0012.1", "run": "run-0056-implementer", "role": "implementer", "model": "opus"}
+{"ts": "2026-10-03T07:53:25+00:00", "event": "run.finished", "ticket": "T-0012.2", "run": "run-0055-implementer", "role": "implementer", "status": "READY-FOR-REVIEW", "wall_s": 230}
+{"ts": "2026-10-03T07:53:43+00:00", "event": "ticket.transition", "ticket": "T-0012.2", "from": "ready-for-implementer", "to": "checks-in-flight", "by": "workflow", "round": {"spec": 0, "pr": 1}}
+{"ts": "2026-10-03T07:54:00+00:00", "event": "run.started", "ticket": "T-0012.2", "run": "run-0057-verifier", "role": "verifier", "model": "fable"}
+{"ts": "2026-10-03T07:54:00+00:00", "event": "run.started", "ticket": "T-0012.2", "run": "run-0058-reviewer", "role": "reviewer", "model": "fable"}
+{"ts": "2026-10-03T07:56:40+00:00", "event": "run.finished", "ticket": "T-0012.1", "run": "run-0056-implementer", "role": "implementer", "status": "READY-FOR-REVIEW", "wall_s": 424}
+{"ts": "2026-10-03T07:56:58+00:00", "event": "ticket.transition", "ticket": "T-0012.1", "from": "ready-for-implementer", "to": "checks-in-flight", "by": "workflow", "round": {"spec": 0, "pr": 1}}
+{"ts": "2026-10-03T07:57:17+00:00", "event": "run.finished", "ticket": "T-0012.2", "run": "run-0058-reviewer", "role": "reviewer", "status": "APPROVE", "wall_s": 197}
+{"ts": "2026-10-03T07:57:17+00:00", "event": "escalation.queued", "ticket": "T-0012.2", "run": "run-0058-reviewer", "items": ["protected paths touched, both declared in the sub-ticket: generated `prompts/**` (moved to `docs/prompts/`, byte-identical); infra `intake/**` (`intake/README.md`, `intake/instance/context.md` only, reference updates). Merge gate needs the human approval the declaration provides for."]}
+{"ts": "2026-10-03T07:57:17+00:00", "event": "run.started", "ticket": "T-0012.1", "run": "run-0059-reviewer", "role": "reviewer", "model": "fable"}
+{"ts": "2026-10-03T07:57:18+00:00", "event": "run.started", "ticket": "T-0012.1", "run": "run-0060-verifier", "role": "verifier", "model": "fable"}
+{"ts": "2026-10-03T07:57:40+00:00", "event": "result.recorded", "ticket": "T-0012.2", "head": "c367bef72e2ed70a4417e98de907c91dbbe31320", "role": "reviewer", "status": "APPROVE", "run": "run-0058-reviewer"}
+{"ts": "2026-10-03T07:58:22+00:00", "event": "run.finished", "ticket": "T-0012.2", "run": "run-0057-verifier", "role": "verifier", "status": "SPEC-DEFECT", "wall_s": 262}
+{"ts": "2026-10-03T07:58:39+00:00", "event": "result.recorded", "ticket": "T-0012.2", "head": "c367bef72e2ed70a4417e98de907c91dbbe31320", "role": "verifier", "status": "SPEC-DEFECT", "run": "run-0057-verifier"}
+{"ts": "2026-10-03T07:58:39+00:00", "event": "result.recorded", "ticket": "T-0012.2", "head": "c367bef72e2ed70a4417e98de907c91dbbe31320", "role": "ci", "status": "PASS", "run": "run-0057-verifier"}
+{"ts": "2026-10-03T07:58:57+00:00", "event": "ticket.parked", "ticket": "T-0012.2", "from": "checks-in-flight", "reason": "SPEC-DEFECT from verifier"}
+{"ts": "2026-10-03T07:58:57+00:00", "event": "escalation.queued", "ticket": "T-0012.2", "items": ["SPEC-DEFECT from verifier"]}
+{"ts": "2026-10-03T08:03:43+00:00", "event": "run.finished", "ticket": "T-0012.1", "run": "run-0059-reviewer", "role": "reviewer", "status": "APPROVE", "wall_s": 386}
+{"ts": "2026-10-03T08:03:43+00:00", "event": "escalation.queued", "ticket": "T-0012.1", "run": "run-0059-reviewer", "items": ["declared protected/guardrail paths involved, per sub-ticket and parent Risk: reference_harness `~/dev/nanobot-upstream/**` (read only, cloned to scratch; confirmed unchanged); agent prompts `agents/factory-*.md` and `factory/prompts/*.md` and tests `tests/factory/**` added as new files byte-identical to green. No undeclared protected path touched."]}
+{"ts": "2026-10-03T08:04:05+00:00", "event": "result.recorded", "ticket": "T-0012.1", "head": "372a47c8831d3a988f8cb7ae5759b15d4ad73632", "role": "reviewer", "status": "APPROVE", "run": "run-0059-reviewer"}
+{"ts": "2026-10-03T08:07:10+00:00", "event": "run.finished", "ticket": "T-0012.1", "run": "run-0060-verifier", "role": "verifier", "status": "VERIFIED", "wall_s": 592}
+{"ts": "2026-10-03T08:07:10+00:00", "event": "escalation.queued", "ticket": "T-0012.1", "run": "run-0060-verifier", "items": ["judgment call for the auditor, not a blocker: cut-anchor-still-valid is labelled NEW but prints `0` on base and PR alike, which the role rules call a SPEC-DEFECT when a NEW criterion passes on both. I did not apply that, because the item is declared as a guard on green's state (\"Today it prints `0`\"; \"anything else means … escalate instead of merging\") and it did its job; it cannot discriminate base from PR by design. Suggest the planner label such environmental guards as a precondition rather than NEW so the rule does not fire on them."]}
+{"ts": "2026-10-03T08:07:35+00:00", "event": "result.recorded", "ticket": "T-0012.1", "head": "372a47c8831d3a988f8cb7ae5759b15d4ad73632", "role": "verifier", "status": "VERIFIED", "run": "run-0060-verifier"}
+{"ts": "2026-10-03T08:07:35+00:00", "event": "result.recorded", "ticket": "T-0012.1", "head": "372a47c8831d3a988f8cb7ae5759b15d4ad73632", "role": "ci", "status": "PASS", "run": "run-0060-verifier"}
+{"ts": "2026-10-03T08:07:55+00:00", "event": "ticket.transition", "ticket": "T-0012.1", "from": "checks-in-flight", "to": "ready-for-merge", "by": "workflow", "round": {"spec": 0, "pr": 1}}
+{"ts": "2026-10-03T08:08:04+00:00", "event": "merge.done", "ticket": "T-0012.1", "head": "372a47c8831d3a988f8cb7ae5759b15d4ad73632", "base_before": "cdb1c6769ecc39208e62edc65578f62f5a23908f", "main_after": "02e8c8d23fa7ea7e7a60a4c714618ccc699036b3"}
+{"ts": "2026-10-03T08:08:48+00:00", "event": "results.superseded", "ticket": "T-0012.2", "head": "c367bef72e2ed70a4417e98de907c91dbbe31320", "roles": ["ci", "reviewer", "verifier"]}
+{"ts": "2026-10-03T08:08:48+00:00", "event": "human.resolved", "ticket": "T-0012.2", "kind": "redispatch", "by": "dphang", "from": "parked", "to": "checks-in-flight"}
