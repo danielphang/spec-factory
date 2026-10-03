@@ -33,6 +33,7 @@ A fix closes its issue through a reviewed change on `main`; the merge column is 
 | [26](https://github.com/danielphang/spec-factory/issues/26) | Writing standard: four missing rules (one name per concept, one mode per section, headings state content, tables for parallel facts), each with its code-design counterpart | T-0014 (closed as applied 2026-10-03; live after the operator approves its acceptance test) | `fcc8756` | — |
 | [27](https://github.com/danielphang/spec-factory/issues/27) | Requests lose their attachments: roles never see the request's source path or the files beside it (found by the Nanobot v3.5 Driver) | not in intake | — | — |
 | [28](https://github.com/danielphang/spec-factory/issues/28) | Every role agent receives the operator's latest chat message, labelled as overriding its task (Workflow tool relay; found by the v3.5 Driver) | not in intake | — | — |
+| [29](https://github.com/danielphang/spec-factory/issues/29) | Writing standard rule 11: a heading never claims more than the sentence under it (from #26's acceptance test) | not in intake | — | — |
 
 Issues 1–10 are applied and can be closed against their merge; 11 applied (`9168ce1`); 13 and 14 fold into #21 (checklists until it archives); 15 closed as superseded. #12 was a duplicate of #11.
 New findings go straight to GitHub issues; this file is the index.
