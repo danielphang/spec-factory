@@ -28,6 +28,8 @@ Three wiring rules matter more than any wording:
 - **Checkers can't edit.** Reviewers and verifiers run in a disposable checkout with no push or merge credentials. They report; authors fix.
 - **Guardrail paths are human-owned.** They change only through PRs a human approves. Enforce this with CODEOWNERS and branch protection, not prompt wording. New tests in new files need no extra approval.
 
+This document's changelog is `docs/changelog.md`, and `docs/prompts/` holds a verbatim copy of each prompt block in it, changed only by re-copying that block.
+
 ## Harness: functional pieces
 
 The prompts say what each role does. The harness enforces the wiring rules: fresh context per checker, checkers without write access, approvals bound to a commit, round limits, and routing by STATUS. Prompt text cannot enforce any of that. The table lists the pieces any harness needs, what GitHub provides for each, and the minimum a portable substitute must do. Build against the "What it must do" column, not GitHub's shape.
@@ -674,54 +676,6 @@ Prior proposals: per rule, metric before -> after, KEEP | REVERT |
 STATUS: PROPOSED | NO-CHANGES
 CONFIDENCE / ESCALATIONS
 ```
-
-## Changelog
-
-Six review rounds ran on this doc, using the reviewer prompt in the appendix. Round 1 was a self-review by the drafting agent; rounds 2 and 3 were separate sessions; rounds 4 and 5 ran a reviewer, a critic, and a copy editor in parallel, each in a fresh context, with round 5 checking only prior findings and changed text; round 6 was a full pass after the bootstrap run. Findings applied, in order:
-
-1. Acceptance criteria are labeled NEW (must fail today) or REGRESSION (must pass before and after).
-2. Only existing tests are protected; adding tests is expected.
-3. UNTRUSTED INPUT rule added to the preamble.
-4. CI failures and merge conflicts route to the implementer as findings.
-5. The sycophancy red flag is a FIXED with no matching diff, not blanket acceptance.
-6. Merge requires green CI plus APPROVE and VERIFIED on the current head commit; both checkers record the commit.
-7. "Tests to change" section in the spec is the only authorization to alter an existing test; critic, planner, implementer, reviewer, and the human gate all reference it.
-8. NEW criteria must fail today for the reason the spec states, not because a test file doesn't exist yet.
-9. A spec marked NEEDS-SPLIT with named seams passes critic rubric #3.
-10. Checkers run in a disposable checkout with no push credentials; guardrail files are enforced by CODEOWNERS and branch protection.
-11. FAILED and REQUEST-CHANGES route to the implementer; SPEC-DEFECT routes to the human queue.
-12. Harness pieces and routing table added.
-13. Protected paths no longer deadlock the merge: the spec's Risk section declares them, the human approves them at the spec gate, and the reviewer gives the STATUS the code earns instead of always escalating.
-14. The PR loop joins: the dispatcher waits for CI and both checkers on a head before routing, and one implementer run receives both outputs.
-15. Round-2 inputs are declared: prior findings and the author's responses reach the checkers, and both the spec and the PR description have a Responses section.
-16. A round is one checker pass; the counter increments on author re-entry, not on rebases.
-17. Merge conflicts have a routing row; the merge gate requires the head to contain current main, so the last verification covers the merged state.
-18. New tests go in new files, matching path-based enforcement; the spec gate's "Tests to change" approval is the piece-8 record for exactly those files.
-19. Guardrail paths and protected paths are defined once and named everywhere else.
-20. Checker and gate-runner runs hold no secrets, since they execute PR code before any security check.
-21. Verifier: gate failure is FAILED; a wrong-reason NEW criterion is SPEC-DEFECT; probes FAIL only on special-casing or a stated criterion.
-22. Retro no longer proposes deleting rules for lack of incidents.
-23. Triage routes on STATUS; Triage and Retro have entry rows; max-round and ESCALATIONS resolution defined; fix rounds push to the existing branch.
-24. No merge-gate override: a max-round or SPEC-DEFECT ticket returns to the implementer with the human's ruling, or closes. The human may amend the sub-ticket or spec first.
-25. A gate failure counts as a round (it is a verifier FAILED); the CI result joins the single implementer dispatch.
-26. CODEOWNERS is not used for tests, since it fires on added files; existing tests get a modified-or-deleted check against "Tests to change".
-27. Retro is mandatory: after the weekly audit or on demand. It writes a causal chain per incident, separates harness defects from prompt problems, and every proposed rule names the metric it should move; rules that don't move it are reverted (after agent-retro and the autoresearch keep/discard loop).
-28. A run that exceeds its time or token budget is killed and its ticket parked (piece 3).
-29. Retro PRs and verified git reverts can merge: the one stated exception to the merge gate, since a human reads the whole diff and there are no acceptance commands to verify.
-30. Budget kills are a parking state with a resolution path and placeholders; only the harness identity and humans write the ticket store.
-31. Retro receives run and outcome counts so its metrics have denominators; reversion waits {2} retros.
-32. Full pass after the bootstrap run: CI failure joins the PR-loop dispatch; a parent closes only after one verifier run on main against its full Acceptance list; a revert is the inverse of a recorded merge diff, human-authored, approved at the guardrail gate; the ticket store is a dedicated branch with a store CLI that holds the guards; checker containers hold no secrets even in the smallest build; the Workflow v0 note states it gives fresh context, not isolation; verifier defaults to Opus; REVISE and REQUEST-CHANGES require a BLOCKING finding; CLARIFY, BLOCKED, and ESCALATE resolutions defined; retro counts are broken down by model and reversion needs {N} runs.
-33. Round 2 of the full pass: the parent-close verifier run declares its inputs (head = main, base = main before the parent's first merge) and the verifier prompt accepts them; a parent-close failure or a closed sub-ticket parks the parent for re-plan or close; a not-parallel-safe sub-ticket excludes siblings in both directions; the no-sub-ticket row dispatches the gate runner; humans record approvals by pushing to the tickets branch as themselves; the verifier is the stated exception to the checker-model rules.
-34. After two real runs parked valid verdicts as harness bugs (2026-10-01), the trailer is read by its labels: a wrapped CONFIDENCE reason or a remark between STATUS and CONFIDENCE is continuation, not a parse failure; an ESCALATIONS line of `none` followed by prose routes as none and the prose is kept with the run; `none` with further lines below it is a real list.
-35. After the P0 intake run: the clerk relays the store CLI's stdout verbatim with the exit code and stderr, and the workflow script parses the JSON itself; given a schema shaped like the command's output, a clerk re-typed a ticket read (an invented field, the nested object stringified), the answer still validated, and the ticket was misrouted.
-36. After the P0 run (2026-10-01): a question returns to the role that asked with the answer and that role's previous output, so a re-run Triage or Spec writer reads the answer against the question it asked instead of re-deriving it; a requester's CLARIFY answer follows the same rule, and two Answered rows in the routing table carry the same inputs.
-37. The spec FORMAT gains an optional Operator steps section: actions or checks on live or protected state that only the operator can perform after merge. They are not acceptance and change no routing; the human approves them at the spec gate, and critic rubric 2 checks that they sit there and not under Acceptance. No tracked post-merge obligation.
-38. After the intake run against this repo (2026-10-01): the role-context block is declared in the Harness section as a per-repo input every role receives first, ahead of its declared INPUT and the routing table's "Receives"; where the block is kept stays open.
-39. Specs live in an OpenSpec tree under a forked `spec-factory` schema (Harness, Spec store): current truth per capability, one change folder per ticket (proposal, design, delta, tasks, and the factory-only `verification.md`), and a repo-level `decisions.md`. The spec writer's FORMAT is one document in those parts, and the delta's scenarios are the Acceptance items; the spec writer and the critic receive current truth; the planner's output is the change's `tasks.md`; the spec gate pins the change folder; parent close archives it (apply the deltas, move the folder, append the decisions). Roles, round limits, gates and harness pieces 1–12 are unchanged.
-40. After the pilot specs on Nanobot green (2026-10-01): archive has two more refusals, no change folder (a spec pinned before the repo had an `openspec/` tree) and no spec store. Each parks the parent like a delta that does not apply, but the human closes that parent as applied: current truth and `decisions.md` are not updated, and the spec is re-intaken as a new ticket if current truth should carry it.
-41. After the T-0010 spec gate (2026-10-02), where the operator could not read an approved Problem section without a translation: the spec writer writes the Problem section in plain words for the operator who approves the spec at the gate, a deeply technical reader new to this system's internals, with each term of art specific to this system glossed on first use and the detail left to Evidence and Root cause; critic rubric 6 reads the Problem as that operator, and a first paragraph that does not say what is wrong and for whom, or uses an unglossed term specific to this system (even one a careful reader could infer), is BLOCKING.
-
-Declined: a dedicated merge agent (merging is gate config plus human gates, not a judgment call).
 
 ## Appendix: reviewer prompt
 

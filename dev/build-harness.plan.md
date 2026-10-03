@@ -1,6 +1,6 @@
 # Plan: Build the spec factory, local-Mac v0 — sub-tickets (plan v2)
 
-Parent: `specs/build-harness.md` in `danielphang/spec-factory` (https://github.com/danielphang/spec-factory/blob/main/specs/build-harness.md); approved text = `spec-build-v4.md` (STATUS NEEDS-SPLIT; 84 acceptance items, of which 71–84 are the gate's round-4 amendments A–N), pinned by the human gate. The v1 rulings stand (every Open question on its proposed default; same-user deploy keys for v0; post-hoc budget kill; standing allowlist for real runs, never `bypassPermissions`; first acceptance run interactive; Nanobot gate commands unknown and carried as BH-1's open question; split along seams S1–S5), plus the amendments and the doc-v5 deltas folded into them.
+Parent: `dev/build-harness.spec.md` in `danielphang/spec-factory` (https://github.com/danielphang/spec-factory/blob/main/dev/build-harness.spec.md); approved text = `spec-build-v4.md` (STATUS NEEDS-SPLIT; 84 acceptance items, of which 71–84 are the gate's round-4 amendments A–N), pinned by the human gate. The v1 rulings stand (every Open question on its proposed default; same-user deploy keys for v0; post-hoc budget kill; standing allowlist for real runs, never `bypassPermissions`; first acceptance run interactive; Nanobot gate commands unknown and carried as BH-1's open question; split along seams S1–S5), plus the amendments and the doc-v5 deltas folded into them.
 Planner: planner · Plan version: 2 (re-plan after the gate amended the pinned spec; supersedes `plan-build-v1.md`) · Design doc: `spec-factory-v5.md`
 
 ## What changed from plan v1
@@ -51,7 +51,7 @@ Re-plans (item 84's "next free ids") and a later Docker or cron ticket enter the
 
 ## BH-1 — Store, requests, audit log, results table, STATUS parser, composer, CLI guards, config
 
-Parent: `specs/build-harness.md` in `danielphang/spec-factory`. Read it for context. Do NOT implement parts outside this sub-ticket.
+Parent: `dev/build-harness.spec.md` in `danielphang/spec-factory`. Read it for context. Do NOT implement parts outside this sub-ticket.
 
 Depends on: none
 Parallel-safe: no (first in chain; everything else edits `factory/cli.py` after it)
@@ -89,7 +89,7 @@ Open question carried (per the gate's ruling): Nanobot's own test and lint comma
 
 ## BH-2a — Bare repo, identities and keys, `factory init`, pre-receive hook rules 1–3 and 5, state push
 
-Parent: `specs/build-harness.md` in `danielphang/spec-factory`. Read it for context. Do NOT implement parts outside this sub-ticket.
+Parent: `dev/build-harness.spec.md` in `danielphang/spec-factory`. Read it for context. Do NOT implement parts outside this sub-ticket.
 
 Depends on: BH-1
 Parallel-safe: no (edits `factory/cli.py`, `store.py`, `results.py` from BH-1)
@@ -114,7 +114,7 @@ Not verified by the spec writer and therefore an implementer stop-and-escalate p
 
 ## BH-2b — Merge gate (hook rule 4 via `gate.py`), `factory merge`, gate runner, approval-row writers
 
-Parent: `specs/build-harness.md` in `danielphang/spec-factory`. Read it for context. Do NOT implement parts outside this sub-ticket.
+Parent: `dev/build-harness.spec.md` in `danielphang/spec-factory`. Read it for context. Do NOT implement parts outside this sub-ticket.
 
 Depends on: BH-2a
 Parallel-safe: no (edits `factory/hook.py`, `factory/cli.py`, `store.py` from BH-2a/BH-1)
@@ -138,7 +138,7 @@ Out of scope: `approve-spec`, `request-changes`, `resolve`, `queue`, `queue appl
 
 ## BH-3 — Human surface, resolution commands, spec approval and export
 
-Parent: `specs/build-harness.md` in `danielphang/spec-factory`. Read it for context. Do NOT implement parts outside this sub-ticket.
+Parent: `dev/build-harness.spec.md` in `danielphang/spec-factory`. Read it for context. Do NOT implement parts outside this sub-ticket.
 
 Depends on: BH-2b
 Parallel-safe: no (edits `factory/cli.py`, which BH-4 also edits)
@@ -164,7 +164,7 @@ Out of scope: `approve-pr`/`approve-guardrail` (BH-2b); `factory render`, agent 
 
 ## BH-4 — `factory render` from the in-repo design doc, preamble, the ten agent definitions, AGENTS.md section
 
-Parent: `specs/build-harness.md` in `danielphang/spec-factory`. Read it for context. Do NOT implement parts outside this sub-ticket.
+Parent: `dev/build-harness.spec.md` in `danielphang/spec-factory`. Read it for context. Do NOT implement parts outside this sub-ticket.
 
 Depends on: BH-2b (item 56 needs the bare repo and a `ticket/*` branch), BH-3 (both edit `factory/cli.py`; BH-3 merges first)
 Parallel-safe: no (edits `factory/cli.py`; must not be in flight with BH-3)
@@ -186,7 +186,7 @@ Out of scope: `.claude/skills/factory/SKILL.md` (BH-5, since it documents the wo
 
 ## BH-5 — Intake workflow: `runRole`, clerk calls, stub seam, `/factory` entry skill
 
-Parent: `specs/build-harness.md` in `danielphang/spec-factory`. Read it for context. Do NOT implement parts outside this sub-ticket.
+Parent: `dev/build-harness.spec.md` in `danielphang/spec-factory`. Read it for context. Do NOT implement parts outside this sub-ticket.
 
 Depends on: BH-3, BH-4
 Parallel-safe: no (edits `factory/cli.py`; next in chain)
@@ -209,7 +209,7 @@ Out of scope: `build.js`, `retro.js`, `ready-implementers`, `ready-checkers`, `t
 
 ## BH-6 — Build workflow: planner → implementer → reviewer ‖ verifier → join → merge; parent close; checker isolation; verifier as CI
 
-Parent: `specs/build-harness.md` in `danielphang/spec-factory`. Read it for context. Do NOT implement parts outside this sub-ticket.
+Parent: `dev/build-harness.spec.md` in `danielphang/spec-factory`. Read it for context. Do NOT implement parts outside this sub-ticket.
 
 Depends on: BH-5
 Parallel-safe: no (edits `factory/cli.py`, `compose.py`, `results.py`, SKILL.md; next in chain)
@@ -232,7 +232,7 @@ Out of scope: `retro.js`, `retro-input`, `audit-sample`; Docker, cron, pre-empti
 
 ## BH-7 — Audit sample, retro input, retro workflow
 
-Parent: `specs/build-harness.md` in `danielphang/spec-factory`. Read it for context. Do NOT implement parts outside this sub-ticket.
+Parent: `dev/build-harness.spec.md` in `danielphang/spec-factory`. Read it for context. Do NOT implement parts outside this sub-ticket.
 
 Depends on: BH-6
 Parallel-safe: no (last in chain; edits `factory/cli.py`, `compose.py`, SKILL.md)

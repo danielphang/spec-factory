@@ -1,7 +1,7 @@
 # intake/ — SCRATCH
 
 **Scratch area, not part of the design.** A throwaway spec-factory intake instance that runs
-this repo's GitHub issues (index: `../issues/README.md`) through intake (Triage → Spec writer ⇄ Critic → human gate →
+this repo's GitHub issues (index: `../dev/issues.md`) through intake (Triage → Spec writer ⇄ Critic → human gate →
 Planner) against this repo. Delete the whole directory once the issues are filed and closed;
 nothing outside it depends on it.
 
@@ -39,7 +39,7 @@ Ticket ids are local to this store: T-0001 here is issue 01, not green's SPEC-21
 | T-0010 | [#10](https://github.com/danielphang/spec-factory/issues/10) |
 | T-0011 | [#11](https://github.com/danielphang/spec-factory/issues/11) |
 
-T-0001..T-0007: spec approved at the gate and applied on `main` (merges listed in `issues/README.md`).
+T-0001..T-0007: spec approved at the gate and applied on `main` (merges listed in `dev/issues.md`).
 Closed 2026-10-01 as applied by hand. The Planner was run on T-0001..T-0003 anyway, as its first
 real test: each run found the spec already on `main` and escalated instead of planning no-op
 work, which is the right call. Lesson for the design (feeds T-0008's lifecycle): the store has no
