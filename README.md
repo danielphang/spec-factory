@@ -394,3 +394,29 @@ document.
 - **Headings are the contract.** Keep the section order and names; other documents link to them.
   Add a subsection rather than a new top-level section, and never put how-to steps in an
   explanation section or explanation in a how-to.
+
+### Regenerating this page from scratch
+
+When the page has drifted too far to patch, or after a change that touches most sections, rebuild
+it from the code, not from the previous page or the design. What to read, in this order, and what
+each section comes from:
+
+| Section | Source of truth | Re-derive with |
+|---|---|---|
+| Roles, models | `.factory/instance.yaml` (`models`), `docs/prompts/` | read the files |
+| Terms, routing, states | `instance.yaml` (`routing`, `ready_state`); `factory/cli.py` (`ticket transition` guards) | read the files |
+| How a ticket moves | `factory/workflows/intake.js`, `build.js` (the `phase(...)` blocks and the `STATUS` routes); `factory/cli.py` `ticket_join`, `merge_cmd`, `archive_cmd` | read the code; confirm against the last closed ticket's run log in `.factory/state/log/` |
+| Where it runs, lock | `factory/instance.py` (`find`, `guard`), `instance.yaml` (`harness`, `state_dir`) | `~/dev/spec-factory-harness/bin/factory paths`; `cat .factory/harness.lock`; `git -C ~/dev/spec-factory-harness rev-parse HEAD` |
+| Where a human decides | `factory/cli.py` `build_parser()`: the `approve-spec`, `request-changes`, `resolve`, `--accept-harness` arguments | `bin/factory --help`; `bin/factory resolve --help` |
+| Built / not built | `tests/factory/` (what has a test is built); `dev/issues.md` (what is named and open) | `uv run --frozen pytest -q tests/factory`; `gh issue list --state open` |
+| Where this can go | `docs/design.md` §Harness, §Routing table | read the design; nothing here comes from the code |
+| Related work and history | `.factory/state/tickets/`, `dev/issues.md`, `docs/changelog.md` | `ls .factory/state/tickets | wc -l`; `git log --oneline -20` |
+
+Then two checks before it lands, in this order. First, the session that owns the harness code
+reads the draft against the running revision and corrects every as-built fact (today this caught
+two: a target described as cut over that was not, and a bound stated on the wrong case). Second,
+an independent reader with no project context reads it against "Maintaining this page" and the
+writing standard; every term they stumble on is a finding. Both passes are the same ones the
+critic and reviewer run on a spec, applied to this document. When the factory's own capabilities
+are in current truth (#21), the first pass becomes a diff against the spec store and most of this
+table goes away.
