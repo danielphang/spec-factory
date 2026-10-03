@@ -213,7 +213,8 @@ def _start_build_run(root: Path, cfg: dict, t: dict, meta: dict, d: Path, parent
             gitops.add_worktree(repo, wt, branch, integ, new_branch=t.get("branch") is None)
         t["branch"] = branch
         meta.update({"branch": branch, "base": gitops.rev(repo, integ), "head": gitops.rev(repo, branch),
-                     "worktree": str(wt), "resolution": "conflict" if t.get("merge_refused") else None})
+                     "worktree": str(wt), "resolution": "conflict" if t.get("merge_refused") else None,
+                     "environment_files": gitops.copy_environment_files(cfg, repo, wt)})
     else:
         head = gitops.rev(repo, integ) if parent_close else t.get("head")
         base = (t.get("parent_base") or head) if parent_close else gitops.rev(repo, integ)
@@ -221,6 +222,7 @@ def _start_build_run(root: Path, cfg: dict, t: dict, meta: dict, d: Path, parent
             raise Refused(f"{t['id']} has no head to check")
         wt = d / "wt"
         gitops.add_detached_worktree(repo, wt, head)
+        meta["environment_files"] = gitops.copy_environment_files(cfg, repo, wt)
         if not parent_close:
             store.write_text(d / "diff.patch", gitops.diff(repo, base, head))
         meta.update({"branch": t.get("branch"), "base": base, "head": head, "worktree": str(wt)})
@@ -389,6 +391,9 @@ def ticket_ready_implementers(a, root, cfg):
          "remaining": [s["id"] for s in subs if s["status"] not in ("merged", "parked", "closed")],
          "in_flight": [s["id"] for s in subs if s["in_flight"] or s["status"] in subtickets.IN_FLIGHT_STATES],
          "parked": [s["id"] for s in subs if s["status"] == "parked"],
+         # stopped mid-check (a dispatcher that died or was stopped): no run in flight, so buildOne
+         # resumes it from its stored state; the checkers re-run on its current head
+         "resumable": [s["id"] for s in subs if s["status"] in subtickets.IN_FLIGHT_STATES and not s["in_flight"]],
          "closed": [s["id"] for s in subs if s["status"] == "closed"]})
 
 
@@ -682,12 +687,31 @@ def resolve(a, root, cfg):
         if st != "parked" or t["spec"]["version"] < 1:
             raise Refused(f"--to spec-gate needs a parked ticket with a spec version; {t['id']} is {st}")
         move("awaiting-spec-gate", "to-spec-gate", {})
+    elif a.redispatch:
+        # Re-run the checkers on the same head after the cause of the park is fixed outside the ticket
+        # (a harness or gate defect, a killed checker). Round unchanged; the head's earlier results are
+        # set aside under results/<head>/superseded-<n>/ so the join cannot read them as current.
+        if st != "parked" or parked.get("from") not in ("checks-in-flight", "ready-for-merge"):
+            raise Refused(f"--redispatch applies to a sub-ticket parked from its checks; {t['id']} is {st} (from {parked.get('from')})")
+        head = t.get("head")
+        moved = []
+        if head:
+            rd = root / "results" / head
+            if rd.exists():
+                n = len(list(rd.glob("superseded-*"))) + 1
+                dest = rd / f"superseded-{n}"
+                for f in sorted(rd.glob("*.yaml")):
+                    dest.mkdir(parents=True, exist_ok=True)
+                    f.rename(dest / f.name)
+                    moved.append(f.stem)
+        store.log_event(root, "results.superseded", ticket=t["id"], head=head, roles=moved)
+        move("checks-in-flight", "redispatch", {"head": head, "superseded": moved})
     elif a.close:
         if st == "closed":
             raise Refused(f"{t['id']} is already closed")
         move("closed", "close", {})
     else:
-        raise Refused("resolve needs one of --answer F | --ruling F | --to spec-gate | --close")
+        raise Refused("resolve needs one of --answer F | --ruling F | --to spec-gate | --redispatch | --close")
 
 
 # ----- spec store (doc §Harness, Spec store; part K) ----------------------------------
@@ -906,6 +930,7 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--answer")
     p.add_argument("--ruling")
     p.add_argument("--to")
+    p.add_argument("--redispatch", action="store_true")
     p.add_argument("--close", action="store_true")
     p.set_defaults(fn=resolve)
 

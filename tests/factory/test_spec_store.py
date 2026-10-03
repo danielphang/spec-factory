@@ -364,3 +364,18 @@ def test_decisions_keep_markdown_join_wrapped_lines_and_skip_none(store):
     assert run(store, "archive", "T-0001").returncode == 0
     dec = [ln.split(" T-0001 ", 1)[1] for ln in (store / "decisions.md").read_text().splitlines()]
     assert dec == ["**Bold** decision one", "Decision two wraps onto a second line."]
+
+
+def test_acceptance_labels_allow_ordinary_punctuation_but_not_a_choice(store, tmp_path):
+    """A writer may write '→ NEW. Today it …' or '→ REGRESSION (today …)'; '→ NEW / REGRESSION' is no label."""
+    run(store, "init")
+    to_gate(store, FOUR_PART.replace("→ NEW; today it parks", "→ NEW. Today it parks: `exit=0`."))
+    cp = run(store, "approve-spec", "T-0001")
+    assert cp.returncode == 0, cp.stderr
+    f = tmp_path / "v2.md"
+    for bad in ("→ NEW / REGRESSION", "→ NEWS", "→ NEW today it parks"):
+        f.write_text(FOUR_PART.replace("→ NEW; today it parks", bad))
+        run(store, "spec", "add", "T-0001", "--file", str(f))
+        v = yaml.safe_load((store / "tickets" / "T-0001.yaml").read_text())["spec"]["version"]
+        cp = run(store, "approve-spec", "T-0001", "--version", str(v))
+        assert cp.returncode == 2 and "no NEW/REGRESSION label" in cp.stderr, bad

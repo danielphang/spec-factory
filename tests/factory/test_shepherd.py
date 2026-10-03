@@ -196,6 +196,7 @@ def test_the_planned_ticket_is_built_checked_merged_and_archived(tmp_path):
     # | Implementer | READY-FOR-REVIEW | Gate runner, Reviewer, and Verifier, all on the same head |
     main_at_dispatch = f.repo_rev("main")
     impl = f.dispatch("implementer", st)
+    assert yaml.safe_load((f.store / "runs" / impl.run_id / "meta.yaml").read_text())["environment_files"] == []  # target has no uv.lock
     ignore = (f.store / ".gitignore").read_text().splitlines()
     assert "worktrees/" in ignore and "runs/*/wt/" in ignore  # nested checkouts never ride along with the store
     assert "Sub-ticket T-0001.1" in impl.input and "### Requirement: the-thing" in impl.input
@@ -535,6 +536,55 @@ def test_a_killed_reviewer_parks_and_a_second_implementer_run_on_one_branch_is_r
     assert f.last_join["decision"] == "wait"  # the verifier has not reported yet
     f.dispatch("verifier", st)
     assert f.state(st) == "parked" and f.ticket(st)["parked"]["reason"] == "budget kill: reviewer"
+
+
+def test_a_sub_ticket_stopped_mid_check_is_reported_as_resumable(tmp_path):
+    """A dispatcher stopped while the checkers ran leaves the sub-ticket in checks-in-flight with no run
+    in flight; ready-implementers names it so the next build.js resumes it instead of skipping it."""
+    f, tid, (st,) = built_to_implementer(tmp_path)
+    f.dispatch("implementer", st)
+    r = f.ok("ticket", "ready-implementers", tid)
+    assert r["ready"] == [] and r["resumable"] == [st]
+    rid = f.ok("run", "start", "--role", "reviewer", "--ticket", st)["run_id"]  # a checker in flight is not resumable
+    assert f.ok("ticket", "ready-implementers", tid)["resumable"] == []
+    f.ok("run", "finish", rid, "--status-override", "KILLED")
+    assert f.ok("ticket", "ready-implementers", tid)["resumable"] == [st]
+
+
+def test_worktrees_get_the_integration_checkout_s_untracked_lockfile(tmp_path):
+    """An untracked uv.lock in the integration checkout is copied into the implementer's worktree and each
+    checker's checkout, so the branch is tested against the same resolved packages."""
+    f, tid, (st,) = built_to_implementer(tmp_path)
+    (f.repo / ".gitignore").write_text("uv.lock\n")
+    (f.repo / "uv.lock").write_text("# the integration lock\n")
+    impl = f.dispatch("implementer", st)
+    wt = Path(yaml.safe_load((f.store / "runs" / impl.run_id / "meta.yaml").read_text())["worktree"])
+    assert (wt / "uv.lock").read_text() == "# the integration lock\n"
+    rid = f.ok("run", "start", "--role", "verifier", "--ticket", st)["run_id"]
+    meta = yaml.safe_load((f.store / "runs" / rid / "meta.yaml").read_text())
+    assert meta["environment_files"] == ["uv.lock"] and (Path(meta["worktree"]) / "uv.lock").read_text() == "# the integration lock\n"
+
+
+def test_redispatch_re_runs_the_checks_on_the_same_head_after_a_harness_fix(tmp_path):
+    """A SPEC-DEFECT caused by the gate, not the change: the human fixes the gate and redispatches. The
+    checkers run again on the same commit, the round does not move, and the old rows are set aside."""
+    f, tid, (st,) = built_to_implementer(tmp_path)
+    f.dispatch("implementer", st)
+    head = f.ticket(st)["head"]
+    f.dispatch("reviewer", st)
+    defect = f.tmp / "defect.md"
+    defect.write_text("Commit: HEAD\nGate suite: FAIL\nSTATUS: SPEC-DEFECT\nCONFIDENCE: high, fixture\nESCALATIONS: none\n")
+    f.dispatch("verifier", st, stub_path=defect)
+    assert f.state(st) == "parked" and f.ticket(st)["parked"]["reason"] == "SPEC-DEFECT from verifier"
+    cp = f.cli("resolve", tid, "--redispatch")  # only a sub-ticket parked from its checks
+    assert cp.returncode == 2
+    f.human_runs("resolve", st, "--redispatch")
+    assert f.state(st) == "checks-in-flight" and f.ticket(st)["round"]["pr"] == 1 and f.ticket(st)["head"] == head
+    assert f.results(st) == {} and sorted(p.name for p in (f.store / "results" / head / "superseded-1").iterdir()) == ["ci.yaml", "reviewer.yaml", "verifier.yaml"]
+    assert f.ok("ticket", "ready-implementers", tid)["resumable"] == [st]
+    f.dispatch("reviewer", st, stub="accept-approve/reviewer-1.md")
+    f.dispatch("verifier", st, stub="accept-approve/verifier-1.md")
+    assert f.state(st) == "merged"
 
 
 # ----- the shepherd: the routing table applied to the store CLI ----------------------------------
