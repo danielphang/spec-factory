@@ -57,7 +57,7 @@ routing:
   ready-for-critic: [ready-for-spec-writer, awaiting-spec-gate, parked, closed]
   awaiting-spec-gate: [ready-for-planner, ready-for-spec-writer, closed]
   ready-for-planner: [planned, parked, closed]
-  parked: [ready-for-triage, ready-for-spec-writer, ready-for-critic, ready-for-planner, awaiting-spec-gate, ready-for-implementer, ready-for-parent-verify, closed]
+  parked: [ready-for-triage, ready-for-spec-writer, ready-for-critic, ready-for-planner, awaiting-spec-gate, ready-for-implementer, checks-in-flight, ready-for-parent-verify, closed]
   planned: [ready-for-parent-verify, parked, closed]
   # sub-tickets
   waiting-dependencies: [ready-for-implementer, parked, closed]

@@ -676,12 +676,31 @@ def resolve(a, root, cfg):
         if st != "parked" or t["spec"]["version"] < 1:
             raise Refused(f"--to spec-gate needs a parked ticket with a spec version; {t['id']} is {st}")
         move("awaiting-spec-gate", "to-spec-gate", {})
+    elif a.redispatch:
+        # Re-run the checkers on the same head after the cause of the park is fixed outside the ticket
+        # (a harness or gate defect, a killed checker). Round unchanged; the head's earlier results are
+        # set aside under results/<head>/superseded-<n>/ so the join cannot read them as current.
+        if st != "parked" or parked.get("from") not in ("checks-in-flight", "ready-for-merge"):
+            raise Refused(f"--redispatch applies to a sub-ticket parked from its checks; {t['id']} is {st} (from {parked.get('from')})")
+        head = t.get("head")
+        moved = []
+        if head:
+            rd = root / "results" / head
+            if rd.exists():
+                n = len(list(rd.glob("superseded-*"))) + 1
+                dest = rd / f"superseded-{n}"
+                for f in sorted(rd.glob("*.yaml")):
+                    dest.mkdir(parents=True, exist_ok=True)
+                    f.rename(dest / f.name)
+                    moved.append(f.stem)
+        store.log_event(root, "results.superseded", ticket=t["id"], head=head, roles=moved)
+        move("checks-in-flight", "redispatch", {"head": head, "superseded": moved})
     elif a.close:
         if st == "closed":
             raise Refused(f"{t['id']} is already closed")
         move("closed", "close", {})
     else:
-        raise Refused("resolve needs one of --answer F | --ruling F | --to spec-gate | --close")
+        raise Refused("resolve needs one of --answer F | --ruling F | --to spec-gate | --redispatch | --close")
 
 
 # ----- spec store (doc §Harness, Spec store; part K) ----------------------------------
@@ -900,6 +919,7 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--answer")
     p.add_argument("--ruling")
     p.add_argument("--to")
+    p.add_argument("--redispatch", action="store_true")
     p.add_argument("--close", action="store_true")
     p.set_defaults(fn=resolve)
 
