@@ -265,7 +265,7 @@ def test_a_merge_waits_for_every_checker_and_refuses_a_red_gate(tmp_path):
     assert f.last_join["decision"] == "wait" and f.last_join["missing"] == ["verifier", "ci"]  # the join waits for every row
     ver = f.dispatch("verifier", st, stub_path=red, route=False)
     head = f.ticket(st)["head"]
-    f.ok("results", "record", st, "--head", head, "--role", "verifier", "--output", str(red), "--run", ver.run_id)
+    f.ok("results", "record", st, "--head", head, "--role", "verifier", "--output", str(f.store / "runs" / ver.run_id / "output.md"), "--run", ver.run_id)
     assert f.results(st) == {"reviewer": "APPROVE", "verifier": "FAILED", "ci": "FAIL"}
     cp = f.cli("merge", st)  # the gate reads the table: APPROVE is not enough when ci and the verifier are red
     assert cp.returncode == 2 and "ci is FAIL" in cp.stderr and f.repo_rev("main") != head
