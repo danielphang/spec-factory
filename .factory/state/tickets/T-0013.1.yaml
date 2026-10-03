@@ -1,0 +1,48 @@
+id: T-0013.1
+type: sub-ticket
+title: Writing standard, the preamble line that points every role to it, critic rubric 6 widened, reviewer
+  check 8, briefing reader line
+request: requests/T-0013.md
+source: plan:run-0108-planner
+status: merged
+round:
+  spec: 0
+  pr: 1
+spec:
+  version: 1
+  approved_version: 1
+plan: null
+in_flight: []
+parked: null
+created: '2026-10-03T18:11:21+00:00'
+history:
+- ts: '2026-10-03T18:21:44+00:00'
+  from: ready-for-implementer
+  to: checks-in-flight
+  by: workflow
+  round:
+    spec: 0
+    pr: 1
+- ts: '2026-10-03T18:29:10+00:00'
+  from: checks-in-flight
+  to: ready-for-merge
+  by: workflow
+  round:
+    spec: 0
+    pr: 1
+- ts: '2026-10-03T18:29:17+00:00'
+  from: ready-for-merge
+  to: merged
+  by: merge
+  head: e703c1bfb1216079f802ba25e3d3a218246f385d
+parent: T-0013
+depends_on: []
+parallel_safe: true
+branch: factory/T-0013.1
+head: e703c1bfb1216079f802ba25e3d3a218246f385d
+merge:
+  base_before: 0759162e21900c35ecf653e3df7fbe622a30abbd
+  main_after: 01f7524f35d3939caa31f56e35cd9de5884b6034
+parent_base: null
+label: ST-1
+merge_refused: null

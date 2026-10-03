@@ -1,0 +1,36 @@
+run_id: run-0110-verifier
+role: verifier
+ticket: T-0013.1
+model: opus
+round: 1
+spec_version: 1
+started: '2026-10-03T18:22:00+00:00'
+finished: '2026-10-03T18:28:30+00:00'
+wall_s: 390
+status: VERIFIED
+input_sources:
+- specs/T-0013.1/subticket.md
+- specs/T-0013/v1.md
+- runs/run-0109-implementer/output.md
+- runs/run-0110-verifier/diff.patch
+environment_files: []
+branch: factory/T-0013.1
+base: 0759162e21900c35ecf653e3df7fbe622a30abbd
+head: e703c1bfb1216079f802ba25e3d3a218246f385d
+worktree: /Users/dphang/dev/spec-factory/.factory/state/runs/run-0110-verifier/wt
+confidence: high. All 9 criteria were run verbatim on head and base and gave the stated results, the gates
+  passed in a fresh environment on this tree, and mutation probes show the new and changed tests catch
+  a missing fill and a missing standard file.
+escalations:
+- 'Minor, non-blocking prose accuracy: the rule 4 After in `docs/writing.md` says sub-ticket ".6 merges
+  last". Its cited source, `run-0054-planner`, lets .5 run in parallel with .6 and says only that .6 is
+  the last sub-ticket to touch harness code. Suggest "…; .6 is the last change to harness code", which
+  matches the caption. This is for the reviewer or operator. It is not a criterion failure.'
+- 'Same as the implementer''s Known gaps: runs that use the registered `agents/` role templates instead
+  of the inline `system-prompt.txt` do not get the new preamble line. This follows the parent''s Decisions
+  and is reported, not a defect of this PR.'
+- 'Protected and guardrail paths were touched as declared (harness: `factory/instance.py`, `factory/prompts/{preamble,critic,reviewer}.md`,
+  `factory/context.template.md`; generated: `docs/prompts/{00-preamble,03-spec-critic,06-code-reviewer}.md`;
+  guardrail: three `docs/design.md` blocks and one test in `tests/factory/test_instance.py`). The merge
+  gate needs the human approval for these. No undeclared protected path was touched.'
+escalations_note: null
