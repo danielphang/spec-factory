@@ -3,16 +3,23 @@ type: sub-ticket
 title: 'Harness lock: refuse an unaccepted or modified harness on the instance''s own store, `--accept-harness`'
 request: requests/T-0012.md
 source: plan:run-0054-planner
-status: ready-for-implementer
+status: parked
 round:
   spec: 0
-  pr: 0
+  pr: 1
 spec:
   version: 3
   approved_version: 3
 plan: null
 in_flight: []
-parked: null
+parked:
+  reason: 'budget kill: reviewer'
+  since: '2026-10-03T09:55:13+00:00'
+  from: checks-in-flight
+  outputs:
+  - run-0076-reviewer
+  - run-0077-verifier
+  question: null
 created: '2026-10-03T07:49:00+00:00'
 history:
 - ts: '2026-10-03T08:59:59+00:00'
@@ -31,12 +38,24 @@ history:
   round:
     spec: 0
     pr: 0
+- ts: '2026-10-03T09:44:59+00:00'
+  from: ready-for-implementer
+  to: checks-in-flight
+  by: workflow
+  round:
+    spec: 0
+    pr: 1
+- ts: '2026-10-03T09:55:13+00:00'
+  from: checks-in-flight
+  to: parked
+  by: park
+  reason: 'budget kill: reviewer'
 parent: T-0012
 depends_on:
 - T-0012.3
 parallel_safe: false
 branch: factory/T-0012.4
-head: null
+head: 010d1b00c5835c7022a72771c63f63f8b6ab3707
 merge:
   base_before: null
   main_after: null
