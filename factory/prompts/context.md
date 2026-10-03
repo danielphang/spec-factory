@@ -1,34 +1,29 @@
 ## Context for this run (composed by the harness, not part of the request)
 
-Repository: `nanobot`, the lionbot fork. This checkout is the TARGET generation: branch
-`feat/lionbot-v3` at `~/dev/nanobot-upstream` (upstream base tag `lionbot-v3-base`). The
-REFERENCE generation is the production fork at `~/dev/nanobot` (branch `feat/lionbot-next`,
-"blue"): read it only to observe what the feature does today; never copy its test names,
-line numbers or commit SHAs into a spec. Never read or write `~/.nanobot/` (live credentials).
+Repository: `spec-factory`, the design repo at `~/dev/spec-factory` (branch `main`). It holds
+documents, not code: `docs/spec-factory.md` (the design document, source of truth),
+`specs/build-harness.md` (the spec for building the harness), `plans/` (the Planner's
+decompositions; `plans/P0-intake-skeleton.md` is the walking skeleton), and `prompts/`
+(each file a verbatim copy of one prompt block in the design doc; it changes only by
+re-copying that block). Your shell may start in another directory: use absolute paths, or
+`cd ~/dev/spec-factory && <cmd>`.
 
-Running things here: `uv run <cmd>` from the repo root (never pip). Tests run serially with
-`PYTHONDONTWRITEBYTECODE=1 COLUMNS=200 TERM=dumb NO_COLOR=1 uv run pytest -q -p no:cacheprovider <path>`.
-Lint: `uv run ruff check nanobot/`. Acceptance commands must be runnable as written on this checkout.
+The REFERENCE implementation is the Nanobot-side harness at `~/dev/nanobot-upstream/factory/`
+(branch `feat/lionbot-v3`, built from `plans/P0-intake-skeleton.md`). Read it only to observe
+what a fix does today; never write there, and never copy its test names, line numbers or
+commit SHAs into a spec. Never read or write `~/.nanobot/` (live credentials).
 
-The request is a legacy "faux spec": a document that mixes the durable intent (what the
-operator needs the bot to do) with one generation's implementation record (test names,
-file:line citations, commit SHAs, ledger status, verification narrative, a prior
-implementation profile). Treat the implementation record as evidence of what the reference
-generation did, not as requirements. Carry forward only what the requester needs; anything
-that can be re-derived from the code at build time does not belong in the spec. Where the
-request's status says the capability is already built on this checkout, verify that before
-writing NEW criteria; a NEW criterion that already passes proves nothing.
+Acceptance commands must be runnable as written from `~/dev/spec-factory` (grep, sed, diff,
+`git diff --check` against the documents). A change to the design doc keeps its own
+conventions: the Changelog section at its end, `specs/build-harness.md` consistent with the
+new text, and any `prompts/` file whose block changed re-copied from it.
 
-Build half, as this repo runs it today: there is no remote and no CI service. "Open a PR" means
-commit on your branch in your worktree and return the PR description; "push" means commit; the
-"CI result" is the gate suite (the gate commands in your input: lint, and the full-suite gate,
-which passes when no test fails outside the port's known-failure baseline), which the verifier
-runs on the head and reports as `Gate suite: PASS|FAIL`. A merged sub-ticket is a local
-`--no-ff` merge into the integration branch. Never push, never touch another worktree. Running the
-gate rewrites `webui/package-lock.json` and creates `webui/node_modules/`: never commit either; stage
-the files you changed by name, not with `git add -A`.
+The request is an issue draft, written from a real pipeline run: where in the documents,
+what happened (the evidence), why it matters, a proposed fix, and the Nanobot-side commit
+where a harness fix already exists. The evidence is the requirement; the proposed fix is the
+requester's suggestion, not a requirement. Verify the as-built fix in the reference harness
+before relying on it; a NEW criterion that already passes on this checkout proves nothing.
 
 Output: write your complete output, in your role's required format and ending with the
-STATUS / CONFIDENCE / ESCALATIONS trailer, to the file named under "Output file" below. For
-every role but the implementer that is the only file you may create or modify. The implementer
-also changes files in its own worktree and commits there, and nowhere else. Then return the same text as your final message.
+STATUS / CONFIDENCE / ESCALATIONS trailer, to the file named under "Output file" below. That
+is the only file you may create or modify. Then return the same text as your final message.
