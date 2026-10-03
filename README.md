@@ -159,8 +159,9 @@ Three places:
   mid-run.
 - Each **target** holds only a `.factory/` directory, its instance: `instance.yaml` (config),
   `context.md` (the briefing every role reads first), the store, and `harness.lock`, the one
-  harness commit this target has agreed to run with. Today's targets are this repo and a chat-bot
-  repo.
+  harness commit this target has agreed to run with. Today this repo is the only target on the
+  runtime; a chat-bot repo is a target that still runs its own in-tree copy of the harness until
+  its cutover.
 
 ```mermaid
 flowchart TB
@@ -177,7 +178,7 @@ flowchart TB
   end
   DEV -- "git worktree, detached at one commit; moved only between tickets" --> RT
 
-  subgraph A["target: a chat-bot repo"]
+  subgraph A["target: a chat-bot repo  (after its cutover; today it runs an in-tree copy)"]
     A1[".factory/  instance.yaml · context.md · harness.lock · state/"]:::store
     A2[".claude/agents/factory-*.md  (role agents, installed by factory init)"]:::code
     A3["the repo's own code and tests"]:::code
@@ -295,7 +296,8 @@ allowed, when the ticket closes.
   repo's own check commands (`gate_commands` in `instance.yaml`: lint, tests) and records the
   result where a CI result would go. The reviewer and verifier judge the same commit. A sub-ticket
   that passes is merged into the local integration branch, one merge at a time. If `main` moved
-  during the build, the implementer merges it in before the checks re-run, at most twice.
+  during the build, the implementer merges it in before the checks re-run; two catch-up runs that
+  fail to merge it in park the sub-ticket.
 - **Spec store.** Specs live in an OpenSpec tree, a folder-per-change layout borrowed from the
   OpenSpec project. A ticket's spec is a set of deltas against current truth. When a ticket closes,
   `archive` applies the deltas, so the description of the system is kept current by the pipeline.
@@ -358,7 +360,8 @@ sub-tickets merged, the whole spec verified 30/30 by the factory itself, then cl
 because this repo has no spec store yet) and the first end-to-end builds on the
 chat-bot repo (issues #16 and #18, run through that repo's own earlier copy of the harness). The
 two targets are this repo (instance B) and the nanobot fork at `~/dev/nanobot-upstream` (instance
-A, cut over to the shared runtime by its own ticket). Open work named above: `factory report`
+A). Instance A still runs its in-tree copy of the harness; its cutover to the shared runtime is
+planned, not done. Open work named above: `factory report`
 (#17); current-truth seeding and the README overview this page stands in for (#21); per-role
 effort (#22); prompt changes borrowed from the ponytail project (#20); the documentation standard
 this page was rewritten to (#23). The design document is `docs/design.md`, its changelog
