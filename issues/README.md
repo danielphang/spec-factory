@@ -23,6 +23,7 @@ A fix closes its issue through a reviewed change on `main`; the merge column is 
 | [16](https://github.com/danielphang/spec-factory/issues/16) | Harness: a checker result with no or a non-SHA Commit: line is recorded against the current commit (first end-to-end pilot) | pilot, in intake | — | — |
 | [17](https://github.com/danielphang/spec-factory/issues/17) | Harness: `factory report TICKET` status page | not in intake yet | — | — |
 | [18](https://github.com/danielphang/spec-factory/issues/18) | Harness: a killed checker run parks as a harness bug instead of a budget kill (found by #16's writer) | not in intake yet | — | — |
+| [19](https://github.com/danielphang/spec-factory/issues/19) | Repo layout: the harness moves home, each target carries a `.factory/` instance (p0; after the #16 pilot; generalises #7) | not in intake yet | — | — |
 
 Issues 1–10 are applied and can be closed against their merge; 11 applied (`9168ce1`); 13 is open (harness side fixed on green `70de00d45`). #12 was a duplicate of #11.
 New findings go straight to GitHub issues; this file is the index.
