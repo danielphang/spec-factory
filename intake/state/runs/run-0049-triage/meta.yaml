@@ -1,0 +1,18 @@
+run_id: run-0049-triage
+role: triage
+ticket: T-0012
+model: opus
+round: 0
+spec_version: 0
+started: '2026-10-03T06:18:54+00:00'
+finished: '2026-10-03T06:20:42+00:00'
+wall_s: 108
+status: ACCEPT
+input_sources:
+- requests/T-0012.md
+confidence: medium. The intent, scope boundary and decisions are explicit, and the cited facts check out
+  on both checkouts. But this is a large multi-part refactor whose body has stale numbers (corrected by
+  the intake note), and I did not run green's test suite or open the linked review.
+escalations: []
+escalations_note: none. This run wrote only its output file. The protected-path touches (`intake/**`,
+  `prompts/**`) are declared in the request's Risk section and flagged above for the gate.

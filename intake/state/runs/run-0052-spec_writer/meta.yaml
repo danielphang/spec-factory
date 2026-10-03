@@ -1,0 +1,23 @@
+run_id: run-0052-spec_writer
+role: spec_writer
+ticket: T-0012
+model: opus
+round: 2
+spec_version: 1
+started: '2026-10-03T06:58:52+00:00'
+finished: '2026-10-03T07:03:46+00:00'
+wall_s: 294
+status: NEEDS-SPLIT
+input_sources:
+- runs/run-0049-triage/output.md
+- requests/T-0012.md
+- runs/run-0051-critic/output.md
+- specs/T-0012/v1.md
+confidence: medium. All four round-1 findings are addressed, `main` and green are unchanged since round
+  1, and the five "today" outputs I re-ran match; the A and D results come from scratch trials, but B,
+  C, E and F are design targets that no code exercises yet.
+escalations: []
+escalations_note: none. The protected paths this touches (`intake/**` infra, `prompts/**` generated) are
+  declared under Risk for the gate; `~/dev/nanobot-upstream` was only read (it was not cloned in this
+  round) and `~/.nanobot/` was not touched. This run wrote only its output file in the repo (a temporary
+  copy of v1 in the session scratchpad, outside the repo, was deleted).

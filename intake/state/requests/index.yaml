@@ -42,3 +42,7 @@ T-0011:
   source: /Users/dphang/dev/spec-factory/intake/requests/11_plain_language_problem.md
   hash: 71c49a6986922655
   imported: '2026-10-02T07:39:30+00:00'
+T-0012:
+  source: /Users/dphang/dev/spec-factory/intake/requests/19_harness_home.md
+  hash: d4587ad1654b8389
+  imported: '2026-10-03T06:18:28+00:00'
