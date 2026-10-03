@@ -1,0 +1,40 @@
+run_id: run-0097-verifier
+role: verifier
+ticket: T-0012.6
+model: opus
+round: 2
+spec_version: 3
+started: '2026-10-03T16:11:35+00:00'
+finished: '2026-10-03T16:22:01+00:00'
+wall_s: 626
+status: VERIFIED
+input_sources:
+- specs/T-0012.6/subticket.md
+- specs/T-0012/v3.md
+- runs/run-0096-implementer/output.md
+- runs/run-0097-verifier/diff.patch
+- runs/run-0095-reviewer/output.md
+- runs/run-0094-verifier/output.md
+environment_files: []
+branch: factory/T-0012.6
+base: 600b8d488ce017d8238ffb87c6e6a9efde1cdf28
+head: 3d5afc012b5a22fed48de58e7af9c8206c7c9fff
+worktree: /Users/dphang/dev/spec-factory/intake/state/runs/run-0097-verifier/wt
+confidence: high. All 20 acceptance commands were extracted verbatim and run on fresh clones at head and
+  base, and gave the expected NEW and REGRESSION pattern. Both gate commands were run as written in the
+  given worktree and exited 0. The probes show the round-2 text matches the code's behaviour, and the
+  lock and instance resolution work on inputs near the tested ones.
+escalations:
+- '1. Protected path `intake/**` (infra) is touched exactly as the sub-ticket declares, unchanged since
+  round 1:'
+- '`intake/README.md`, `setup.sh`, `HARNESS_PIN` and `instance/*` are removed;'
+- '`intake/answers/` and `intake/green-pilot/` are pure renames to `.factory/` (the `-M100% --diff-filter=AD`
+  count is `0`);'
+- '`intake/state/**` and `intake/.gitignore` are untouched (`live-store-untouched` is `0`).'
+- The merge gate needs the human approval that this declaration implies.
+- 2. Head `3d5afc0` still does not contain `main` `600b8d4`. That commit touches only `intake/state/**`,
+  a trial merge is clean, and the lock stays current after it (probe 4). If the merge step requires the
+  head to contain `main`, a main merge comes first.
+- '3. For the record: the pilot count is 135, not the THEN''s 134 (note 1). The "both numbers equal" condition
+  holds.'
+escalations_note: null

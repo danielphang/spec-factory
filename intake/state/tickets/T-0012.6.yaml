@@ -3,10 +3,10 @@ type: sub-ticket
 title: 'Instance B cutover: `.factory/`, README rewrite, `intake/` reduced to the live store'
 request: requests/T-0012.md
 source: plan:run-0054-planner
-status: checks-in-flight
+status: merged
 round:
   spec: 0
-  pr: 1
+  pr: 2
 spec:
   version: 3
   approved_version: 3
@@ -41,6 +41,53 @@ history:
   - ci
   - reviewer
   - verifier
+- ts: '2026-10-03T16:03:54+00:00'
+  from: checks-in-flight
+  to: ready-for-implementer
+  by: workflow
+  round:
+    spec: 0
+    pr: 2
+- ts: '2026-10-03T16:11:19+00:00'
+  from: ready-for-implementer
+  to: checks-in-flight
+  by: workflow
+  round:
+    spec: 0
+    pr: 2
+- ts: '2026-10-03T16:22:56+00:00'
+  from: checks-in-flight
+  to: ready-for-merge
+  by: workflow
+  round:
+    spec: 0
+    pr: 2
+- ts: '2026-10-03T16:23:21+00:00'
+  from: ready-for-merge
+  to: ready-for-implementer
+  by: workflow
+  round:
+    spec: 0
+    pr: 2
+- ts: '2026-10-03T16:28:50+00:00'
+  from: ready-for-implementer
+  to: checks-in-flight
+  by: workflow
+  round:
+    spec: 0
+    pr: 2
+- ts: '2026-10-03T16:35:48+00:00'
+  from: checks-in-flight
+  to: ready-for-merge
+  by: workflow
+  round:
+    spec: 0
+    pr: 2
+- ts: '2026-10-03T16:35:56+00:00'
+  from: ready-for-merge
+  to: merged
+  by: merge
+  head: 2d86d96440218508f3f7ba8bf66d5987458d71a7
 parent: T-0012
 depends_on:
 - T-0012.3
@@ -49,9 +96,11 @@ depends_on:
 - T-0012.1
 parallel_safe: false
 branch: factory/T-0012.6
-head: 302f70bb99f5c4518ddb94de12db22653aa57385
+head: 2d86d96440218508f3f7ba8bf66d5987458d71a7
 merge:
-  base_before: null
-  main_after: null
+  base_before: 600b8d488ce017d8238ffb87c6e6a9efde1cdf28
+  main_after: 70c32abf41484b631a157641649492ad6b271b76
 parent_base: null
 label: T-0012.6
+merge_refused: null
+conflict_runs: 0

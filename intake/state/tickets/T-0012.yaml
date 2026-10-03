@@ -4,7 +4,7 @@ title: 'Move the harness into spec-factory and give each target repo a `.factory
   B first; carries #7''s harness side)'
 request: requests/T-0012.md
 source: /Users/dphang/dev/spec-factory/intake/requests/19_harness_home.md
-status: planned
+status: ready-for-parent-verify
 round:
   spec: 2
   pr: 0
@@ -60,6 +60,22 @@ history:
   from: ready-for-planner
   to: planned
   by: workflow
+  round:
+    spec: 2
+    pr: 0
+- ts: '2026-10-03T16:36:13+00:00'
+  from: planned
+  to: ready-for-parent-verify
+  by: parent-check
+- ts: '2026-10-03T16:46:16+00:00'
+  from: ready-for-parent-verify
+  to: parked
+  by: park
+  reason: SPEC-DEFECT from parent-close verifier
+- ts: '2026-10-03T16:46:55+00:00'
+  from: parked
+  to: ready-for-parent-verify
+  by: dphang
   round:
     spec: 2
     pr: 0

@@ -1,0 +1,33 @@
+run_id: run-0100-verifier
+role: verifier
+ticket: T-0012.6
+model: opus
+round: 2
+spec_version: 3
+started: '2026-10-03T16:29:07+00:00'
+finished: '2026-10-03T16:33:46+00:00'
+wall_s: 279
+status: VERIFIED
+input_sources:
+- specs/T-0012.6/subticket.md
+- specs/T-0012/v3.md
+- runs/run-0099-implementer/output.md
+- runs/run-0100-verifier/diff.patch
+- runs/run-0095-reviewer/output.md
+- runs/run-0094-verifier/output.md
+environment_files: []
+branch: factory/T-0012.6
+base: 600b8d488ce017d8238ffb87c6e6a9efde1cdf28
+head: 2d86d96440218508f3f7ba8bf66d5987458d71a7
+worktree: /Users/dphang/dev/spec-factory/intake/state/runs/run-0100-verifier/wt
+confidence: high. All 20 acceptance commands were extracted verbatim and run on fresh clones of head and
+  base, and they gave the expected NEW/REGRESSION pattern. Both gates ran in the given worktree and exited
+  0. The probes confirm the lock, the dirty-harness refusal and the corrected wording on the merged head.
+escalations:
+- '1. Protected path `intake/**` (infra) is touched, as the sub-ticket declares: `intake/README.md`, `setup.sh`,
+  `HARNESS_PIN` and `instance/*` are removed; `intake/answers/` and `intake/green-pilot/` are pure renames
+  to `.factory/`; `intake/state/**` and `intake/.gitignore` are not changed by the branch''s own commits.
+  The merge gate needs the human approval that this declaration implies.'
+- '2. For the record: the pilot count is 135, not the THEN''s 134 (note 1). The "both numbers equal" condition
+  holds.'
+escalations_note: null

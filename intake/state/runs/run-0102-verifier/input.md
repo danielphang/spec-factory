@@ -1,3 +1,40 @@
+## Context for this run (composed by the harness, not part of the request)
+
+Repository: `spec-factory`, the design repo at `~/dev/spec-factory` (branch `main`). It holds
+documents, not code: `docs/spec-factory.md` (the design document, source of truth),
+`specs/build-harness.md` (the spec for building the harness), `plans/` (the Planner's
+decompositions; `plans/P0-intake-skeleton.md` is the walking skeleton), and `prompts/`
+(each file a verbatim copy of one prompt block in the design doc; it changes only by
+re-copying that block). Your shell may start in another directory: use absolute paths, or
+`cd ~/dev/spec-factory && <cmd>`.
+
+The REFERENCE implementation is the Nanobot-side harness at `~/dev/nanobot-upstream/factory/`
+(branch `feat/lionbot-v3`, built from `plans/P0-intake-skeleton.md`). Read it only to observe
+what a fix does today; never write there, and never copy its test names, line numbers or
+commit SHAs into a spec. Never read or write `~/.nanobot/` (live credentials).
+
+Acceptance commands must be runnable as written from `~/dev/spec-factory` (grep, sed, diff,
+`git diff --check` against the documents). A change to the design doc keeps its own
+conventions: the Changelog section at its end, `specs/build-harness.md` consistent with the
+new text, and any `prompts/` file whose block changed re-copied from it.
+
+The request is an issue draft, written from a real pipeline run: where in the documents,
+what happened (the evidence), why it matters, a proposed fix, and the Nanobot-side commit
+where a harness fix already exists. The evidence is the requirement; the proposed fix is the
+requester's suggestion, not a requirement. Verify the as-built fix in the reference harness
+before relying on it; a NEW criterion that already passes on this checkout proves nothing.
+
+Output: write your complete output, in your role's required format and ending with the
+STATUS / CONFIDENCE / ESCALATIONS trailer, to the file named under "Output file" below. That
+is the only file you may create or modify. Then return the same text as your final message.
+## Output file
+`/Users/dphang/dev/spec-factory/intake/state/runs/run-0102-verifier/output.md`
+
+## Where you work
+Worktree: `/Users/dphang/dev/spec-factory/intake/state/runs/run-0102-verifier/wt` (branch `None`, base `cdb1c6769ecc39208e62edc65578f62f5a23908f`, head `70c32abf41484b631a157641649492ad6b271b76`). There is no remote: commit on the branch; the PR is the branch plus the description you return. Gate commands (run each from your worktree, exactly as written): `git diff --check main...HEAD`; `uv run --frozen pytest -q -p no:cacheprovider tests/factory`
+
+## Parent spec (v3, pinned): verify every scenario on main
+
 === proposal.md
 ## Problem
 
@@ -472,9 +509,8 @@ The parent's combined change MUST add no whitespace errors.
 
 #### Scenario: whitespace-clean
 - GIVEN `BASE` as in changelog-moved-verbatim
-- WHEN `git diff --check "$BASE" HEAD -- . ':(exclude)intake/state' ':(exclude).factory/state'; echo "exit=$?"`
+- WHEN `git diff --check "$BASE" HEAD; echo "exit=$?"`
 - THEN it prints only `exit=0`
-- NOTE operator amendment at parent close, 2026-10-03 (verifier run-0102): the store's run records embed verbatim diffs whose blank context lines are a single space, so the range is checked outside the store. The records are never rewritten (Out of scope).
 
 === verification.md
 ## Acceptance
@@ -510,7 +546,7 @@ Run every command with bash from the root of the `~/dev/spec-factory` checkout u
 - instance-b-opens-every-ticket → NEW. Today it prints `tickets=0 failed=0`, because `bin/factory` does not exist here and no store is found. The same tickets open today through the old copy: `FACTORY_STATE=$PWD/intake/state intake/harness/bin/factory ticket show T-000N` succeeds for all twelve.
 - instance-b-config → NEW. Today it prints `no instance config`, then `context=`.
 - green-harness-still-present → REGRESSION. It prints `green keeps its harness` today and must still do so after the change.
-- whitespace-clean → REGRESSION. It prints `exit=0` today (an empty range) and must still do so over the whole parent. Amended at parent close to exclude the store (see the scenario).
+- whitespace-clean → REGRESSION. It prints `exit=0` today (an empty range) and must still do so over the whole parent.
 
 How verified:
 - I ran every WHEN above verbatim on this checkout for the "today" results.

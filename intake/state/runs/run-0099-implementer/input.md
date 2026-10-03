@@ -1,3 +1,139 @@
+## Context for this run (composed by the harness, not part of the request)
+
+Repository: `spec-factory`, the design repo at `~/dev/spec-factory` (branch `main`). It holds
+documents, not code: `docs/spec-factory.md` (the design document, source of truth),
+`specs/build-harness.md` (the spec for building the harness), `plans/` (the Planner's
+decompositions; `plans/P0-intake-skeleton.md` is the walking skeleton), and `prompts/`
+(each file a verbatim copy of one prompt block in the design doc; it changes only by
+re-copying that block). Your shell may start in another directory: use absolute paths, or
+`cd ~/dev/spec-factory && <cmd>`.
+
+The REFERENCE implementation is the Nanobot-side harness at `~/dev/nanobot-upstream/factory/`
+(branch `feat/lionbot-v3`, built from `plans/P0-intake-skeleton.md`). Read it only to observe
+what a fix does today; never write there, and never copy its test names, line numbers or
+commit SHAs into a spec. Never read or write `~/.nanobot/` (live credentials).
+
+Acceptance commands must be runnable as written from `~/dev/spec-factory` (grep, sed, diff,
+`git diff --check` against the documents). A change to the design doc keeps its own
+conventions: the Changelog section at its end, `specs/build-harness.md` consistent with the
+new text, and any `prompts/` file whose block changed re-copied from it.
+
+The request is an issue draft, written from a real pipeline run: where in the documents,
+what happened (the evidence), why it matters, a proposed fix, and the Nanobot-side commit
+where a harness fix already exists. The evidence is the requirement; the proposed fix is the
+requester's suggestion, not a requirement. Verify the as-built fix in the reference harness
+before relying on it; a NEW criterion that already passes on this checkout proves nothing.
+
+Output: write your complete output, in your role's required format and ending with the
+STATUS / CONFIDENCE / ESCALATIONS trailer, to the file named under "Output file" below. That
+is the only file you may create or modify. Then return the same text as your final message.
+## Output file
+`/Users/dphang/dev/spec-factory/intake/state/runs/run-0099-implementer/output.md`
+
+## Where you work
+Worktree: `/Users/dphang/dev/spec-factory/intake/state/worktrees/T-0012.6` (branch `factory/T-0012.6`, base `600b8d488ce017d8238ffb87c6e6a9efde1cdf28`, head `3d5afc012b5a22fed48de58e7af9c8206c7c9fff`). There is no remote: commit on the branch; the PR is the branch plus the description you return. Gate commands (run each from your worktree, exactly as written): `git diff --check main...HEAD`; `uv run --frozen pytest -q -p no:cacheprovider tests/factory`
+
+## This is a conflict run
+The merge gate refused your branch: head does not contain main. The integration branch moved after you branched. Merge it into your branch, resolve any conflict, re-run the gates, commit, and add one note on the resolution to the PR description. Change nothing else.
+
+## Sub-ticket T-0012.6
+
+## T-0012.6 / Instance B cutover: `.factory/`, README rewrite, `intake/` reduced to the live store
+
+Parent: `intake/state/specs/T-0012/v3.md`. Read it for context. Do NOT implement parts outside this sub-ticket.
+
+Depends on: T-0012.3, T-0012.4, T-0012.2. T-0012.1 is included through .3.
+
+Parallel-safe: no, with any sub-ticket that touches harness paths. Its lock is computed at its base (E.3). It is parallel-safe with T-0012.5 (disjoint files; .5 touches no harness path).
+
+Scope: E.1–E.6.
+- **`.factory/instance.yaml`**: as E.1 says, without `request_dir`. Its header comment must be rewritten: the copied lines 1–3 name `intake/setup.sh` and `HARNESS_PIN`, which no-old-paths-in-live-files greps for. Comments are not keys.
+- **`.factory/context.md`**: as E.2 says. Write the prompt copies' path only as `docs/prompts/`. A bare `prompts/` after a space or backtick matches the scenario's `[^/a-z_]prompts/`. The same holds for `README.md`.
+- **`.factory/harness.lock`**: `git log -1 --format=%H -- factory bin/factory agents pyproject.toml uv.lock` at this branch's base.
+- **`.factory/README.md`** (E.4).
+- **Removals and moves**: remove `intake/README.md`, `setup.sh`, `HARNESS_PIN` and `instance/*`.
+  - `git mv intake/answers .factory/answers` and `git mv intake/green-pilot .factory/green-pilot`, both pure renames with no content change.
+  - Keep `intake/state/` and `intake/.gitignore`.
+- **`README.md`** rewritten (E.6).
+
+Acceptance (first `uv sync --frozen`; from the repo root, no `FACTORY_STATE` or `FACTORY_INSTANCE` in the environment):
+- **intake-holds-only-live-store** → NEW [specs/self-instance]. THEN `left=0`.
+- **pilot-store-and-answers-kept-byte-identical** → NEW [specs/self-instance]. THEN `kept=134 of 134`, both numbers equal.
+- **instance-b-opens-every-ticket** → NEW [specs/self-instance]. THEN `tickets=N failed=0`, N ≥ 12.
+- **instance-b-config** → NEW [specs/self-instance]. THEN `True True True`, then `context=N`, N ≥ 2.
+- **readme-has-install-and-layout** → NEW [specs/repo-layout]. THEN only `checked`.
+- **no-old-paths-in-live-files** → REGRESSION [specs/repo-layout], full pathspec (relabelled by the operator, 2026-10-03: T-0012.2 and T-0012.5 already cleaned the files, so it passes at this base; verifier run-0092). THEN `exit=1`.
+- **lock-is-base-revision** → NEW (intermediate; E.3).
+  - WHEN `[ "$(head -1 .factory/harness.lock)" = "$(git log -1 --format=%H -- factory bin/factory agents pyproject.toml uv.lock)" ] && echo lock=current || echo lock=stale; echo "harness_paths_changed=$(git diff --name-only main...HEAD -- factory bin/factory agents pyproject.toml uv.lock tests/factory | wc -l | tr -d ' ')"`
+  - THEN `lock=current`, then `harness_paths_changed=0`.
+- **instance-b-keys** → NEW (intermediate; E.1).
+  - WHEN `uv run --frozen python -c "import yaml,os; c=yaml.safe_load(open('.factory/instance.yaml')); print('request_dir' in c, c['environment_files'], c['state_dir'], c['harness']==os.path.expanduser('~/dev/spec-factory-harness'))"; bin/factory paths | python3 -c 'import json,os,sys; p=json.load(sys.stdin); print(os.path.realpath(p["instance"])==os.path.realpath(".factory"), p["state"].endswith("/intake/state"))'`
+  - THEN `False [] intake/state True`, then `True True`.
+- **records-moved-as-pure-renames** → NEW (intermediate). This keeps whitespace-clean true. Seven pilot files carry trailing whitespace: `intake/green-pilot/openspec/changes/archive/2026-10-03-T-000{1,2}/…` and `runs/run-0015-implementer/input.md`. `git diff --check` passes over the move only because rename detection pairs them unchanged.
+  - WHEN `git diff -M100% --diff-filter=AD --name-only main...HEAD -- intake/green-pilot intake/answers .factory/green-pilot .factory/answers | wc -l | tr -d ' '; BASE=$(git merge-base main HEAD); echo "pilot=$(git ls-files .factory/green-pilot | wc -l | tr -d ' ') of $(git ls-tree -r --name-only "$BASE" -- intake/green-pilot | wc -l | tr -d ' ') answers=$(git ls-files .factory/answers | wc -l | tr -d ' ') of $(git ls-tree -r --name-only "$BASE" -- intake/answers | wc -l | tr -d ' ')"`
+  - THEN `0`, then `pilot=X of X answers=Y of Y`, with each pair equal (148 and 14 today).
+  - Checked in a scratch clone: after `git mv` of both directories, `git diff --check` exits 0 with default settings, the `-M100% --diff-filter=AD` count is `0`, and with `-c diff.renames=false` seven files are flagged.
+- **live-store-untouched** → REGRESSION (relabelled by the operator, 2026-10-03, before dispatch: an invariant, as in T-0012.2 and T-0012.5) (intermediate).
+  - WHEN `git diff --name-only main...HEAD -- intake/state intake/.gitignore | wc -l | tr -d ' '`
+  - THEN `0`.
+- **role-prompt-text-unchanged**, **harness-files-in-repo**, **harness-history-carried** → REGRESSION. Same THEN as at T-0012.3 and T-0012.1.
+- **docs-moved-and-split**, **changelog-moved-verbatim**, **design-text-kept**, **prompt-copies-moved-unchanged** → REGRESSION.
+- **harness-suite-passes-after-uv-sync** → REGRESSION. The conftest's fixed `FACTORY_INSTANCE` must keep the suite off this repo's new `.factory/`.
+- **green-harness-still-present** → REGRESSION.
+- **whitespace (sub-ticket diff)** → REGRESSION. `git diff --check main...HEAD; echo "exit=$?"` gives `exit=0` with default rename detection.
+
+Tests to change: none
+
+Protected paths:
+- infra `intake/**`: `intake/README.md`, `setup.sh`, `HARNESS_PIN` and `instance/*` are removed. `intake/answers/` and `intake/green-pilot/` move out byte-identical. `intake/state/**` and `intake/.gitignore` are not changed.
+- No `generated` or `reference_harness` writes. `credentials` is not read or written.
+
+Out of scope:
+- Moving `intake/state/` to `.factory/state/` and deleting `intake/harness/`. That is operator step 2, after close.
+- Creating `~/dev/spec-factory-harness` (operator step 2).
+- The end-to-end run (operator step 3).
+- Any harness code.
+- Design-doc text (F).
+- Rewriting any record's content.
+- Adding `.claude/agents/` to this repo.
+- `intake/requests/` (untracked; operator step 2).
+
+---
+
+## Shared plan context (from the plan; applies to every sub-ticket)
+
+Six sub-tickets, one for each lettered part. The spec's seam list is a real dependency chain (A, then B, then C, then E), and each part is reviewed differently: A by mechanical comparison against green, B and C by reading code and tests, D as pure renames, E as an instance cutover, and F as design prose. Merging any two of them would mix those review modes in one diff. D and F are small enough to merge into one, but F's prose edits would then sit inside a rename diff, which makes the renames harder to verify. So they stay separate.
+
+Order and parallelism:
+
+```
+T-0012.1 (A) ─┐
+              ├─> T-0012.3 (B) ─> T-0012.4 (C) ─┐
+T-0012.2 (D) ─┤                                  ├─> T-0012.6 (E)
+              └─> T-0012.5 (F)                   │
+              (T-0012.2 also feeds E directly) ──┘
+```
+
+- T-0012.1 and T-0012.2 can run in parallel. Their file sets do not overlap (see each ticket).
+- T-0012.3 waits for both. That way B's preamble can be checked byte for byte against `docs/prompts/00-preamble.md`, and role-prompt-text-unchanged runs verbatim at B.
+- T-0012.5 needs only T-0012.2, and it can run in parallel with .1, .3, .4 and .6, because it edits only `docs/design.md`, `docs/changelog.md` and `dev/build-harness.spec.md`.
+- T-0012.6 is the **last sub-ticket that may touch harness paths**. Nothing that edits `factory/`, `bin/factory`, `agents/`, `pyproject.toml` or `uv.lock` runs in parallel with it or merges after it unless that change also rewrites `.factory/harness.lock` (parent E.3; Risk, "Lock behaviour after close"). This includes fix-ups to .1, .3 and .4.
+
+Planner choices the spec left open:
+- **`intake/green-pilot/` moves to `.factory/green-pilot/`**, byte-identical, and `intake/answers/` moves to `.factory/answers/`, as E.5 says. `dev/` and `docs/` are ruled out. Both are in the pathspec of no-old-paths-in-live-files, and 23 of the 148 tracked pilot files contain matching old-path strings (`git grep -c <the scenario's patterns> -- intake/green-pilot | wc -l` → `23`). Records may not be rewritten. `.factory/**` is `infra` in E's protected paths, which suits closed records.
+- **T-0012.6 (E) puts the moved suite into instance B's gate** (`.factory/instance.yaml`, E.1). During the build, every sub-ticket from T-0012.1 onward also runs the suite as a REGRESSION check in its own acceptance. That holds whether or not the operator does the optional step 1.
+- **C.1 (the harness-revision function) is built in T-0012.3 (B)**, not T-0012.4. B.5 (`init` writes `.factory/harness.lock`) and B.6 (`paths` prints `harness_revision`) both need it, and B comes before C. C.2–C.5 (enforcement) stay in T-0012.4. This moves where the code lands. It does not change what the spec asks for.
+
+Readings applied to every sub-ticket (from the spec's own text, not new design):
+- `<harness>` in C.1 and C.4 is the **running** checkout: the one whose `bin/factory` is executing. The requirements say "running harness revision" and "running harness checkout". The `harness:` key in `instance.yaml` does not change which checkout is checked. At close, `~/dev/spec-factory-harness` does not exist yet (operator step 2 creates it), and instance-b-opens-every-ticket runs the dev checkout's own `bin/factory`.
+- `BASE` in the parent scenarios is the parent's recorded base, for every sub-ticket. Sub-ticket gates use `main...HEAD`.
+- Scenarios that call `bin/factory` need the checkout's `.venv`. Without it, `bin/factory` falls back to the system `python3` (green's `bin/factory`: `[[ -x "$PY" ]] || PY="python3"`), which may lack `pyyaml`. Each such sub-ticket therefore starts its acceptance with `uv sync --frozen`.
+- Parent scenarios are cited by name. Their WHEN command and THEN result are exactly as written in the parent spec file named in brackets; I did not retype the long commands, to avoid transcription drift. Intermediate checks are written out in full.
+
+---
+
+## Parent spec (v3, pinned)
+
 === proposal.md
 ## Problem
 
@@ -472,9 +608,8 @@ The parent's combined change MUST add no whitespace errors.
 
 #### Scenario: whitespace-clean
 - GIVEN `BASE` as in changelog-moved-verbatim
-- WHEN `git diff --check "$BASE" HEAD -- . ':(exclude)intake/state' ':(exclude).factory/state'; echo "exit=$?"`
+- WHEN `git diff --check "$BASE" HEAD; echo "exit=$?"`
 - THEN it prints only `exit=0`
-- NOTE operator amendment at parent close, 2026-10-03 (verifier run-0102): the store's run records embed verbatim diffs whose blank context lines are a single space, so the range is checked outside the store. The records are never rewritten (Out of scope).
 
 === verification.md
 ## Acceptance
@@ -510,7 +645,7 @@ Run every command with bash from the root of the `~/dev/spec-factory` checkout u
 - instance-b-opens-every-ticket → NEW. Today it prints `tickets=0 failed=0`, because `bin/factory` does not exist here and no store is found. The same tickets open today through the old copy: `FACTORY_STATE=$PWD/intake/state intake/harness/bin/factory ticket show T-000N` succeeds for all twelve.
 - instance-b-config → NEW. Today it prints `no instance config`, then `context=`.
 - green-harness-still-present → REGRESSION. It prints `green keeps its harness` today and must still do so after the change.
-- whitespace-clean → REGRESSION. It prints `exit=0` today (an empty range) and must still do so over the whole parent. Amended at parent close to exclude the store (see the scenario).
+- whitespace-clean → REGRESSION. It prints `exit=0` today (an empty range) and must still do so over the whole parent.
 
 How verified:
 - I ran every WHEN above verbatim on this checkout for the "today" results.
@@ -535,3 +670,143 @@ Out-of-scope observations:
 - The store's run records (`meta.yaml`, `input.md`) hold absolute `intake/state/...` paths. After the post-close move they stay as historical text and no command reads them back.
 - `factory init` now has a third meaning in the build spec: part A's bare-repo seeding (`dev/build-harness.spec.md`, "factory init: creates ~/factory-remote/nanobot.git"). Part F does not reconcile it. A later build-spec pass should.
 - Even after this change there are three prompt texts: `docs/design.md`, `docs/prompts/` (verbatim), and `factory/prompts/<role>.md` (placeholders filled, plus the spec-writer and triage addendum). With all three in one repo a `render --check` becomes possible, but it is not built here.
+
+## Reviewer findings on your previous head
+
+Commit: 3d5afc012b5a22fed48de58e7af9c8206c7c9fff (branch `factory/T-0012.6`, one fix commit on the approved `302f70b`; merge-base with `main` still `f4be7ec`)
+
+## Review
+
+Round 2. Checked in the worktree `intake/state/runs/run-0098-reviewer/wt`, with `FACTORY_STATE`, `FACTORY_INSTANCE`, `FACTORY_REPO`, `FACTORY_CWD` and `VIRTUAL_ENV` unset, after `uv sync --frozen` (`uvsync=0`). `git status --porcelain` is empty before and after everything below. Per the convergence rule I checked the prior findings and the changed lines; I did not re-read the 162 pure renames or the unchanged E.1/E.3 files beyond the acceptance commands that cover them.
+
+**Changed lines.** `git diff --name-status 302f70b HEAD` is exactly `M .factory/README.md`, `M .factory/context.md`, `M README.md`; `git show --stat 3d5afc0` says 10 insertions, 6 deletions. The full diff is three paragraph edits:
+
+- `README.md:60-65` ("How updates work"): the old sentence made `--accept-harness` the cure for both the unaccepted revision and the uncommitted-edit refusal. The new text separates them: unaccepted revision → refused until `--accept-harness <sha>`, logged; uncommitted harness edits → refused, `--accept-harness` does not clear it, commit or discard first. I probed the behaviour in a scratch clone of this head rather than trusting the description: `init` a throwaway target, append a line to `<clone>/factory/__init__.py`, then `bin/factory --accept-harness <current rev> ticket new …` → `accept_dirty_exit=2 tickets=0 names=1 uncommitted=1` (exit 2, nothing written, stderr names `factory/__init__.py` and says uncommitted). The new README text is what the code does; the old text was wrong, as the verifier's probe 7 found. This is E.6's "refuses uncommitted harness edits, until `--accept-harness`" read the way parent C.4 defines it, not a scope expansion.
+- `.factory/README.md:71-72` (E.4 "Running"): one added sentence, "Uncommitted harness edits cannot be accepted: commit or discard them first." Same correction, same probe.
+- `.factory/context.md:43-47` (E.2 Output paragraph): the round-1 NIT. The new four lines are textually identical to `factory/context.template.md:17-21` (read both). The acceptance-commands paragraph (`:35-38`) and the design-doc-conventions sentence (`:36-38`) that E.2 says to keep are untouched in this commit.
+
+**1. Test integrity.** No test, harness, or agent path changed in this round or on the branch: `harness_paths_changed=0` over `factory bin/factory agents pyproject.toml uv.lock tests/factory`. Tests to change: none; none changed.
+
+**2. Correctness.** All three edits are documentation that now states what the code does. Acceptance items whose inputs the edits touch, re-run as written on `3d5afc0`:
+
+| Check | Result |
+|---|---|
+| readme-has-install-and-layout | `checked` only |
+| instance-b-config | `True True True` / `context=3` |
+| no-old-paths-in-live-files (REGRESSION, full pathspec) | `exit=1` |
+| bare `prompts/` (`[^/a-z_]prompts/|^prompts/`) over `README.md`, `.factory/README.md`, `.factory/context.md`, `.factory/instance.yaml` | rc=1 (no match) |
+| old-path patterns over `.factory/README.md` (outside the pathspec) | rc=1 |
+| whitespace gate `git diff --check main...HEAD` | `exit=0` |
+
+Items the edits cannot affect, re-run anyway because they are cheap and are this PR's core claims: intake-holds-only-live-store `left=0`; records-moved-as-pure-renames `0` / `pilot=148 of 148 answers=14 of 14`; live-store-untouched `0`; lock-is-base-revision `lock=current` / `harness_paths_changed=0`; instance-b-keys `False [] intake/state True` / `True True`; instance-b-opens-every-ticket `tickets=18 failed=0` with the store unchanged afterwards; pilot-store-and-answers-kept-byte-identical with `BASE=cdb1c67` `kept=135 of 135`.
+
+Gate commands, from the worktree exactly as written: `git diff --check main...HEAD` → exit 0; `uv run --frozen pytest -q -p no:cacheprovider tests/factory` → `116 passed in 134.21s (0:02:14)`, exit 0.
+
+**3. Scope.** The three files are E.6, E.4 and E.2 respectively. Nothing else moved.
+
+**4. Silent behavior changes.** None; prose only. No runtime path changes between `302f70b` and `3d5afc0`.
+
+**5. Security.** No secrets, no new paths.
+
+**6. Protected paths.** Unchanged from round 1: `intake/**` (infra) touched exactly as the sub-ticket declares, nothing else. This round's commit touches no protected path (`.factory/**` is listed as infra in the new `instance.yaml`, and E.1–E.4 declare it as the files this ticket creates).
+
+**Base drift (verifier ESCALATION 2).** `main` is `600b8d4`, merge-base `f4be7ec`; `git diff --name-only f4be7ec main | grep -v '^intake/state/'` prints nothing. The one extra commit is store bookkeeping; the merge will be clean and the lock stays current. I agree with the implementer that merging `main` is the conflict run's job, not a fix round's.
+
+**The "Gate suite FAIL" that triggered this round.** The implementer DISAGREEs that the gate failed. Checked on the evidence: `factory/cli.py:453-454` (and the running copy `intake/harness/factory/cli.py:450-451`) is `re.search(r"^Gate suite:\s*(PASS|FAIL)\b(.*)$", text, re.M)` with fallback `("FAIL", "missing Gate suite line")`; the verifier's `run-0094-verifier/output.md:36` is `## Gate suite: PASS`, which that regex cannot match. Both gates passed for the verifier (`116 passed in 101.19s`), for me in round 1 (`116 passed in 90.16s`), and for me now. I accept the DISAGREE: the FAIL was a parse miss, not a gate failure, and this branch is not the place to fix it.
+
+## Findings
+
+none.
+
+## Prior findings
+
+- [NIT] `.factory/context.md:43-45` Output paragraph contradicts the implementer role → RESOLVED at `3d5afc0`: replaced with `factory/context.template.md:17-21` verbatim, which exempts the implementer's own worktree.
+- Verifier ESCALATION 1 (`README.md` implied `--accept-harness` clears the uncommitted-edit refusal) → RESOLVED at `3d5afc0`: `README.md:60-65` and `.factory/README.md:71-72` now say it does not; probe confirms exit 2 with the flag present.
+- Verifier ESCALATION 2 (head lacks `main` `600b8d4`) → UNRESOLVED by design; not a defect in this PR. The gap is `intake/state/**` only; the merge step's conflict run handles it.
+- Verifier ESCALATION 3 (count 135 vs THEN's 134) → WITHDRAWN as a finding: count drift from `intake/answers/T-0012-gate-edit.md` at the parent base; the THEN's stated condition, both numbers equal, holds (`kept=135 of 135`).
+
+## Out-of-scope observations
+
+- The verifier wrote its gate line as a heading (`## Gate suite: PASS`) and the harness's `^Gate suite:` regex missed it, so an approved and verified head came back as a fix round. Either the verifier prompt should say the line is a bare line, or the parser should tolerate a leading `#`. Harness/prompt territory, flagged under ESCALATIONS for the operator.
+- `dev/issues.md:26` still says #19 is "not in intake yet" (operator step 4).
+- The parent-level `whitespace-clean` with `BASE=cdb1c67` is not this sub-ticket's gate and I did not re-run it; round 1 noted it trips on store run records already on `main`. Parent-close concern.
+
+STATUS: APPROVE
+CONFIDENCE: high. The round-2 diff is 10 lines of prose in three files; I read all of it, probed the behaviour the new text describes (exit 2 with `--accept-harness` on a dirty harness), re-ran every acceptance item the edits could touch plus the core E.5/E.3 checks, and ran both gate commands on `3d5afc0` as written.
+ESCALATIONS: protected path `intake/**` (infra) touched as the sub-ticket declares, unchanged from round 1 (removals of `intake/README.md`, `setup.sh`, `HARNESS_PIN`, `instance/*`; pure renames of `intake/answers/` and `intake/green-pilot/` to `.factory/`; `intake/state/**` and `intake/.gitignore` unchanged). Merge gate needs the human approval the declaration implies. Also for the operator: the harness turned a verified head into a fix round because the verifier's `Gate suite:` line was a markdown heading and the parser regex (`factory/cli.py:453`) requires it at column 0; no action in this PR.
+
+## Verifier findings on your previous head
+
+Commit: 3d5afc012b5a22fed48de58e7af9c8206c7c9fff
+
+How run: two fresh `git clone --no-local` copies of `~/dev/spec-factory` in a scratch directory (`<scratchpad>/v97/{head,base}`). `head` was detached at `3d5afc0`, `base` at `600b8d4`, and local `main` was set to `600b8d4` in both. Each ran `uv sync --frozen` first (`head uvsync=0`, `base uvsync=0`). Every command ran under bash with `VIRTUAL_ENV`, `VIRTUAL_ENV_PROMPT`, `FACTORY_STATE`, `FACTORY_INSTANCE`, `FACTORY_REPO`, `FACTORY_CWD` and `FACTORY_INTEGRATION_BRANCH` unset. `VIRTUAL_ENV` was set in my shell (to `~/dev/nanobot/.venv-test`), so I removed it explicitly. For the parent scenarios I used `BASE=cdb1c6769ecc39208e62edc65578f62f5a23908f`, the `parent_base` at `intake/state/tickets/T-0012.yaml:74`. A script pulled all 20 commands from `input.md`: the parent `#### Scenario` WHEN lines, the intermediate `- WHEN` lines and the whitespace command. Nothing was retyped.
+
+Note on base: the branch's merge-base with `main` is `f4be7ec`, and `main` is `600b8d4`, one commit further on. That commit touches only `intake/state/**`. `main...HEAD` uses `f4be7ec`. Since round 1 (`302f70b`), only `.factory/README.md`, `.factory/context.md` and `README.md` changed (`git diff --name-only 302f70b HEAD`, 10 insertions and 6 deletions).
+
+Per criterion:
+
+| Label | Criterion | Base `600b8d4` | PR `3d5afc0` | Result |
+|---|---|---|---|---|
+| NEW | intake-holds-only-live-store | `left=168` | `left=0` | PASS |
+| NEW | pilot-store-and-answers-kept-byte-identical | `kept=0 of 135` | `kept=135 of 135` | PASS (note 1) |
+| NEW | instance-b-opens-every-ticket | `tickets=0 failed=0` | `tickets=18 failed=0` | PASS |
+| NEW | instance-b-config | `no instance config` / `context=` | `True True True` / `context=3` | PASS |
+| NEW | readme-has-install-and-layout | five `missing:` lines (git clone, uv sync, factory init, factory paths, .factory/), then `checked` | `checked` | PASS |
+| REGRESSION | no-old-paths-in-live-files | `exit=1` | `exit=1` | PASS |
+| NEW | lock-is-base-revision | `head: .factory/harness.lock: No such file or directory` / `lock=stale` / `harness_paths_changed=0` | `lock=current` / `harness_paths_changed=0` | PASS |
+| NEW | instance-b-keys | `FileNotFoundError … '.factory/instance.yaml'`, then `TypeError` (`instance` is null) | `False [] intake/state True` / `True True` | PASS |
+| NEW | records-moved-as-pure-renames | `0` / `pilot=0 of 148 answers=0 of 14` | `0` / `pilot=148 of 148 answers=14 of 14` | PASS |
+| REGRESSION | live-store-untouched | `0` | `0` | PASS |
+| REGRESSION | role-prompt-text-unchanged | `changed=0 of 14` | `changed=0 of 14` | PASS |
+| REGRESSION | harness-files-in-repo | `agents=6 green_only=0` | `agents=6 green_only=0` | PASS |
+| REGRESSION | harness-history-carried | `0` | `0` | PASS |
+| REGRESSION | docs-moved-and-split | `old_tracked=0` | `old_tracked=0` | PASS |
+| REGRESSION | changelog-moved-verbatim | `SAME` / `declined=1 numbering=CONTIGUOUS in_design=0` | same | PASS |
+| REGRESSION | design-text-kept | `0` | `0` | PASS |
+| REGRESSION | prompt-copies-moved-unchanged | `changed=0 of 10 VERBATIM` | same | PASS |
+| REGRESSION | harness-suite-passes-after-uv-sync | `sync=0` / `116 passed in 127.19s (0:02:07)` | `sync=0` / `116 passed in 131.56s (0:02:11)` | PASS |
+| REGRESSION | green-harness-still-present | `green keeps its harness` | same | PASS |
+| REGRESSION | whitespace (sub-ticket diff): `git diff --check main...HEAD; echo "exit=$?"` | `exit=0` | `exit=0` | PASS |
+
+Every NEW criterion fails on base for the reason the spec gives: the `.factory/` files, the README text and the moves do not exist yet. Every NEW criterion passes on the PR. For records-moved-as-pure-renames, the first line (`0`) is the same on both sides, but the criterion still fails on base on its second line. Every REGRESSION criterion passes on both sides.
+
+Note 1: the THEN says `kept=134 of 134, both numbers equal`. The parent base `cdb1c67` already holds 135 distinct contents, because `intake/answers/T-0012-gate-edit.md` was added there (round 1, from `git diff --stat f082708 cdb1c67`). The THEN's actual condition, both numbers equal, holds. The count drifted; this is not a defect in the PR.
+
+Gate suite: PASS
+- Run from `/Users/dphang/dev/spec-factory/intake/state/runs/run-0097-verifier/wt` (HEAD `3d5afc0`), with `VIRTUAL_ENV` unset.
+- `git diff --check main...HEAD`: exit 0, no output.
+- `uv run --frozen pytest -q -p no:cacheprovider tests/factory`: `116 passed in 109.87s (0:01:49)`, exit 0. I ran it under bash to capture the exit code. An earlier run under zsh also gave `116 passed in 112.88s`.
+- `git status --porcelain` in the worktree is empty afterwards.
+
+Probes:
+1. **The round-2 README claim, checked against behaviour.** On the head clone I appended `# probe` to `factory/__init__.py`, then ran `bin/factory --accept-harness 010d1b00c5835c7022a72771c63f63f8b6ab3707 ticket show T-0012` → exit 2, stderr `harness <clone> has uncommitted changes:` / `factory/__init__.py`. The new text in `README.md` and `.factory/README.md` ("`--accept-harness` does not clear that, so commit or discard the edits first") now matches parent C.4 and the code. Restored with `git checkout`. → OK
+2. **The briefing's Output paragraph (`.factory/context.md`).** The new sentences are the wording of `factory/context.template.md:19-20`: "every role but the implementer … The implementer also changes files in its own worktree and commits there". The acceptance-command and design-doc-convention paragraphs that E.2 says to keep are not touched by the round-2 diff. → OK
+3. **Lock file variants** (copies of `.factory/` used through `FACTORY_INSTANCE`, with `FACTORY_REPO` set to the clone):
+   - empty lock → exit 2, `… accepted (none); rerun with --accept-harness …`;
+   - a 7-character prefix of the revision → exit 2;
+   - the revision with no trailing newline → exit 0;
+   - the revision with leading and trailing spaces → exit 0.
+
+   The comparison strips whitespace (C.2 says "stripped first line") and does not accept a prefix. So the passing instance-b-opens-every-ticket is not special-cased to the committed lock bytes. → OK
+4. **Walk-up and merge.** `../bin/factory ticket show T-0012` run from `dev/` → exit 0. A `--no-ff` merge of `3d5afc0` into a local copy of `main` `600b8d4` is clean (`merge=0`). On the merged tree the lock is still `lock=current`, `tickets=18 failed=0` and `left=0`. The lock (`010d1b0…`) equals the harness revision at `main` too. → OK
+5. **Stale paths in the rewritten text.** I grepped `README.md`, `.factory/README.md`, `.factory/context.md` and `.factory/instance.yaml`:
+   - for a bare `prompts/` (`[^/a-z_]prompts/|^prompts/`) → no match (rc=1);
+   - for `HARNESS_PIN`, `intake/setup.sh`, `docs/spec-factory.md` and `issues/README.md` → no match (rc=1).
+
+   `.factory/README.md` is outside the gate's pathspec. → OK
+
+STATUS: VERIFIED
+CONFIDENCE: high. All 20 acceptance commands were extracted verbatim and run on fresh clones at head and base, and gave the expected NEW and REGRESSION pattern. Both gate commands were run as written in the given worktree and exited 0. The probes show the round-2 text matches the code's behaviour, and the lock and instance resolution work on inputs near the tested ones.
+ESCALATIONS:
+1. Protected path `intake/**` (infra) is touched exactly as the sub-ticket declares, unchanged since round 1:
+   - `intake/README.md`, `setup.sh`, `HARNESS_PIN` and `instance/*` are removed;
+   - `intake/answers/` and `intake/green-pilot/` are pure renames to `.factory/` (the `-M100% --diff-filter=AD` count is `0`);
+   - `intake/state/**` and `intake/.gitignore` are untouched (`live-store-untouched` is `0`).
+
+   The merge gate needs the human approval that this declaration implies.
+2. Head `3d5afc0` still does not contain `main` `600b8d4`. That commit touches only `intake/state/**`, a trial merge is clean, and the lock stays current after it (probe 4). If the merge step requires the head to contain `main`, a main merge comes first.
+3. For the record: the pilot count is 135, not the THEN's 134 (note 1). The "both numbers equal" condition holds.
+
+## Gate suite on your previous head
+PASS
+

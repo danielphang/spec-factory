@@ -1,0 +1,29 @@
+run_id: run-0102-verifier
+role: verifier
+ticket: T-0012
+model: opus
+round: 0
+spec_version: 3
+started: '2026-10-03T16:36:21+00:00'
+finished: '2026-10-03T16:45:51+00:00'
+wall_s: 570
+status: SPEC-DEFECT
+input_sources:
+- specs/T-0012/v3.md
+environment_files: []
+branch: null
+base: cdb1c6769ecc39208e62edc65578f62f5a23908f
+head: 70c32abf41484b631a157641649492ad6b271b76
+worktree: /Users/dphang/dev/spec-factory/intake/state/runs/run-0102-verifier/wt
+confidence: high. All 30 commands ran verbatim on both trees and every result is quoted above. The single
+  non-pass is traced to its exact files and commits, and the same range with the store excluded is clean.
+escalations:
+- 'whitespace-clean (REGRESSION) prints `exit=2` on main. Every error comes from harness-written store
+  records committed on main by 20849b6, f809c69, e725a5c and 600b8d4, which the spec says must not be
+  rewritten. Operator decision needed:'
+- (a) re-scope the scenario to the parent's own change, e.g. `git diff --check "$BASE" HEAD -- . ':(exclude)intake/state'`,
+  which gives exit 0 today; or
+- (b) declare store records whitespace-exempt in the harness or the store, e.g. a `.gitattributes` `-whitespace`
+  rule. That is an infra and harness-path change outside this parent's sub-tickets.
+- Every other criterion is satisfied, so after (a) this parent would verify as-is.
+escalations_note: null
