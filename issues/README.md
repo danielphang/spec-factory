@@ -19,7 +19,7 @@ A fix closes its issue through a reviewed change on `main`; the merge column is 
 | [11](https://github.com/danielphang/spec-factory/issues/11) | Spec writer: the Problem section must be readable by the operator at the gate (p0) | T-0011 | `9168ce1` | 41 |
 | [13](https://github.com/danielphang/spec-factory/issues/13) | Planner: sub-ticket id form, cross-ticket dependencies and shared plan sections are unspecified | not in intake yet | — | — |
 | [14](https://github.com/danielphang/spec-factory/issues/14) | Build half as built: local-commit mode, the join in the store, bounded conflict runs, serialised merges, baseline-relative gate | not in intake yet | — | — |
-| [15](https://github.com/danielphang/spec-factory/issues/15) | A simplifier role: replay a task set against a simplified harness, measure, propose (after the T-0003 pilot) | not in intake yet | — | — |
+| [15](https://github.com/danielphang/spec-factory/issues/15) | A simplifier role: replay a task set against a simplified harness, measure, propose | closed 2026-10-03, superseded by #20 (reviewer tags, `factory:` marker) and #21 part D (dead-code list); reopen with a replay set | — | — |
 | [16](https://github.com/danielphang/spec-factory/issues/16) | Harness: a checker result with no or a non-SHA Commit: line is recorded against the current commit (first end-to-end pilot) | green-pilot T-0001 | green `1f3a58e52` | harness |
 | [17](https://github.com/danielphang/spec-factory/issues/17) | Harness: `factory report TICKET` status page | not in intake yet | — | — |
 | [18](https://github.com/danielphang/spec-factory/issues/18) | Harness: a killed checker run parks as a harness bug instead of a budget kill (found by #16's writer) | green-pilot T-0002 | green `7c0a0353d` | harness |
