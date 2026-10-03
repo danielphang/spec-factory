@@ -391,3 +391,7 @@
 {"ts": "2026-10-03T09:54:55+00:00", "event": "result.recorded", "ticket": "T-0012.4", "head": "010d1b00c5835c7022a72771c63f63f8b6ab3707", "role": "ci", "status": "PASS", "run": "run-0077-verifier"}
 {"ts": "2026-10-03T09:55:13+00:00", "event": "ticket.parked", "ticket": "T-0012.4", "from": "checks-in-flight", "reason": "budget kill: reviewer"}
 {"ts": "2026-10-03T09:55:13+00:00", "event": "escalation.queued", "ticket": "T-0012.4", "items": ["budget kill: reviewer"]}
+{"ts": "2026-10-03T14:47:49+00:00", "event": "results.superseded", "ticket": "T-0012.4", "head": "010d1b00c5835c7022a72771c63f63f8b6ab3707", "roles": ["ci", "reviewer", "verifier"]}
+{"ts": "2026-10-03T14:47:49+00:00", "event": "human.resolved", "ticket": "T-0012.4", "kind": "redispatch", "by": "dphang", "from": "parked", "to": "checks-in-flight"}
+{"ts": "2026-10-03T14:47:49+00:00", "event": "results.superseded", "ticket": "T-0012.5", "head": "7090d9d21f17688df45fd3701dc5ee26f01452c4", "roles": ["ci", "reviewer", "verifier"]}
+{"ts": "2026-10-03T14:47:49+00:00", "event": "human.resolved", "ticket": "T-0012.5", "kind": "redispatch", "by": "dphang", "from": "parked", "to": "checks-in-flight"}

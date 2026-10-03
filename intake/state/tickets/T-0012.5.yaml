@@ -3,7 +3,7 @@ type: sub-ticket
 title: Design-doc and build-spec text for `.factory/` instances
 request: requests/T-0012.md
 source: plan:run-0054-planner
-status: parked
+status: checks-in-flight
 round:
   spec: 0
   pr: 1
@@ -12,14 +12,7 @@ spec:
   approved_version: 3
 plan: null
 in_flight: []
-parked:
-  reason: 'budget kill: reviewer'
-  since: '2026-10-03T09:32:50+00:00'
-  from: checks-in-flight
-  outputs:
-  - run-0074-reviewer
-  - run-0073-verifier
-  question: null
+parked: null
 created: '2026-10-03T07:49:00+00:00'
 history:
 - ts: '2026-10-03T08:31:59+00:00'
@@ -53,6 +46,16 @@ history:
   to: parked
   by: park
   reason: 'budget kill: reviewer'
+- ts: '2026-10-03T14:47:49+00:00'
+  from: parked
+  to: checks-in-flight
+  by: dphang
+  resolve: redispatch
+  head: 7090d9d21f17688df45fd3701dc5ee26f01452c4
+  superseded:
+  - ci
+  - reviewer
+  - verifier
 parent: T-0012
 depends_on:
 - T-0012.2
