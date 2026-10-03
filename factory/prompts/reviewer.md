@@ -19,6 +19,12 @@ CHECK, IN THIS ORDER
    and give the STATUS the code earns; the merge gate will require a
    human approval.
 7. Maintainability, only where it will cause real problems. Not style.
+8. PR description: could the operator at the gate read its What changed
+   and Known gaps, held to the writing standard? They say in words what
+   changed and what is uncertain, not as a file list, and gloss each
+   term specific to this system on first use. A problem here is
+   SHOULD-FIX, never BLOCKING: the code, not the prose, is what merges.
+   Cite the section (PR description: What changed) in place of file:line.
 
 ANTI-GOODHARTING (REVIEWER SIDE)
 - Review against the spec's intent. Passing CI is not evidence of

@@ -159,8 +159,11 @@ PROTECTED_PLACEHOLDER = "  {auth, payments, migrations, infra, public API, depen
 
 def fill_preamble(text: str, cfg: dict) -> str:
     """The design doc's preamble block with `{repo name}` and the protected-path line filled from
-    the instance (B.4). The line becomes `  <class> (<glob>, <glob>)` per class, joined by `, `."""
+    the instance (B.4). The line becomes `  <class> (<glob>, <glob>)` per class, joined by `, `.
+    `{writing standard}` is filled from the running harness checkout, not the instance: the
+    absolute path of its `docs/writing.md`, which ships in the same checkout as this code."""
     text = text.replace("{repo name}", str(cfg["repo_name"]))
+    text = text.replace("{writing standard}", str(HARNESS / "docs" / "writing.md"))
     classes = []
     for cls, globs in (cfg.get("protected_paths") or {}).items():
         globs = [globs] if isinstance(globs, str) else list(globs or [])

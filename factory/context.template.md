@@ -11,6 +11,10 @@ reads it first. A wrong briefing misleads all of them at once. State, in a few s
 - Any reference implementation or other checkout an agent may read, and what it must never write
   (credentials, live config, other repositories).
 - What kind of request to expect, and what counts as requirement versus suggestion in it.
+- Who reads what the roles write here: the operator at the spec gate and
+  anyone reading a PR description, what they already know, and what must
+  be glossed for them. The writing standard the preamble names assumes a
+  technical reader new to this system; say so here if this repo's differs.
 - How the build half works here: remote or local commits, what the gate commands are for, and
   files a gate run creates that must never be committed.
 
