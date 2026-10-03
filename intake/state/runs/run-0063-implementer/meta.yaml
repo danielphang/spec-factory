@@ -1,0 +1,30 @@
+run_id: run-0063-implementer
+role: implementer
+ticket: T-0012.2
+model: opus
+round: 2
+spec_version: 3
+started: '2026-10-03T08:18:59+00:00'
+finished: '2026-10-03T08:24:24+00:00'
+wall_s: 325
+status: READY-FOR-REVIEW
+input_sources:
+- specs/T-0012.2/subticket.md
+- specs/T-0012/v3.md
+- runs/run-0061-reviewer/output.md
+- runs/run-0062-verifier/output.md
+branch: factory/T-0012.2
+base: 20849b63a3a632cd43724819d860f71717dc8a53
+head: c367bef72e2ed70a4417e98de907c91dbbe31320
+worktree: /Users/dphang/dev/spec-factory/intake/state/worktrees/T-0012.2
+resolution: null
+environment_files: []
+confidence: high. Both gates and all nine acceptance commands were run as written on `ebe9baf` and printed
+  the expected output. The merge leaves this PR's files byte-for-byte as on `c367bef`.
+escalations:
+- 'Protected path touched, declared in the sub-ticket: generated `prompts/**` moved to `docs/prompts/`
+  byte-identical (`changed=0 of 10 VERBATIM`; 10 × R100).'
+- 'Protected path touched, declared in the sub-ticket: infra `intake/**`, only `intake/README.md` (lines
+  4, 42) and `intake/instance/context.md` (lines 3–20), for reference updates per D.4. The merge gate
+  needs human approval for these.'
+escalations_note: null

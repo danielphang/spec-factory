@@ -1,0 +1,1107 @@
+diff --git a/agents/factory-planner.md b/agents/factory-planner.md
+index cb8249b..1e717ab 100644
+--- a/agents/factory-planner.md
++++ b/agents/factory-planner.md
+@@ -5,7 +5,7 @@ model: opus
+ tools: Read, Grep, Glob, Bash, Write
+ ---
+ 
+-Read `factory/prompts/preamble.md` before anything else; it is the top of your system prompt.
++Read `system-prompt.txt` in the run directory that holds your input file before anything else; its preamble is the top of your system prompt.
+ 
+ ROLE: Planner. You turn one human-approved spec into an ordered set of
+ sub-tickets. If the spec already fits one PR, output a single sub-ticket.
+diff --git a/agents/factory-spec-critic.md b/agents/factory-spec-critic.md
+index 5bd8a76..204a99d 100644
+--- a/agents/factory-spec-critic.md
++++ b/agents/factory-spec-critic.md
+@@ -5,7 +5,7 @@ model: fable
+ tools: Read, Grep, Glob, Bash, Write
+ ---
+ 
+-Read `factory/prompts/preamble.md` before anything else; it is the top of your system prompt.
++Read `system-prompt.txt` in the run directory that holds your input file before anything else; its preamble is the top of your system prompt.
+ 
+ ROLE: Spec critic. You decide whether a spec is safe to hand to an
+ implementer. You see the spec and the repo, never the writer's reasoning.
+diff --git a/agents/factory-spec-writer.md b/agents/factory-spec-writer.md
+index fcaa8c5..b2db1e5 100644
+--- a/agents/factory-spec-writer.md
++++ b/agents/factory-spec-writer.md
+@@ -5,7 +5,7 @@ model: opus
+ tools: Read, Grep, Glob, Bash, Write
+ ---
+ 
+-Read `factory/prompts/preamble.md` before anything else; it is the top of your system prompt.
++Read `system-prompt.txt` in the run directory that holds your input file before anything else; its preamble is the top of your system prompt.
+ 
+ ROLE: Spec writer. You turn one accepted ticket into a spec that an
+ implementer can execute without guessing, and a verifier can check
+diff --git a/agents/factory-triage.md b/agents/factory-triage.md
+index 3a8b8d7..86fc614 100644
+--- a/agents/factory-triage.md
++++ b/agents/factory-triage.md
+@@ -5,7 +5,7 @@ model: opus
+ tools: Read, Grep, Glob, Bash, Write
+ ---
+ 
+-Read `factory/prompts/preamble.md` before anything else; it is the top of your system prompt.
++Read `system-prompt.txt` in the run directory that holds your input file before anything else; its preamble is the top of your system prompt.
+ 
+ ROLE: Triage. You turn raw requests (issues, Slack threads, bug reports,
+ ideas) into candidate tickets, or you reject or route them.
+diff --git a/bin/factory b/bin/factory
+index f979031..1297df1 100755
+--- a/bin/factory
++++ b/bin/factory
+@@ -4,5 +4,8 @@ set -euo pipefail
+ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+ PY="$HERE/.venv/bin/python"
+ [[ -x "$PY" ]] || PY="python3"
++# The package finds the target's instance from the caller's directory (factory/instance.py), but
++# runs from the harness checkout: hand the caller's directory over before changing into it.
++export FACTORY_CWD="$PWD"
+ cd "$HERE"
+ exec "$PY" -m factory "$@"
+diff --git a/factory/__init__.py b/factory/__init__.py
+index 44f886c..d129c99 100644
+--- a/factory/__init__.py
++++ b/factory/__init__.py
+@@ -1 +1 @@
+-"""Spec factory harness, P0 intake skeleton. See factory/config.yaml and factory/workflows/intake.js."""
++"""Spec factory harness, P0 intake skeleton. See factory/instance.py, factory/instance.template.yaml and factory/workflows/intake.js."""
+diff --git a/factory/cli.py b/factory/cli.py
+index f9f74d7..e34ca90 100644
+--- a/factory/cli.py
++++ b/factory/cli.py
+@@ -9,14 +9,16 @@ import argparse
+ import datetime as dt
+ import getpass
+ import json
++import os
+ import re
+ import shutil
++import subprocess
+ import sys
+ from pathlib import Path
+ 
+ import yaml
+ 
+-from factory import compose, gitops, specstore, status, store, subtickets
++from factory import compose, gitops, instance, specstore, status, store, subtickets
+ from factory.store import Refused
+ 
+ ROLES = ("triage", "spec_writer", "critic", "planner", "implementer", "reviewer", "verifier")
+@@ -190,7 +192,8 @@ def run_start(a, root, cfg):
+         _start_build_run(root, cfg, t, meta, d, parent_close)
+     store.write_yaml(d / "meta.yaml", meta)
+     prompt_name = a.role
+-    sysp = (PROMPTS / "preamble.md").read_text(encoding="utf-8").rstrip() + "\n\n" + (PROMPTS / f"{prompt_name}.md").read_text(encoding="utf-8")
++    preamble = instance.fill_preamble((PROMPTS / "preamble.md").read_text(encoding="utf-8"), cfg)
++    sysp = preamble.rstrip() + "\n\n" + (PROMPTS / f"{prompt_name}.md").read_text(encoding="utf-8")
+     store.write_text(d / "system-prompt.txt", sysp)
+     t["in_flight"].append(rid)
+     store.save_ticket(root, t)
+@@ -713,10 +716,90 @@ def resolve(a, root, cfg):
+ 
+ # ----- spec store (doc §Harness, Spec store; part K) ----------------------------------
+ 
+-def init_cmd(a, root, cfg):
++def _git_toplevel(cwd: Path) -> Path:
++    cp = subprocess.run(["git", "-C", str(cwd), "rev-parse", "--show-toplevel"], capture_output=True, text=True)
++    if cp.returncode != 0 or not cp.stdout.strip():
++        raise Refused(f"factory init: {cwd} is not inside a git work tree")
++    return Path(cp.stdout.strip()).resolve()
++
++
++def _new_instance_yaml(repo_name: str) -> str:
++    """factory/instance.template.yaml with the per-instance values filled (design B.5)."""
++    text = instance.INSTANCE_TEMPLATE.read_text(encoding="utf-8")
++    for key, val in (("__REPO_NAME__", repo_name), ("__HARNESS__", str(instance.HARNESS))):
++        if key not in text:
++            raise Refused(f"{instance.INSTANCE_TEMPLATE} has no {key}")
++        text = text.replace(key, json.dumps(val, ensure_ascii=False))
++    return text
++
++
++def _revision() -> str:
++    rev = instance.harness_revision()
++    if rev is None:
++        raise Refused(f"factory init: cannot read the harness revision of {instance.HARNESS} (not a git checkout?)")
++    return rev
++
++
++def init_cmd(a):
++    """Create whatever of the instance is missing (design B.5); idempotent. The instance is
++    FACTORY_INSTANCE, else `.factory/` at the git top level of the working directory. Its pieces
++    (instance.yaml, context.md, harness.lock, agent files) are written only when the store in use
++    is the instance's own: a run on a throwaway store (FACTORY_STATE elsewhere, as every test
++    does) initialises that store and nothing else."""
++    top = _git_toplevel(instance.caller_cwd())
++    env = os.environ.get("FACTORY_INSTANCE")
++    inst = Path(env).expanduser().resolve() if env else top / instance.DIRNAME
++    created: list[str] = []
++    cfg_path = inst / instance.CONFIG_NAME
++    if not cfg_path.exists():
++        if not a.repo_name:
++            raise Refused(f"factory init: {cfg_path} does not exist; pass --repo-name NAME to create it")
++        _revision()  # refuse before writing anything if the lock cannot be written
++        store.write_text(cfg_path, _new_instance_yaml(a.repo_name))
++        created.append(str(cfg_path))
++    cfg = instance.load_config(inst)
++    root = instance.state_root(inst, cfg)
++    agents: list[str] = []
++    if instance.is_own_store(inst, cfg, root):
++        ctx = inst / "context.md"
++        if not ctx.exists():
++            store.write_text(ctx, instance.CONTEXT_TEMPLATE.read_text(encoding="utf-8"))
++            created.append(str(ctx))
++        lock = inst / "harness.lock"
++        if not lock.exists():
++            store.write_text(lock, _revision() + "\n")
++            created.append(str(lock))
++        dest = instance.repo_root(inst) / ".claude" / "agents"
++        for src in sorted(instance.AGENTS.glob("factory-*.md")):
++            if not (dest / src.name).exists():
++                (dest / src.name).parent.mkdir(parents=True, exist_ok=True)
++                shutil.copyfile(src, dest / src.name)
++                agents.append(str(dest / src.name))
++    had_gitignore = (root / ".gitignore").exists()
++    store.ensure_gitignore(root)
+     written = specstore.init(root)
+-    store.log_event(root, "store.initialised", files=written)
+-    out({"ok": True, "written": written, "active": True})
++    if not had_gitignore:
++        written.insert(0, ".gitignore")
++    if written or created or agents:
++        store.log_event(root, "store.initialised", files=written, instance=created, agents=agents)
++    if agents:
++        print("restart the session so the agents register", file=sys.stderr)
++    out({"ok": True, "written": written, "active": True, "instance": str(inst), "state": str(root),
++         "created": created, "agents": agents})
++
++
++def paths_cmd(a):
++    """Absolute paths a dispatcher needs (design B.6). Runs no lock check and writes nothing."""
++    inst = instance.find()
++    state = None
++    if inst is not None:
++        state = str(instance.state_root(inst, instance.load_config(inst)))
++    h = instance.HARNESS
++    out({"ok": True, "harness": str(h), "bin": str(h / "bin" / "factory"),
++         "intake_workflow": str(h / "factory" / "workflows" / "intake.js"),
++         "build_workflow": str(h / "factory" / "workflows" / "build.js"),
++         "harness_revision": instance.harness_revision(),
++         "instance": str(inst) if inst is not None else None, "state": state})
+ 
+ 
+ def spec_tasks(a, root, cfg):
+@@ -908,7 +991,10 @@ def build_parser() -> argparse.ArgumentParser:
+     p.add_argument("id")
+     p.set_defaults(fn=merge_cmd)
+     p = sp.add_parser("init")
++    p.add_argument("--repo-name")
+     p.set_defaults(fn=init_cmd)
++    p = sp.add_parser("paths")
++    p.set_defaults(fn=paths_cmd)
+     p = sp.add_parser("archive")
+     p.add_argument("id")
+     p.set_defaults(fn=archive_cmd)
+@@ -950,9 +1036,12 @@ def build_parser() -> argparse.ArgumentParser:
+ 
+ def main(argv: list[str] | None = None) -> int:
+     a = build_parser().parse_args(argv)
+-    cfg = store.load_config()
+-    root = store.state_root(cfg)
+     try:
++        if a.cmd in ("init", "paths"):  # exempt from the instance refusal (design B.1)
++            a.fn(a)
++            return 0
++        cfg = store.load_config()  # refused when no instance is found: nothing is written
++        root = store.state_root(cfg)
+         a.fn(a, root, cfg)
+         return 0
+     except Refused as e:
+diff --git a/factory/compose.py b/factory/compose.py
+index 931eb69..29c8cff 100644
+--- a/factory/compose.py
++++ b/factory/compose.py
+@@ -6,9 +6,7 @@ from __future__ import annotations
+ 
+ from pathlib import Path
+ 
+-from factory import store
+-
+-PROMPTS = Path(__file__).resolve().parent / "prompts"
++from factory import instance, store
+ 
+ 
+ def _runs_for(root: Path, ticket: str, role: str, exclude: str) -> list[str]:
+@@ -54,7 +52,7 @@ def gate_commands(cfg: dict) -> list[str]:
+ def compose(root: Path, cfg: dict, meta: dict, t: dict) -> tuple[str, list[str]]:
+     role, run_id, tid = meta["role"], meta["run_id"], t["id"]
+     out_path = root / "runs" / run_id / "output.md"
+-    parts = [(PROMPTS / "context.md").read_text(encoding="utf-8").rstrip(),
++    parts = [(instance.require() / "context.md").read_text(encoding="utf-8").rstrip(),
+              f"\n## Output file\n`{out_path}`\n"]
+     sources: list[str] = []
+ 
+diff --git a/factory/context.template.md b/factory/context.template.md
+new file mode 100644
+index 0000000..4781fc8
+--- /dev/null
++++ b/factory/context.template.md
+@@ -0,0 +1,21 @@
++## Context for this run (composed by the harness, not part of the request)
++
++TODO: replace this stub with the briefing for this repository. `factory run compose` puts this file,
++`.factory/context.md`, at the top of every role's input, so every agent, author and checker alike,
++reads it first. A wrong briefing misleads all of them at once. State, in a few short paragraphs:
++
++- Which repository this is: its name, where the checkout lives, the integration branch, and what it
++  holds (code, documents, both).
++- How to run things here: the install step, the test command, the lint command, and anything that
++  must not be used. Acceptance commands must be runnable as written from the repo root.
++- Any reference implementation or other checkout an agent may read, and what it must never write
++  (credentials, live config, other repositories).
++- What kind of request to expect, and what counts as requirement versus suggestion in it.
++- How the build half works here: remote or local commits, what the gate commands are for, and
++  files a gate run creates that must never be committed.
++
++Output: write your complete output, in your role's required format and ending with the
++STATUS / CONFIDENCE / ESCALATIONS trailer, to the file named under "Output file" below. For
++every role but the implementer that is the only file you may create or modify. The implementer
++also changes files in its own worktree and commits there, and nowhere else. Then return the same
++text as your final message.
+diff --git a/factory/gitops.py b/factory/gitops.py
+index 6712aa7..99542c9 100644
+--- a/factory/gitops.py
++++ b/factory/gitops.py
+@@ -2,7 +2,7 @@
+ 2026-10-02: no remote, no CI; the merge gate is the gate suite plus the two checkers, then a
+ local --no-ff merge into the integration branch).
+ 
+-The target repo is `repo_root` (FACTORY_REPO or the checkout this package lives in). Worktrees
++The target repo is `repo_root` (FACTORY_REPO, else the parent of the instance directory). Worktrees
+ live under <store>/worktrees/<run or ticket id>. Nothing here pushes.
+ """
+ from __future__ import annotations
+@@ -12,14 +12,11 @@ import subprocess
+ import time
+ from pathlib import Path
+ 
+-from factory import store
++from factory import instance, store
+ 
+ 
+ def repo_root(cfg: dict | None = None) -> Path:
+-    env = os.environ.get("FACTORY_REPO")
+-    if env:
+-        return Path(env).expanduser().resolve()
+-    return store.REPO_ROOT
++    return instance.repo_root()
+ 
+ 
+ def integration_branch(cfg: dict, repo: Path) -> str:
+diff --git a/factory/instance.py b/factory/instance.py
+new file mode 100644
+index 0000000..108a1ee
+--- /dev/null
++++ b/factory/instance.py
+@@ -0,0 +1,117 @@
++"""The instance a command serves: a target repo's `.factory/` directory (design B.1, B.2, C.1).
++
++One harness checkout serves many target repos. Each target carries `.factory/` with
++`instance.yaml` (its config), `context.md` (the role-context block), `harness.lock` and the store.
++
++Resolution, used by store, gitops, compose and cli:
++- FACTORY_INSTANCE, when set, names the instance directory, whatever it is called;
++- otherwise walk up from the caller's working directory to the nearest directory that holds
++  `.factory/instance.yaml`. `bin/factory` changes into the harness checkout before running, so it
++  hands the caller's directory over in FACTORY_CWD;
++- otherwise the command is refused. There is no fallback to the harness checkout.
++
++The repo root is the parent of the instance directory; FACTORY_REPO overrides it. `state_dir` is
++relative to the repo root; FACTORY_STATE overrides it.
++"""
++from __future__ import annotations
++
++import os
++import subprocess
++from pathlib import Path
++
++import yaml
++
++from factory.store import Refused
++
++# The running harness checkout: the one whose bin/factory is executing.
++HARNESS = Path(__file__).resolve().parent.parent
++INSTANCE_TEMPLATE = HARNESS / "factory" / "instance.template.yaml"
++CONTEXT_TEMPLATE = HARNESS / "factory" / "context.template.md"
++AGENTS = HARNESS / "agents"
++# The harness's own code: what the harness revision (C.1) is taken over.
++HARNESS_PATHS = ("factory", "bin/factory", "agents", "pyproject.toml", "uv.lock")
++DIRNAME = ".factory"
++CONFIG_NAME = "instance.yaml"
++
++
++def caller_cwd() -> Path:
++    return Path(os.environ.get("FACTORY_CWD") or os.getcwd()).expanduser().resolve()
++
++
++def find() -> Path | None:
++    """The instance directory, or None. FACTORY_INSTANCE wins; then the walk-up."""
++    env = os.environ.get("FACTORY_INSTANCE")
++    if env:
++        p = Path(env).expanduser().resolve()
++        return p if (p / CONFIG_NAME).is_file() else None
++    cwd = caller_cwd()
++    for d in (cwd, *cwd.parents):
++        if (d / DIRNAME / CONFIG_NAME).is_file():
++            return d / DIRNAME
++    return None
++
++
++def not_found_message() -> str:
++    env = os.environ.get("FACTORY_INSTANCE")
++    if env:
++        return f"FACTORY_INSTANCE={env} holds no {CONFIG_NAME}; run factory init --repo-name NAME there, or fix FACTORY_INSTANCE"
++    return f"no {DIRNAME}/{CONFIG_NAME} found from {caller_cwd()}; run factory init --repo-name NAME, or set FACTORY_INSTANCE"
++
++
++def require() -> Path:
++    inst = find()
++    if inst is None:
++        raise Refused(not_found_message())
++    return inst
++
++
++def repo_root(inst: Path | None = None) -> Path:
++    env = os.environ.get("FACTORY_REPO")
++    if env:
++        return Path(env).expanduser().resolve()
++    return (inst or require()).parent
++
++
++def load_config(inst: Path | None = None) -> dict:
++    inst = inst or require()
++    return yaml.safe_load((inst / CONFIG_NAME).read_text(encoding="utf-8"))
++
++
++def own_state_root(inst: Path, cfg: dict) -> Path:
++    """The instance's own store: `state_dir` under the repo root, ignoring FACTORY_STATE."""
++    return (repo_root(inst) / cfg["state_dir"]).resolve()
++
++
++def state_root(inst: Path, cfg: dict) -> Path:
++    env = os.environ.get("FACTORY_STATE")
++    if env:
++        return Path(env).expanduser().resolve()
++    return own_state_root(inst, cfg)
++
++
++def is_own_store(inst: Path, cfg: dict, root: Path) -> bool:
++    """True when the store in use is the instance's own (FACTORY_STATE unset, or naming it)."""
++    return root.resolve() == own_state_root(inst, cfg)
++
++
++def harness_revision(harness: Path = HARNESS) -> str | None:
++    """The last commit that touched the harness's own code (C.1); None outside a git checkout."""
++    cp = subprocess.run(["git", "-C", str(harness), "log", "-1", "--format=%H", "--", *HARNESS_PATHS],
++                        capture_output=True, text=True)
++    rev = cp.stdout.strip()
++    return rev if cp.returncode == 0 and len(rev) == 40 else None
++
++
++PROTECTED_PLACEHOLDER = "  {auth, payments, migrations, infra, public API, dependencies}"
++
++
++def fill_preamble(text: str, cfg: dict) -> str:
++    """The design doc's preamble block with `{repo name}` and the protected-path line filled from
++    the instance (B.4). The line becomes `  <class> (<glob>, <glob>)` per class, joined by `, `."""
++    text = text.replace("{repo name}", str(cfg["repo_name"]))
++    classes = []
++    for cls, globs in (cfg.get("protected_paths") or {}).items():
++        globs = [globs] if isinstance(globs, str) else list(globs or [])
++        classes.append(f"{cls} ({', '.join(globs)})")
++    line = "  " + (", ".join(classes) if classes else "none")
++    return "\n".join(line if ln == PROTECTED_PLACEHOLDER else ln for ln in text.split("\n"))
+diff --git a/factory/instance.template.yaml b/factory/instance.template.yaml
+new file mode 100644
+index 0000000..4452806
+--- /dev/null
++++ b/factory/instance.template.yaml
+@@ -0,0 +1,64 @@
++# Spec factory instance config: this repo's `.factory/instance.yaml` (design B.2, B.5).
++# `factory init --repo-name NAME` writes it from factory/instance.template.yaml in the harness checkout.
++# The harness reads it from the instance it resolves (FACTORY_INSTANCE, else the nearest
++# `.factory/instance.yaml` above the working directory); nothing falls back to the harness checkout.
++# Fills `{repo name}` in the preamble.
++repo_name: __REPO_NAME__
++# The harness checkout this instance runs with (absolute path); `factory paths` reports the running one.
++harness: __HARNESS__
++# The store, relative to the repo root (the parent of `.factory/`). FACTORY_STATE overrides it.
++state_dir: .factory/state
++# Filled into the preamble's protected-path line at run start as `class (glob, glob), ...`.
++protected_paths:
++  infra: [".factory/instance.yaml", ".factory/harness.lock", ".factory/context.md"]
++# Commands every implementer and verifier runs in the checkout under test, each exactly as written.
++# `{integration}` is replaced with the checkout that has the integration branch.
++gate_commands: []
++placeholders: {rounds: 2, spec_lines: 400, audit_n: 5, retro_min: 3}
++max_rounds: {spec: 2, pr: 2}
++# Build half, local-commit stand-in (operator, 2026-10-02): no remote, no CI. The merge gate is the
++# gate suite on the branch plus the two checkers; then a local --no-ff merge into integration_branch
++# (null = the target repo's current branch). FACTORY_REPO / FACTORY_INTEGRATION_BRANCH override.
++integration_branch: null
++# Untracked files every worktree and checker checkout copies from the integration checkout at each run
++# start, so a branch is tested against the same environment the integration branch runs in (for
++# example a lockfile the target repo git-ignores). A tracked file does not belong here: copying it in
++# would mask the branch's own version.
++environment_files: []
++force_push_allowed: false
++models:
++  triage: opus
++  spec_writer: opus
++  critic: fable
++  planner: opus
++  implementer: opus
++  reviewer: fable
++  verifier: opus
++  retro: fable
++  clerk: haiku
++ready_state:
++  triage: ready-for-triage
++  spec_writer: ready-for-spec-writer
++  critic: ready-for-critic
++  planner: ready-for-planner
++  implementer: ready-for-implementer
++  reviewer: checks-in-flight
++  verifier: checks-in-flight
++# Routing edges (doc §Routing table, both halves, plus the resolution rules). Anything else is refused.
++routing:
++  ready-for-triage: [ready-for-spec-writer, waiting-requester, parked, closed]
++  waiting-requester: [ready-for-triage, closed]
++  ready-for-spec-writer: [ready-for-critic, parked, closed]
++  ready-for-critic: [ready-for-spec-writer, awaiting-spec-gate, parked, closed]
++  awaiting-spec-gate: [ready-for-planner, ready-for-spec-writer, closed]
++  ready-for-planner: [planned, parked, closed]
++  parked: [ready-for-triage, ready-for-spec-writer, ready-for-critic, ready-for-planner, awaiting-spec-gate, ready-for-implementer, checks-in-flight, ready-for-parent-verify, closed]
++  planned: [ready-for-parent-verify, parked, closed]
++  # sub-tickets
++  waiting-dependencies: [ready-for-implementer, parked, closed]
++  ready-for-implementer: [checks-in-flight, parked, closed]
++  checks-in-flight: [ready-for-merge, ready-for-implementer, parked, closed]
++  ready-for-merge: [merged, ready-for-implementer, parked, closed]
++  merged: [closed]
++  # parent, after every sub-ticket merged
++  ready-for-parent-verify: [closed, parked]
+diff --git a/factory/prompts/context.md b/factory/prompts/context.md
+deleted file mode 100644
+index 79cbf2e..0000000
+--- a/factory/prompts/context.md
++++ /dev/null
+@@ -1,29 +0,0 @@
+-## Context for this run (composed by the harness, not part of the request)
+-
+-Repository: `spec-factory`, the design repo at `~/dev/spec-factory` (branch `main`). It holds
+-documents, not code: `docs/spec-factory.md` (the design document, source of truth),
+-`specs/build-harness.md` (the spec for building the harness), `plans/` (the Planner's
+-decompositions; `plans/P0-intake-skeleton.md` is the walking skeleton), and `prompts/`
+-(each file a verbatim copy of one prompt block in the design doc; it changes only by
+-re-copying that block). Your shell may start in another directory: use absolute paths, or
+-`cd ~/dev/spec-factory && <cmd>`.
+-
+-The REFERENCE implementation is the Nanobot-side harness at `~/dev/nanobot-upstream/factory/`
+-(branch `feat/lionbot-v3`, built from `plans/P0-intake-skeleton.md`). Read it only to observe
+-what a fix does today; never write there, and never copy its test names, line numbers or
+-commit SHAs into a spec. Never read or write `~/.nanobot/` (live credentials).
+-
+-Acceptance commands must be runnable as written from `~/dev/spec-factory` (grep, sed, diff,
+-`git diff --check` against the documents). A change to the design doc keeps its own
+-conventions: the Changelog section at its end, `specs/build-harness.md` consistent with the
+-new text, and any `prompts/` file whose block changed re-copied from it.
+-
+-The request is an issue draft, written from a real pipeline run: where in the documents,
+-what happened (the evidence), why it matters, a proposed fix, and the Nanobot-side commit
+-where a harness fix already exists. The evidence is the requirement; the proposed fix is the
+-requester's suggestion, not a requirement. Verify the as-built fix in the reference harness
+-before relying on it; a NEW criterion that already passes on this checkout proves nothing.
+-
+-Output: write your complete output, in your role's required format and ending with the
+-STATUS / CONFIDENCE / ESCALATIONS trailer, to the file named under "Output file" below. That
+-is the only file you may create or modify. Then return the same text as your final message.
+diff --git a/factory/prompts/preamble.md b/factory/prompts/preamble.md
+index c23daec..c08e876 100644
+--- a/factory/prompts/preamble.md
++++ b/factory/prompts/preamble.md
+@@ -1,4 +1,4 @@
+-You are one agent in a software pipeline: spec-factory (the design repo at ~/dev/spec-factory, branch main). Other agents check
++You are one agent in a software pipeline: {repo name}. Other agents check
+ your output, and a human audits a sample of everything.
+ 
+ WHAT "GOOD" MEANS
+@@ -35,7 +35,7 @@ SCOPE AND ESCALATION
+   a protected path the approved spec's Risk section does not declare, or
+   you'd need to break a rule above to finish.
+ - Protected paths for this repo:
+-  infra (intake/**, the scratch harness instance running you), generated (prompts/**, verbatim copies of the design doc's prompt blocks, changed only by re-copying), reference harness (~/dev/nanobot-upstream/**, read only), credentials (~/.nanobot/**, never read or written by any role)
++  {auth, payments, migrations, infra, public API, dependencies}
+ 
+ GUARDRAIL PATHS
+ Never modify or delete existing tests, CI config, AGENTS.md, skills, or
+diff --git a/factory/store.py b/factory/store.py
+index 0299cb3..024f10f 100644
+--- a/factory/store.py
++++ b/factory/store.py
+@@ -12,9 +12,6 @@ from pathlib import Path
+ 
+ import yaml
+ 
+-REPO_ROOT = Path(__file__).resolve().parent.parent
+-CONFIG_PATH = Path(__file__).resolve().parent / "config.yaml"
+-
+ STATES = [
+     "ready-for-triage", "waiting-requester", "ready-for-spec-writer", "ready-for-critic",
+     "awaiting-spec-gate", "ready-for-planner", "planned", "parked", "closed",
+@@ -30,15 +27,19 @@ class Refused(Exception):  # noqa: N818
+ 
+ 
+ def load_config() -> dict:
+-    return yaml.safe_load(CONFIG_PATH.read_text(encoding="utf-8"))
++    """The resolved instance's `instance.yaml` (factory/instance.py); refused when none is found."""
++    from factory import instance  # local: instance imports Refused from here
++    return instance.load_config()
+ 
+ 
+ def state_root(cfg: dict | None = None) -> Path:
++    """FACTORY_STATE, else the instance's `state_dir` under its repo root."""
++    from factory import instance
+     env = os.environ.get("FACTORY_STATE")
+     if env:
+         return Path(env).expanduser().resolve()
+-    cfg = cfg or load_config()
+-    return (REPO_ROOT / cfg["state_dir"]).resolve()
++    inst = instance.require()
++    return instance.state_root(inst, cfg or instance.load_config(inst))
+ 
+ 
+ def now() -> str:
+diff --git a/factory/workflows/build.js b/factory/workflows/build.js
+index 4273f58..39de0a7 100644
+--- a/factory/workflows/build.js
++++ b/factory/workflows/build.js
+@@ -7,18 +7,20 @@ export const meta = {
+     { title: 'Close', detail: 'one verifier run on the integration branch against the parent spec; VERIFIED archives, then closes' },
+   ],
+ }
+-// args: { ticket, repo, state, target?, integration?, stubs?, inlineRoles? }  — repo/state/stubs/inlineRoles as in intake.js.
++// args: { ticket, repo, instance?, state?, target?, integration?, stubs?, inlineRoles? }  — repo/instance/state/stubs/inlineRoles as in intake.js.
+ // Local-commit stand-in (operator, 2026-10-02): no remote, no CI. The gate suite is run by the
+ // verifier and recorded as the ci row; the merge is a local --no-ff merge into the integration
+ // branch. The routing is build spec part H, build.js; the join itself is `factory ticket join`.
+ 
+ const TICKET = args.ticket
+ const REPO = args.repo
+-const STATE = args.state
+-// target = the repo the implementer works in (default: the checkout bin/factory lives in);
++const INSTANCE = args.instance
++let STATE = args.state || null  // set from `factory config` below when not given
++// target = the repo the implementer works in (default: the instance's repo, the parent of its `.factory/`);
+ // integration = the branch merged into (default: config integration_branch, else the target's current branch).
+-const ENV = `FACTORY_STATE=${STATE}` + (args.target ? ` FACTORY_REPO=${args.target}` : '') + (args.integration ? ` FACTORY_INTEGRATION_BRANCH=${args.integration}` : '')
+-const BIN = `${ENV} ${REPO}/bin/factory`
++const ENV = [INSTANCE ? `FACTORY_INSTANCE=${INSTANCE}` : '', STATE ? `FACTORY_STATE=${STATE}` : '',
++  args.target ? `FACTORY_REPO=${args.target}` : '', args.integration ? `FACTORY_INTEGRATION_BRANCH=${args.integration}` : ''].filter(Boolean).join(' ')
++const BIN = `${ENV ? ENV + ' ' : ''}${REPO}/bin/factory`
+ const PREFIX = args.agentPrefix || 'factory-'
+ const INLINE = !!args.inlineRoles
+ const CLERK_RULES = 'You are the store clerk of the spec factory: run the one command you are given, once, unchanged, from the repository root; run nothing else, edit nothing, interpret nothing. '
+@@ -168,7 +170,8 @@ async function buildOne(st) {
+ 
+ // --- start
+ const cfg = await clerk(`${BIN} config`, 'Plan', 'config')
+-if (cfg.ok) { MODELS = cfg.models; MAX_PR = cfg.max_rounds.pr }
++if (cfg.ok) { MODELS = cfg.models; MAX_PR = cfg.max_rounds.pr; if (!STATE) STATE = cfg.state_dir }
++if (!STATE) return { ticket: TICKET, error: `no store: factory config failed: ${cfg.stderr || cfg.error || ''}` }
+ const show = await clerk(`${BIN} ticket show ${TICKET} --json`, 'Plan', 'ticket show')
+ if (!show.ok) return { ticket: TICKET, error: `no such ticket: ${show.stderr}` }
+ let state = show.state
+diff --git a/factory/workflows/intake.js b/factory/workflows/intake.js
+index 89098f3..dfa015a 100644
+--- a/factory/workflows/intake.js
++++ b/factory/workflows/intake.js
+@@ -7,9 +7,13 @@ export const meta = {
+     { title: 'Plan', detail: 'after the human gate: planner decomposes the approved spec' },
+   ],
+ }
+-// args: { ticket, repo, state, stubs?, agentPrefix? }
+-//   repo  = absolute path of the checkout (bin/factory lives under it)
+-//   state = absolute path of the store (knowledge_vault/spec_factory)
++// args: { ticket, repo, instance?, state?, stubs?, agentPrefix? }
++//   repo     = absolute path of the harness checkout (bin/factory lives under it); the clerk runs from it
++//   instance = absolute path of the target repo's `.factory/` (`factory paths` prints it); when given,
++//              every store command runs with FACTORY_INSTANCE=<instance>. Without it the harness walks
++//              up from `repo`, which finds only the harness repo's own instance
++//   state    = absolute path of the store (FACTORY_STATE); optional: by default the instance's own
++//              store, as `factory config` reports it
+ //   stubs = directory of <role>-<n>.md fixture outputs; when set, every role is the factory-stub agent
+ //   inlineRoles = true when the factory-* agent types are not registered in this session
+ // The script holds routing, the join and the round counter as code and nothing else decides
+@@ -18,8 +22,10 @@ export const meta = {
+ 
+ const TICKET = args.ticket
+ const REPO = args.repo
+-const STATE = args.state
+-const BIN = `FACTORY_STATE=${STATE} ${REPO}/bin/factory`
++const INSTANCE = args.instance
++let STATE = args.state || null  // set from `factory config` below when not given
++const ENV = [INSTANCE ? `FACTORY_INSTANCE=${INSTANCE}` : '', STATE ? `FACTORY_STATE=${STATE}` : ''].filter(Boolean).join(' ')
++const BIN = `${ENV ? ENV + ' ' : ''}${REPO}/bin/factory`
+ const PREFIX = args.agentPrefix || 'factory-'
+ // inlineRoles: the .claude/agents/factory-* definitions are not registered in this session (the
+ // directory did not exist at session start), so every role runs as general-purpose and reads its
+@@ -104,7 +110,8 @@ async function transition(to, roundOp, phase) {
+ 
+ // --- start: read config and the ticket's stored state (resumption starts from what the store holds)
+ const cfg = await clerk(`${BIN} config`, 'Triage', 'config')
+-if (cfg.ok) { MODELS = cfg.models; MAX = cfg.max_rounds.spec }
++if (cfg.ok) { MODELS = cfg.models; MAX = cfg.max_rounds.spec; if (!STATE) STATE = cfg.state_dir }
++if (!STATE) return { ticket: TICKET, error: `no store: factory config failed: ${cfg.stderr || cfg.error || ''}` }
+ const show = await clerk(`${BIN} ticket show ${TICKET} --json`, 'Triage', 'ticket show')
+ if (!show.ok) return { ticket: TICKET, error: `no such ticket: ${show.stderr}` }
+ let state = show.state
+diff --git a/tests/factory/conftest.py b/tests/factory/conftest.py
+new file mode 100644
+index 0000000..c7450df
+--- /dev/null
++++ b/tests/factory/conftest.py
+@@ -0,0 +1,18 @@
++"""Point every test at a fixed instance (design B.9), never at whatever instance surrounds the
++checkout the suite runs in.
++
++The imported tests drive `bin/factory` as a subprocess with cwd set to the harness checkout and an
++environment built from os.environ, each on a throwaway store (FACTORY_STATE). Without this file the
++harness would resolve the instance by walking up from that checkout: the harness repo's own
++`.factory/`, or none at all. FACTORY_REPO keeps the repo root the tests saw before instances existed
++(the harness checkout) instead of the fixture's parent; a test that sets its own FACTORY_REPO in a
++subprocess environment (the shepherd's scratch target) still overrides it.
++"""
++from __future__ import annotations
++
++import os
++from pathlib import Path
++
++_HERE = Path(__file__).resolve()
++os.environ["FACTORY_INSTANCE"] = str(_HERE.parent / "fixtures" / "instance")
++os.environ.setdefault("FACTORY_REPO", str(_HERE.parents[2]))
+diff --git a/tests/factory/fixtures/instance/context.md b/tests/factory/fixtures/instance/context.md
+new file mode 100644
+index 0000000..20ed11d
+--- /dev/null
++++ b/tests/factory/fixtures/instance/context.md
+@@ -0,0 +1,4 @@
++## Context for this run (composed by the harness, not part of the request)
++
++Test fixture instance for the harness's own suite (`tests/factory/fixtures/instance/`). No role reads
++this for real work: the tests check what the harness does, not what an agent would do with it.
+diff --git a/factory/config.yaml b/tests/factory/fixtures/instance/instance.yaml
+similarity index 69%
+rename from factory/config.yaml
+rename to tests/factory/fixtures/instance/instance.yaml
+index 4bfb5b6..bdfaa20 100644
+--- a/factory/config.yaml
++++ b/tests/factory/fixtures/instance/instance.yaml
+@@ -1,28 +1,23 @@
+-# Spec factory, scratch intake instance targeting the spec-factory design repo (intake/README.md).
+-# Overlaid on a pinned copy of the Nanobot-side harness by intake/setup.sh; everything from
+-# placeholders down is copied verbatim from that harness's config.yaml at HARNESS_PIN.
+-repo_name: spec-factory
+-state_dir: intake/state
+-request_dir: ../../issues
++# Fixed instance for the harness's own test suite (tests/factory/conftest.py sets FACTORY_INSTANCE
++# here, and FACTORY_REPO to the harness checkout). factory/instance.template.yaml's values, plus
++# environment_files: ["uv.lock"] (test_shepherd checks the lockfile copy) and the whitespace gate.
++# Every test runs on a throwaway store (FACTORY_STATE), so state_dir is never used.
++repo_name: "factory test fixture"
++harness: null
++state_dir: .factory/state
+ protected_paths:
+-  infra: ["intake/**"]
+-  generated: ["prompts/**"]
+-  reference_harness: ["~/dev/nanobot-upstream/**"]
+-  credentials: ["~/.nanobot/**"]
+-# Runs in the checkout under test (a checker's detached checkout or the implementer's worktree):
+-# whitespace errors in what the branch adds over main. No test suite exists here until #19 part A.
+-gate_commands:
+-  - "git diff --check main...HEAD"
++  infra: [".factory/instance.yaml", ".factory/harness.lock", ".factory/context.md"]
++gate_commands: ["git diff --check main...HEAD"]
+ placeholders: {rounds: 2, spec_lines: 400, audit_n: 5, retro_min: 3}
+ max_rounds: {spec: 2, pr: 2}
+ # Build half, local-commit stand-in (operator, 2026-10-02): no remote, no CI. The merge gate is the
+ # gate suite on the branch plus the two checkers; then a local --no-ff merge into integration_branch
+ # (null = the target repo's current branch). FACTORY_REPO / FACTORY_INTEGRATION_BRANCH override.
+-integration_branch: main
++integration_branch: null
+ # Untracked files every worktree and checker checkout copies from the integration checkout at each run
+-# start, so a branch is tested against the same environment the integration branch runs in. uv.lock
+-# is git-ignored on green: without it a fresh worktree resolves newer packages (mcp 1.30 vs 1.29 broke
+-# a test the first pilot never touched).
++# start, so a branch is tested against the same environment the integration branch runs in (for
++# example a lockfile the target repo git-ignores). A tracked file does not belong here: copying it in
++# would mask the branch's own version.
+ environment_files: ["uv.lock"]
+ force_push_allowed: false
+ models:
+diff --git a/tests/factory/test_instance.py b/tests/factory/test_instance.py
+new file mode 100644
+index 0000000..9a7d180
+--- /dev/null
++++ b/tests/factory/test_instance.py
+@@ -0,0 +1,345 @@
++"""Instances (design B): the resolver, `instance.yaml`, the briefing, the filled preamble, `init`,
++`paths` and the harness revision, black-box through `bin/factory` in scratch target repos.
++
++Each case strips the conftest's FACTORY_INSTANCE / FACTORY_REPO and any FACTORY_STATE, so the
++harness resolves the instance the way it does for an operator: from the working directory.
++"""
++from __future__ import annotations
++
++import json
++import os
++import subprocess
++from pathlib import Path
++
++import pytest
++import yaml
++
++REPO = Path(__file__).resolve().parents[2]
++BIN = REPO / "bin" / "factory"
++STRIP = ("FACTORY_INSTANCE", "FACTORY_REPO", "FACTORY_STATE", "FACTORY_INTEGRATION_BRANCH", "FACTORY_CWD")
++NOT_FOUND = "no .factory/instance.yaml found from {cwd}; run factory init --repo-name NAME, or set FACTORY_INSTANCE"
++
++
++def cli(cwd: Path, *argv: str, **extra: str) -> subprocess.CompletedProcess:
++    env = {k: v for k, v in os.environ.items() if k not in STRIP}
++    env.update({"PYTHONDONTWRITEBYTECODE": "1", **extra})
++    return subprocess.run([str(BIN), *argv], capture_output=True, text=True, env=env, cwd=cwd)
++
++
++def js(cp: subprocess.CompletedProcess) -> dict:
++    return json.loads(cp.stdout.strip().splitlines()[-1])
++
++
++def git_repo(path: Path) -> Path:
++    path.mkdir(parents=True, exist_ok=True)
++    for argv in (["init", "-q", "-b", "main"],
++                 ["-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "--allow-empty", "-m", "init"]):
++        subprocess.run(["git", "-C", str(path), *argv], check=True, capture_output=True)
++    return path
++
++
++def tree(path: Path) -> dict[str, bytes]:
++    return {str(p.relative_to(path)): p.read_bytes() for p in sorted(path.rglob("*")) if p.is_file()}
++
++
++def harness_status() -> str:
++    return subprocess.run(["git", "-C", str(REPO), "status", "--porcelain"], capture_output=True, text=True).stdout
++
++
++def revision() -> str:
++    return subprocess.run(["git", "-C", str(REPO), "log", "-1", "--format=%H", "--",
++                           "factory", "bin/factory", "agents", "pyproject.toml", "uv.lock"],
++                          capture_output=True, text=True, check=True).stdout.strip()
++
++
++@pytest.fixture
++def target(tmp_path: Path) -> Path:
++    """A scratch target repo with an instance made by `factory init` from a subdirectory."""
++    t = git_repo(tmp_path / "target")
++    (t / "sub").mkdir()
++    cp = cli(t / "sub", "init", "--repo-name", "demo")
++    assert cp.returncode == 0, cp.stderr
++    return t
++
++
++@pytest.fixture
++def request_file(tmp_path: Path) -> Path:
++    p = tmp_path / "r.md"
++    p.write_text("# demo\n\nDo the thing.\n")
++    return p
++
++
++# ----- init (B.5) -----------------------------------------------------------------------------
++
++def test_init_creates_the_instance_at_the_git_top_level(tmp_path):
++    t = git_repo(tmp_path / "target")
++    (t / "a" / "b").mkdir(parents=True)
++    cp = cli(t / "a" / "b", "init", "--repo-name", "demo")
++    assert cp.returncode == 0, cp.stderr
++    assert sorted(p.name for p in (t / ".factory").iterdir()) == ["context.md", "harness.lock", "instance.yaml", "state"]
++    assert not (t / "a" / ".factory").exists() and not (t / "a" / "b" / ".factory").exists()
++    agents = sorted((REPO / "agents").glob("factory-*.md"))
++    assert len(agents) == 6
++    assert {p.name: p.read_bytes() for p in agents} == tree(t / ".claude" / "agents")
++    assert (cp.stdout + cp.stderr).count("restart the session so the agents register") == 1
++    assert (t / ".factory" / "context.md").read_bytes() == (REPO / "factory" / "context.template.md").read_bytes()
++    assert (t / ".factory" / "harness.lock").read_text() == revision() + "\n"
++    state = t / ".factory" / "state"
++    assert (state / "openspec" / "config.yaml").is_file() and (state / "decisions.md").is_file()
++    assert {"worktrees/", "runs/*/wt/"} <= set((state / ".gitignore").read_text().splitlines())
++    out = js(cp)
++    assert out["ok"] is True and Path(out["instance"]) == (t / ".factory").resolve()
++
++
++def test_init_writes_instance_yaml_from_the_template(target):
++    cfg = yaml.safe_load((target / ".factory" / "instance.yaml").read_text())
++    tpl = yaml.safe_load((REPO / "factory" / "instance.template.yaml").read_text())
++    assert cfg["repo_name"] == "demo"
++    assert Path(cfg["harness"]) == REPO and Path(cfg["harness"]).is_absolute()
++    assert cfg["state_dir"] == ".factory/state"
++    assert cfg["protected_paths"] == {"infra": [".factory/instance.yaml", ".factory/harness.lock", ".factory/context.md"]}
++    assert cfg["gate_commands"] == []
++    assert cfg["integration_branch"] is None and cfg["environment_files"] == [] and cfg["force_push_allowed"] is False
++    assert "request_dir" not in cfg
++    for key in ("placeholders", "max_rounds", "models", "ready_state", "routing"):
++        assert cfg[key] == tpl[key], key
++    assert set(cfg) == set(tpl)
++
++
++def test_init_repo_name_with_yaml_specials_round_trips(tmp_path):
++    t = git_repo(tmp_path / "target")
++    name = 'spec-factory (the design repo at ~/dev/x: "main", #1)'
++    assert cli(t, "init", "--repo-name", name).returncode == 0
++    assert yaml.safe_load((t / ".factory" / "instance.yaml").read_text())["repo_name"] == name
++
++
++def test_init_works_at_its_own_git_top_level_not_an_enclosing_instance(target):
++    """A repo nested under a directory that has an instance gets its own; the walk-up then finds it."""
++    inner = git_repo(target / "sub" / "inner")
++    (inner / "deep").mkdir()
++    cp = cli(inner / "deep", "init", "--repo-name", "inner")
++    assert cp.returncode == 0, cp.stderr
++    assert (inner / ".factory" / "instance.yaml").is_file() and (inner / ".claude" / "agents").is_dir()
++    assert Path(js(cli(inner / "deep", "paths"))["instance"]) == (inner / ".factory").resolve()
++
++
++def test_init_refused_outside_a_git_work_tree(tmp_path):
++    d = tmp_path / "plain"
++    d.mkdir()
++    cp = cli(d, "init", "--repo-name", "x")
++    assert cp.returncode == 2 and "not inside a git work tree" in cp.stderr
++    assert list(d.iterdir()) == []
++
++
++def test_init_without_repo_name_refused_and_writes_nothing(tmp_path):
++    t = git_repo(tmp_path / "target")
++    cp = cli(t, "init")
++    assert cp.returncode == 2 and "--repo-name" in cp.stderr
++    assert sorted(p.name for p in t.iterdir()) == [".git"]
++
++
++def test_init_is_idempotent_and_creates_only_what_is_missing(target):
++    before = tree(target / ".factory") | {f"claude/{k}": v for k, v in tree(target / ".claude").items()}
++    for _ in range(2):
++        cp = cli(target, "init")
++        assert cp.returncode == 0, cp.stderr
++        assert "restart the session" not in cp.stdout + cp.stderr
++        assert js(cp)["written"] == [] and js(cp)["created"] == [] and js(cp)["agents"] == []
++    assert tree(target / ".factory") | {f"claude/{k}": v for k, v in tree(target / ".claude").items()} == before
++
++    (target / ".factory" / "context.md").unlink()
++    (target / ".claude" / "agents" / "factory-planner.md").unlink()
++    (target / ".factory" / "state" / "decisions.md").unlink()
++    cp = cli(target, "init", "--repo-name", "ignored-when-instance-exists")
++    assert cp.returncode == 0, cp.stderr
++    assert (cp.stdout + cp.stderr).count("restart the session so the agents register") == 1
++    out = js(cp)
++    assert out["written"] == ["decisions.md"]
++    assert [Path(p).name for p in out["created"]] == ["context.md"]
++    assert [Path(p).name for p in out["agents"]] == ["factory-planner.md"]
++    assert yaml.safe_load((target / ".factory" / "instance.yaml").read_text())["repo_name"] == "demo"
++    after = tree(target / ".factory") | {f"claude/{k}": v for k, v in tree(target / ".claude").items()}
++    logs = {k for k in before | after if k.startswith("state/log/")}  # the re-creation is logged
++    assert {k: v for k, v in after.items() if k not in logs} == {k: v for k, v in before.items() if k not in logs}
++
++
++def test_init_on_a_throwaway_store_initialises_only_that_store(target, tmp_path):
++    """FACTORY_STATE elsewhere (as in every test): the instance's own pieces are left alone."""
++    (target / ".factory" / "harness.lock").unlink()
++    (target / ".claude" / "agents" / "factory-triage.md").unlink()
++    s = tmp_path / "throwaway"
++    cp = cli(target, "init", FACTORY_STATE=str(s))
++    assert cp.returncode == 0, cp.stderr
++    assert (s / "openspec" / "config.yaml").is_file() and (s / ".gitignore").is_file()
++    assert not (target / ".factory" / "harness.lock").exists()
++    assert not (target / ".claude" / "agents" / "factory-triage.md").exists()
++    assert "restart the session" not in cp.stdout + cp.stderr
++
++
++def test_the_suite_conftest_init_writes_nothing_into_the_harness(tmp_path):
++    """The imported tests run `init` with the conftest's fixture instance and FACTORY_REPO = the
++    harness checkout: only their throwaway store may change."""
++    fixture = REPO / "tests" / "factory" / "fixtures" / "instance"
++    before_fixture, before_status = tree(fixture), harness_status()
++    env = {k: v for k, v in os.environ.items() if k not in STRIP}
++    env.update(PYTHONDONTWRITEBYTECODE="1", FACTORY_INSTANCE=str(fixture), FACTORY_REPO=str(REPO),
++               FACTORY_STATE=str(tmp_path / "s"))
++    cp = subprocess.run([str(BIN), "init"], capture_output=True, text=True, env=env, cwd=REPO)
++    assert cp.returncode == 0, cp.stderr
++    assert (tmp_path / "s" / "openspec").is_dir()
++    assert tree(fixture) == before_fixture and harness_status() == before_status
++
++
++# ----- resolver (B.1, B.2) --------------------------------------------------------------------
++
++def test_store_command_from_a_subdirectory_uses_the_target_instance(target, request_file):
++    before = harness_status()
++    cp = cli(target / "sub", "ticket", "new", "--file", str(request_file))
++    assert cp.returncode == 0, cp.stderr
++    assert sorted(p.name for p in (target / ".factory" / "state" / "tickets").iterdir()) == ["T-0001.yaml"]
++    assert harness_status() == before
++
++
++def test_command_outside_any_instance_refused_and_writes_nothing(tmp_path, request_file):
++    d = tmp_path / "nowhere"
++    d.mkdir()
++    for argv in (("ticket", "show", "T-0001"), ("ticket", "new", "--file", str(request_file)), ("config",)):
++        cp = cli(d, *argv)
++        assert cp.returncode == 2, argv
++        assert cp.stderr.strip() == NOT_FOUND.format(cwd=d.resolve()), cp.stderr
++        assert list(d.iterdir()) == []
++
++
++def test_no_fallback_even_with_a_store_named(tmp_path, request_file):
++    """FACTORY_STATE alone does not stand in for an instance: config comes only from one."""
++    d = tmp_path / "nowhere"
++    d.mkdir()
++    s = tmp_path / "s"
++    cp = cli(d, "ticket", "new", "--file", str(request_file), FACTORY_STATE=str(s))
++    assert cp.returncode == 2 and "instance.yaml" in cp.stderr
++    assert not s.exists()
++
++
++def test_factory_instance_overrides_the_working_directory(target, request_file, tmp_path):
++    assert cli(target, "ticket", "new", "--file", str(request_file)).returncode == 0
++    other = git_repo(tmp_path / "other")
++    assert cli(other, "init", "--repo-name", "other").returncode == 0
++    cp = cli(other, "ticket", "show", "T-0001", FACTORY_INSTANCE=str(target / ".factory"))
++    assert cp.returncode == 0, cp.stderr
++    assert yaml.safe_load(cp.stdout)["title"] == "demo"
++    assert not (other / ".factory" / "state" / "tickets").exists()
++
++
++def test_factory_instance_without_instance_yaml_refused(tmp_path):
++    d = tmp_path / "empty"
++    d.mkdir()
++    cp = cli(tmp_path, "ticket", "show", "T-0001", FACTORY_INSTANCE=str(d))
++    assert cp.returncode == 2 and "instance.yaml" in cp.stderr and str(d) in cp.stderr
++
++
++def test_repo_root_is_the_instance_parent_and_factory_repo_overrides(target, tmp_path):
++    """An instance directory under any name: state_dir resolves under its parent, or FACTORY_REPO."""
++    alt = tmp_path / "elsewhere" / "inst"
++    alt.mkdir(parents=True)
++    (alt / "instance.yaml").write_bytes((target / ".factory" / "instance.yaml").read_bytes())
++    (alt / "context.md").write_text("x\n")
++    cp = cli(tmp_path, "config", FACTORY_INSTANCE=str(alt))
++    assert cp.returncode == 0, cp.stderr
++    assert Path(js(cp)["state_dir"]) == (tmp_path / "elsewhere" / ".factory" / "state").resolve()
++    cp = cli(tmp_path, "config", FACTORY_INSTANCE=str(alt), FACTORY_REPO=str(target))
++    assert Path(js(cp)["state_dir"]) == (target / ".factory" / "state").resolve()
++    cp = cli(tmp_path, "config", FACTORY_INSTANCE=str(alt), FACTORY_STATE=str(tmp_path / "s"))
++    assert Path(js(cp)["state_dir"]) == (tmp_path / "s").resolve()
++
++
++# ----- briefing and preamble (B.3, B.4) -------------------------------------------------------
++
++def _start_triage(target: Path, request_file: Path) -> Path:
++    assert cli(target, "ticket", "new", "--file", str(request_file)).returncode == 0
++    cp = cli(target, "run", "start", "--role", "triage", "--ticket", "T-0001", "--model", "opus")
++    assert cp.returncode == 0, cp.stderr
++    return target / ".factory" / "state" / "runs" / js(cp)["run_id"]
++
++
++def test_composed_input_opens_with_the_instance_context(target, request_file):
++    (target / ".factory" / "context.md").write_text("CTX-MARKER for demo\nsecond line\n")
++    run = _start_triage(target, request_file)
++    cp = cli(target, "run", "compose", run.name)
++    assert cp.returncode == 0, cp.stderr
++    text = (run / "input.md").read_text()
++    assert text.startswith("CTX-MARKER for demo\nsecond line\n## Output file\n")
++
++
++def test_system_prompt_is_the_design_preamble_filled_from_the_instance(target, request_file):
++    run = _start_triage(target, request_file)
++    got = (run / "system-prompt.txt").read_text().split("\n")
++    block = (REPO / "docs" / "prompts" / "00-preamble.md").read_text().rstrip().split("\n")
++    assert got[0] == "You are one agent in a software pipeline: demo. Other agents check"
++    i = block.index("  {auth, payments, migrations, infra, public API, dependencies}")
++    assert got[i] == "  infra (.factory/instance.yaml, .factory/harness.lock, .factory/context.md)"
++    assert [ln for n, ln in enumerate(got[:len(block)]) if n not in (0, i)] == \
++        [ln for n, ln in enumerate(block) if n not in (0, i)]
++    role = (REPO / "factory" / "prompts" / "triage.md").read_text()
++    assert "\n".join(got).endswith("\n\n" + role)
++    assert "{repo name}" not in "\n".join(got) and "{auth, payments" not in "\n".join(got)
++
++
++def test_protected_path_line_lists_every_class(target, request_file):
++    p = target / ".factory" / "instance.yaml"
++    cfg = yaml.safe_load(p.read_text())
++    cfg["protected_paths"] = {"infra": [".factory/**", "intake/**"], "harness": ["factory/**", "bin/factory"],
++                              "credentials": "~/.secret/**"}
++    p.write_text(yaml.safe_dump(cfg, sort_keys=False))
++    run = _start_triage(target, request_file)
++    assert ("  infra (.factory/**, intake/**), harness (factory/**, bin/factory), credentials (~/.secret/**)"
++            in (run / "system-prompt.txt").read_text().split("\n"))
++
++
++def test_harness_preamble_is_the_design_doc_block_and_green_overlay_is_gone():
++    assert (REPO / "factory" / "prompts" / "preamble.md").read_bytes() == (REPO / "docs" / "prompts" / "00-preamble.md").read_bytes()
++    assert not (REPO / "factory" / "config.yaml").exists()
++    assert not (REPO / "factory" / "prompts" / "context.md").exists()
++
++
++# ----- paths (B.6) and the harness revision (C.1) ---------------------------------------------
++
++def test_paths_inside_an_instance(target):
++    before = tree(target)
++    cp = cli(target / "sub", "paths")
++    assert cp.returncode == 0, cp.stderr
++    p = js(cp)
++    assert Path(p["harness"]) == REPO
++    for k in ("harness", "bin", "intake_workflow", "build_workflow", "instance", "state"):
++        assert Path(p[k]).is_absolute(), k
++    assert Path(p["bin"]) == REPO / "bin" / "factory"
++    assert Path(p["intake_workflow"]).is_file() and Path(p["build_workflow"]).is_file()
++    assert p["harness_revision"] == revision() and len(p["harness_revision"]) == 40
++    assert Path(p["instance"]) == (target / ".factory").resolve()
++    assert Path(p["state"]) == (target / ".factory" / "state").resolve()
++    assert tree(target) == before
++
++
++def test_paths_outside_any_instance(tmp_path):
++    d = tmp_path / "nowhere"
++    d.mkdir()
++    cp = cli(d, "paths")
++    assert cp.returncode == 0, cp.stderr
++    p = js(cp)
++    assert p["instance"] is None and p["state"] is None
++    assert Path(p["harness"]) == REPO and len(p["harness_revision"]) == 40
++    assert list(d.iterdir()) == []
++
++
++# ----- the suite's own instance (B.9) ---------------------------------------------------------
++
++def test_conftest_points_the_suite_at_the_fixture_instance():
++    fixture = (REPO / "tests" / "factory" / "fixtures" / "instance").resolve()
++    assert Path(os.environ["FACTORY_INSTANCE"]).resolve() == fixture
++    assert os.environ.get("FACTORY_REPO")
++    cfg = yaml.safe_load((fixture / "instance.yaml").read_text())
++    tpl = yaml.safe_load((REPO / "factory" / "instance.template.yaml").read_text())
++    assert cfg["environment_files"] == ["uv.lock"] and cfg["gate_commands"] == ["git diff --check main...HEAD"]
++    for key in ("state_dir", "protected_paths", "placeholders", "max_rounds", "integration_branch",
++                "force_push_allowed", "models", "ready_state", "routing"):
++        assert cfg[key] == tpl[key], key
++    assert (fixture / "context.md").is_file()

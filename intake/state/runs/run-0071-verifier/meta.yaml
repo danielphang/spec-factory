@@ -1,0 +1,29 @@
+run_id: run-0071-verifier
+role: verifier
+ticket: T-0012.5
+model: opus
+round: 1
+spec_version: 3
+started: '2026-10-03T09:17:05+00:00'
+finished: '2026-10-03T09:22:36+00:00'
+wall_s: 331
+status: SPEC-DEFECT
+input_sources:
+- specs/T-0012.5/subticket.md
+- specs/T-0012/v3.md
+- runs/run-0070-implementer/output.md
+- runs/run-0071-verifier/diff.patch
+environment_files: []
+branch: factory/T-0012.5
+base: bed7e2883d86583731c111036fde925fa513d34d
+head: 7090d9d21f17688df45fd3701dc5ee26f01452c4
+worktree: /Users/dphang/dev/spec-factory/intake/state/runs/run-0071-verifier/wt
+confidence: 'high. I ran every command on fresh clones of base and PR, and both gates in the worktree.
+  The only defect is a labelling one: NEW criterion responses-unchanged passes on base by construction.
+  The change itself meets every other criterion, and its text is verbatim from the parent.'
+escalations:
+- responses-unchanged is labelled NEW but cannot fail on base (it diffs `main` against an unchanged tree).
+  It should be relabelled REGRESSION or invariant, as was done for T-0012.2's records-untouched after
+  run-0057. The operator then decides whether to re-verify or accept. Apart from this label, I found nothing
+  that would block merging this PR.
+escalations_note: null

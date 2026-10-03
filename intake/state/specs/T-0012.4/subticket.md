@@ -15,16 +15,16 @@ Scope: C.2–C.5.
 Acceptance (first `uv sync --frozen`):
 - **lock-mismatch-refused** → NEW [specs/harness-lock]. THEN `init=0`, then `exit=2 tickets=0 hint=1`.
 - **accept-current-revision-rewrites-lock** → NEW [specs/harness-lock]. THEN `init=0`, then `exit=0 lock_is_rev=yes logged=N`, N ≥ 1.
-- **accept-other-revision-refused** → NEW [specs/harness-lock]. THEN `init=0`, then `exit=2 lock=0000000000000000000000000000000000000000 tickets=0`.
-- **throwaway-store-ignores-lock** → NEW [specs/harness-lock]. THEN `init=0`, then `exit=0 ticket=[T-0001.yaml]`.
+- **accept-other-revision-refused** → REGRESSION (relabelled by the operator, 2026-10-03: passes at base vacuously, per implementer run-0069; the discriminating evidence is the new C tests) [specs/harness-lock]. THEN `init=0`, then `exit=2 lock=0000000000000000000000000000000000000000 tickets=0`.
+- **throwaway-store-ignores-lock** → REGRESSION (relabelled by the operator, 2026-10-03: passes at base vacuously, per implementer run-0069; the discriminating evidence is the new C tests) [specs/harness-lock]. THEN `init=0`, then `exit=0 ticket=[T-0001.yaml]`.
 - **dirty-harness-refused** → NEW [specs/harness-lock]. THEN `init=0`, then `exit=2 tickets=0 names=1`.
 - **missing-lock-refused** → NEW (intermediate; C.2 "or the lock is missing").
   - WHEN the parent's lock-mismatch-refused command, with `printf '%040d\n' 0 2>/dev/null > $T/.factory/harness.lock` replaced by `rm -f $T/.factory/harness.lock`.
   - THEN `init=0`, then `exit=2 tickets=0 hint=1`.
-- **init-and-paths-exempt** → NEW (intermediate; C.2).
+- **init-and-paths-exempt** → REGRESSION (relabelled by the operator, 2026-10-03: passes at base vacuously, per implementer run-0069; the discriminating evidence is the new C tests) (intermediate; C.2).
   - WHEN `H=$PWD; T=$(mktemp -d); git -C $T init -q -b main && git -C $T -c user.name=t -c user.email=t@t commit -q --allow-empty -m init && cd $T && $H/bin/factory init --repo-name demo >/dev/null 2>&1; printf '%040d\n' 0 > .factory/harness.lock; $H/bin/factory paths >/dev/null 2>&1; p=$?; $H/bin/factory init >/dev/null 2>&1; echo "paths=$p init=$? lock=$(cat .factory/harness.lock)"`
   - THEN `paths=0 init=0 lock=0000000000000000000000000000000000000000`.
-- **accept-does-not-override-dirty** → NEW (intermediate; C.4).
+- **accept-does-not-override-dirty** → REGRESSION (relabelled by the operator, 2026-10-03: passes at base vacuously, per implementer run-0069; the discriminating evidence is the new C tests) (intermediate; C.4).
   - WHEN `H=$PWD; C=$(mktemp -d)/h; git clone -q "$H" "$C" && uv sync -q --frozen --project "$C"; T=$(mktemp -d); git -C $T init -q -b main && git -C $T -c user.name=t -c user.email=t@t commit -q --allow-empty -m init && cd $T && "$C"/bin/factory init --repo-name demo >/dev/null 2>&1; L=$(cat .factory/harness.lock); REV=$("$C"/bin/factory paths | python3 -c 'import json,sys; print(json.load(sys.stdin)["harness_revision"])'); echo '# local edit' >> "$C"/factory/__init__.py; printf '# demo\n\nDo the thing.\n' > r.md; "$C"/bin/factory --accept-harness "$REV" ticket new --file r.md >/dev/null 2>&1; echo "exit=$? lock_same=$([ "$(cat .factory/harness.lock)" = "$L" ] && echo yes || echo no) tickets=$(ls .factory/state/tickets 2>/dev/null | wc -l | tr -d ' ')"`
   - THEN `exit=2 lock_same=yes tickets=0`.
 - **All nine T-0012.3 factory-instance and harness-home scenarios** → REGRESSION, with the same THEN as at T-0012.3. Each makes a fresh `init`, whose lock matches, so the new checks must not refuse them. Run from a clean checkout: an uncommitted harness edit in the checkout under test would now refuse them, by design.
@@ -32,7 +32,7 @@ Acceptance (first `uv sync --frozen`):
 - **green-harness-still-present** → REGRESSION.
 - **whitespace (sub-ticket diff)** → REGRESSION. `exit=0`.
 
-Tests to change: none. New C test files only.
+Tests to change: `tests/factory/test_instance.py::test_repo_root_is_the_instance_parent_and_factory_repo_overrides` (operator ruling, 2026-10-03, on implementer run-0069's escalation). It was written in T-0012.3, before the lock, and builds an instance `alt` with no `harness.lock`, which C.2 now refuses. Add one line after `(alt / "context.md").write_text("x\n")`: `(alt / "harness.lock").write_bytes((target / ".factory" / "harness.lock").read_bytes())`. C.2 stands as written; `config` is not exempted. Otherwise new C test files only.
 
 Protected paths: none of instance B's classes.
 
