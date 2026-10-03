@@ -607,3 +607,35 @@
 {"ts": "2026-10-03T22:27:49+00:00", "event": "ticket.created", "ticket": "T-0014.1", "parent": "T-0014", "status": "ready-for-implementer"}
 {"ts": "2026-10-03T22:27:49+00:00", "event": "ticket.transition", "ticket": "T-0014", "from": "parked", "to": "ready-for-planner", "by": "dphang", "round": {"spec": 2, "pr": 0}}
 {"ts": "2026-10-03T22:27:49+00:00", "event": "ticket.transition", "ticket": "T-0014", "from": "ready-for-planner", "to": "planned", "by": "dphang", "round": {"spec": 2, "pr": 0}}
+{"ts": "2026-10-03T22:28:33+00:00", "event": "run.started", "ticket": "T-0014.1", "run": "run-0119-implementer", "role": "implementer", "model": "opus"}
+{"ts": "2026-10-03T22:32:13+00:00", "event": "run.finished", "ticket": "T-0014.1", "run": "run-0119-implementer", "role": "implementer", "status": "READY-FOR-REVIEW", "wall_s": 220}
+{"ts": "2026-10-03T22:32:30+00:00", "event": "ticket.transition", "ticket": "T-0014.1", "from": "ready-for-implementer", "to": "checks-in-flight", "by": "workflow", "round": {"spec": 0, "pr": 1}}
+{"ts": "2026-10-03T22:32:46+00:00", "event": "run.started", "ticket": "T-0014.1", "run": "run-0120-verifier", "role": "verifier", "model": "opus"}
+{"ts": "2026-10-03T22:32:46+00:00", "event": "run.started", "ticket": "T-0014.1", "run": "run-0121-reviewer", "role": "reviewer", "model": "fable"}
+{"ts": "2026-10-03T22:36:53+00:00", "event": "run.finished", "ticket": "T-0014.1", "run": "run-0121-reviewer", "role": "reviewer", "status": "APPROVE", "wall_s": 247}
+{"ts": "2026-10-03T22:37:10+00:00", "event": "result.recorded", "ticket": "T-0014.1", "head": "c64183ac7d10f6286136a0b419764d05202736fc", "role": "reviewer", "status": "APPROVE", "run": "run-0121-reviewer"}
+{"ts": "2026-10-03T22:38:22+00:00", "event": "run.finished", "ticket": "T-0014.1", "run": "run-0120-verifier", "role": "verifier", "status": "VERIFIED", "wall_s": 336}
+{"ts": "2026-10-03T22:38:39+00:00", "event": "result.recorded", "ticket": "T-0014.1", "head": "c64183ac7d10f6286136a0b419764d05202736fc", "role": "verifier", "status": "VERIFIED", "run": "run-0120-verifier"}
+{"ts": "2026-10-03T22:38:39+00:00", "event": "result.recorded", "ticket": "T-0014.1", "head": "c64183ac7d10f6286136a0b419764d05202736fc", "role": "ci", "status": "PASS", "run": "run-0120-verifier"}
+{"ts": "2026-10-03T22:38:56+00:00", "event": "ticket.transition", "ticket": "T-0014.1", "from": "checks-in-flight", "to": "ready-for-merge", "by": "workflow", "round": {"spec": 0, "pr": 1}}
+{"ts": "2026-10-03T22:39:03+00:00", "event": "merge.refused", "ticket": "T-0014.1", "head": "c64183ac7d10f6286136a0b419764d05202736fc", "reason": "head does not contain main"}
+{"ts": "2026-10-03T22:39:20+00:00", "event": "ticket.transition", "ticket": "T-0014.1", "from": "ready-for-merge", "to": "ready-for-implementer", "by": "workflow", "round": {"spec": 0, "pr": 1}}
+{"ts": "2026-10-03T22:39:37+00:00", "event": "run.started", "ticket": "T-0014.1", "run": "run-0122-implementer", "role": "implementer", "model": "opus"}
+{"ts": "2026-10-03T22:42:34+00:00", "event": "run.finished", "ticket": "T-0014.1", "run": "run-0122-implementer", "role": "implementer", "status": "READY-FOR-REVIEW", "wall_s": 177}
+{"ts": "2026-10-03T22:42:52+00:00", "event": "ticket.transition", "ticket": "T-0014.1", "from": "ready-for-implementer", "to": "checks-in-flight", "by": "workflow", "round": {"spec": 0, "pr": 1}}
+{"ts": "2026-10-03T22:43:10+00:00", "event": "run.started", "ticket": "T-0014.1", "run": "run-0123-reviewer", "role": "reviewer", "model": "fable"}
+{"ts": "2026-10-03T22:43:10+00:00", "event": "run.started", "ticket": "T-0014.1", "run": "run-0124-verifier", "role": "verifier", "model": "opus"}
+{"ts": "2026-10-03T22:47:25+00:00", "event": "run.finished", "ticket": "T-0014.1", "run": "run-0123-reviewer", "role": "reviewer", "status": "APPROVE", "wall_s": 255}
+{"ts": "2026-10-03T22:47:43+00:00", "event": "result.recorded", "ticket": "T-0014.1", "head": "89e8b7d3ec7536f788d449d009f28df44fed3c1a", "role": "reviewer", "status": "APPROVE", "run": "run-0123-reviewer"}
+{"ts": "2026-10-03T22:48:37+00:00", "event": "run.finished", "ticket": "T-0014.1", "run": "run-0124-verifier", "role": "verifier", "status": "VERIFIED", "wall_s": 327}
+{"ts": "2026-10-03T22:48:54+00:00", "event": "result.recorded", "ticket": "T-0014.1", "head": "89e8b7d3ec7536f788d449d009f28df44fed3c1a", "role": "verifier", "status": "VERIFIED", "run": "run-0124-verifier"}
+{"ts": "2026-10-03T22:48:54+00:00", "event": "result.recorded", "ticket": "T-0014.1", "head": "89e8b7d3ec7536f788d449d009f28df44fed3c1a", "role": "ci", "status": "PASS", "run": "run-0124-verifier"}
+{"ts": "2026-10-03T22:49:10+00:00", "event": "ticket.transition", "ticket": "T-0014.1", "from": "checks-in-flight", "to": "ready-for-merge", "by": "workflow", "round": {"spec": 0, "pr": 1}}
+{"ts": "2026-10-03T22:49:20+00:00", "event": "merge.done", "ticket": "T-0014.1", "head": "89e8b7d3ec7536f788d449d009f28df44fed3c1a", "base_before": "431e3492d977c01f5ac3252f94b6f40f08b6c043", "main_after": "fcc87564a0b3d9a07741c959676d28aa7d06d46a"}
+{"ts": "2026-10-03T22:49:36+00:00", "event": "ticket.transition", "ticket": "T-0014", "from": "planned", "to": "ready-for-parent-verify", "by": "parent-check"}
+{"ts": "2026-10-03T22:49:44+00:00", "event": "run.started", "ticket": "T-0014", "run": "run-0125-verifier", "role": "verifier", "model": "opus"}
+{"ts": "2026-10-03T22:53:48+00:00", "event": "run.finished", "ticket": "T-0014", "run": "run-0125-verifier", "role": "verifier", "status": "VERIFIED", "wall_s": 244}
+{"ts": "2026-10-03T22:53:48+00:00", "event": "escalation.queued", "ticket": "T-0014", "run": "run-0125-verifier", "items": ["The `intro=` field in the scenario \"counterpart lines on the agreed rules, in place\" always prints 0. It would not report a `Code counterpart:` line placed before rule 1. The awk command stores lines that come before any `## N.` heading under an empty key, but it prints the count for key `0`. On a scratch copy with a stray line in the intro, it still printed `intro=0`. The same scenario's `misplaced=` count does catch that line, so this change passes for real and is not affected. If the scenario is used again, its awk should start with `BEGIN{n=0}` so the field counts what it claims to."]}
+{"ts": "2026-10-03T22:54:15+00:00", "event": "ticket.parked", "ticket": "T-0014", "from": "ready-for-parent-verify", "reason": "archive: "}
+{"ts": "2026-10-03T22:54:15+00:00", "event": "escalation.queued", "ticket": "T-0014", "items": ["archive: "]}
+{"ts": "2026-10-03T22:54:34+00:00", "event": "human.resolved", "ticket": "T-0014", "kind": "close", "by": "dphang", "from": "parked", "to": "closed"}

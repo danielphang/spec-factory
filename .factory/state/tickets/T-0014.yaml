@@ -4,7 +4,7 @@ title: 'Writing standard: add four rules (one name per concept, one mode per sec
   content, parallel facts in a table) and name each rule''s code-design counterpart'
 request: requests/T-0014.md
 source: /private/tmp/claude-501/-Users-dphang-dev-nanobot/c69bfd1d-97a6-43e3-9d5a-a517c28d382c/scratchpad/26_writing_rules.md
-status: planned
+status: closed
 round:
   spec: 2
   pr: 0
@@ -75,6 +75,20 @@ history:
   round:
     spec: 2
     pr: 0
+- ts: '2026-10-03T22:49:36+00:00'
+  from: planned
+  to: ready-for-parent-verify
+  by: parent-check
+- ts: '2026-10-03T22:54:15+00:00'
+  from: ready-for-parent-verify
+  to: parked
+  by: park
+  reason: 'archive: '
+- ts: '2026-10-03T22:54:34+00:00'
+  from: parked
+  to: closed
+  by: dphang
+  resolve: close
 parent: null
 depends_on: []
 parallel_safe: true
@@ -83,4 +97,4 @@ head: null
 merge:
   base_before: null
   main_after: null
-parent_base: null
+parent_base: 431e3492d977c01f5ac3252f94b6f40f08b6c043
