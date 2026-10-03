@@ -1,24 +1,18 @@
 id: T-0013
-type: null
-title: 23_writing_standards
+type: feature
+title: A one-page writing standard for human-facing sections, applied by the critic and the code reviewer
 request: requests/T-0013.md
 source: /private/tmp/claude-501/-Users-dphang-dev-nanobot/c69bfd1d-97a6-43e3-9d5a-a517c28d382c/scratchpad/23_writing_standards.md
-status: parked
+status: awaiting-spec-gate
 round:
-  spec: 0
+  spec: 1
   pr: 0
 spec:
-  version: 0
+  version: 1
   approved_version: null
 plan: null
 in_flight: []
-parked:
-  reason: NEEDS-HUMAN from triage
-  since: '2026-10-03T17:07:43+00:00'
-  from: ready-for-triage
-  outputs:
-  - run-0104-triage
-  question: null
+parked: null
 created: '2026-10-03T17:05:03+00:00'
 history:
 - ts: '2026-10-03T17:07:43+00:00'
@@ -26,6 +20,33 @@ history:
   to: parked
   by: park
   reason: NEEDS-HUMAN from triage
+- ts: '2026-10-03T17:09:29+00:00'
+  from: parked
+  to: ready-for-triage
+  by: dphang
+  resolve: answer
+  answer: 1
+- ts: '2026-10-03T17:11:25+00:00'
+  from: ready-for-triage
+  to: ready-for-spec-writer
+  by: workflow
+  round:
+    spec: 0
+    pr: 0
+- ts: '2026-10-03T17:26:00+00:00'
+  from: ready-for-spec-writer
+  to: ready-for-critic
+  by: workflow
+  round:
+    spec: 1
+    pr: 0
+- ts: '2026-10-03T17:32:35+00:00'
+  from: ready-for-critic
+  to: awaiting-spec-gate
+  by: workflow
+  round:
+    spec: 1
+    pr: 0
 parent: null
 depends_on: []
 parallel_safe: true

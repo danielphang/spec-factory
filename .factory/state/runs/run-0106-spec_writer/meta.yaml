@@ -1,0 +1,23 @@
+run_id: run-0106-spec_writer
+role: spec_writer
+ticket: T-0013
+model: opus
+round: 0
+spec_version: 0
+started: '2026-10-03T17:11:34+00:00'
+finished: '2026-10-03T17:25:40+00:00'
+wall_s: 846
+status: READY-FOR-CRITIC
+input_sources:
+- runs/run-0105-triage/output.md
+- requests/T-0013.md
+confidence: medium. Every cited path, line and baseline output was re-checked at `4d0de52`. The prose
+  of `docs/writing.md` is specified by its shape and rule list, not its text, so its quality falls to
+  the critic at review and the operator at the gate.
+escalations:
+- 'Protected and guardrail paths: `factory/**` (harness: `factory/instance.py`, `factory/prompts/preamble.md`,
+  `factory/prompts/critic.md`, `factory/prompts/reviewer.md`, `factory/context.template.md`); `docs/prompts/**`
+  (generated: three re-copied blocks); agent prompts in `docs/design.md` (guardrail); one existing test
+  in `tests/factory/test_instance.py` (guardrail, listed under Tests to change). All are declared under
+  Risk and authorised by the operator''s answer. `.factory/**` and `agents/**` are not touched.'
+escalations_note: null
