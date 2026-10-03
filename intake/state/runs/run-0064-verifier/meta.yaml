@@ -1,0 +1,36 @@
+run_id: run-0064-verifier
+role: verifier
+ticket: T-0012.2
+model: opus
+round: 2
+spec_version: 3
+started: '2026-10-03T08:25:06+00:00'
+finished: '2026-10-03T08:30:45+00:00'
+wall_s: 339
+status: VERIFIED
+input_sources:
+- specs/T-0012.2/subticket.md
+- specs/T-0012/v3.md
+- runs/run-0063-implementer/output.md
+- runs/run-0064-verifier/diff.patch
+- runs/run-0061-reviewer/output.md
+- runs/run-0062-verifier/output.md
+environment_files: []
+branch: factory/T-0012.2
+base: 20849b63a3a632cd43724819d860f71717dc8a53
+head: ebe9baf0843c3421585aa37a03e835617e652f59
+worktree: /Users/dphang/dev/spec-factory/intake/state/runs/run-0064-verifier/wt
+confidence: high. I ran all nine acceptance commands verbatim on base and head, ran both gates as written
+  in the given worktree (`70 passed`, exit 0), and confirmed byte-level that the merge left the PR content
+  unchanged and added nothing beyond `main`.
+escalations:
+- 'Protected paths touched, both declared in the sub-ticket:'
+- generated `prompts/**` → `docs/prompts/`, byte-identical (10 × R100, `changed=0 of 10 VERBATIM`);
+- infra `intake/**`, only `intake/README.md` and `intake/instance/context.md`, for D.4 reference updates.
+- The merge gate needs human approval for these.
+- 'Out of scope, for B and E: these files still name old paths. B must replace the interim overlay `factory/config.yaml`,
+  `factory/prompts/context.md` and `factory/prompts/preamble.md` (`generated: ["prompts/**"]`, the old
+  `docs/spec-factory.md`/`plans/`/`specs/` text), or the parent''s no-old-paths-in-live-files will fail
+  at close. `tests/factory/test_shepherd.py:3` (docstring) names `docs/spec-factory.md`; it is outside
+  that scenario''s pathspec, and the spec forbids changing existing tests.'
+escalations_note: null

@@ -1,0 +1,32 @@
+run_id: run-0065-reviewer
+role: reviewer
+ticket: T-0012.2
+model: fable
+round: 2
+spec_version: 3
+started: '2026-10-03T08:25:08+00:00'
+finished: '2026-10-03T08:31:13+00:00'
+wall_s: 365
+status: APPROVE
+input_sources:
+- specs/T-0012.2/subticket.md
+- specs/T-0012/v3.md
+- runs/run-0063-implementer/output.md
+- runs/run-0065-reviewer/diff.patch
+- runs/run-0061-reviewer/output.md
+- runs/run-0062-verifier/output.md
+environment_files: []
+branch: factory/T-0012.2
+base: 20849b63a3a632cd43724819d860f71717dc8a53
+head: ebe9baf0843c3421585aa37a03e835617e652f59
+worktree: /Users/dphang/dev/spec-factory/intake/state/runs/run-0065-reviewer/wt
+confidence: high. The only delta since round 1 is a merge whose tree I matched byte-for-byte against `git
+  merge-tree` of its parents; every acceptance command and both gates were re-run by me on `ebe9baf` and
+  printed the expected output, including `70 passed` with exit 0.
+escalations:
+- 'Protected path touched, declared in the sub-ticket: generated `prompts/**` moved to `docs/prompts/`
+  byte-identical (`changed=0 of 10 VERBATIM`; 10 × `R100`).'
+- 'Protected path touched, declared in the sub-ticket: infra `intake/**`, only `intake/README.md` (lines
+  4, 42) and `intake/instance/context.md` (lines 3–20), reference updates per D.4. The merge gate requires
+  a human approval for these.'
+escalations_note: null

@@ -33,7 +33,7 @@ Acceptance (first `uv sync --frozen`; from the repo root, no `FACTORY_STATE` or 
   - WHEN `git diff -M100% --diff-filter=AD --name-only main...HEAD -- intake/green-pilot intake/answers .factory/green-pilot .factory/answers | wc -l | tr -d ' '; BASE=$(git merge-base main HEAD); echo "pilot=$(git ls-files .factory/green-pilot | wc -l | tr -d ' ') of $(git ls-tree -r --name-only "$BASE" -- intake/green-pilot | wc -l | tr -d ' ') answers=$(git ls-files .factory/answers | wc -l | tr -d ' ') of $(git ls-tree -r --name-only "$BASE" -- intake/answers | wc -l | tr -d ' ')"`
   - THEN `0`, then `pilot=X of X answers=Y of Y`, with each pair equal (148 and 14 today).
   - Checked in a scratch clone: after `git mv` of both directories, `git diff --check` exits 0 with default settings, the `-M100% --diff-filter=AD` count is `0`, and with `-c diff.renames=false` seven files are flagged.
-- **live-store-untouched** → NEW (intermediate).
+- **live-store-untouched** → REGRESSION (relabelled by the operator, 2026-10-03, before dispatch: an invariant, as in T-0012.2 and T-0012.5) (intermediate).
   - WHEN `git diff --name-only main...HEAD -- intake/state intake/.gitignore | wc -l | tr -d ' '`
   - THEN `0`.
 - **role-prompt-text-unchanged**, **harness-files-in-repo**, **harness-history-carried** → REGRESSION. Same THEN as at T-0012.3 and T-0012.1.

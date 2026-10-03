@@ -1,0 +1,36 @@
+run_id: run-0062-verifier
+role: verifier
+ticket: T-0012.2
+model: opus
+round: 1
+spec_version: 3
+started: '2026-10-03T08:11:34+00:00'
+finished: '2026-10-03T08:16:53+00:00'
+wall_s: 319
+status: FAILED
+input_sources:
+- specs/T-0012.2/subticket.md
+- specs/T-0012/v3.md
+- runs/run-0055-implementer/output.md
+- runs/run-0062-verifier/diff.patch
+environment_files: []
+branch: factory/T-0012.2
+base: 20849b63a3a632cd43724819d860f71717dc8a53
+head: c367bef72e2ed70a4417e98de907c91dbbe31320
+worktree: /Users/dphang/dev/spec-factory/intake/state/runs/run-0062-verifier/wt
+confidence: high. Every acceptance command and both gates were run as written on base, head and a trial
+  merge. The only failure is the pytest gate on the head, which has an unambiguous cause (branch predates
+  T-0012.1), and the gate passes once the branch includes `main`.
+escalations:
+- 'Stale branch base, which is a harness/process issue. The verifier was given base `20849b6`, but the
+  head forks at `cdb1c67` and does not contain T-0012.1, so the instance''s second gate (`uv run --frozen
+  pytest … tests/factory`) cannot pass on this head as built. The content is verified correct on both
+  the head and the merge result. Operator decision: update the branch onto `main` and re-verify, or accept
+  on the trial-merge evidence above.'
+- Side effect of running the gate as written. In the given worktree, which has no `pyproject.toml`, `uv
+  run` discovered the parent dev checkout's project and created `/Users/dphang/dev/spec-factory/.venv`
+  (birth `Oct 3 01:12:15 2026`, during this run; it is gitignored by `main`'s `.gitignore:1`). I left
+  it in place rather than delete it, in case a concurrent run is now using it. Remove it if it is unwanted.
+- 'Out of scope, already noted by the implementer: `intake/instance/config.yaml:9` and `intake/instance/preamble.md:38`
+  still name `prompts/**` as the `generated` class. E.5 deletes both files.'
+escalations_note: null

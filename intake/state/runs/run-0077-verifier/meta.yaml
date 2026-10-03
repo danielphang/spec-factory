@@ -1,0 +1,36 @@
+run_id: run-0077-verifier
+role: verifier
+ticket: T-0012.4
+model: opus
+round: 1
+spec_version: 3
+started: '2026-10-03T09:45:16+00:00'
+finished: '2026-10-03T09:54:29+00:00'
+wall_s: 553
+status: VERIFIED
+input_sources:
+- specs/T-0012.4/subticket.md
+- specs/T-0012/v3.md
+- runs/run-0075-implementer/output.md
+- runs/run-0077-verifier/diff.patch
+environment_files: []
+branch: factory/T-0012.4
+base: f809c694fed21286bd2c1c234943c3dd96656db3
+head: 010d1b00c5835c7022a72771c63f63f8b6ab3707
+worktree: /Users/dphang/dev/spec-factory/intake/state/runs/run-0077-verifier/wt
+confidence: high. I ran every acceptance command verbatim (extracted by script, not retyped) on a clean
+  head and on a fresh base clone. Every NEW criterion fails at base because the feature is missing and
+  passes on the PR, and every REGRESSION passes on both. Both gates pass, and the probes show the guard
+  is not special-cased to the tested inputs.
+escalations:
+- 'The suite fails from a dirty dev checkout, against design C.4''s prose. C.4 says a harness under development
+  "still runs its own tests against throwaway stores", but 23 of the B/C tests drive this checkout''s
+  `bin/factory` against own-store targets, so any uncommitted edit under `factory/`, `bin/factory`, `agents/`,
+  `pyproject.toml` or `uv.lock` makes `pytest tests/factory` fail with the C.4 refusal. I reproduced this:
+  `23 failed, 93 passed`. Committed-tree gates are unaffected. Fixing it is a test-design decision: the
+  own-store tests would drive a clean clone, as the C.4 tests already do. That choice belongs to the operator
+  or a later ticket, not to this sub-ticket.'
+- '`--accept-harness` is silently ignored with `init`/`paths` and on a non-own store. The spec does not
+  say what should happen there, and the implementer already disclosed it. It is a product decision whether
+  to refuse it there instead.'
+escalations_note: null

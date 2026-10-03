@@ -1,0 +1,6 @@
+ticket: T-0012.2
+head: c367bef72e2ed70a4417e98de907c91dbbe31320
+role: verifier
+status: FAILED
+run_id: run-0062-verifier
+at: '2026-10-03T08:17:21+00:00'
