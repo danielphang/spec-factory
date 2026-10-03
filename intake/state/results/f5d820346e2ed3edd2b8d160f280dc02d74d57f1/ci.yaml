@@ -1,0 +1,6 @@
+ticket: T-0012.3
+head: f5d820346e2ed3edd2b8d160f280dc02d74d57f1
+role: ci
+status: PASS
+run_id: run-0067-verifier
+at: '2026-10-03T08:59:22+00:00'

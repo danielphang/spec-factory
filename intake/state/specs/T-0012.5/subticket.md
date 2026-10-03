@@ -17,7 +17,7 @@ Acceptance:
 - **changelog-entry-appended** → NEW (intermediate; F.3).
   - WHEN `grep '^[0-9][0-9]*\. ' docs/changelog.md | tail -1 | grep -c "^$(($(git show main:docs/changelog.md | grep -c '^[0-9][0-9]*\. ')+1))\. After issue #19 (2026-10-02):"`
   - THEN `1`.
-- **responses-unchanged** → NEW (intermediate; F.4).
+- **responses-unchanged** → REGRESSION (relabelled by the operator, 2026-10-03: an invariant, passes at base; verifier run-0071) (intermediate; F.4).
   - WHEN `diff <(git show main:dev/build-harness.spec.md | awk '/^## Responses/{f=1} f') <(awk '/^## Responses/{f=1} f' dev/build-harness.spec.md) >/dev/null; echo "exit=$?"`
   - THEN `exit=0`.
 - **changelog-moved-verbatim** → REGRESSION. THEN `SAME`, then `declined=1 numbering=CONTIGUOUS in_design=0`. The appended entry is beyond the compared head and keeps numbering contiguous.

@@ -3,7 +3,7 @@ type: sub-ticket
 title: 'Harness lock: refuse an unaccepted or modified harness on the instance''s own store, `--accept-harness`'
 request: requests/T-0012.md
 source: plan:run-0054-planner
-status: waiting-dependencies
+status: ready-for-implementer
 round:
   spec: 0
   pr: 0
@@ -14,12 +14,28 @@ plan: null
 in_flight: []
 parked: null
 created: '2026-10-03T07:49:00+00:00'
-history: []
+history:
+- ts: '2026-10-03T08:59:59+00:00'
+  from: waiting-dependencies
+  to: ready-for-implementer
+  by: merge
+- ts: '2026-10-03T09:11:23+00:00'
+  from: ready-for-implementer
+  to: parked
+  by: park
+  reason: BLOCKED from implementer
+- ts: '2026-10-03T09:24:19+00:00'
+  from: parked
+  to: ready-for-implementer
+  by: dphang
+  round:
+    spec: 0
+    pr: 0
 parent: T-0012
 depends_on:
 - T-0012.3
 parallel_safe: false
-branch: null
+branch: factory/T-0012.4
 head: null
 merge:
   base_before: null
