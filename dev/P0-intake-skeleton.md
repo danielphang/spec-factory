@@ -1,6 +1,6 @@
 # P0: intake walking skeleton
 
-Parent: `specs/build-harness.md` (v4). This is not a sub-ticket of `plans/build-harness.md`; it is a cut through it. It builds BH-1-lite, BH-4, and BH-5 and defers BH-2a, BH-2b, BH-3, BH-6, BH-7. Nothing built here is thrown away: the agent definitions, the `factory` CLI, and `intake.js` are the same files the full plan grows.
+Parent: `dev/build-harness.spec.md` (v4). This is not a sub-ticket of `dev/build-harness.plan.md`; it is a cut through it. It builds BH-1-lite, BH-4, and BH-5 and defers BH-2a, BH-2b, BH-3, BH-6, BH-7. Nothing built here is thrown away: the agent definitions, the `factory` CLI, and `intake.js` are the same files the full plan grows.
 
 ## Why first
 
