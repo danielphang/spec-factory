@@ -1,0 +1,71 @@
+# Spec factory, P0 intake walking skeleton (spec-factory plans/P0-intake-skeleton.md).
+# Harness config: the dispatcher script reads models and max_rounds through the clerk;
+# the CLI enforces routing edges and round limits. A retro proposes changes here as a diff.
+repo_name: nanobot
+state_dir: knowledge_vault/spec_factory
+request_dir: knowledge_vault/specs
+protected_paths:
+  infra: ["factory/workflows/**", "factory/config.yaml", "scripts/deploy*", "launchd/**"]
+  dependencies: ["pyproject.toml", "uv.lock", "webui/package-lock.json"]
+  credentials: ["~/.nanobot/**"]
+  public_api: ["nanobot/api/**"]
+# The gate suite. The full-suite gate is baseline-relative (scripts/full_suite_baseline.txt): it
+# passes when the suite ran above its floor and no test fails outside the known baseline, so the
+# port's known failures block nothing and a new failure blocks the merge. Exit 0 = PASS.
+gate_commands:
+  - "uv run ruff check nanobot/"
+  # neonize is installed by hand on green, not declared in pyproject.toml: a fresh worktree's env
+  # lacks it unless the gate adds it (pinned to green's version). Remove once the port declares it.
+  # {integration} = the checkout that has the integration branch (compose substitutes it): the gate
+  # script and its baseline come from there, so a branch cannot weaken its own gate.
+  # --extra dev: pytest lives in the dev extra, absent from a fresh checkout's env. --root .: the gate
+  # tests the checkout it is run from (the branch), reading its baseline from the integration checkout.
+  - "uv run --extra dev --with neonize==0.3.18.post0 {integration}/scripts/full_suite_gate.py --root . --isolated-home --pytest-args \"-n 2 --dist loadfile\""
+placeholders: {rounds: 2, spec_lines: 400, audit_n: 5, retro_min: 3}
+max_rounds: {spec: 2, pr: 2}
+# Build half, local-commit stand-in (operator, 2026-10-02): no remote, no CI. The merge gate is the
+# gate suite on the branch plus the two checkers; then a local --no-ff merge into integration_branch
+# (null = the target repo's current branch). FACTORY_REPO / FACTORY_INTEGRATION_BRANCH override.
+integration_branch: null
+# Untracked files every worktree and checker checkout copies from the integration checkout at each run
+# start, so a branch is tested against the same environment the integration branch runs in. uv.lock
+# is git-ignored on green: without it a fresh worktree resolves newer packages (mcp 1.30 vs 1.29 broke
+# a test the first pilot never touched).
+environment_files: ["uv.lock"]
+force_push_allowed: false
+models:
+  triage: opus
+  spec_writer: opus
+  critic: fable
+  planner: opus
+  implementer: opus
+  reviewer: fable
+  verifier: opus
+  retro: fable
+  clerk: haiku
+ready_state:
+  triage: ready-for-triage
+  spec_writer: ready-for-spec-writer
+  critic: ready-for-critic
+  planner: ready-for-planner
+  implementer: ready-for-implementer
+  reviewer: checks-in-flight
+  verifier: checks-in-flight
+# Routing edges (doc §Routing table, both halves, plus the resolution rules). Anything else is refused.
+routing:
+  ready-for-triage: [ready-for-spec-writer, waiting-requester, parked, closed]
+  waiting-requester: [ready-for-triage, closed]
+  ready-for-spec-writer: [ready-for-critic, parked, closed]
+  ready-for-critic: [ready-for-spec-writer, awaiting-spec-gate, parked, closed]
+  awaiting-spec-gate: [ready-for-planner, ready-for-spec-writer, closed]
+  ready-for-planner: [planned, parked, closed]
+  parked: [ready-for-triage, ready-for-spec-writer, ready-for-critic, ready-for-planner, awaiting-spec-gate, ready-for-implementer, checks-in-flight, ready-for-parent-verify, closed]
+  planned: [ready-for-parent-verify, parked, closed]
+  # sub-tickets
+  waiting-dependencies: [ready-for-implementer, parked, closed]
+  ready-for-implementer: [checks-in-flight, parked, closed]
+  checks-in-flight: [ready-for-merge, ready-for-implementer, parked, closed]
+  ready-for-merge: [merged, ready-for-implementer, parked, closed]
+  merged: [closed]
+  # parent, after every sub-ticket merged
+  ready-for-parent-verify: [closed, parked]
