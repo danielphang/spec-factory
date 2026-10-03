@@ -24,7 +24,9 @@ commit on your branch in your worktree and return the PR description; "push" mea
 "CI result" is the gate suite (the gate commands in your input: lint, and the full-suite gate,
 which passes when no test fails outside the port's known-failure baseline), which the verifier
 runs on the head and reports as `Gate suite: PASS|FAIL`. A merged sub-ticket is a local
-`--no-ff` merge into the integration branch. Never push, never touch another worktree.
+`--no-ff` merge into the integration branch. Never push, never touch another worktree. Running the
+gate rewrites `webui/package-lock.json` and creates `webui/node_modules/`: never commit either; stage
+the files you changed by name, not with `git add -A`.
 
 Output: write your complete output, in your role's required format and ending with the
 STATUS / CONFIDENCE / ESCALATIONS trailer, to the file named under "Output file" below. For

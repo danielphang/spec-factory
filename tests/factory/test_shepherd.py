@@ -537,6 +537,19 @@ def test_a_killed_reviewer_parks_and_a_second_implementer_run_on_one_branch_is_r
     assert f.state(st) == "parked" and f.ticket(st)["parked"]["reason"] == "budget kill: reviewer"
 
 
+def test_a_sub_ticket_stopped_mid_check_is_reported_as_resumable(tmp_path):
+    """A dispatcher stopped while the checkers ran leaves the sub-ticket in checks-in-flight with no run
+    in flight; ready-implementers names it so the next build.js resumes it instead of skipping it."""
+    f, tid, (st,) = built_to_implementer(tmp_path)
+    f.dispatch("implementer", st)
+    r = f.ok("ticket", "ready-implementers", tid)
+    assert r["ready"] == [] and r["resumable"] == [st]
+    rid = f.ok("run", "start", "--role", "reviewer", "--ticket", st)["run_id"]  # a checker in flight is not resumable
+    assert f.ok("ticket", "ready-implementers", tid)["resumable"] == []
+    f.ok("run", "finish", rid, "--status-override", "KILLED")
+    assert f.ok("ticket", "ready-implementers", tid)["resumable"] == [st]
+
+
 # ----- the shepherd: the routing table applied to the store CLI ----------------------------------
 
 class Run:

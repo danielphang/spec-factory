@@ -22,7 +22,7 @@ DELTA_RE = re.compile(r"^specs/([a-z0-9]+(?:-[a-z0-9]+)*)/spec\.md$")
 PART_RE = re.compile(r"^=== (\S+).*$", re.M)  # the path is the first token after "=== "
 REQ_RE = re.compile(r"^### Requirement: (.+?)\s*$")
 SCEN_RE = re.compile(r"^#### Scenario: (.+?)\s*$")
-LABEL_RE = re.compile(r"^- (.+?) → (NEW|REGRESSION)\s*(?:;.*)?$")  # "NEW / REGRESSION" is no label
+LABEL_RE = re.compile(r"^- (.+?) → (NEW|REGRESSION)(?![\w/])(?!\s*/)(?:\s*[.;:,—–(-].*)?\s*$")  # "NEW / REGRESSION" is no label
 
 SCHEMA_YAML = """# Forked from OpenSpec's built-in `spec-driven` (doc §Harness, Spec store).
 name: spec-factory

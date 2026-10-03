@@ -14,7 +14,9 @@ protected_paths:
 # port's known failures block nothing and a new failure blocks the merge. Exit 0 = PASS.
 gate_commands:
   - "uv run ruff check nanobot/"
-  - "uv run scripts/full_suite_gate.py --isolated-home --pytest-args \"-n 2 --dist loadfile\""
+  # neonize is installed by hand on green, not declared in pyproject.toml: a fresh worktree's env
+  # lacks it unless the gate adds it (pinned to green's version). Remove once the port declares it.
+  - "uv run --with neonize==0.3.18.post0 scripts/full_suite_gate.py --isolated-home --pytest-args \"-n 2 --dist loadfile\""
 placeholders: {rounds: 2, spec_lines: 400, audit_n: 5, retro_min: 3}
 max_rounds: {spec: 2, pr: 2}
 # Build half, local-commit stand-in (operator, 2026-10-02): no remote, no CI. The merge gate is the

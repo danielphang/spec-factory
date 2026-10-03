@@ -198,11 +198,13 @@ if (state === 'planned') {
     if (!ready.ok) { await park(TICKET, `harness-bug: ready-implementers: ${ready.stderr || ''}`, [], 'Build'); return { ticket: TICKET, state: 'parked' } }
     // A sub-ticket the human closed parks the parent: amend the spec and re-plan, or close (doc §Routing rules).
     if (ready.closed && ready.closed.length) { await park(TICKET, `sub-ticket closed by a human: ${ready.closed.join(', ')}`, [], 'Build'); return { ticket: TICKET, state: 'parked' } }
-    if (ready.ready.length === 0) {
+    const todo = ready.ready.concat(ready.resumable || [])
+    if (todo.length === 0) {
       if (ready.remaining.length) { log(`${TICKET}: ${ready.remaining.length} sub-ticket(s) parked or waiting on a human`); return { ticket: TICKET, state: 'planned', remaining: ready.remaining } }
       break
     }
-    await parallel(ready.ready.map(st => () => buildOne(st)))
+    if (ready.resumable && ready.resumable.length) log(`${TICKET}: resuming ${ready.resumable.join(', ')} from its stored state`)
+    await parallel(todo.map(st => () => buildOne(st)))
   }
   const pc = await clerk(`${BIN} ticket parent-check ${TICKET}`, 'Build', 'parent-check')
   if (!pc.ok || pc.state !== 'ready-for-parent-verify') return { ticket: TICKET, state: pc.state || 'planned' }

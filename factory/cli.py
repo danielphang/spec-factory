@@ -389,6 +389,9 @@ def ticket_ready_implementers(a, root, cfg):
          "remaining": [s["id"] for s in subs if s["status"] not in ("merged", "parked", "closed")],
          "in_flight": [s["id"] for s in subs if s["in_flight"] or s["status"] in subtickets.IN_FLIGHT_STATES],
          "parked": [s["id"] for s in subs if s["status"] == "parked"],
+         # stopped mid-check (a dispatcher that died or was stopped): no run in flight, so buildOne
+         # resumes it from its stored state; the checkers re-run on its current head
+         "resumable": [s["id"] for s in subs if s["status"] in subtickets.IN_FLIGHT_STATES and not s["in_flight"]],
          "closed": [s["id"] for s in subs if s["status"] == "closed"]})
 
 
