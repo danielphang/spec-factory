@@ -41,6 +41,16 @@ def _last_run_meta(root: Path, ticket: str, role: str, exclude: str) -> dict | N
     return store.read_yaml(root / "runs" / runs[-1] / "meta.yaml") if runs else None
 
 
+def gate_commands(cfg: dict) -> list[str]:
+    """The gate commands with `{integration}` replaced by the checkout that has the integration
+    branch: the gate script and its baseline come from the integration branch, never from the branch
+    under test, so a change cannot weaken its own gate."""
+    from factory import gitops  # local: compose is otherwise git-free
+    repo = gitops.repo_root(cfg)
+    co = gitops.checkout_of(repo, gitops.integration_branch(cfg, repo)) or repo
+    return [g.replace("{integration}", str(co)) for g in cfg.get("gate_commands", [])]
+
+
 def compose(root: Path, cfg: dict, meta: dict, t: dict) -> tuple[str, list[str]]:
     role, run_id, tid = meta["role"], meta["run_id"], t["id"]
     out_path = root / "runs" / run_id / "output.md"
@@ -110,8 +120,9 @@ def compose(root: Path, cfg: dict, meta: dict, t: dict) -> tuple[str, list[str]]
             raise store.Refused(f"{parent} has no approved spec version")
         where = (f"\n## Where you work\nWorktree: `{meta.get('worktree')}` (branch `{meta.get('branch')}`, "
                  f"base `{meta.get('base')}`, head `{meta.get('head')}`). There is no remote: commit on the "
-                 f"branch; the PR is the branch plus the description you return. Gate commands: "
-                 + "; ".join(f"`{g}`" for g in cfg.get("gate_commands", [])) + "\n")
+                 f"branch; the PR is the branch plus the description you return. Gate commands (run each from "
+                 f"your worktree, exactly as written): "
+                 + "; ".join(f"`{g}`" for g in gate_commands(cfg)) + "\n")
         parts.append(where)
         if role == "implementer":
             if t.get("merge_refused"):

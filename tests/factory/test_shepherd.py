@@ -196,6 +196,7 @@ def test_the_planned_ticket_is_built_checked_merged_and_archived(tmp_path):
     # | Implementer | READY-FOR-REVIEW | Gate runner, Reviewer, and Verifier, all on the same head |
     main_at_dispatch = f.repo_rev("main")
     impl = f.dispatch("implementer", st)
+    assert yaml.safe_load((f.store / "runs" / impl.run_id / "meta.yaml").read_text())["environment_files"] == []  # target has no uv.lock
     ignore = (f.store / ".gitignore").read_text().splitlines()
     assert "worktrees/" in ignore and "runs/*/wt/" in ignore  # nested checkouts never ride along with the store
     assert "Sub-ticket T-0001.1" in impl.input and "### Requirement: the-thing" in impl.input
@@ -548,6 +549,20 @@ def test_a_sub_ticket_stopped_mid_check_is_reported_as_resumable(tmp_path):
     assert f.ok("ticket", "ready-implementers", tid)["resumable"] == []
     f.ok("run", "finish", rid, "--status-override", "KILLED")
     assert f.ok("ticket", "ready-implementers", tid)["resumable"] == [st]
+
+
+def test_worktrees_get_the_integration_checkout_s_untracked_lockfile(tmp_path):
+    """An untracked uv.lock in the integration checkout is copied into the implementer's worktree and each
+    checker's checkout, so the branch is tested against the same resolved packages."""
+    f, tid, (st,) = built_to_implementer(tmp_path)
+    (f.repo / ".gitignore").write_text("uv.lock\n")
+    (f.repo / "uv.lock").write_text("# the integration lock\n")
+    impl = f.dispatch("implementer", st)
+    wt = Path(yaml.safe_load((f.store / "runs" / impl.run_id / "meta.yaml").read_text())["worktree"])
+    assert (wt / "uv.lock").read_text() == "# the integration lock\n"
+    rid = f.ok("run", "start", "--role", "verifier", "--ticket", st)["run_id"]
+    meta = yaml.safe_load((f.store / "runs" / rid / "meta.yaml").read_text())
+    assert meta["environment_files"] == ["uv.lock"] and (Path(meta["worktree"]) / "uv.lock").read_text() == "# the integration lock\n"
 
 
 # ----- the shepherd: the routing table applied to the store CLI ----------------------------------

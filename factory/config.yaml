@@ -16,13 +16,20 @@ gate_commands:
   - "uv run ruff check nanobot/"
   # neonize is installed by hand on green, not declared in pyproject.toml: a fresh worktree's env
   # lacks it unless the gate adds it (pinned to green's version). Remove once the port declares it.
-  - "uv run --with neonize==0.3.18.post0 scripts/full_suite_gate.py --isolated-home --pytest-args \"-n 2 --dist loadfile\""
+  # {integration} = the checkout that has the integration branch (compose substitutes it): the gate
+  # script and its baseline come from there, so a branch cannot weaken its own gate.
+  - "uv run --with neonize==0.3.18.post0 {integration}/scripts/full_suite_gate.py --isolated-home --pytest-args \"-n 2 --dist loadfile\""
 placeholders: {rounds: 2, spec_lines: 400, audit_n: 5, retro_min: 3}
 max_rounds: {spec: 2, pr: 2}
 # Build half, local-commit stand-in (operator, 2026-10-02): no remote, no CI. The merge gate is the
 # gate suite on the branch plus the two checkers; then a local --no-ff merge into integration_branch
 # (null = the target repo's current branch). FACTORY_REPO / FACTORY_INTEGRATION_BRANCH override.
 integration_branch: null
+# Untracked files every worktree and checker checkout copies from the integration checkout at each run
+# start, so a branch is tested against the same environment the integration branch runs in. uv.lock
+# is git-ignored on green: without it a fresh worktree resolves newer packages (mcp 1.30 vs 1.29 broke
+# a test the first pilot never touched).
+environment_files: ["uv.lock"]
 force_push_allowed: false
 models:
   triage: opus

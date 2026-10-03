@@ -213,7 +213,8 @@ def _start_build_run(root: Path, cfg: dict, t: dict, meta: dict, d: Path, parent
             gitops.add_worktree(repo, wt, branch, integ, new_branch=t.get("branch") is None)
         t["branch"] = branch
         meta.update({"branch": branch, "base": gitops.rev(repo, integ), "head": gitops.rev(repo, branch),
-                     "worktree": str(wt), "resolution": "conflict" if t.get("merge_refused") else None})
+                     "worktree": str(wt), "resolution": "conflict" if t.get("merge_refused") else None,
+                     "environment_files": gitops.copy_environment_files(cfg, repo, wt)})
     else:
         head = gitops.rev(repo, integ) if parent_close else t.get("head")
         base = (t.get("parent_base") or head) if parent_close else gitops.rev(repo, integ)
@@ -221,6 +222,7 @@ def _start_build_run(root: Path, cfg: dict, t: dict, meta: dict, d: Path, parent
             raise Refused(f"{t['id']} has no head to check")
         wt = d / "wt"
         gitops.add_detached_worktree(repo, wt, head)
+        meta["environment_files"] = gitops.copy_environment_files(cfg, repo, wt)
         if not parent_close:
             store.write_text(d / "diff.patch", gitops.diff(repo, base, head))
         meta.update({"branch": t.get("branch"), "base": base, "head": head, "worktree": str(wt)})

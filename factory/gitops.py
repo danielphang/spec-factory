@@ -65,6 +65,20 @@ def remove_worktree(repo: Path, path: Path) -> None:
     git(repo, "worktree", "prune", check=False)
 
 
+def copy_environment_files(cfg: dict, repo: Path, dest: Path) -> list[str]:
+    """Copy config `environment_files` from the integration checkout into `dest` (overwriting), so the
+    branch under test resolves the same environment. Returns the files copied."""
+    src = checkout_of(repo, integration_branch(cfg, repo)) or repo
+    copied = []
+    for rel in cfg.get("environment_files") or []:
+        f = src / rel
+        if f.is_file():
+            (dest / rel).parent.mkdir(parents=True, exist_ok=True)
+            (dest / rel).write_bytes(f.read_bytes())
+            copied.append(rel)
+    return copied
+
+
 def head_contains(repo: Path, head: str, base: str) -> bool:
     return subprocess.run(["git", "merge-base", "--is-ancestor", base, head], cwd=repo).returncode == 0
 
