@@ -278,11 +278,14 @@ def test_system_prompt_is_the_design_preamble_filled_from_the_instance(target, r
     assert got[0] == "You are one agent in a software pipeline: demo. Other agents check"
     i = block.index("  {auth, payments, migrations, infra, public API, dependencies}")
     assert got[i] == "  infra (.factory/instance.yaml, .factory/harness.lock, .factory/context.md)"
-    assert [ln for n, ln in enumerate(got[:len(block)]) if n not in (0, i)] == \
-        [ln for n, ln in enumerate(block) if n not in (0, i)]
+    w = next(n for n, ln in enumerate(block) if "{writing standard}" in ln)
+    assert got[w] == block[w].replace("{writing standard}", str(REPO.resolve() / "docs" / "writing.md"))
+    assert [ln for n, ln in enumerate(got[:len(block)]) if n not in (0, i, w)] == \
+        [ln for n, ln in enumerate(block) if n not in (0, i, w)]
     role = (REPO / "factory" / "prompts" / "triage.md").read_text()
     assert "\n".join(got).endswith("\n\n" + role)
-    assert "{repo name}" not in "\n".join(got) and "{auth, payments" not in "\n".join(got)
+    assert "{repo name}" not in "\n".join(got) and "{auth, payments" not in "\n".join(got) \
+        and "{writing standard}" not in "\n".join(got)
 
 
 def test_protected_path_line_lists_every_class(target, request_file):

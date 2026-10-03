@@ -346,6 +346,7 @@ from `docs/design.md` and changes only when the design does.*
 | `docs/design.md` | The design document: roles, harness pieces, routing, gates, and the intended end state. The source of truth for the prompts |
 | `docs/changelog.md` | The design document's changelog |
 | `docs/prompts/` | Each role's prompt block, copied verbatim from the design doc by hand; `00-preamble.md` goes at the top of every role |
+| `docs/writing.md` | The writing standard for every section a person reads; the preamble names the runtime's copy |
 | `dev/` | Working documents from building the factory: the build spec, its plan, the P0 walking skeleton, the issue index (`dev/issues.md`) |
 | `factory/` | The harness package: the store CLI, its role prompts and its two workflow scripts (`factory/workflows/`) |
 | `bin/factory` | The harness entry point |
@@ -389,8 +390,8 @@ document.
   per sentence; a diagram only after the words needed to read it, with a one-line caption stating
   its claim. Project-internal references (ticket ids, issue numbers, sessions, people) go in
   "Related work and history", not in the body. Install and adoption steps are how-to subsections
-  under "Where it runs"; they do not get their own top-level section. The full standard is `docs/writing.md` once it
-  exists (#23); until then, this list is the standard.
+  under "Where it runs"; they do not get their own top-level section. The full standard is `docs/writing.md`;
+  this list is its summary for this page.
 - **Headings are the contract.** Keep the section order and names; other documents link to them.
   Add a subsection rather than a new top-level section, and never put how-to steps in an
   explanation section or explanation in a how-to.
