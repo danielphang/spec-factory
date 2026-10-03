@@ -894,6 +894,9 @@ def log_tail(a, root, cfg):
 
 def build_parser() -> argparse.ArgumentParser:
     ap = argparse.ArgumentParser(prog="factory", description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("--accept-harness", metavar="SHA", default=None,
+                    help="accept the running harness revision SHA for this instance (design C.3); "
+                         "written before the subcommand")
     sp = ap.add_subparsers(dest="cmd", required=True)
 
     tk = sp.add_parser("ticket").add_subparsers(dest="sub", required=True)
@@ -1040,8 +1043,10 @@ def main(argv: list[str] | None = None) -> int:
         if a.cmd in ("init", "paths"):  # exempt from the instance refusal (design B.1)
             a.fn(a)
             return 0
-        cfg = store.load_config()  # refused when no instance is found: nothing is written
+        inst = instance.require()  # refused when no instance is found: nothing is written
+        cfg = instance.load_config(inst)
         root = store.state_root(cfg)
+        instance.guard(inst, cfg, root, a.accept_harness)  # the harness lock (design C.2-C.4)
         a.fn(a, root, cfg)
         return 0
     except Refused as e:

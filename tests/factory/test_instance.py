@@ -243,6 +243,7 @@ def test_repo_root_is_the_instance_parent_and_factory_repo_overrides(target, tmp
     alt.mkdir(parents=True)
     (alt / "instance.yaml").write_bytes((target / ".factory" / "instance.yaml").read_bytes())
     (alt / "context.md").write_text("x\n")
+    (alt / "harness.lock").write_bytes((target / ".factory" / "harness.lock").read_bytes())
     cp = cli(tmp_path, "config", FACTORY_INSTANCE=str(alt))
     assert cp.returncode == 0, cp.stderr
     assert Path(js(cp)["state_dir"]) == (tmp_path / "elsewhere" / ".factory" / "state").resolve()
