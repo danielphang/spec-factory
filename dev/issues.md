@@ -27,8 +27,9 @@ A fix closes its issue through a reviewed change on `main`; the merge column is 
 | [20](https://github.com/danielphang/spec-factory/issues/20) | Prompts: ponytail's check order, callers-first root-cause rule, reviewer over-building tags, `factory:` deferral marker (after #19) | not in intake yet | — | — |
 | [21](https://github.com/danielphang/spec-factory/issues/21) | Current-state spec for the factory itself: seed its own current truth, README as the overview (after #19; #13, #14 fold in) | not in intake yet | — | — |
 | [22](https://github.com/danielphang/spec-factory/issues/22) | Per-role effort setting beside `models:` (p2; do not take until the operator confirms) | not in intake | — | — |
-| [23](https://github.com/danielphang/spec-factory/issues/23) | Technical documentation standards for the factory's agents: `docs/writing.md`, preamble, critic and reviewer checks (p1; after #19, alongside #21) | not in intake | — | — |
+| [23](https://github.com/danielphang/spec-factory/issues/23) | Technical documentation standards for the factory's agents: `docs/writing.md`, preamble line, critic rubric 6 widened, reviewer check (p1; scope (a)) | T-0013 (closed as applied 2026-10-03: VERIFIED 9/9, no spec store on this instance) | `01f7524` | 43 |
 | [24](https://github.com/danielphang/spec-factory/issues/24) | Token cost: typed role agents everywhere, no clerk agent, role-specific inputs; before/after measurement in `factory/cost.py` (carries #15's reopen condition; priority unset) | not in intake | — | — |
+| [25](https://github.com/danielphang/spec-factory/issues/25) | A documentation checker: the doc-reviewer prompt run on documentation tickets (follow-up to #23) | not in intake | — | — |
 
 Issues 1–10 are applied and can be closed against their merge; 11 applied (`9168ce1`); 13 and 14 fold into #21 (checklists until it archives); 15 closed as superseded. #12 was a duplicate of #11.
 New findings go straight to GitHub issues; this file is the index.

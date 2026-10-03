@@ -48,3 +48,5 @@ text as your final message.
 
 This repo's current-state page is the top-level `README.md`. A change to a command, state, stop or
 path updates it in the same ticket; read its "Maintaining this page" section before editing it.
+
+Who reads what the roles write here: the operator at the spec gate, and a technical reader new to this project reading the README or a PR description. Gloss every term specific to the factory at first use (docs/writing.md).
