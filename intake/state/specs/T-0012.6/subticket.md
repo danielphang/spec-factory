@@ -22,7 +22,7 @@ Acceptance (first `uv sync --frozen`; from the repo root, no `FACTORY_STATE` or 
 - **instance-b-opens-every-ticket** → NEW [specs/self-instance]. THEN `tickets=N failed=0`, N ≥ 12.
 - **instance-b-config** → NEW [specs/self-instance]. THEN `True True True`, then `context=N`, N ≥ 2.
 - **readme-has-install-and-layout** → NEW [specs/repo-layout]. THEN only `checked`.
-- **no-old-paths-in-live-files** → NEW [specs/repo-layout], full pathspec. THEN `exit=1`.
+- **no-old-paths-in-live-files** → REGRESSION [specs/repo-layout], full pathspec (relabelled by the operator, 2026-10-03: T-0012.2 and T-0012.5 already cleaned the files, so it passes at this base; verifier run-0092). THEN `exit=1`.
 - **lock-is-base-revision** → NEW (intermediate; E.3).
   - WHEN `[ "$(head -1 .factory/harness.lock)" = "$(git log -1 --format=%H -- factory bin/factory agents pyproject.toml uv.lock)" ] && echo lock=current || echo lock=stale; echo "harness_paths_changed=$(git diff --name-only main...HEAD -- factory bin/factory agents pyproject.toml uv.lock tests/factory | wc -l | tr -d ' ')"`
   - THEN `lock=current`, then `harness_paths_changed=0`.
