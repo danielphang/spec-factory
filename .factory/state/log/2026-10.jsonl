@@ -639,3 +639,10 @@
 {"ts": "2026-10-03T22:54:15+00:00", "event": "ticket.parked", "ticket": "T-0014", "from": "ready-for-parent-verify", "reason": "archive: "}
 {"ts": "2026-10-03T22:54:15+00:00", "event": "escalation.queued", "ticket": "T-0014", "items": ["archive: "]}
 {"ts": "2026-10-03T22:54:34+00:00", "event": "human.resolved", "ticket": "T-0014", "kind": "close", "by": "dphang", "from": "parked", "to": "closed"}
+{"ts": "2026-10-03T23:10:22+00:00", "event": "request.created", "ticket": "T-0015", "source": "/private/tmp/claude-501/-Users-dphang-dev-nanobot/c69bfd1d-97a6-43e3-9d5a-a517c28d382c/scratchpad/20_coding_standard.md"}
+{"ts": "2026-10-03T23:10:22+00:00", "event": "ticket.created", "ticket": "T-0015", "status": "ready-for-triage"}
+{"ts": "2026-10-03T23:10:51+00:00", "event": "run.started", "ticket": "T-0015", "run": "run-0126-triage", "role": "triage", "model": "opus"}
+{"ts": "2026-10-03T23:13:46+00:00", "event": "run.finished", "ticket": "T-0015", "run": "run-0126-triage", "role": "triage", "status": "NEEDS-HUMAN", "wall_s": 175}
+{"ts": "2026-10-03T23:13:56+00:00", "event": "ticket.parked", "ticket": "T-0015", "from": "ready-for-triage", "reason": "NEEDS-HUMAN from triage"}
+{"ts": "2026-10-03T23:13:56+00:00", "event": "escalation.queued", "ticket": "T-0015", "items": ["NEEDS-HUMAN from triage"]}
+{"ts": "2026-10-03T23:14:21+00:00", "event": "human.resolved", "ticket": "T-0015", "kind": "answer", "by": "dphang", "from": "parked", "to": "ready-for-triage"}

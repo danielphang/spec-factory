@@ -1,0 +1,37 @@
+id: T-0015
+type: null
+title: 'Coding standard: docs/coding.md, the coding twin of docs/writing.md (rescoped #20)'
+request: requests/T-0015.md
+source: /private/tmp/claude-501/-Users-dphang-dev-nanobot/c69bfd1d-97a6-43e3-9d5a-a517c28d382c/scratchpad/20_coding_standard.md
+status: ready-for-triage
+round:
+  spec: 0
+  pr: 0
+spec:
+  version: 0
+  approved_version: null
+plan: null
+in_flight: []
+parked: null
+created: '2026-10-03T23:10:22+00:00'
+history:
+- ts: '2026-10-03T23:13:56+00:00'
+  from: ready-for-triage
+  to: parked
+  by: park
+  reason: NEEDS-HUMAN from triage
+- ts: '2026-10-03T23:14:21+00:00'
+  from: parked
+  to: ready-for-triage
+  by: dphang
+  resolve: answer
+  answer: 1
+parent: null
+depends_on: []
+parallel_safe: true
+branch: null
+head: null
+merge:
+  base_before: null
+  main_after: null
+parent_base: null

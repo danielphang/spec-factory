@@ -1,0 +1,3 @@
+Operator default (taken by the Green session under the operator's standing rule: a recommended, reversible option is taken and reported), 2026-10-03: option (b).
+
+Ship E's text and defer its code. The design doc's retro INPUT and Retro row, and the build spec, name the `factory:` marker ledger as intended design. Building the ledger producer waits for the ticket that builds the retro. `docs/coding.md` keeps the `factory:` marker rule so markers are greppable. The deliverable remains `docs/coding.md` plus the implementer and reviewer pointer lines, per the rescope. Use the post-#19 paths (`docs/design.md`, `docs/prompts/0N-….md`), not the original body's.
