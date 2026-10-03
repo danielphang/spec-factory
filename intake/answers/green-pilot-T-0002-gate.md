@@ -1,0 +1,1 @@
+Operator (2026-10-03, in the intake session): "Also the bug fix is auto approved" — green-pilot T-0002 (GitHub #18) is approved at the spec gate in advance, for whatever version the critic approves. Built after T-0001 (#16) merges.
