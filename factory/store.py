@@ -12,9 +12,6 @@ from pathlib import Path
 
 import yaml
 
-REPO_ROOT = Path(__file__).resolve().parent.parent
-CONFIG_PATH = Path(__file__).resolve().parent / "config.yaml"
-
 STATES = [
     "ready-for-triage", "waiting-requester", "ready-for-spec-writer", "ready-for-critic",
     "awaiting-spec-gate", "ready-for-planner", "planned", "parked", "closed",
@@ -30,15 +27,19 @@ class Refused(Exception):  # noqa: N818
 
 
 def load_config() -> dict:
-    return yaml.safe_load(CONFIG_PATH.read_text(encoding="utf-8"))
+    """The resolved instance's `instance.yaml` (factory/instance.py); refused when none is found."""
+    from factory import instance  # local: instance imports Refused from here
+    return instance.load_config()
 
 
 def state_root(cfg: dict | None = None) -> Path:
+    """FACTORY_STATE, else the instance's `state_dir` under its repo root."""
+    from factory import instance
     env = os.environ.get("FACTORY_STATE")
     if env:
         return Path(env).expanduser().resolve()
-    cfg = cfg or load_config()
-    return (REPO_ROOT / cfg["state_dir"]).resolve()
+    inst = instance.require()
+    return instance.state_root(inst, cfg or instance.load_config(inst))
 
 
 def now() -> str:

@@ -7,18 +7,20 @@ export const meta = {
     { title: 'Close', detail: 'one verifier run on the integration branch against the parent spec; VERIFIED archives, then closes' },
   ],
 }
-// args: { ticket, repo, state, target?, integration?, stubs?, inlineRoles? }  — repo/state/stubs/inlineRoles as in intake.js.
+// args: { ticket, repo, instance?, state?, target?, integration?, stubs?, inlineRoles? }  — repo/instance/state/stubs/inlineRoles as in intake.js.
 // Local-commit stand-in (operator, 2026-10-02): no remote, no CI. The gate suite is run by the
 // verifier and recorded as the ci row; the merge is a local --no-ff merge into the integration
 // branch. The routing is build spec part H, build.js; the join itself is `factory ticket join`.
 
 const TICKET = args.ticket
 const REPO = args.repo
-const STATE = args.state
-// target = the repo the implementer works in (default: the checkout bin/factory lives in);
+const INSTANCE = args.instance
+let STATE = args.state || null  // set from `factory config` below when not given
+// target = the repo the implementer works in (default: the instance's repo, the parent of its `.factory/`);
 // integration = the branch merged into (default: config integration_branch, else the target's current branch).
-const ENV = `FACTORY_STATE=${STATE}` + (args.target ? ` FACTORY_REPO=${args.target}` : '') + (args.integration ? ` FACTORY_INTEGRATION_BRANCH=${args.integration}` : '')
-const BIN = `${ENV} ${REPO}/bin/factory`
+const ENV = [INSTANCE ? `FACTORY_INSTANCE=${INSTANCE}` : '', STATE ? `FACTORY_STATE=${STATE}` : '',
+  args.target ? `FACTORY_REPO=${args.target}` : '', args.integration ? `FACTORY_INTEGRATION_BRANCH=${args.integration}` : ''].filter(Boolean).join(' ')
+const BIN = `${ENV ? ENV + ' ' : ''}${REPO}/bin/factory`
 const PREFIX = args.agentPrefix || 'factory-'
 const INLINE = !!args.inlineRoles
 const CLERK_RULES = 'You are the store clerk of the spec factory: run the one command you are given, once, unchanged, from the repository root; run nothing else, edit nothing, interpret nothing. '
@@ -168,7 +170,8 @@ async function buildOne(st) {
 
 // --- start
 const cfg = await clerk(`${BIN} config`, 'Plan', 'config')
-if (cfg.ok) { MODELS = cfg.models; MAX_PR = cfg.max_rounds.pr }
+if (cfg.ok) { MODELS = cfg.models; MAX_PR = cfg.max_rounds.pr; if (!STATE) STATE = cfg.state_dir }
+if (!STATE) return { ticket: TICKET, error: `no store: factory config failed: ${cfg.stderr || cfg.error || ''}` }
 const show = await clerk(`${BIN} ticket show ${TICKET} --json`, 'Plan', 'ticket show')
 if (!show.ok) return { ticket: TICKET, error: `no such ticket: ${show.stderr}` }
 let state = show.state

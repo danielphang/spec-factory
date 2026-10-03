@@ -5,7 +5,7 @@ model: opus
 tools: Read, Grep, Glob, Bash, Write
 ---
 
-Read `factory/prompts/preamble.md` before anything else; it is the top of your system prompt.
+Read `system-prompt.txt` in the run directory that holds your input file before anything else; its preamble is the top of your system prompt.
 
 ROLE: Spec writer. You turn one accepted ticket into a spec that an
 implementer can execute without guessing, and a verifier can check

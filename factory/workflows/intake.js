@@ -7,9 +7,13 @@ export const meta = {
     { title: 'Plan', detail: 'after the human gate: planner decomposes the approved spec' },
   ],
 }
-// args: { ticket, repo, state, stubs?, agentPrefix? }
-//   repo  = absolute path of the checkout (bin/factory lives under it)
-//   state = absolute path of the store (knowledge_vault/spec_factory)
+// args: { ticket, repo, instance?, state?, stubs?, agentPrefix? }
+//   repo     = absolute path of the harness checkout (bin/factory lives under it); the clerk runs from it
+//   instance = absolute path of the target repo's `.factory/` (`factory paths` prints it); when given,
+//              every store command runs with FACTORY_INSTANCE=<instance>. Without it the harness walks
+//              up from `repo`, which finds only the harness repo's own instance
+//   state    = absolute path of the store (FACTORY_STATE); optional: by default the instance's own
+//              store, as `factory config` reports it
 //   stubs = directory of <role>-<n>.md fixture outputs; when set, every role is the factory-stub agent
 //   inlineRoles = true when the factory-* agent types are not registered in this session
 // The script holds routing, the join and the round counter as code and nothing else decides
@@ -18,8 +22,10 @@ export const meta = {
 
 const TICKET = args.ticket
 const REPO = args.repo
-const STATE = args.state
-const BIN = `FACTORY_STATE=${STATE} ${REPO}/bin/factory`
+const INSTANCE = args.instance
+let STATE = args.state || null  // set from `factory config` below when not given
+const ENV = [INSTANCE ? `FACTORY_INSTANCE=${INSTANCE}` : '', STATE ? `FACTORY_STATE=${STATE}` : ''].filter(Boolean).join(' ')
+const BIN = `${ENV ? ENV + ' ' : ''}${REPO}/bin/factory`
 const PREFIX = args.agentPrefix || 'factory-'
 // inlineRoles: the .claude/agents/factory-* definitions are not registered in this session (the
 // directory did not exist at session start), so every role runs as general-purpose and reads its
@@ -104,7 +110,8 @@ async function transition(to, roundOp, phase) {
 
 // --- start: read config and the ticket's stored state (resumption starts from what the store holds)
 const cfg = await clerk(`${BIN} config`, 'Triage', 'config')
-if (cfg.ok) { MODELS = cfg.models; MAX = cfg.max_rounds.spec }
+if (cfg.ok) { MODELS = cfg.models; MAX = cfg.max_rounds.spec; if (!STATE) STATE = cfg.state_dir }
+if (!STATE) return { ticket: TICKET, error: `no store: factory config failed: ${cfg.stderr || cfg.error || ''}` }
 const show = await clerk(`${BIN} ticket show ${TICKET} --json`, 'Triage', 'ticket show')
 if (!show.ok) return { ticket: TICKET, error: `no such ticket: ${show.stderr}` }
 let state = show.state

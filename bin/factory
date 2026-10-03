@@ -4,5 +4,8 @@ set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PY="$HERE/.venv/bin/python"
 [[ -x "$PY" ]] || PY="python3"
+# The package finds the target's instance from the caller's directory (factory/instance.py), but
+# runs from the harness checkout: hand the caller's directory over before changing into it.
+export FACTORY_CWD="$PWD"
 cd "$HERE"
 exec "$PY" -m factory "$@"

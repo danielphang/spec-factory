@@ -1,4 +1,4 @@
-You are one agent in a software pipeline: spec-factory (the design repo at ~/dev/spec-factory, branch main). Other agents check
+You are one agent in a software pipeline: {repo name}. Other agents check
 your output, and a human audits a sample of everything.
 
 WHAT "GOOD" MEANS
@@ -35,7 +35,7 @@ SCOPE AND ESCALATION
   a protected path the approved spec's Risk section does not declare, or
   you'd need to break a rule above to finish.
 - Protected paths for this repo:
-  infra (intake/**, the scratch harness instance running you), generated (prompts/**, verbatim copies of the design doc's prompt blocks, changed only by re-copying), reference harness (~/dev/nanobot-upstream/**, read only), credentials (~/.nanobot/**, never read or written by any role)
+  {auth, payments, migrations, infra, public API, dependencies}
 
 GUARDRAIL PATHS
 Never modify or delete existing tests, CI config, AGENTS.md, skills, or

@@ -1,0 +1,58 @@
+# Fixed instance for the harness's own test suite (tests/factory/conftest.py sets FACTORY_INSTANCE
+# here, and FACTORY_REPO to the harness checkout). factory/instance.template.yaml's values, plus
+# environment_files: ["uv.lock"] (test_shepherd checks the lockfile copy) and the whitespace gate.
+# Every test runs on a throwaway store (FACTORY_STATE), so state_dir is never used.
+repo_name: "factory test fixture"
+harness: null
+state_dir: .factory/state
+protected_paths:
+  infra: [".factory/instance.yaml", ".factory/harness.lock", ".factory/context.md"]
+gate_commands: ["git diff --check main...HEAD"]
+placeholders: {rounds: 2, spec_lines: 400, audit_n: 5, retro_min: 3}
+max_rounds: {spec: 2, pr: 2}
+# Build half, local-commit stand-in (operator, 2026-10-02): no remote, no CI. The merge gate is the
+# gate suite on the branch plus the two checkers; then a local --no-ff merge into integration_branch
+# (null = the target repo's current branch). FACTORY_REPO / FACTORY_INTEGRATION_BRANCH override.
+integration_branch: null
+# Untracked files every worktree and checker checkout copies from the integration checkout at each run
+# start, so a branch is tested against the same environment the integration branch runs in (for
+# example a lockfile the target repo git-ignores). A tracked file does not belong here: copying it in
+# would mask the branch's own version.
+environment_files: ["uv.lock"]
+force_push_allowed: false
+models:
+  triage: opus
+  spec_writer: opus
+  critic: fable
+  planner: opus
+  implementer: opus
+  reviewer: fable
+  verifier: opus
+  retro: fable
+  clerk: haiku
+ready_state:
+  triage: ready-for-triage
+  spec_writer: ready-for-spec-writer
+  critic: ready-for-critic
+  planner: ready-for-planner
+  implementer: ready-for-implementer
+  reviewer: checks-in-flight
+  verifier: checks-in-flight
+# Routing edges (doc §Routing table, both halves, plus the resolution rules). Anything else is refused.
+routing:
+  ready-for-triage: [ready-for-spec-writer, waiting-requester, parked, closed]
+  waiting-requester: [ready-for-triage, closed]
+  ready-for-spec-writer: [ready-for-critic, parked, closed]
+  ready-for-critic: [ready-for-spec-writer, awaiting-spec-gate, parked, closed]
+  awaiting-spec-gate: [ready-for-planner, ready-for-spec-writer, closed]
+  ready-for-planner: [planned, parked, closed]
+  parked: [ready-for-triage, ready-for-spec-writer, ready-for-critic, ready-for-planner, awaiting-spec-gate, ready-for-implementer, checks-in-flight, ready-for-parent-verify, closed]
+  planned: [ready-for-parent-verify, parked, closed]
+  # sub-tickets
+  waiting-dependencies: [ready-for-implementer, parked, closed]
+  ready-for-implementer: [checks-in-flight, parked, closed]
+  checks-in-flight: [ready-for-merge, ready-for-implementer, parked, closed]
+  ready-for-merge: [merged, ready-for-implementer, parked, closed]
+  merged: [closed]
+  # parent, after every sub-ticket merged
+  ready-for-parent-verify: [closed, parked]
