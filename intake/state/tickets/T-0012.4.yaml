@@ -3,7 +3,7 @@ type: sub-ticket
 title: 'Harness lock: refuse an unaccepted or modified harness on the instance''s own store, `--accept-harness`'
 request: requests/T-0012.md
 source: plan:run-0054-planner
-status: checks-in-flight
+status: merged
 round:
   spec: 0
   pr: 1
@@ -53,14 +53,70 @@ history:
   - ci
   - reviewer
   - verifier
+- ts: '2026-10-03T15:01:06+00:00'
+  from: checks-in-flight
+  to: ready-for-merge
+  by: workflow
+  round:
+    spec: 0
+    pr: 1
+- ts: '2026-10-03T15:01:33+00:00'
+  from: ready-for-merge
+  to: ready-for-implementer
+  by: workflow
+  round:
+    spec: 0
+    pr: 1
+- ts: '2026-10-03T15:05:29+00:00'
+  from: ready-for-implementer
+  to: checks-in-flight
+  by: workflow
+  round:
+    spec: 0
+    pr: 1
+- ts: '2026-10-03T15:14:31+00:00'
+  from: checks-in-flight
+  to: ready-for-merge
+  by: workflow
+  round:
+    spec: 0
+    pr: 1
+- ts: '2026-10-03T15:14:59+00:00'
+  from: ready-for-merge
+  to: ready-for-implementer
+  by: workflow
+  round:
+    spec: 0
+    pr: 1
+- ts: '2026-10-03T15:18:45+00:00'
+  from: ready-for-implementer
+  to: checks-in-flight
+  by: workflow
+  round:
+    spec: 0
+    pr: 1
+- ts: '2026-10-03T15:27:44+00:00'
+  from: checks-in-flight
+  to: ready-for-merge
+  by: workflow
+  round:
+    spec: 0
+    pr: 1
+- ts: '2026-10-03T15:27:55+00:00'
+  from: ready-for-merge
+  to: merged
+  by: merge
+  head: be292addbee09d9b2709fd84b54e63de8e9f6477
 parent: T-0012
 depends_on:
 - T-0012.3
 parallel_safe: false
 branch: factory/T-0012.4
-head: 010d1b00c5835c7022a72771c63f63f8b6ab3707
+head: be292addbee09d9b2709fd84b54e63de8e9f6477
 merge:
-  base_before: null
-  main_after: null
+  base_before: 6921dfd8eaccb5fb9d2fb7440c20291c18c165c9
+  main_after: f4be7ec826121021c2c247fba9ae56db68e658e9
 parent_base: null
 label: T-0012.4
+merge_refused: null
+conflict_runs: 0

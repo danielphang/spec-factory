@@ -3,7 +3,7 @@ type: sub-ticket
 title: Design-doc and build-spec text for `.factory/` instances
 request: requests/T-0012.md
 source: plan:run-0054-planner
-status: checks-in-flight
+status: merged
 round:
   spec: 0
   pr: 1
@@ -56,14 +56,49 @@ history:
   - ci
   - reviewer
   - verifier
+- ts: '2026-10-03T14:54:58+00:00'
+  from: checks-in-flight
+  to: ready-for-merge
+  by: workflow
+  round:
+    spec: 0
+    pr: 1
+- ts: '2026-10-03T14:55:23+00:00'
+  from: ready-for-merge
+  to: ready-for-implementer
+  by: workflow
+  round:
+    spec: 0
+    pr: 1
+- ts: '2026-10-03T15:01:06+00:00'
+  from: ready-for-implementer
+  to: checks-in-flight
+  by: workflow
+  round:
+    spec: 0
+    pr: 1
+- ts: '2026-10-03T15:08:17+00:00'
+  from: checks-in-flight
+  to: ready-for-merge
+  by: workflow
+  round:
+    spec: 0
+    pr: 1
+- ts: '2026-10-03T15:08:29+00:00'
+  from: ready-for-merge
+  to: merged
+  by: merge
+  head: aeb684d96544915c57435bd904959b3af45999ce
 parent: T-0012
 depends_on:
 - T-0012.2
 parallel_safe: true
 branch: factory/T-0012.5
-head: 7090d9d21f17688df45fd3701dc5ee26f01452c4
+head: aeb684d96544915c57435bd904959b3af45999ce
 merge:
-  base_before: null
-  main_after: null
+  base_before: 68e89456939ac7939ef659975dfbb37812bd6f83
+  main_after: 6921dfd8eaccb5fb9d2fb7440c20291c18c165c9
 parent_base: null
 label: T-0012.5
+merge_refused: null
+conflict_runs: 0
