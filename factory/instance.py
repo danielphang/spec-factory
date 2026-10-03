@@ -16,6 +16,7 @@ relative to the repo root; FACTORY_STATE overrides it.
 from __future__ import annotations
 
 import os
+import re
 import subprocess
 from pathlib import Path
 
@@ -102,7 +103,58 @@ def harness_revision(harness: Path = HARNESS) -> str | None:
     return rev if cp.returncode == 0 and len(rev) == 40 else None
 
 
-PROTECTED_PLACEHOLDER = "  {auth, payments, migrations, infra, public API, dependencies}"
+LOCK_NAME = "harness.lock"
+_SHA = re.compile(r"[0-9a-f]{40}")
+
+
+def harness_changes(harness: Path = HARNESS) -> list[str]:
+    """Uncommitted changes to the harness's own code (C.4), one path per entry; files .gitignore
+    excludes do not count. Refused when git cannot tell."""
+    cp = subprocess.run(["git", "-C", str(harness), "status", "--porcelain", "--", *HARNESS_PATHS],
+                        capture_output=True, text=True)
+    if cp.returncode != 0:
+        raise Refused(f"cannot read the status of harness {harness}: {cp.stderr.strip()}")
+    return [ln[3:] for ln in cp.stdout.splitlines() if ln.strip()]
+
+
+def read_lock(inst: Path) -> str | None:
+    """The stripped first line of `<instance>/harness.lock`, or None when it is missing or empty."""
+    p = inst / LOCK_NAME
+    if not p.is_file():
+        return None
+    lines = p.read_text(encoding="utf-8").splitlines()
+    return (lines[0].strip() or None) if lines else None
+
+
+def guard(inst: Path, cfg: dict, root: Path, accept: str | None) -> None:
+    """The harness lock (C.2–C.4), for every command except `init` and `paths`. Applies only when
+    the store in use is the instance's own; other stores (FACTORY_STATE elsewhere) are not checked.
+    Order: uncommitted harness edits are refused first, so `--accept-harness` cannot override them;
+    then `--accept-harness SHA` rewrites the lock (and logs it) only when SHA is the running
+    revision; then the lock must name the running revision. Every refusal writes nothing."""
+    if not is_own_store(inst, cfg, root):
+        return
+    changed = harness_changes()
+    if changed:
+        raise Refused(f"harness {HARNESS} has uncommitted changes:\n" + "\n".join(changed))
+    rev = harness_revision()
+    if rev is None:
+        raise Refused(f"cannot read the harness revision of {HARNESS} (not a git checkout?)")
+    lock = read_lock(inst)
+    if accept is not None:
+        if not _SHA.fullmatch(accept) or accept != rev:
+            raise Refused(f"--accept-harness {accept} is not the running harness revision {rev}; "
+                          f"{inst / LOCK_NAME} is unchanged")
+        from factory import store  # local: store imports this module lazily
+        store.write_text(inst / LOCK_NAME, rev + "\n")
+        store.log_event(root, "harness.accepted", instance=str(inst), old=lock, new=rev)
+        return
+    if lock != rev:
+        raise Refused(f"harness {rev} is not the revision this instance accepted ({lock or 'none'}); "
+                      f"rerun with --accept-harness {rev} to accept it")
+
+
+PROTECTED_PLACEHOLDER ="  {auth, payments, migrations, infra, public API, dependencies}"
 
 
 def fill_preamble(text: str, cfg: dict) -> str:
