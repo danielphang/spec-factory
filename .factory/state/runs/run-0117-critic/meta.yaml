@@ -1,0 +1,19 @@
+run_id: run-0117-critic
+role: critic
+ticket: T-0014
+model: fable
+round: 2
+spec_version: 2
+started: '2026-10-03T22:22:07+00:00'
+finished: '2026-10-03T22:24:21+00:00'
+wall_s: 134
+status: APPROVE
+input_sources:
+- specs/T-0014/v2.md
+- runs/run-0115-critic/output.md
+- specs/T-0014/v1.md
+confidence: high; every changed citation was read on the checkout, the revision claim was reproduced from
+  the lock and both checkouts, and the unchanged design text was already shown to produce the THEN outputs
+  in round 1.
+escalations: []
+escalations_note: null

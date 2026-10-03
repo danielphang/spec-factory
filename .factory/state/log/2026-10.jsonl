@@ -577,3 +577,25 @@
 {"ts": "2026-10-03T18:35:40+00:00", "event": "escalation.queued", "ticket": "T-0013", "items": ["archive: no spec store (factory init not run)\n{'ok': false, 'error': 'no spec store (factory init not run)'}"]}
 {"ts": "2026-10-03T18:36:03+00:00", "event": "human.resolved", "ticket": "T-0013", "kind": "close", "by": "dphang", "from": "parked", "to": "closed"}
 {"ts": "2026-10-03T18:36:03+00:00", "event": "harness.accepted", "instance": "/Users/dphang/dev/spec-factory/.factory", "old": "0f5aacaf169b9e51d24bc88815cc9797eb3447b7", "new": "e703c1bfb1216079f802ba25e3d3a218246f385d"}
+{"ts": "2026-10-03T22:07:44+00:00", "event": "request.created", "ticket": "T-0014", "source": "/private/tmp/claude-501/-Users-dphang-dev-nanobot/c69bfd1d-97a6-43e3-9d5a-a517c28d382c/scratchpad/26_writing_rules.md"}
+{"ts": "2026-10-03T22:07:44+00:00", "event": "ticket.created", "ticket": "T-0014", "status": "ready-for-triage"}
+{"ts": "2026-10-03T22:08:12+00:00", "event": "run.started", "ticket": "T-0014", "run": "run-0113-triage", "role": "triage", "model": "opus"}
+{"ts": "2026-10-03T22:09:32+00:00", "event": "run.finished", "ticket": "T-0014", "run": "run-0113-triage", "role": "triage", "status": "ACCEPT", "wall_s": 80}
+{"ts": "2026-10-03T22:09:40+00:00", "event": "ticket.transition", "ticket": "T-0014", "from": "ready-for-triage", "to": "ready-for-spec-writer", "by": "workflow", "round": {"spec": 0, "pr": 0}}
+{"ts": "2026-10-03T22:09:49+00:00", "event": "run.started", "ticket": "T-0014", "run": "run-0114-spec_writer", "role": "spec_writer", "model": "opus"}
+{"ts": "2026-10-03T22:15:11+00:00", "event": "run.finished", "ticket": "T-0014", "run": "run-0114-spec_writer", "role": "spec_writer", "status": "READY-FOR-CRITIC", "wall_s": 322}
+{"ts": "2026-10-03T22:15:19+00:00", "event": "spec.added", "ticket": "T-0014", "version": 1, "source": "run-0114-spec_writer"}
+{"ts": "2026-10-03T22:15:27+00:00", "event": "ticket.transition", "ticket": "T-0014", "from": "ready-for-spec-writer", "to": "ready-for-critic", "by": "workflow", "round": {"spec": 1, "pr": 0}}
+{"ts": "2026-10-03T22:15:35+00:00", "event": "run.started", "ticket": "T-0014", "run": "run-0115-critic", "role": "critic", "model": "fable"}
+{"ts": "2026-10-03T22:18:41+00:00", "event": "run.finished", "ticket": "T-0014", "run": "run-0115-critic", "role": "critic", "status": "REVISE", "wall_s": 186}
+{"ts": "2026-10-03T22:18:49+00:00", "event": "ticket.transition", "ticket": "T-0014", "from": "ready-for-critic", "to": "ready-for-spec-writer", "by": "workflow", "round": {"spec": 2, "pr": 0}}
+{"ts": "2026-10-03T22:18:56+00:00", "event": "run.started", "ticket": "T-0014", "run": "run-0116-spec_writer", "role": "spec_writer", "model": "opus"}
+{"ts": "2026-10-03T22:21:42+00:00", "event": "run.finished", "ticket": "T-0014", "run": "run-0116-spec_writer", "role": "spec_writer", "status": "READY-FOR-CRITIC", "wall_s": 166}
+{"ts": "2026-10-03T22:21:51+00:00", "event": "spec.added", "ticket": "T-0014", "version": 2, "source": "run-0116-spec_writer"}
+{"ts": "2026-10-03T22:21:59+00:00", "event": "ticket.transition", "ticket": "T-0014", "from": "ready-for-spec-writer", "to": "ready-for-critic", "by": "workflow", "round": {"spec": 2, "pr": 0}}
+{"ts": "2026-10-03T22:22:07+00:00", "event": "run.started", "ticket": "T-0014", "run": "run-0117-critic", "role": "critic", "model": "fable"}
+{"ts": "2026-10-03T22:24:21+00:00", "event": "run.finished", "ticket": "T-0014", "run": "run-0117-critic", "role": "critic", "status": "APPROVE", "wall_s": 134}
+{"ts": "2026-10-03T22:24:30+00:00", "event": "ticket.transition", "ticket": "T-0014", "from": "ready-for-critic", "to": "awaiting-spec-gate", "by": "workflow", "round": {"spec": 2, "pr": 0}}
+{"ts": "2026-10-03T22:24:54+00:00", "event": "spec.added", "ticket": "T-0014", "version": 3, "source": "gate edit /Users/dphang/dev/spec-factory/.factory/answers/T-0014-gate-edit.md"}
+{"ts": "2026-10-03T22:24:54+00:00", "event": "approval.recorded", "ticket": "T-0014", "kind": "spec", "version": 3, "by": "dphang"}
+{"ts": "2026-10-03T22:24:54+00:00", "event": "ticket.transition", "ticket": "T-0014", "from": "awaiting-spec-gate", "to": "ready-for-planner", "by": "dphang"}
