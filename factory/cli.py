@@ -427,17 +427,14 @@ def results_record(a, root, cfg):
         raise Refused("results record: --role reviewer|verifier")
     if not re.fullmatch(r"[0-9a-f]{40}", a.head or ""):
         raise Refused(f"results record: --head must be a full commit SHA, got {a.head!r}")
-    text = Path(a.output).read_text(encoding="utf-8") if a.output else ""
+    # A killed run's output is never read: the build loop passes --output even when the run wrote none.
+    text = Path(a.output).read_text(encoding="utf-8") if a.output and not a.killed else ""
     if a.killed:
         st = "KILLED"
     else:
         parsed = status.parse(text)
         st = parsed["status"] or "UNKNOWN"
-    if a.killed:  # a killed run's output may be cut off: check only a hex Commit: line it does have
-        cm = re.search(r"^Commit:\s*`?([0-9a-fA-F]{7,40})`?\b", text, re.M)
-        if cm and not a.head.startswith(cm.group(1).lower()):
-            raise Refused(f"results record: the output says Commit: {cm.group(1)}, not the head {a.head[:12]}")
-    else:  # every Commit: line must name the head; with none, the verdict is for no known commit
+    if not a.killed:  # every Commit: line must name the head; with none, the verdict is for no known commit
         lines = re.findall(r"^Commit:.*$", text, re.M)
         if not lines:
             raise Refused("results record: the output has no Commit: line")
