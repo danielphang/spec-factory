@@ -1,0 +1,32 @@
+run_id: run-0014-verifier
+role: verifier
+ticket: T-0001.1
+model: opus
+round: 1
+spec_version: 1
+started: '2026-10-03T05:00:32+00:00'
+finished: '2026-10-03T05:10:51+00:00'
+wall_s: 619
+status: VERIFIED
+input_sources:
+- specs/T-0001.1/subticket.md
+- specs/T-0001/v1.md
+- runs/run-0006-implementer/output.md
+- runs/run-0014-verifier/diff.patch
+environment_files:
+- uv.lock
+branch: factory/T-0001.1
+base: b551d97cd9797c72aa2f4b20170a7b2690ff2e58
+head: e28db6a255e8cd0032c67ada62b74b6681cd511d
+worktree: /Users/dphang/dev/spec-factory/intake/green-pilot/runs/run-0014-verifier/wt
+confidence: high. I ran all 9 WHEN commands verbatim under bash and zsh on base and head, ran the factory
+  suite on base, head and the merged tree, ran both gate commands as written, and ran 15 probes. Only
+  one minor concern came up, and it is within the spec.
+escalations:
+- (1) The base I was given (`b551d97cd`) is not an ancestor of the head (which forked at `f8f40e0c5`).
+  The merge is clean and the merged factory suite passes 68/68, but the full-suite gate has not been run
+  on the merged tree. (2) Running the gate on this head rewrote the protected `webui/package-lock.json`
+  in the verifier worktree, because the head predates the base's `tests/cli/conftest.py`. That file is
+  uncommitted and lives only in this run's `wt`. Whoever cleans up the worktree should discard it, and
+  nothing should commit it.
+escalations_note: null

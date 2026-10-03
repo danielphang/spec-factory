@@ -1,0 +1,27 @@
+run_id: run-0016-verifier
+role: verifier
+ticket: T-0001.1
+model: opus
+round: 1
+spec_version: 1
+started: '2026-10-03T05:18:49+00:00'
+finished: '2026-10-03T05:28:55+00:00'
+wall_s: 606
+status: VERIFIED
+input_sources:
+- specs/T-0001.1/subticket.md
+- specs/T-0001/v1.md
+- runs/run-0015-implementer/output.md
+- runs/run-0016-verifier/diff.patch
+environment_files:
+- uv.lock
+branch: factory/T-0001.1
+base: b551d97cd9797c72aa2f4b20170a7b2690ff2e58
+head: a946681a611133793f703f8ea616fcb60ce3c900
+worktree: /Users/dphang/dev/spec-factory/intake/green-pilot/runs/run-0016-verifier/wt
+confidence: high. I ran every acceptance command verbatim on both base `b551d97cd` and head `a946681a6`.
+  NEW criteria failed on base and passed on head, and REGRESSION criteria passed on both. Both gate commands
+  exited 0 as written, the new tests fail against the base code, and 14 boundary probes behaved as the
+  spec says.
+escalations: []
+escalations_note: null

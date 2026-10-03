@@ -1,0 +1,27 @@
+run_id: run-0017-reviewer
+role: reviewer
+ticket: T-0001.1
+model: fable
+round: 1
+spec_version: 1
+started: '2026-10-03T05:18:50+00:00'
+finished: '2026-10-03T05:26:13+00:00'
+wall_s: 443
+status: APPROVE
+input_sources:
+- specs/T-0001.1/subticket.md
+- specs/T-0001/v1.md
+- runs/run-0015-implementer/output.md
+- runs/run-0017-reviewer/diff.patch
+environment_files:
+- uv.lock
+branch: factory/T-0001.1
+base: b551d97cd9797c72aa2f4b20170a7b2690ff2e58
+head: a946681a611133793f703f8ea616fcb60ce3c900
+worktree: /Users/dphang/dev/spec-factory/intake/green-pilot/runs/run-0017-reviewer/wt
+confidence: high — I read the code at head, confirmed the merge tree equals the auto-merge of base and
+  the PR commit, ran `tests/factory` (68 passed) and all nine acceptance scenarios verbatim on this worktree,
+  reproduced the red step (4 NEW tests fail against base `cli.py`), and the only existing-test edit is
+  the one declared line with its assertions intact.
+escalations: []
+escalations_note: null

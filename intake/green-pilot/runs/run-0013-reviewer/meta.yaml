@@ -1,0 +1,26 @@
+run_id: run-0013-reviewer
+role: reviewer
+ticket: T-0001.1
+model: fable
+round: 1
+spec_version: 1
+started: '2026-10-03T05:00:31+00:00'
+finished: '2026-10-03T05:07:41+00:00'
+wall_s: 430
+status: APPROVE
+input_sources:
+- specs/T-0001.1/subticket.md
+- specs/T-0001/v1.md
+- runs/run-0006-implementer/output.md
+- runs/run-0013-reviewer/diff.patch
+environment_files:
+- uv.lock
+branch: factory/T-0001.1
+base: b551d97cd9797c72aa2f4b20170a7b2690ff2e58
+head: e28db6a255e8cd0032c67ada62b74b6681cd511d
+worktree: /Users/dphang/dev/spec-factory/intake/green-pilot/runs/run-0013-reviewer/wt
+confidence: high — I read the code at head, ran the factory suite (64 passed) and all nine acceptance
+  scenarios on this worktree, confirmed the four NEW tests fail at base, and the only existing-test edit
+  is the one declared line.
+escalations: []
+escalations_note: null

@@ -1,0 +1,23 @@
+run_id: run-0018-verifier
+role: verifier
+ticket: T-0001
+model: opus
+round: 0
+spec_version: 1
+started: '2026-10-03T05:30:13+00:00'
+finished: '2026-10-03T05:38:14+00:00'
+wall_s: 481
+status: VERIFIED
+input_sources:
+- specs/T-0001/v1.md
+environment_files:
+- uv.lock
+branch: null
+base: b551d97cd9797c72aa2f4b20170a7b2690ff2e58
+head: 1f3a58e52f8cba5d651aca2c89bf0a07b2b9a25b
+worktree: /Users/dphang/dev/spec-factory/intake/green-pilot/runs/run-0018-verifier/wt
+confidence: high. I ran all 10 criteria verbatim on head and base under bash and zsh, the results matched
+  the spec's base and PR expectations exactly, both gates exited 0, and 13 probes behaved per the stated
+  decisions.
+escalations: []
+escalations_note: null

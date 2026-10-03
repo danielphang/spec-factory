@@ -1,0 +1,44 @@
+run_id: run-0012-verifier
+role: verifier
+ticket: T-0001.1
+model: opus
+round: 1
+spec_version: 1
+started: '2026-10-03T04:15:24+00:00'
+finished: '2026-10-03T04:30:54+00:00'
+wall_s: 930
+status: SPEC-DEFECT
+input_sources:
+- specs/T-0001.1/subticket.md
+- specs/T-0001/v1.md
+- runs/run-0006-implementer/output.md
+- runs/run-0012-verifier/diff.patch
+environment_files:
+- uv.lock
+branch: factory/T-0001.1
+base: b7d09a8db5acce7155960a9e6047ae2bc5581f4e
+head: e28db6a255e8cd0032c67ada62b74b6681cd511d
+worktree: /Users/dphang/dev/spec-factory/intake/green-pilot/runs/run-0012-verifier/wt
+confidence: high. Every scenario command was run verbatim on base and head in two shells, and the head's
+  code passed the integration gate script on both the head tree and the base+head merge tree. The only
+  blocker is a gate command that cannot test this head as written. I reproduced that and traced it to
+  two specific lines.
+escalations:
+- 'The gate command in `factory/config.yaml` `gate_commands` (a protected path, so this needs the operator)
+  is defective in two ways:'
+- (a) A plain `uv run --with neonize…` on a fresh checkout has no pytest, because it is in the `dev` optional
+  extra, so the gate exits 2 before running anything. This happens at base too.
+- (b) `{integration}/scripts/full_suite_gate.py` runs pytest with `cwd=REPO_ROOT` = the integration checkout,
+  so it tests the integration branch and not the branch under test.
+- 'A likely fix, for the operator to decide: add `--extra dev`, and let the gate take a target root (or
+  run it with cwd = the worktree) while it keeps reading its baseline from the integration checkout.'
+- 'Until then, a gate PASS on any sub-ticket proves nothing about that sub-ticket. Earlier `Gate suite:
+  PASS` results recorded by this harness should be read with this in mind.'
+- The `tests/factory` acceptance command as written picks up blue's `/Users/dphang/dev/nanobot/.venv-test/bin/pytest`
+  (python3.14) from PATH, because the worktree venv has no pytest. It passed here, but it is not hermetic.
+  Adding `--extra dev` would fix this too.
+- 'The count "today: 55" in factory-suite-still-passes is the merge-base count. The integration base now
+  has 58, so after the merge it is 67.'
+- The probe concern about indented or bold `Commit:` lines is the parent's declared Risk, and is noted
+  only.
+escalations_note: null

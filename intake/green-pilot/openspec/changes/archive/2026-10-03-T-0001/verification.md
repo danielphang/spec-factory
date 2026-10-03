@@ -46,3 +46,9 @@ Evidence: `factory/cli.py:432` already uses `a.head.startswith(...)`; the spec's
 Suggested fix: Add one clause: "looser than build-harness.md:288's 'equal'; kept because it is today's behaviour and the checkers may abbreviate."
 
 No BLOCKING findings. The NEW scenarios fail today for the stated reason, the REGRESSION scenarios pin the one case (first line wrong, later line right) that a "check only the last line" fix would wrongly start accepting, the accept-path scenarios would fail against a refuse-everything stub, the single existing-test edit is declared with a reason I confirmed, no protected path is touched, and the failure mode of the change (false refusal) parks for a human rather than merging unchecked code.
+
+## Verifier results
+
+a946681a611133793f703f8ea616fcb60ce3c900 · T-0001.1 · VERIFIED · run-0016-verifier
+e28db6a255e8cd0032c67ada62b74b6681cd511d · T-0001.1 · SPEC-DEFECT · run-0012-verifier
+e28db6a255e8cd0032c67ada62b74b6681cd511d · T-0001.1 · VERIFIED · run-0014-verifier

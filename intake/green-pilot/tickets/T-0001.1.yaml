@@ -3,7 +3,7 @@ type: sub-ticket
 title: '`results record` refuses a checker output whose `Commit:` lines do not all name the head'
 request: requests/T-0001.md
 source: plan:run-0004-planner
-status: checks-in-flight
+status: merged
 round:
   spec: 0
   pr: 1
@@ -22,13 +22,63 @@ history:
   round:
     spec: 0
     pr: 1
+- ts: '2026-10-03T04:31:42+00:00'
+  from: checks-in-flight
+  to: parked
+  by: park
+  reason: SPEC-DEFECT from verifier
+- ts: '2026-10-03T04:59:33+00:00'
+  from: parked
+  to: checks-in-flight
+  by: dphang
+  resolve: redispatch
+  head: e28db6a255e8cd0032c67ada62b74b6681cd511d
+  superseded:
+  - ci
+  - reviewer
+  - verifier
+- ts: '2026-10-03T05:11:34+00:00'
+  from: checks-in-flight
+  to: ready-for-merge
+  by: workflow
+  round:
+    spec: 0
+    pr: 1
+- ts: '2026-10-03T05:12:01+00:00'
+  from: ready-for-merge
+  to: ready-for-implementer
+  by: workflow
+  round:
+    spec: 0
+    pr: 1
+- ts: '2026-10-03T05:18:32+00:00'
+  from: ready-for-implementer
+  to: checks-in-flight
+  by: workflow
+  round:
+    spec: 0
+    pr: 1
+- ts: '2026-10-03T05:29:31+00:00'
+  from: checks-in-flight
+  to: ready-for-merge
+  by: workflow
+  round:
+    spec: 0
+    pr: 1
+- ts: '2026-10-03T05:29:39+00:00'
+  from: ready-for-merge
+  to: merged
+  by: merge
+  head: a946681a611133793f703f8ea616fcb60ce3c900
 parent: T-0001
 depends_on: []
 parallel_safe: true
 branch: factory/T-0001.1
-head: e28db6a255e8cd0032c67ada62b74b6681cd511d
+head: a946681a611133793f703f8ea616fcb60ce3c900
 merge:
-  base_before: null
-  main_after: null
+  base_before: b551d97cd9797c72aa2f4b20170a7b2690ff2e58
+  main_after: 1f3a58e52f8cba5d651aca2c89bf0a07b2b9a25b
 parent_base: null
 label: ST-1
+merge_refused: null
+conflict_runs: 0

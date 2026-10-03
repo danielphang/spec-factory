@@ -4,7 +4,7 @@ title: 'Harness: `results record` accepts a checker output with no `Commit:` lin
   value, or a stale later `Commit:` line, and records it against the current head'
 request: requests/T-0001.md
 source: /private/tmp/req16.md
-status: planned
+status: closed
 round:
   spec: 1
   pr: 0
@@ -49,6 +49,17 @@ history:
   round:
     spec: 1
     pr: 0
+- ts: '2026-10-03T05:30:03+00:00'
+  from: planned
+  to: ready-for-parent-verify
+  by: parent-check
+- ts: '2026-10-03T05:38:40+00:00'
+  from: ready-for-parent-verify
+  to: closed
+  by: workflow
+  round:
+    spec: 1
+    pr: 0
 parent: null
 depends_on: []
 parallel_safe: true
@@ -57,4 +68,4 @@ head: null
 merge:
   base_before: null
   main_after: null
-parent_base: null
+parent_base: b551d97cd9797c72aa2f4b20170a7b2690ff2e58
