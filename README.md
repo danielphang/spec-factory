@@ -59,9 +59,10 @@ updates work").
 
 A target holds no harness code, only `.factory/`, and runs whatever revision the runtime checkout
 named in its `instance.yaml` has checked out. The lock makes a new revision available rather than
-silently adopted: each target refuses an unaccepted harness revision, and refuses uncommitted
-edits to the harness's code, until you run a command with `--accept-harness <sha>` there. The
-acceptance is logged in the target's store.
+silently adopted: each target refuses an unaccepted harness revision until you run a command
+with `--accept-harness <sha>` there, and the acceptance is logged in the target's store. Each
+target also refuses a runtime with uncommitted edits to the harness's code; `--accept-harness`
+does not clear that, so commit or discard the edits first.
 
 Develop the harness in one checkout and run targets from a separate runtime checkout (for this
 repo, a detached worktree at `~/dev/spec-factory-harness`), so a merge never changes code under

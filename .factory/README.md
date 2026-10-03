@@ -68,7 +68,8 @@ A new issue enters intake as a file: `gh issue view N --json body -q .body > /tm
 
 If the runtime has moved to a harness revision this instance has not accepted, or holds uncommitted
 harness edits, every store command is refused. Accept a new revision between tickets with
-`factory --accept-harness <sha> <command>`; the acceptance is logged in the store.
+`factory --accept-harness <sha> <command>`; the acceptance is logged in the store. Uncommitted
+harness edits cannot be accepted: commit or discard them first.
 
 ## Scope
 

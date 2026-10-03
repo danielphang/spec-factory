@@ -41,5 +41,7 @@ requester's suggestion, not a requirement. Verify the as-built fix in the refere
 before relying on it; a NEW criterion that already passes on this checkout proves nothing.
 
 Output: write your complete output, in your role's required format and ending with the
-STATUS / CONFIDENCE / ESCALATIONS trailer, to the file named under "Output file" below. That
-is the only file you may create or modify. Then return the same text as your final message.
+STATUS / CONFIDENCE / ESCALATIONS trailer, to the file named under "Output file" below. For
+every role but the implementer that is the only file you may create or modify. The implementer
+also changes files in its own worktree and commits there, and nowhere else. Then return the same
+text as your final message.
