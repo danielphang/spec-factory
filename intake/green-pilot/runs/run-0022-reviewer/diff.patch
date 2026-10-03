@@ -1,0 +1,66 @@
+diff --git a/factory/cli.py b/factory/cli.py
+index 6bce29897..f9f74d7a3 100644
+--- a/factory/cli.py
++++ b/factory/cli.py
+@@ -427,17 +427,14 @@ def results_record(a, root, cfg):
+         raise Refused("results record: --role reviewer|verifier")
+     if not re.fullmatch(r"[0-9a-f]{40}", a.head or ""):
+         raise Refused(f"results record: --head must be a full commit SHA, got {a.head!r}")
+-    text = Path(a.output).read_text(encoding="utf-8") if a.output else ""
++    # A killed run's output is never read: the build loop passes --output even when the run wrote none.
++    text = Path(a.output).read_text(encoding="utf-8") if a.output and not a.killed else ""
+     if a.killed:
+         st = "KILLED"
+     else:
+         parsed = status.parse(text)
+         st = parsed["status"] or "UNKNOWN"
+-    if a.killed:  # a killed run's output may be cut off: check only a hex Commit: line it does have
+-        cm = re.search(r"^Commit:\s*`?([0-9a-fA-F]{7,40})`?\b", text, re.M)
+-        if cm and not a.head.startswith(cm.group(1).lower()):
+-            raise Refused(f"results record: the output says Commit: {cm.group(1)}, not the head {a.head[:12]}")
+-    else:  # every Commit: line must name the head; with none, the verdict is for no known commit
++    if not a.killed:  # every Commit: line must name the head; with none, the verdict is for no known commit
+         lines = re.findall(r"^Commit:.*$", text, re.M)
+         if not lines:
+             raise Refused("results record: the output has no Commit: line")
+diff --git a/tests/factory/test_killed_checker.py b/tests/factory/test_killed_checker.py
+new file mode 100644
+index 000000000..b30dd08c4
+--- /dev/null
++++ b/tests/factory/test_killed_checker.py
+@@ -0,0 +1,35 @@
++"""A killed checker, recorded the way the build loop records it, parks as a budget kill.
++
++build.js marks a run KILLED when the agent returns nothing (`build.js` runRole: `run finish
++--status-override KILLED`, then `run cleanup`), and records every checker with
++`results record ... --output <the run's output.md> --run <id>`, adding `--killed` for a killed
++run. A killed run never wrote that output file. The shepherd's own killed path records without
++`--output`, so this test drives the build loop's call shape directly.
++"""
++from __future__ import annotations
++
++import pytest
++
++from .test_shepherd import built_to_implementer
++
++
++@pytest.mark.parametrize("role", ["verifier", "reviewer"])
++def test_a_killed_checker_recorded_with_its_missing_output_parks_as_a_budget_kill(tmp_path, role):
++    f, tid, (st,) = built_to_implementer(tmp_path)
++    f.dispatch("implementer", st)
++    other = "reviewer" if role == "verifier" else "verifier"
++    f.dispatch(other, st)
++    assert f.last_join["decision"] == "wait"  # the killed checker has not reported yet
++
++    head = f.ok("ticket", "head", st)["head"]
++    rid = f.ok("run", "start", "--role", role, "--ticket", st)["run_id"]
++    f.ok("run", "compose", rid)
++    assert f.ok("run", "finish", rid, "--status-override", "KILLED")["status"] == "KILLED"
++    f.ok("run", "cleanup", rid)
++    output = f.store / "runs" / rid / "output.md"
++    assert not output.exists()  # a killed run wrote no output
++    f.ok("results", "record", st, "--head", head, "--role", role, "--output", str(output), "--run", rid, "--killed")
++    f.act_on_join(st, rid)
++
++    assert f.results(st)[role] == "KILLED"
++    assert f.state(st) == "parked" and f.ticket(st)["parked"]["reason"] == f"budget kill: {role}"

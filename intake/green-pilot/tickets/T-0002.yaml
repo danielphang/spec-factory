@@ -4,14 +4,14 @@ title: 'A killed reviewer or verifier run parks as "harness-bug: results record 
   kill: <role>"'
 request: requests/T-0002.md
 source: /private/tmp/req18.md
-status: ready-for-planner
+status: closed
 round:
   spec: 1
   pr: 0
 spec:
   version: 1
   approved_version: 1
-plan: null
+plan: plans/T-0002.md
 in_flight: []
 parked: null
 created: '2026-10-03T01:39:51+00:00'
@@ -42,6 +42,24 @@ history:
   to: ready-for-planner
   by: dphang
   approved_version: 1
+- ts: '2026-10-03T05:41:20+00:00'
+  from: ready-for-planner
+  to: planned
+  by: workflow
+  round:
+    spec: 1
+    pr: 0
+- ts: '2026-10-03T05:56:11+00:00'
+  from: planned
+  to: ready-for-parent-verify
+  by: parent-check
+- ts: '2026-10-03T06:04:47+00:00'
+  from: ready-for-parent-verify
+  to: closed
+  by: workflow
+  round:
+    spec: 1
+    pr: 0
 parent: null
 depends_on: []
 parallel_safe: true
@@ -50,4 +68,4 @@ head: null
 merge:
   base_before: null
   main_after: null
-parent_base: null
+parent_base: dd09a7cb1242d1e6e4637817498f5eae9f55a2f8

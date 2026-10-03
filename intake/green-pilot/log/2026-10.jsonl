@@ -87,3 +87,26 @@
 {"ts": "2026-10-03T05:38:14+00:00", "event": "run.finished", "ticket": "T-0001", "run": "run-0018-verifier", "role": "verifier", "status": "VERIFIED", "wall_s": 481}
 {"ts": "2026-10-03T05:38:32+00:00", "event": "change.archived", "ticket": "T-0001", "archived_to": "openspec/changes/archive/2026-10-03-T-0001", "capabilities": ["checker-results"], "decisions": 4}
 {"ts": "2026-10-03T05:38:40+00:00", "event": "ticket.transition", "ticket": "T-0001", "from": "ready-for-parent-verify", "to": "closed", "by": "workflow", "round": {"spec": 1, "pr": 0}}
+{"ts": "2026-10-03T05:39:29+00:00", "event": "run.started", "ticket": "T-0002", "run": "run-0019-planner", "role": "planner", "model": "opus"}
+{"ts": "2026-10-03T05:40:45+00:00", "event": "run.finished", "ticket": "T-0002", "run": "run-0019-planner", "role": "planner", "status": "PLANNED", "wall_s": 76}
+{"ts": "2026-10-03T05:40:55+00:00", "event": "tasks.written", "ticket": "T-0002", "run": "run-0019-planner"}
+{"ts": "2026-10-03T05:41:03+00:00", "event": "plan.added", "ticket": "T-0002", "source": "run-0019-planner"}
+{"ts": "2026-10-03T05:41:11+00:00", "event": "ticket.created", "ticket": "T-0002.1", "parent": "T-0002", "status": "ready-for-implementer"}
+{"ts": "2026-10-03T05:41:20+00:00", "event": "ticket.transition", "ticket": "T-0002", "from": "ready-for-planner", "to": "planned", "by": "workflow", "round": {"spec": 1, "pr": 0}}
+{"ts": "2026-10-03T05:41:47+00:00", "event": "run.started", "ticket": "T-0002.1", "run": "run-0020-implementer", "role": "implementer", "model": "opus"}
+{"ts": "2026-10-03T05:47:46+00:00", "event": "run.finished", "ticket": "T-0002.1", "run": "run-0020-implementer", "role": "implementer", "status": "READY-FOR-REVIEW", "wall_s": 359}
+{"ts": "2026-10-03T05:48:03+00:00", "event": "ticket.transition", "ticket": "T-0002.1", "from": "ready-for-implementer", "to": "checks-in-flight", "by": "workflow", "round": {"spec": 0, "pr": 1}}
+{"ts": "2026-10-03T05:48:20+00:00", "event": "run.started", "ticket": "T-0002.1", "run": "run-0021-verifier", "role": "verifier", "model": "opus"}
+{"ts": "2026-10-03T05:48:20+00:00", "event": "run.started", "ticket": "T-0002.1", "run": "run-0022-reviewer", "role": "reviewer", "model": "fable"}
+{"ts": "2026-10-03T05:52:35+00:00", "event": "run.finished", "ticket": "T-0002.1", "run": "run-0022-reviewer", "role": "reviewer", "status": "APPROVE", "wall_s": 255}
+{"ts": "2026-10-03T05:52:54+00:00", "event": "result.recorded", "ticket": "T-0002.1", "head": "d8a11792727455830cb78d4417f56a51104e0120", "role": "reviewer", "status": "APPROVE", "run": "run-0022-reviewer"}
+{"ts": "2026-10-03T05:55:09+00:00", "event": "run.finished", "ticket": "T-0002.1", "run": "run-0021-verifier", "role": "verifier", "status": "VERIFIED", "wall_s": 409}
+{"ts": "2026-10-03T05:55:28+00:00", "event": "result.recorded", "ticket": "T-0002.1", "head": "d8a11792727455830cb78d4417f56a51104e0120", "role": "verifier", "status": "VERIFIED", "run": "run-0021-verifier"}
+{"ts": "2026-10-03T05:55:28+00:00", "event": "result.recorded", "ticket": "T-0002.1", "head": "d8a11792727455830cb78d4417f56a51104e0120", "role": "ci", "status": "PASS", "run": "run-0021-verifier"}
+{"ts": "2026-10-03T05:55:46+00:00", "event": "ticket.transition", "ticket": "T-0002.1", "from": "checks-in-flight", "to": "ready-for-merge", "by": "workflow", "round": {"spec": 0, "pr": 1}}
+{"ts": "2026-10-03T05:55:54+00:00", "event": "merge.done", "ticket": "T-0002.1", "head": "d8a11792727455830cb78d4417f56a51104e0120", "base_before": "dd09a7cb1242d1e6e4637817498f5eae9f55a2f8", "main_after": "7c0a0353d3d0759f0942ab2ab96395aff8f70f29"}
+{"ts": "2026-10-03T05:56:11+00:00", "event": "ticket.transition", "ticket": "T-0002", "from": "planned", "to": "ready-for-parent-verify", "by": "parent-check"}
+{"ts": "2026-10-03T05:56:20+00:00", "event": "run.started", "ticket": "T-0002", "run": "run-0023-verifier", "role": "verifier", "model": "opus"}
+{"ts": "2026-10-03T06:04:19+00:00", "event": "run.finished", "ticket": "T-0002", "run": "run-0023-verifier", "role": "verifier", "status": "VERIFIED", "wall_s": 480}
+{"ts": "2026-10-03T06:04:38+00:00", "event": "change.archived", "ticket": "T-0002", "archived_to": "openspec/changes/archive/2026-10-03-T-0002", "capabilities": ["checker-results"], "decisions": 5}
+{"ts": "2026-10-03T06:04:47+00:00", "event": "ticket.transition", "ticket": "T-0002", "from": "ready-for-parent-verify", "to": "closed", "by": "workflow", "round": {"spec": 1, "pr": 0}}

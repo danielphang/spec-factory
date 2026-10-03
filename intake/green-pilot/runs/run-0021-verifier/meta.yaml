@@ -1,0 +1,26 @@
+run_id: run-0021-verifier
+role: verifier
+ticket: T-0002.1
+model: opus
+round: 1
+spec_version: 1
+started: '2026-10-03T05:48:20+00:00'
+finished: '2026-10-03T05:55:09+00:00'
+wall_s: 409
+status: VERIFIED
+input_sources:
+- specs/T-0002.1/subticket.md
+- specs/T-0002/v1.md
+- runs/run-0020-implementer/output.md
+- runs/run-0021-verifier/diff.patch
+environment_files:
+- uv.lock
+branch: factory/T-0002.1
+base: dd09a7cb1242d1e6e4637817498f5eae9f55a2f8
+head: d8a11792727455830cb78d4417f56a51104e0120
+worktree: /Users/dphang/dev/spec-factory/intake/green-pilot/runs/run-0021-verifier/wt
+confidence: high. I ran every acceptance command verbatim on head and on base under bash and zsh, and
+  each matched its expected result. The new test fails on base with the stated `FileNotFoundError`. Both
+  gate commands exited 0, and the probes show the fix is not tied to the tested inputs.
+escalations: []
+escalations_note: null

@@ -1,0 +1,23 @@
+run_id: run-0023-verifier
+role: verifier
+ticket: T-0002
+model: opus
+round: 0
+spec_version: 1
+started: '2026-10-03T05:56:19+00:00'
+finished: '2026-10-03T06:04:19+00:00'
+wall_s: 480
+status: VERIFIED
+input_sources:
+- specs/T-0002/v1.md
+environment_files:
+- uv.lock
+branch: null
+base: dd09a7cb1242d1e6e4637817498f5eae9f55a2f8
+head: 7c0a0353d3d0759f0942ab2ab96395aff8f70f29
+worktree: /Users/dphang/dev/spec-factory/intake/green-pilot/runs/run-0023-verifier/wt
+confidence: high. Every acceptance command was run verbatim on both base and head, and every output matched
+  the spec exactly. The new test fails on base code for the stated reason. The gate exited 0. The probes
+  found no special-casing.
+escalations: []
+escalations_note: null

@@ -1,0 +1,25 @@
+run_id: run-0022-reviewer
+role: reviewer
+ticket: T-0002.1
+model: fable
+round: 1
+spec_version: 1
+started: '2026-10-03T05:48:20+00:00'
+finished: '2026-10-03T05:52:35+00:00'
+wall_s: 255
+status: APPROVE
+input_sources:
+- specs/T-0002.1/subticket.md
+- specs/T-0002/v1.md
+- runs/run-0020-implementer/output.md
+- runs/run-0022-reviewer/diff.patch
+environment_files:
+- uv.lock
+branch: factory/T-0002.1
+base: dd09a7cb1242d1e6e4637817498f5eae9f55a2f8
+head: d8a11792727455830cb78d4417f56a51104e0120
+worktree: /Users/dphang/dev/spec-factory/intake/green-pilot/runs/run-0022-reviewer/wt
+confidence: high, every acceptance WHEN re-run verbatim on the head matched its THEN, the factory suite
+  passes at 70, lint is clean, and the diff is confined to the two files the sub-ticket names.
+escalations: []
+escalations_note: null

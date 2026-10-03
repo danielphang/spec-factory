@@ -1,0 +1,48 @@
+id: T-0002.1
+type: sub-ticket
+title: 'A killed checker records KILLED without reading its output, so the ticket parks as `budget kill:
+  <role>`'
+request: requests/T-0002.md
+source: plan:run-0019-planner
+status: merged
+round:
+  spec: 0
+  pr: 1
+spec:
+  version: 1
+  approved_version: 1
+plan: null
+in_flight: []
+parked: null
+created: '2026-10-03T05:41:11+00:00'
+history:
+- ts: '2026-10-03T05:48:03+00:00'
+  from: ready-for-implementer
+  to: checks-in-flight
+  by: workflow
+  round:
+    spec: 0
+    pr: 1
+- ts: '2026-10-03T05:55:46+00:00'
+  from: checks-in-flight
+  to: ready-for-merge
+  by: workflow
+  round:
+    spec: 0
+    pr: 1
+- ts: '2026-10-03T05:55:54+00:00'
+  from: ready-for-merge
+  to: merged
+  by: merge
+  head: d8a11792727455830cb78d4417f56a51104e0120
+parent: T-0002
+depends_on: []
+parallel_safe: true
+branch: factory/T-0002.1
+head: d8a11792727455830cb78d4417f56a51104e0120
+merge:
+  base_before: dd09a7cb1242d1e6e4637817498f5eae9f55a2f8
+  main_after: 7c0a0353d3d0759f0942ab2ab96395aff8f70f29
+parent_base: null
+label: ST-1
+merge_refused: null

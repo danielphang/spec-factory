@@ -52,3 +52,7 @@ Suggested fix: Word it as "Today line 425 reads `... if a.output else ""`; chang
 Not verified, not blocking: the request's GitHub reference `danielphang/spec-factory#18` (no network used in this review). Everything else in Evidence that is checkable on disk checked out.
 
 No BLOCKING findings. The spec is grounded, each acceptance item is runnable and discriminating, the one design decision (a killed run's output is never read) is explicit and justified, no protected or guardrail path is touched, and an implementer could start from design A and B without a question. I would bet on it producing a correct PR.
+
+## Verifier results
+
+d8a11792727455830cb78d4417f56a51104e0120 · T-0002.1 · VERIFIED · run-0021-verifier
