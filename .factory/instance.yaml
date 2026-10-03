@@ -7,12 +7,12 @@ repo_name: "spec-factory (the design repo at ~/dev/spec-factory, branch main)"
 # instance has accepted (.factory/harness.lock), moved only by the upgrade step. `factory paths`
 # reports the checkout actually running.
 harness: "/Users/dphang/dev/spec-factory-harness"
-# The live store, relative to the repo root. It stays at intake/state until the post-close operator
-# step moves it to .factory/state. FACTORY_STATE overrides it.
-state_dir: intake/state
+# The live store, relative to the repo root (moved from intake/state by T-0012's post-close step).
+# FACTORY_STATE overrides it.
+state_dir: .factory/state
 # Filled into the preamble's protected-path line at run start as `class (glob, glob), ...`.
 protected_paths:
-  infra: [".factory/**", "intake/**"]
+  infra: [".factory/**"]
   harness: ["factory/**", "bin/factory", "agents/**", "pyproject.toml", "uv.lock"]
   generated: ["docs/prompts/**"]
   reference_harness: ["~/dev/nanobot-upstream/**"]
