@@ -1,0 +1,16 @@
+run_id: run-0003-critic
+role: critic
+ticket: T-0001
+model: fable
+round: 1
+spec_version: 1
+started: '2026-10-02T23:58:17+00:00'
+finished: '2026-10-03T00:02:05+00:00'
+wall_s: 228
+status: APPROVE
+input_sources:
+- specs/T-0001/v1.md
+confidence: high — every cited path, line and "today" output I checked matched; the one uncertainty the
+  writer left open (real checker format) I resolved from the role prompts.
+escalations: []
+escalations_note: null

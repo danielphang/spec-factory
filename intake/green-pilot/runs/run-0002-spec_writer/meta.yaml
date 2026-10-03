@@ -1,0 +1,17 @@
+run_id: run-0002-spec_writer
+role: spec_writer
+ticket: T-0001
+model: opus
+round: 0
+spec_version: 0
+started: '2026-10-02T23:48:38+00:00'
+finished: '2026-10-02T23:57:52+00:00'
+wall_s: 554
+status: READY-FOR-CRITIC
+input_sources:
+- runs/run-0001-triage/output.md
+- requests/T-0001.md
+confidence: high, every scenario was run on base and on a simulated fix, and the only existing-test breakage
+  was observed and is declared
+escalations: []
+escalations_note: null

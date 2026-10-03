@@ -1,21 +1,47 @@
 id: T-0001
-type: null
-title: 'Harness: a checker result with no Commit: line, or a non-SHA one, is recorded as if it checked
-  the current commit'
+type: bug
+title: 'Harness: `results record` accepts a checker output with no `Commit:` line, a non-SHA `Commit:`
+  value, or a stale later `Commit:` line, and records it against the current head'
 request: requests/T-0001.md
 source: /private/tmp/req16.md
-status: ready-for-triage
+status: ready-for-planner
 round:
-  spec: 0
+  spec: 1
   pr: 0
 spec:
-  version: 0
-  approved_version: null
+  version: 1
+  approved_version: 1
 plan: null
 in_flight: []
 parked: null
 created: '2026-10-02T23:45:59+00:00'
-history: []
+history:
+- ts: '2026-10-02T23:48:30+00:00'
+  from: ready-for-triage
+  to: ready-for-spec-writer
+  by: workflow
+  round:
+    spec: 0
+    pr: 0
+- ts: '2026-10-02T23:58:09+00:00'
+  from: ready-for-spec-writer
+  to: ready-for-critic
+  by: workflow
+  round:
+    spec: 1
+    pr: 0
+- ts: '2026-10-03T00:02:13+00:00'
+  from: ready-for-critic
+  to: awaiting-spec-gate
+  by: workflow
+  round:
+    spec: 1
+    pr: 0
+- ts: '2026-10-03T01:39:30+00:00'
+  from: awaiting-spec-gate
+  to: ready-for-planner
+  by: dphang
+  approved_version: 1
 parent: null
 depends_on: []
 parallel_safe: true

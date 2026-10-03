@@ -1,0 +1,28 @@
+run_id: run-0001-triage
+role: triage
+ticket: T-0001
+model: opus
+round: 0
+spec_version: 0
+started: '2026-10-02T23:46:23+00:00'
+finished: '2026-10-02T23:48:14+00:00'
+wall_s: 111
+status: ACCEPT
+input_sources:
+- requests/T-0001.md
+confidence: high, the defect reproduces from the code on this checkout and the requested behaviour is
+  fully specified apart from the scope gap escalated below
+escalations:
+- 'The request''s Scope ("`factory/cli.py` and one new test file") does not match the codebase. An existing
+  test depends on the behaviour being removed: `tests/factory/test_shepherd.py:263-268` (in the "merge
+  waits for every checker" test) writes `red.md` containing `Commit: HEAD` and records it directly with
+  `results record ... --output red.md` through `f.ok`, which asserts exit 0. Under the proposed fix that
+  call exits 2 and the test fails. Fixing it means changing an existing test (point the call at the run''s
+  `output.md`, where the harness substitutes the real head, or write the SHA into the fixture). Guardrails
+  allow that only if the approved spec lists the test under "Tests to change". The spec writer should
+  declare it, and the human approving the spec should know the scope is cli.py plus one existing-test
+  fixture edit plus a new test file. The other `Commit: HEAD` fixtures (`test_shepherd.py:327, 408-409,
+  489` and the checker stubs under `tests/factory/fixtures/stubs/`) pass through `dispatch`, which substitutes
+  the real head (`test_shepherd.py:648`) before recording at :710, so I expect them unaffected. I read
+  this from the code and did not run it.'
+escalations_note: null
