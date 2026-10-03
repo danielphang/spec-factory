@@ -36,11 +36,33 @@ def _rel(root: Path, p: Path) -> str:
 
 # ----- ticket -----------------------------------------------------------------
 
+def _frontmatter(text: str, src: Path) -> dict:
+    """A request's optional YAML header between a leading `---` line and the next `---` line.
+    {} when there is none; Refused when it is unterminated, does not parse, or is not a mapping."""
+    lines = text.splitlines()
+    if not lines or lines[0].strip() != "---":
+        return {}
+    end = next((i for i, ln in enumerate(lines[1:], 1) if ln.strip() == "---"), None)
+    if end is None:
+        raise Refused(f"{src}: frontmatter opened with --- but never closed")
+    try:
+        fm = yaml.safe_load("\n".join(lines[1:end]))
+    except yaml.YAMLError as e:
+        first = str(e).splitlines()[0]
+        raise Refused(f"{src}: frontmatter is not valid YAML ({first}); quote a value that contains ': '")
+    if fm is None:
+        return {}
+    if not isinstance(fm, dict):
+        raise Refused(f"{src}: frontmatter must be a YAML mapping (key: value lines)")
+    return fm
+
+
 def ticket_new(a, root, cfg):
     src = Path(a.file).expanduser().resolve()
     if not src.exists():
         raise Refused(f"no such file {src}")
     text = src.read_text(encoding="utf-8")
+    fm = _frontmatter(text, src)  # refuse a bad header before anything is written
     h = store.content_hash(text)
     idx = store.load_index(root)
     for tid, rec in idx.items():
@@ -49,7 +71,8 @@ def ticket_new(a, root, cfg):
     tid = store.next_ticket_id(root)
     rel = f"requests/{tid}.md"
     store.write_text(root / rel, text)
-    title = next((ln.lstrip("# ").strip() for ln in text.splitlines() if ln.startswith("#")), src.stem)
+    title = str(fm["title"]).strip() if fm.get("title") else \
+        next((ln.lstrip("# ").strip() for ln in text.splitlines() if ln.startswith("#")), src.stem)
     t = store.new_ticket(root, tid, title, rel, str(src))
     store.save_ticket(root, t)
     idx[tid] = {"source": str(src), "hash": h, "imported": store.now()}
