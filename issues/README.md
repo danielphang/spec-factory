@@ -25,7 +25,7 @@ A fix closes its issue through a reviewed change on `main`; the merge column is 
 | [18](https://github.com/danielphang/spec-factory/issues/18) | Harness: a killed checker run parks as a harness bug instead of a budget kill (found by #16's writer) | green-pilot T-0002 | green `7c0a0353d` | harness |
 | [19](https://github.com/danielphang/spec-factory/issues/19) | Repo layout: the harness moves home, each target carries a `.factory/` instance (p0; after the #16 pilot; carries #7's harness side) | not in intake yet | — | — |
 | [20](https://github.com/danielphang/spec-factory/issues/20) | Prompts: ponytail's check order, callers-first root-cause rule, reviewer over-building tags, `factory:` deferral marker (after #19) | not in intake yet | — | — |
-| [21](https://github.com/danielphang/spec-factory/issues/21) | Current-state spec for the factory itself: seed its own current truth, README as the overview (after #19 and #14) | not in intake yet | — | — |
+| [21](https://github.com/danielphang/spec-factory/issues/21) | Current-state spec for the factory itself: seed its own current truth, README as the overview (after #19; #13, #14 fold in) | not in intake yet | — | — |
 
 Issues 1–10 are applied and can be closed against their merge; 11 applied (`9168ce1`); 13 and 14 fold into #21 (checklists until it archives); 15 closed as superseded. #12 was a duplicate of #11.
 New findings go straight to GitHub issues; this file is the index.
