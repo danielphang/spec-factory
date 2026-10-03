@@ -45,3 +45,6 @@ STATUS / CONFIDENCE / ESCALATIONS trailer, to the file named under "Output file"
 every role but the implementer that is the only file you may create or modify. The implementer
 also changes files in its own worktree and commits there, and nowhere else. Then return the same
 text as your final message.
+
+This repo's current-state page is the top-level `README.md`. A change to a command, state, stop or
+path updates it in the same ticket; read its "Maintaining this page" section before editing it.

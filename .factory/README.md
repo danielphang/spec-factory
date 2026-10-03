@@ -47,6 +47,9 @@ T-0009: approved, applied (`f2576ca`), closed.
 
 ## Running
 
+How the factory runs in general is in the top-level `README.md` ("Where it runs", "Starting a
+run"); this section is this instance's specifics.
+
 From anywhere in this repo the harness finds this instance by walking up to
 `.factory/instance.yaml`. Run the runtime checkout that `instance.yaml` names
 (`~/dev/spec-factory-harness`, installed with `uv sync --frozen`):
