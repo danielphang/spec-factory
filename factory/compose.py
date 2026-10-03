@@ -6,9 +6,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from factory import store
-
-PROMPTS = Path(__file__).resolve().parent / "prompts"
+from factory import instance, store
 
 
 def _runs_for(root: Path, ticket: str, role: str, exclude: str) -> list[str]:
@@ -54,7 +52,7 @@ def gate_commands(cfg: dict) -> list[str]:
 def compose(root: Path, cfg: dict, meta: dict, t: dict) -> tuple[str, list[str]]:
     role, run_id, tid = meta["role"], meta["run_id"], t["id"]
     out_path = root / "runs" / run_id / "output.md"
-    parts = [(PROMPTS / "context.md").read_text(encoding="utf-8").rstrip(),
+    parts = [(instance.require() / "context.md").read_text(encoding="utf-8").rstrip(),
              f"\n## Output file\n`{out_path}`\n"]
     sources: list[str] = []
 

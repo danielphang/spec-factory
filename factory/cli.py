@@ -9,14 +9,16 @@ import argparse
 import datetime as dt
 import getpass
 import json
+import os
 import re
 import shutil
+import subprocess
 import sys
 from pathlib import Path
 
 import yaml
 
-from factory import compose, gitops, specstore, status, store, subtickets
+from factory import compose, gitops, instance, specstore, status, store, subtickets
 from factory.store import Refused
 
 ROLES = ("triage", "spec_writer", "critic", "planner", "implementer", "reviewer", "verifier")
@@ -190,7 +192,8 @@ def run_start(a, root, cfg):
         _start_build_run(root, cfg, t, meta, d, parent_close)
     store.write_yaml(d / "meta.yaml", meta)
     prompt_name = a.role
-    sysp = (PROMPTS / "preamble.md").read_text(encoding="utf-8").rstrip() + "\n\n" + (PROMPTS / f"{prompt_name}.md").read_text(encoding="utf-8")
+    preamble = instance.fill_preamble((PROMPTS / "preamble.md").read_text(encoding="utf-8"), cfg)
+    sysp = preamble.rstrip() + "\n\n" + (PROMPTS / f"{prompt_name}.md").read_text(encoding="utf-8")
     store.write_text(d / "system-prompt.txt", sysp)
     t["in_flight"].append(rid)
     store.save_ticket(root, t)
@@ -713,10 +716,90 @@ def resolve(a, root, cfg):
 
 # ----- spec store (doc §Harness, Spec store; part K) ----------------------------------
 
-def init_cmd(a, root, cfg):
+def _git_toplevel(cwd: Path) -> Path:
+    cp = subprocess.run(["git", "-C", str(cwd), "rev-parse", "--show-toplevel"], capture_output=True, text=True)
+    if cp.returncode != 0 or not cp.stdout.strip():
+        raise Refused(f"factory init: {cwd} is not inside a git work tree")
+    return Path(cp.stdout.strip()).resolve()
+
+
+def _new_instance_yaml(repo_name: str) -> str:
+    """factory/instance.template.yaml with the per-instance values filled (design B.5)."""
+    text = instance.INSTANCE_TEMPLATE.read_text(encoding="utf-8")
+    for key, val in (("__REPO_NAME__", repo_name), ("__HARNESS__", str(instance.HARNESS))):
+        if key not in text:
+            raise Refused(f"{instance.INSTANCE_TEMPLATE} has no {key}")
+        text = text.replace(key, json.dumps(val, ensure_ascii=False))
+    return text
+
+
+def _revision() -> str:
+    rev = instance.harness_revision()
+    if rev is None:
+        raise Refused(f"factory init: cannot read the harness revision of {instance.HARNESS} (not a git checkout?)")
+    return rev
+
+
+def init_cmd(a):
+    """Create whatever of the instance is missing (design B.5); idempotent. The instance is
+    FACTORY_INSTANCE, else `.factory/` at the git top level of the working directory. Its pieces
+    (instance.yaml, context.md, harness.lock, agent files) are written only when the store in use
+    is the instance's own: a run on a throwaway store (FACTORY_STATE elsewhere, as every test
+    does) initialises that store and nothing else."""
+    top = _git_toplevel(instance.caller_cwd())
+    env = os.environ.get("FACTORY_INSTANCE")
+    inst = Path(env).expanduser().resolve() if env else top / instance.DIRNAME
+    created: list[str] = []
+    cfg_path = inst / instance.CONFIG_NAME
+    if not cfg_path.exists():
+        if not a.repo_name:
+            raise Refused(f"factory init: {cfg_path} does not exist; pass --repo-name NAME to create it")
+        _revision()  # refuse before writing anything if the lock cannot be written
+        store.write_text(cfg_path, _new_instance_yaml(a.repo_name))
+        created.append(str(cfg_path))
+    cfg = instance.load_config(inst)
+    root = instance.state_root(inst, cfg)
+    agents: list[str] = []
+    if instance.is_own_store(inst, cfg, root):
+        ctx = inst / "context.md"
+        if not ctx.exists():
+            store.write_text(ctx, instance.CONTEXT_TEMPLATE.read_text(encoding="utf-8"))
+            created.append(str(ctx))
+        lock = inst / "harness.lock"
+        if not lock.exists():
+            store.write_text(lock, _revision() + "\n")
+            created.append(str(lock))
+        dest = instance.repo_root(inst) / ".claude" / "agents"
+        for src in sorted(instance.AGENTS.glob("factory-*.md")):
+            if not (dest / src.name).exists():
+                (dest / src.name).parent.mkdir(parents=True, exist_ok=True)
+                shutil.copyfile(src, dest / src.name)
+                agents.append(str(dest / src.name))
+    had_gitignore = (root / ".gitignore").exists()
+    store.ensure_gitignore(root)
     written = specstore.init(root)
-    store.log_event(root, "store.initialised", files=written)
-    out({"ok": True, "written": written, "active": True})
+    if not had_gitignore:
+        written.insert(0, ".gitignore")
+    if written or created or agents:
+        store.log_event(root, "store.initialised", files=written, instance=created, agents=agents)
+    if agents:
+        print("restart the session so the agents register", file=sys.stderr)
+    out({"ok": True, "written": written, "active": True, "instance": str(inst), "state": str(root),
+         "created": created, "agents": agents})
+
+
+def paths_cmd(a):
+    """Absolute paths a dispatcher needs (design B.6). Runs no lock check and writes nothing."""
+    inst = instance.find()
+    state = None
+    if inst is not None:
+        state = str(instance.state_root(inst, instance.load_config(inst)))
+    h = instance.HARNESS
+    out({"ok": True, "harness": str(h), "bin": str(h / "bin" / "factory"),
+         "intake_workflow": str(h / "factory" / "workflows" / "intake.js"),
+         "build_workflow": str(h / "factory" / "workflows" / "build.js"),
+         "harness_revision": instance.harness_revision(),
+         "instance": str(inst) if inst is not None else None, "state": state})
 
 
 def spec_tasks(a, root, cfg):
@@ -908,7 +991,10 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("id")
     p.set_defaults(fn=merge_cmd)
     p = sp.add_parser("init")
+    p.add_argument("--repo-name")
     p.set_defaults(fn=init_cmd)
+    p = sp.add_parser("paths")
+    p.set_defaults(fn=paths_cmd)
     p = sp.add_parser("archive")
     p.add_argument("id")
     p.set_defaults(fn=archive_cmd)
@@ -950,9 +1036,12 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv: list[str] | None = None) -> int:
     a = build_parser().parse_args(argv)
-    cfg = store.load_config()
-    root = store.state_root(cfg)
     try:
+        if a.cmd in ("init", "paths"):  # exempt from the instance refusal (design B.1)
+            a.fn(a)
+            return 0
+        cfg = store.load_config()  # refused when no instance is found: nothing is written
+        root = store.state_root(cfg)
         a.fn(a, root, cfg)
         return 0
     except Refused as e:

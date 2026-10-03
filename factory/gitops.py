@@ -2,7 +2,7 @@
 2026-10-02: no remote, no CI; the merge gate is the gate suite plus the two checkers, then a
 local --no-ff merge into the integration branch).
 
-The target repo is `repo_root` (FACTORY_REPO or the checkout this package lives in). Worktrees
+The target repo is `repo_root` (FACTORY_REPO, else the parent of the instance directory). Worktrees
 live under <store>/worktrees/<run or ticket id>. Nothing here pushes.
 """
 from __future__ import annotations
@@ -12,14 +12,11 @@ import subprocess
 import time
 from pathlib import Path
 
-from factory import store
+from factory import instance, store
 
 
 def repo_root(cfg: dict | None = None) -> Path:
-    env = os.environ.get("FACTORY_REPO")
-    if env:
-        return Path(env).expanduser().resolve()
-    return store.REPO_ROOT
+    return instance.repo_root()
 
 
 def integration_branch(cfg: dict, repo: Path) -> str:
