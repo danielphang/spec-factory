@@ -4,14 +4,14 @@ title: 'Harness: `results record` accepts a checker output with no `Commit:` lin
   value, or a stale later `Commit:` line, and records it against the current head'
 request: requests/T-0001.md
 source: /private/tmp/req16.md
-status: ready-for-planner
+status: planned
 round:
   spec: 1
   pr: 0
 spec:
   version: 1
   approved_version: 1
-plan: null
+plan: plans/T-0001.md
 in_flight: []
 parked: null
 created: '2026-10-02T23:45:59+00:00'
@@ -42,6 +42,13 @@ history:
   to: ready-for-planner
   by: dphang
   approved_version: 1
+- ts: '2026-10-03T01:41:41+00:00'
+  from: ready-for-planner
+  to: planned
+  by: workflow
+  round:
+    spec: 1
+    pr: 0
 parent: null
 depends_on: []
 parallel_safe: true

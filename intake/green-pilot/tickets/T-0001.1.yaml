@@ -1,0 +1,34 @@
+id: T-0001.1
+type: sub-ticket
+title: '`results record` refuses a checker output whose `Commit:` lines do not all name the head'
+request: requests/T-0001.md
+source: plan:run-0004-planner
+status: checks-in-flight
+round:
+  spec: 0
+  pr: 1
+spec:
+  version: 1
+  approved_version: 1
+plan: null
+in_flight: []
+parked: null
+created: '2026-10-03T01:41:33+00:00'
+history:
+- ts: '2026-10-03T01:56:18+00:00'
+  from: ready-for-implementer
+  to: checks-in-flight
+  by: workflow
+  round:
+    spec: 0
+    pr: 1
+parent: T-0001
+depends_on: []
+parallel_safe: true
+branch: factory/T-0001.1
+head: e28db6a255e8cd0032c67ada62b74b6681cd511d
+merge:
+  base_before: null
+  main_after: null
+parent_base: null
+label: ST-1

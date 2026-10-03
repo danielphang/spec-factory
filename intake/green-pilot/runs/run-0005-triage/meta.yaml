@@ -1,0 +1,16 @@
+run_id: run-0005-triage
+role: triage
+ticket: T-0002
+model: opus
+round: 0
+spec_version: 0
+started: '2026-10-03T01:40:15+00:00'
+finished: '2026-10-03T01:42:07+00:00'
+wall_s: 112
+status: ACCEPT
+input_sources:
+- requests/T-0002.md
+confidence: high. The defect is reproduced on this checkout (exit 1 with `FileNotFoundError` with `--output`,
+  exit 0 with a KILLED row without it), and the `budget kill:` park path already exists in the join.
+escalations: []
+escalations_note: null

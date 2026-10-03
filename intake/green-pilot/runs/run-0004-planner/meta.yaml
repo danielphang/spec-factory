@@ -1,0 +1,16 @@
+run_id: run-0004-planner
+role: planner
+ticket: T-0001
+model: opus
+round: 1
+spec_version: 1
+started: '2026-10-03T01:40:02+00:00'
+finished: '2026-10-03T01:41:10+00:00'
+wall_s: 68
+status: PLANNED
+input_sources:
+- specs/T-0001/v1.md
+confidence: high. It is one small change whose parts cannot be merged separately, and every cited path
+  and line was confirmed on this checkout.
+escalations: []
+escalations_note: null

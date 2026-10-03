@@ -1,0 +1,34 @@
+run_id: run-0008-verifier
+role: verifier
+ticket: T-0001.1
+model: opus
+round: 1
+spec_version: 1
+started: '2026-10-03T01:56:35+00:00'
+finished: '2026-10-03T02:04:42+00:00'
+wall_s: 487
+status: FAILED
+input_sources:
+- specs/T-0001.1/subticket.md
+- specs/T-0001/v1.md
+- runs/run-0006-implementer/output.md
+- runs/run-0008-verifier/diff.patch
+branch: factory/T-0001.1
+base: f8f40e0c550c86d34a5b80ef273c7b4943abf412
+head: e28db6a255e8cd0032c67ada62b74b6681cd511d
+worktree: /Users/dphang/dev/spec-factory/intake/green-pilot/runs/run-0008-verifier/wt
+confidence: high. I ran all nine acceptance commands verbatim on base and head in two shells, plus the
+  factory suite, lint and the gate. The one failure is the gate's exit 1, which I traced to `neonize`
+  missing from the environment and reproduced identically on base.
+escalations:
+- 'Gate FAIL is environmental, not caused by this PR. A lock-synced `.venv` lacks `neonize`, which is
+  not declared in `pyproject.toml`. The same 9 tests fail at base `f8f40e0c5`. An operator decision is
+  needed: declare `neonize` as a dependency (protected path `pyproject.toml`), add the 9 ids to the gate
+  baseline, or run checkers in green''s `.venv`. Once that is settled, re-verification should only need
+  the gate re-run, since every acceptance criterion passed.'
+- The full-suite gate modifies protected `webui/package-lock.json` during its run (confirmed independently;
+  restored, not committed). Any role that commits with `-a` after the gate would commit a protected-path
+  change.
+- '`uv.lock` is gitignored (`.gitignore:61`), so "synced from the lock" is not reproducible across worktrees.
+  My copy of green''s lock differs from the implementer''s.'
+escalations_note: null

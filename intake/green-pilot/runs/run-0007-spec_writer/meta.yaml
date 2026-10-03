@@ -1,0 +1,18 @@
+run_id: run-0007-spec_writer
+role: spec_writer
+ticket: T-0002
+model: opus
+round: 0
+spec_version: 0
+started: '2026-10-03T01:42:25+00:00'
+finished: '2026-10-03T01:56:26+00:00'
+wall_s: 841
+status: READY-FOR-CRITIC
+input_sources:
+- runs/run-0005-triage/output.md
+- requests/T-0002.md
+confidence: 'high. The defect reproduces black-box on this checkout and on a simulation of #16 merged,
+  and the one-line fix gives every expected result on both, with the factory suite green. The simulation
+  of #16 is my own and not its merged code.'
+escalations: []
+escalations_note: null
