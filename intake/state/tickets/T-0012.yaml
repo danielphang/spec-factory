@@ -4,7 +4,7 @@ title: 'Move the harness into spec-factory and give each target repo a `.factory
   B first; carries #7''s harness side)'
 request: requests/T-0012.md
 source: /Users/dphang/dev/spec-factory/intake/requests/19_harness_home.md
-status: ready-for-parent-verify
+status: closed
 round:
   spec: 2
   pr: 0
@@ -79,6 +79,18 @@ history:
   round:
     spec: 2
     pr: 0
+- ts: '2026-10-03T16:58:21+00:00'
+  from: ready-for-parent-verify
+  to: parked
+  by: park
+  reason: 'archive: no spec store (factory init not run)
+
+    {''ok'': false, ''error'': ''no spec store (factory init not run)''}'
+- ts: '2026-10-03T16:58:44+00:00'
+  from: parked
+  to: closed
+  by: dphang
+  resolve: close
 parent: null
 depends_on: []
 parallel_safe: true
