@@ -154,7 +154,7 @@ def guard(inst: Path, cfg: dict, root: Path, accept: str | None) -> None:
                       f"rerun with --accept-harness {rev} to accept it")
 
 
-PROTECTED_PLACEHOLDER ="  {auth, payments, migrations, infra, public API, dependencies}"
+PROTECTED_PLACEHOLDER = "  {auth, payments, migrations, infra, public API, dependencies}"
 
 
 def fill_preamble(text: str, cfg: dict) -> str:
