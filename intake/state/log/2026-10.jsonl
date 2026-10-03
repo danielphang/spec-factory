@@ -263,3 +263,6 @@
 {"ts": "2026-10-03T07:04:12+00:00", "event": "run.started", "ticket": "T-0012", "run": "run-0053-critic", "role": "critic", "model": "fable"}
 {"ts": "2026-10-03T07:07:41+00:00", "event": "run.finished", "ticket": "T-0012", "run": "run-0053-critic", "role": "critic", "status": "APPROVE", "wall_s": 209}
 {"ts": "2026-10-03T07:07:51+00:00", "event": "ticket.transition", "ticket": "T-0012", "from": "ready-for-critic", "to": "awaiting-spec-gate", "by": "workflow", "round": {"spec": 2, "pr": 0}}
+{"ts": "2026-10-03T07:39:06+00:00", "event": "spec.added", "ticket": "T-0012", "version": 3, "source": "gate edit /Users/dphang/dev/spec-factory/intake/answers/T-0012-gate-edit.md"}
+{"ts": "2026-10-03T07:39:06+00:00", "event": "approval.recorded", "ticket": "T-0012", "kind": "spec", "version": 3, "by": "dphang"}
+{"ts": "2026-10-03T07:39:06+00:00", "event": "ticket.transition", "ticket": "T-0012", "from": "awaiting-spec-gate", "to": "ready-for-planner", "by": "dphang"}
