@@ -433,9 +433,20 @@ def results_record(a, root, cfg):
     else:
         parsed = status.parse(text)
         st = parsed["status"] or "UNKNOWN"
-    cm = re.search(r"^Commit:\s*`?([0-9a-fA-F]{7,40})`?\b", text, re.M)
-    if cm and not a.head.startswith(cm.group(1).lower()):
-        raise Refused(f"results record: the output says Commit: {cm.group(1)}, not the head {a.head[:12]}")
+    if a.killed:  # a killed run's output may be cut off: check only a hex Commit: line it does have
+        cm = re.search(r"^Commit:\s*`?([0-9a-fA-F]{7,40})`?\b", text, re.M)
+        if cm and not a.head.startswith(cm.group(1).lower()):
+            raise Refused(f"results record: the output says Commit: {cm.group(1)}, not the head {a.head[:12]}")
+    else:  # every Commit: line must name the head; with none, the verdict is for no known commit
+        lines = re.findall(r"^Commit:.*$", text, re.M)
+        if not lines:
+            raise Refused("results record: the output has no Commit: line")
+        for line in lines:
+            cm = re.match(r"Commit:\s*`?([0-9a-fA-F]{7,40})`?\b", line)
+            if not cm:
+                raise Refused(f"results record: Commit: {line[len('Commit:'):].strip()} is not a commit id")
+            if not a.head.startswith(cm.group(1).lower()):
+                raise Refused(f"results record: the output says Commit: {cm.group(1)}, not the head {a.head[:12]}")
     stale = t.get("head") is not None and a.head != t.get("head")
     rows = [store.record_result(root, t["id"], a.head, a.role, st, a.run)]
     if a.role == "verifier" and not a.killed:
