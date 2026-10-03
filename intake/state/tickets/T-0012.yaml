@@ -4,14 +4,14 @@ title: 'Move the harness into spec-factory and give each target repo a `.factory
   B first; carries #7''s harness side)'
 request: requests/T-0012.md
 source: /Users/dphang/dev/spec-factory/intake/requests/19_harness_home.md
-status: ready-for-planner
+status: planned
 round:
   spec: 2
   pr: 0
 spec:
   version: 3
   approved_version: 3
-plan: null
+plan: plans/T-0012.md
 in_flight: []
 parked: null
 created: '2026-10-03T06:18:28+00:00'
@@ -56,6 +56,13 @@ history:
   to: ready-for-planner
   by: dphang
   approved_version: 3
+- ts: '2026-10-03T07:49:09+00:00'
+  from: ready-for-planner
+  to: planned
+  by: workflow
+  round:
+    spec: 2
+    pr: 0
 parent: null
 depends_on: []
 parallel_safe: true
@@ -64,4 +71,4 @@ head: null
 merge:
   base_before: null
   main_after: null
-parent_base: null
+parent_base: cdb1c6769ecc39208e62edc65578f62f5a23908f

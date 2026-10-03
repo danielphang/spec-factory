@@ -1,0 +1,24 @@
+run_id: run-0056-implementer
+role: implementer
+ticket: T-0012.1
+model: opus
+round: 0
+spec_version: 3
+started: '2026-10-03T07:49:36+00:00'
+finished: '2026-10-03T07:56:40+00:00'
+wall_s: 424
+status: READY-FOR-REVIEW
+input_sources:
+- specs/T-0012.1/subticket.md
+- specs/T-0012/v3.md
+branch: factory/T-0012.1
+base: cdb1c6769ecc39208e62edc65578f62f5a23908f
+head: cdb1c6769ecc39208e62edc65578f62f5a23908f
+worktree: /Users/dphang/dev/spec-factory/intake/state/worktrees/T-0012.1
+resolution: null
+environment_files: []
+confidence: high. Every acceptance item and the gate was run after the change in a fresh `.venv` and printed
+  exactly the THEN output, and a control run showed the overlay's `uv.lock` setting is what keeps the
+  suite at 70 passed.
+escalations: []
+escalations_note: null

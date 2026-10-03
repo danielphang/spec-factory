@@ -1,0 +1,49 @@
+id: T-0012.2
+type: sub-ticket
+title: 'Document re-layout: `docs/design.md` + `docs/changelog.md`, `docs/prompts/`, `dev/`'
+request: requests/T-0012.md
+source: plan:run-0054-planner
+status: checks-in-flight
+round:
+  spec: 0
+  pr: 1
+spec:
+  version: 3
+  approved_version: 3
+plan: null
+in_flight: []
+parked: null
+created: '2026-10-03T07:49:00+00:00'
+history:
+- ts: '2026-10-03T07:53:43+00:00'
+  from: ready-for-implementer
+  to: checks-in-flight
+  by: workflow
+  round:
+    spec: 0
+    pr: 1
+- ts: '2026-10-03T07:58:57+00:00'
+  from: checks-in-flight
+  to: parked
+  by: park
+  reason: SPEC-DEFECT from verifier
+- ts: '2026-10-03T08:08:48+00:00'
+  from: parked
+  to: checks-in-flight
+  by: dphang
+  resolve: redispatch
+  head: c367bef72e2ed70a4417e98de907c91dbbe31320
+  superseded:
+  - ci
+  - reviewer
+  - verifier
+parent: T-0012
+depends_on: []
+parallel_safe: true
+branch: factory/T-0012.2
+head: c367bef72e2ed70a4417e98de907c91dbbe31320
+merge:
+  base_before: null
+  main_after: null
+parent_base: null
+label: T-0012.2

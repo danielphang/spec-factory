@@ -1,0 +1,3 @@
+# git worktrees the build half creates; they are checkouts, never store content
+worktrees/
+runs/*/wt/

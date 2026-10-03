@@ -1,0 +1,33 @@
+run_id: run-0060-verifier
+role: verifier
+ticket: T-0012.1
+model: fable
+round: 1
+spec_version: 3
+started: '2026-10-03T07:57:18+00:00'
+finished: '2026-10-03T08:07:10+00:00'
+wall_s: 592
+status: VERIFIED
+input_sources:
+- specs/T-0012.1/subticket.md
+- specs/T-0012/v3.md
+- runs/run-0056-implementer/output.md
+- runs/run-0060-verifier/diff.patch
+environment_files: []
+branch: factory/T-0012.1
+base: cdb1c6769ecc39208e62edc65578f62f5a23908f
+head: 372a47c8831d3a988f8cb7ae5759b15d4ad73632
+worktree: /Users/dphang/dev/spec-factory/intake/state/runs/run-0060-verifier/wt
+confidence: high. Every acceptance command ran as written under bash on both checkouts and printed exactly
+  the THEN output (and the ticket's "today" output on base); the suite built its own `.venv` from nothing
+  and collected 70 tests from this worktree; probes show the import is complete, mode-exact, path-contained,
+  and the only hand-written deltas are the two config lines and the two preamble lines the ticket calls
+  for.
+escalations:
+- 'judgment call for the auditor, not a blocker: cut-anchor-still-valid is labelled NEW but prints `0`
+  on base and PR alike, which the role rules call a SPEC-DEFECT when a NEW criterion passes on both. I
+  did not apply that, because the item is declared as a guard on green''s state ("Today it prints `0`";
+  "anything else means … escalate instead of merging") and it did its job; it cannot discriminate base
+  from PR by design. Suggest the planner label such environmental guards as a precondition rather than
+  NEW so the rule does not fire on them.'
+escalations_note: null
