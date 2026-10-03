@@ -1,18 +1,27 @@
-# Spec factory, scratch intake instance targeting the spec-factory design repo (intake/README.md).
-# Overlaid on a pinned copy of the Nanobot-side harness by intake/setup.sh; everything from
-# placeholders down is copied verbatim from that harness's config.yaml at HARNESS_PIN.
-repo_name: spec-factory
-state_dir: ../state
-request_dir: ../../issues
+# Spec factory instance config for this repo, the spec-factory design repo (instance B; see
+# .factory/README.md). The harness finds it by walking up from the working directory to the nearest
+# `.factory/instance.yaml`, or takes it from FACTORY_INSTANCE. Keys as in factory/instance.template.yaml.
+# Fills `{repo name}` in the preamble.
+repo_name: "spec-factory (the design repo at ~/dev/spec-factory, branch main)"
+# The runtime checkout this instance runs with: a detached worktree of this repo at the revision the
+# instance has accepted (.factory/harness.lock), moved only by the upgrade step. `factory paths`
+# reports the checkout actually running.
+harness: "/Users/dphang/dev/spec-factory-harness"
+# The live store, relative to the repo root. It stays at intake/state until the post-close operator
+# step moves it to .factory/state. FACTORY_STATE overrides it.
+state_dir: intake/state
+# Filled into the preamble's protected-path line at run start as `class (glob, glob), ...`.
 protected_paths:
-  infra: ["intake/**"]
-  generated: ["prompts/**"]
+  infra: [".factory/**", "intake/**"]
+  harness: ["factory/**", "bin/factory", "agents/**", "pyproject.toml", "uv.lock"]
+  generated: ["docs/prompts/**"]
   reference_harness: ["~/dev/nanobot-upstream/**"]
   credentials: ["~/.nanobot/**"]
 # Runs in the checkout under test (a checker's detached checkout or the implementer's worktree):
-# whitespace errors in what the branch adds over main. No test suite exists here until #19 part A.
+# whitespace errors in what the branch adds over main, then the harness's own suite.
 gate_commands:
   - "git diff --check main...HEAD"
+  - "uv run --frozen pytest -q -p no:cacheprovider tests/factory"
 placeholders: {rounds: 2, spec_lines: 400, audit_n: 5, retro_min: 3}
 max_rounds: {spec: 2, pr: 2}
 # Build half, local-commit stand-in (operator, 2026-10-02): no remote, no CI. The merge gate is the
@@ -20,9 +29,7 @@ max_rounds: {spec: 2, pr: 2}
 # (null = the target repo's current branch). FACTORY_REPO / FACTORY_INTEGRATION_BRANCH override.
 integration_branch: main
 # Untracked files every worktree and checker checkout copies from the integration checkout at each run
-# start, so a branch is tested against the same environment the integration branch runs in. uv.lock
-# is git-ignored on green: without it a fresh worktree resolves newer packages (mcp 1.30 vs 1.29 broke
-# a test the first pilot never touched).
+# start. None here: uv.lock is tracked in this repo, and copying it in would mask a branch's own lock.
 environment_files: []
 force_push_allowed: false
 models:
