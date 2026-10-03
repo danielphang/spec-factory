@@ -221,8 +221,9 @@ def test_modified_harness_refused_naming_the_paths(clone, tmp_path, request_file
     before = tree(t)
     cp = cli(clone, t, "ticket", "new", "--file", str(request_file))
     assert cp.returncode == 2
-    assert cp.stderr.strip().split("\n") == [f"harness {clone.resolve()} has uncommitted changes:",
-                                             "agents/new-note.md", "factory/__init__.py"]
+    lines = cp.stderr.strip().split("\n")
+    assert lines[0] == f"harness {clone.resolve()} has uncommitted changes:"
+    assert sorted(lines[1:]) == ["agents/new-note.md", "factory/__init__.py"]
     assert tree(t) == before
 
 
