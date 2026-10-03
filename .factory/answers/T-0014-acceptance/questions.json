@@ -1,0 +1,35 @@
+{
+  "s1_spec": [
+    {"q": "Why can the harness serve only one repository today?", "a": "It finds its configuration, its store and the role-context briefing by looking next to its own code, so it is wired to the repository it lives in."},
+    {"q": "Which two groups does the problem affect?", "a": "The operator, who runs it against two repositories and keeps two drifting copies; and anyone who adopts the factory for a new project."},
+    {"q": "What does each target repository's .factory/ folder hold?", "a": "The repository's configuration, its briefing, the harness revision it has accepted (the lock), and its records (the store)."},
+    {"q": "What exactly does the harness lock pin, and why not the checkout's HEAD?", "a": "The last commit touching factory/, bin/factory, agents/, pyproject.toml or uv.lock. A HEAD lock would refuse after every store or document commit in this repo."},
+    {"q": "When does the harness check the lock?", "a": "Only when the command uses the instance's own store; a run with FACTORY_STATE pointing elsewhere (as every test does) is not checked."},
+    {"q": "What happens when no instance is found?", "a": "The command is refused and nothing is written; there is no fallback to an instance of the harness's own."},
+    {"q": "Where are tickets merged, and where does the factory run from?", "a": "Merged in the dev checkout ~/dev/spec-factory on main; run from the runtime, a detached worktree at ~/dev/spec-factory-harness."},
+    {"q": "How and when is the runtime upgraded?", "a": "When no ticket is in flight: git -C ~/dev/spec-factory-harness checkout --detach <sha>, then --accept-harness <sha> in each instance that uses it."},
+    {"q": "What happens to hand-written notes on the preamble's protected-path line?", "a": "They are lost, because the line is generated from instance.yaml's globs; such notes belong in context.md."},
+    {"q": "Is moving green (the Nanobot fork) onto the new layout part of this change?", "a": "No; it is a separate, later ticket."}
+  ],
+  "s2_pr": [
+    {"q": "What new file does the change add, and how big is it?", "a": "docs/writing.md, 86 lines, with eight rules."},
+    {"q": "How does the rule reach every role?", "a": "A line in the shared preamble's OUTPUT block carries a {writing standard} placeholder, which fill_preamble replaces at run start with the path of docs/writing.md in the running harness checkout."},
+    {"q": "Which spec sections does the critic's rubric 6 now cover?", "a": "Problem, Evidence, Open questions, Decisions and Operator steps."},
+    {"q": "How severe is a finding from the new code-reviewer check 8?", "a": "SHOULD-FIX, never BLOCKING."},
+    {"q": "How many tests ran before and after, and why the difference?", "a": "121 before, 126 after: the new test file adds 5 tests."},
+    {"q": "Which agents do not see the new rule?", "a": "Agents that use the registered role agents from the agents/ templates, which this change does not touch; only runs that read system-prompt.txt get it."},
+    {"q": "When do agents start seeing the change?", "a": "Only after the operator moves the runtime to a revision containing this commit and accepts it."},
+    {"q": "What behaviour was not tested?", "a": "Whether a live critic actually blocks on an unglossed term in an Evidence paragraph; that needs a model run after the upgrade."},
+    {"q": "What stands in for the request's checks-in-flight example, and why?", "a": "A real escalation from run-0062-verifier, used in rule 7, because the checks-in-flight escalation could not be found."},
+    {"q": "Was any existing test assertion removed or loosened?", "a": "No."}
+  ],
+  "s3_escalation": [
+    {"q": "What is the conflict, in one sentence?", "a": "Spec part C.2's refusal when the lock is missing makes an existing test fail, and the sub-ticket forbids changing tests."},
+    {"q": "Which test fails, and where did it come from?", "a": "tests/factory/test_instance.py::test_repo_root_is_the_instance_parent_and_factory_repo_overrides, at line 240, added in T-0012.3."},
+    {"q": "Why does it fail?", "a": "It builds an instance directory alt with only instance.yaml and context.md, no harness.lock, then runs config on that instance's own store, which C.2 now refuses (exit 2)."},
+    {"q": "What resolution is proposed, and was it tried?", "a": "Add the test to Tests to change with one line copying the target's harness.lock into alt; it was applied temporarily, passed, and reverted."},
+    {"q": "What alternative was rejected, and why?", "a": "Exempting config from the lock, because it contradicts C.2's 'every command except init and paths'."},
+    {"q": "What is the second item?", "a": "Informational: four NEW criteria passed vacuously at base; not a spec defect."},
+    {"q": "What does the escalation need from a human?", "a": "A ruling: add the test to Tests to change, or amend C.2."}
+  ]
+}

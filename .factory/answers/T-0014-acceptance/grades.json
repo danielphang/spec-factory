@@ -1,0 +1,486 @@
+[
+ {
+  "sample": "s1_spec",
+  "grade": {
+   "versions": [
+    {
+     "version": "orig",
+     "scores": [
+      {
+       "q": 1,
+       "score": "correct",
+       "note": ""
+      },
+      {
+       "q": 2,
+       "score": "correct",
+       "note": ""
+      },
+      {
+       "q": 3,
+       "score": "correct",
+       "note": ""
+      },
+      {
+       "q": 4,
+       "score": "correct",
+       "note": ""
+      },
+      {
+       "q": 5,
+       "score": "wrong",
+       "note": "Answered 'not stated', but the original says the lock guards only the instance's own store and that runs with FACTORY_STATE pointing elsewhere (as every test does) are not checked. This was a reader miss."
+      },
+      {
+       "q": 6,
+       "score": "correct",
+       "note": ""
+      },
+      {
+       "q": 7,
+       "score": "partial",
+       "note": "Gets the dev checkout and the runtime path, but says only 'separate runtime checkout'. It leaves out that the runtime is a detached git worktree."
+      },
+      {
+       "q": 8,
+       "score": "correct",
+       "note": "Leaves out -C ~/dev/spec-factory-harness in the command. Otherwise matches."
+      },
+      {
+       "q": 9,
+       "score": "partial",
+       "note": "Says the prose is lost and belongs in context.md, but not why: the line is generated from instance.yaml's globs."
+      },
+      {
+       "q": 10,
+       "score": "correct",
+       "note": ""
+      }
+     ]
+    },
+    {
+     "version": "old",
+     "scores": [
+      {
+       "q": 1,
+       "score": "correct",
+       "note": ""
+      },
+      {
+       "q": 2,
+       "score": "correct",
+       "note": ""
+      },
+      {
+       "q": 3,
+       "score": "correct",
+       "note": ""
+      },
+      {
+       "q": 4,
+       "score": "correct",
+       "note": ""
+      },
+      {
+       "q": 5,
+       "score": "wrong",
+       "note": "Answered 'not stated', but the old rewrite keeps the fact ('The lock guards only the instance's own store... Every test makes such a run, with FACTORY_STATE pointing elsewhere'). This was a reader miss."
+      },
+      {
+       "q": 6,
+       "score": "correct",
+       "note": ""
+      },
+      {
+       "q": 7,
+       "score": "partial",
+       "note": "Leaves out that the runtime is a detached git worktree. The rewrite states this, but the reader did not."
+      },
+      {
+       "q": 8,
+       "score": "correct",
+       "note": "Leaves out the -C path. Otherwise matches."
+      },
+      {
+       "q": 9,
+       "score": "correct",
+       "note": ""
+      },
+      {
+       "q": 10,
+       "score": "correct",
+       "note": ""
+      }
+     ]
+    },
+    {
+     "version": "new",
+     "scores": [
+      {
+       "q": 1,
+       "score": "partial",
+       "note": "Says the code lives in its repo and has to be copied by hand. It leaves out the cause: the harness finds its config, store and briefing by looking next to its own code. The rewrite states this in paragraph 3, but its opening sentence gives 'code lives in' as the reason."
+      },
+      {
+       "q": 2,
+       "score": "correct",
+       "note": ""
+      },
+      {
+       "q": 3,
+       "score": "correct",
+       "note": ""
+      },
+      {
+       "q": 4,
+       "score": "correct",
+       "note": ""
+      },
+      {
+       "q": 5,
+       "score": "correct",
+       "note": "Leaves out the FACTORY_STATE and every-test example, but the condition matches."
+      },
+      {
+       "q": 6,
+       "score": "correct",
+       "note": ""
+      },
+      {
+       "q": 7,
+       "score": "correct",
+       "note": "Names the git worktree. Leaves out 'detached', which is minor."
+      },
+      {
+       "q": 8,
+       "score": "correct",
+       "note": "Leaves out the -C path. Otherwise matches."
+      },
+      {
+       "q": 9,
+       "score": "partial",
+       "note": "Says the prose is lost and the notes go in context.md, but not that the line is generated from instance.yaml's globs. 'Move to context.md' also hints that the notes are moved automatically."
+      },
+      {
+       "q": 10,
+       "score": "correct",
+       "note": ""
+      }
+     ]
+    }
+   ],
+   "lost_or_distorted": [
+    "new: The bold heading 'Hand-written notes on the protected-path line move to context.md' changes the original 'such notes belong in context.md' into something that reads as an automatic move. It also separates the rule from its cause, which sits in the bullet before it (the line is generated from the globs). The reader repeated 'move to' and dropped the cause.",
+    "new: The opening of the Problem section now gives 'serve only the repository its code lives in' as the reason and drops the original's 'it finds ... by looking next to its own code' from the lead. The mechanism is still in paragraph 3, but the reader answered Q1 from the lead and left it out (the old rewrite has the same lead, but its reader got the mechanism).",
+    "old: Nothing lost. It adds a gloss not in the original: the spec gate is 'where a human signs off the design before code is written', and Instance A is 'the factory's other existing instance'. Both are additions, not distortions of the original's facts."
+   ]
+  }
+ },
+ {
+  "sample": "s2_pr",
+  "grade": {
+   "versions": [
+    {
+     "version": "orig",
+     "scores": [
+      {
+       "q": 1,
+       "score": "partial",
+       "note": "Gives file and 86 lines but omits the eight rules (the text states it)."
+      },
+      {
+       "q": 2,
+       "score": "correct",
+       "note": "Placeholder in preamble OUTPUT block, fill_preamble fills it with the harness checkout's docs/writing.md path at run start."
+      },
+      {
+       "q": 3,
+       "score": "correct",
+       "note": ""
+      },
+      {
+       "q": 4,
+       "score": "correct",
+       "note": ""
+      },
+      {
+       "q": 5,
+       "score": "correct",
+       "note": ""
+      },
+      {
+       "q": 6,
+       "score": "correct",
+       "note": "Gives the agents/ templates and that the change does not touch them; leaves out the system-prompt.txt contrast, but the core fact is there."
+      },
+      {
+       "q": 7,
+       "score": "correct",
+       "note": ""
+      },
+      {
+       "q": 8,
+       "score": "partial",
+       "note": "Names the untested behaviour but leaves out that it needs a model run on the upgraded runtime."
+      },
+      {
+       "q": 9,
+       "score": "correct",
+       "note": ""
+      },
+      {
+       "q": 10,
+       "score": "correct",
+       "note": ""
+      }
+     ]
+    },
+    {
+     "version": "old",
+     "scores": [
+      {
+       "q": 1,
+       "score": "partial",
+       "note": "Leaves out the eight rules; the rewrite carries them."
+      },
+      {
+       "q": 2,
+       "score": "correct",
+       "note": "Gives the mechanism; does not say 'when a run starts', which the rewrite does state."
+      },
+      {
+       "q": 3,
+       "score": "correct",
+       "note": ""
+      },
+      {
+       "q": 4,
+       "score": "correct",
+       "note": ""
+      },
+      {
+       "q": 5,
+       "score": "correct",
+       "note": ""
+      },
+      {
+       "q": 6,
+       "score": "partial",
+       "note": "Names the agents/ templates runs but not why (the change does not touch those templates) and not that only system-prompt.txt runs get it; the rewrite carries both."
+      },
+      {
+       "q": 7,
+       "score": "correct",
+       "note": ""
+      },
+      {
+       "q": 8,
+       "score": "correct",
+       "note": ""
+      },
+      {
+       "q": 9,
+       "score": "correct",
+       "note": ""
+      },
+      {
+       "q": 10,
+       "score": "correct",
+       "note": ""
+      }
+     ]
+    },
+    {
+     "version": "new",
+     "scores": [
+      {
+       "q": 1,
+       "score": "partial",
+       "note": "Leaves out the eight rules; the rewrite carries them."
+      },
+      {
+       "q": 2,
+       "score": "correct",
+       "note": "Gives the mechanism; does not say 'at run start', which the rewrite does state."
+      },
+      {
+       "q": 3,
+       "score": "correct",
+       "note": ""
+      },
+      {
+       "q": 4,
+       "score": "correct",
+       "note": ""
+      },
+      {
+       "q": 5,
+       "score": "correct",
+       "note": ""
+      },
+      {
+       "q": 6,
+       "score": "correct",
+       "note": "Gives the agents/ templates and the system-prompt.txt contrast; leaves out 'not touched', which the rewrite states."
+      },
+      {
+       "q": 7,
+       "score": "partial",
+       "note": "Leaves out that the operator must also accept the revision; the rewrite states it."
+      },
+      {
+       "q": 8,
+       "score": "partial",
+       "note": "Leaves out that it needs a model run on the upgraded runtime; the rewrite states it."
+      },
+      {
+       "q": 9,
+       "score": "correct",
+       "note": ""
+      },
+      {
+       "q": 10,
+       "score": "correct",
+       "note": "Adds accurate detail on how the test changed."
+      }
+     ]
+    }
+   ],
+   "lost_or_distorted": []
+  }
+ },
+ {
+  "sample": "s3_escalation",
+  "grade": {
+   "versions": [
+    {
+     "version": "orig",
+     "scores": [
+      {
+       "q": 1,
+       "score": "correct",
+       "note": "C.2 lock refusal conflicts with an existing test the sub-ticket may not change."
+      },
+      {
+       "q": 2,
+       "score": "correct",
+       "note": "Full test id, line 240, T-0012.3."
+      },
+      {
+       "q": 3,
+       "score": "correct",
+       "note": "Has the missing harness.lock and exit 2. Does not say the command is config or name the two files (instance.yaml, context.md), but the core cause is there."
+      },
+      {
+       "q": 4,
+       "score": "correct",
+       "note": "Add to Tests to change plus the harness.lock copy line; applied temporarily, passed, reverted."
+      },
+      {
+       "q": 5,
+       "score": "correct",
+       "note": "Exempting config was rejected as contradicting 'every command except init and paths'."
+      },
+      {
+       "q": 6,
+       "score": "correct",
+       "note": "Informational: four NEW criteria passed vacuously at base; not a spec defect."
+      },
+      {
+       "q": 7,
+       "score": "partial",
+       "note": "Gives only the add-to-Tests-to-change option as a yes/no decision. Leaves out the alternative ruling (amend C.2 / exempt config)."
+      }
+     ]
+    },
+    {
+     "version": "old",
+     "scores": [
+      {
+       "q": 1,
+       "score": "partial",
+       "note": "Gives C.2 vs. an existing test expecting exit 0. Leaves out that the sub-ticket forbids changing the test (Tests to change: none), which is the heart of the conflict."
+      },
+      {
+       "q": 2,
+       "score": "correct",
+       "note": "Full test id, line 240, T-0012.3."
+      },
+      {
+       "q": 3,
+       "score": "correct",
+       "note": "config exits 2 with no lock file; test expects 0. Does not name the two files the instance is built from, but the core cause is there."
+      },
+      {
+       "q": 4,
+       "score": "partial",
+       "note": "Gives the one-line lock copy and the tried/passed/reverted result. Leaves out that the test would be added to 'Tests to change'. The text has it; the reader dropped it."
+      },
+      {
+       "q": 5,
+       "score": "correct",
+       "note": "Matches the reference."
+      },
+      {
+       "q": 6,
+       "score": "correct",
+       "note": "Matches the reference."
+      },
+      {
+       "q": 7,
+       "score": "correct",
+       "note": "Allow the test change or exempt config (amend C.2): both options of the ruling."
+      }
+     ]
+    },
+    {
+     "version": "new",
+     "scores": [
+      {
+       "q": 1,
+       "score": "correct",
+       "note": "C.2 failure vs. 'Tests to change: none' plus the no-failed requirement."
+      },
+      {
+       "q": 2,
+       "score": "correct",
+       "note": "Full test id, line 240, T-0012.3. Found it even though the rewrite moved this to a trailing note."
+      },
+      {
+       "q": 3,
+       "score": "correct",
+       "note": "Instance has no harness.lock; config exits 2 instead of 0. Does not name the two files, but the core cause is there."
+      },
+      {
+       "q": 4,
+       "score": "partial",
+       "note": "Gives the exact line and the tried/passed/reverted result. Leaves out adding the test to 'Tests to change'. The text has it; the reader dropped it."
+      },
+      {
+       "q": 5,
+       "score": "correct",
+       "note": "Matches the reference."
+      },
+      {
+       "q": 6,
+       "score": "correct",
+       "note": "Matches the reference."
+      },
+      {
+       "q": 7,
+       "score": "correct",
+       "note": "Allow the one-line test change or exempt config from C.2."
+      }
+     ]
+    }
+   ],
+   "lost_or_distorted": [
+    "old: The headline 'Decide: allow the one-line test change ... or exempt config from the lock check' offers the human the config exemption as an open option, yet a later bullet labels that same option 'Rejected'. The original framed it only as an alternative the author declined, so the rewrite contradicts itself on the exemption's status.",
+    "old: Adds 'I recommend the test change', a recommendation the original never stated outright (the original only proposed it).",
+    "new: Moves the test's origin (added in T-0012.3) out of the test description into a detached trailing 'Note: the failing test was added in T-0012.3.' The fact survives but no longer sits with the test it describes.",
+    "new: Says 'The test prints harness ... / assert 2 == 0'. The original quotes the harness refusal as the command's output followed by the assertion failure. Crediting the refusal message to the test is a small distortion.",
+    "new: The headline 'Decide: ... or exempt config from the rule' offers the config exemption as an equal option, while the body marks it 'Rejected' because it contradicts C.2. Same reframing as old, softer than the original's 'Alternative ... so I did not do it'."
+   ]
+  }
+ }
+]
