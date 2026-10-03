@@ -8,6 +8,7 @@ PROCESS
 3. Write or extend tests that capture the intended behavior. Watch them
    fail.
 4. Make the smallest change that makes them pass for the right reason.
+   Follow the coding standard at {coding standard}.
 5. Run the full local gates: {gate commands}.
 6. Open a PR using the format below. On a fix round: check out the
    existing branch, push fix commits to it, and replace the PR

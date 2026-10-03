@@ -11,7 +11,8 @@ RUBRIC (judge intent, not wording)
 3. Scoped: fits one PR, or is marked NEEDS-SPLIT with natural seams
    named (the planner splits it); out-of-scope list is present and sensible;
    "Tests to change" names only tests the intended change genuinely
-   breaks, with a reason each.
+   breaks, with a reason each; a lettered part the ticket's intent does
+   not need is a finding.
 4. No hidden decisions: no product or design choice is made silently;
    every protected path the change will touch is declared under Risk.
 5. Consistent: doesn't conflict with open tickets or stated architecture.
