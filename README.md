@@ -314,16 +314,14 @@ runs from the same runtime. Each target's runner then accepts the new revision b
 |---|---|---|
 | **File** | `factory ticket new --file <abs path>` | that this request is worth a ticket |
 | **Gate** | `factory approve-spec T-n [--edit F]` · `factory request-changes T-n F` · close | the spec's intent, risk declarations, operator steps, "tests to change"; a gate edit becomes a new spec version and is what gets pinned |
-| **Unstick** | `factory resolve T-n --answer F` (a role asked a question) · `--ruling F` (a role escalated) · `--redispatch` (re-run the checks on the same commit after an outside fix) · `--to spec-gate` · `--close`; with `--answer` or `--close`, add `--decision "<line>"` to also record the answer as a standing decision | an answer, a ruling, a re-check, a re-scope, or closing |
+| **Unstick** | `factory resolve T-n --answer F` (a role asked a question) · `--ruling F` (a role escalated, or an implementer reported itself blocked) · `--redispatch` (re-run the checks on the same commit after an outside fix) · `--replan F` (the final check failed after every sub-ticket merged: back to the planner with a note; new sub-tickets take the next free ids) · `--to spec-gate` · `--close`; with `--answer` or `--close`, add `--decision "<line>"` to also record the answer as a standing decision | an answer, a ruling, a re-check, a re-plan, a re-scope, or closing |
 | **Record** | `factory decision add T-n "<line>"`, at any ticket state, closed included. It appends one dated line to the target's decision log, `decisions.md`, which the spec writer, critic and planner receive with their input | that a decision binds later tickets |
 | **Upgrade** | `factory --accept-harness <sha> <command>` | that this target adopts a new harness revision |
 
-Gap, as of today: an implementer that reports itself blocked has no `resolve` verb. A plain
-`ticket transition --to ready-for-implementer` returns it. A ticket the tripwire parked returns the
-same way, to the state its record names as `parked.from`, once the operator has checked the named
-files; a checker park can use `resolve --redispatch` instead. Everything else is the harness's and
-the scripts': which role runs next, how many rounds, what the checkers receive, when a merge is
-allowed, when the ticket closes.
+A ticket the tripwire parked returns with a plain `ticket transition` to the state its record
+names as `parked.from`, once the operator has checked the named files; a checker park can use
+`resolve --redispatch` instead. Everything else is the harness's and the scripts': which role runs
+next, how many rounds, what the checkers receive, when a merge is allowed, when the ticket closes.
 
 ## What is built and what is not
 

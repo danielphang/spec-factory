@@ -404,7 +404,7 @@ def subticket_add(a, root, cfg):
     else:
         text = Path(a.file).read_text(encoding="utf-8")
     try:
-        subs = subtickets.parse(text, parent["id"])
+        subs = subtickets.parse(text, parent["id"], [s["id"] for s in store.subtickets_of(root, parent["id"])])
     except ValueError as e:
         raise Refused(str(e)) from None
     if not subs:
@@ -705,7 +705,7 @@ def request_changes(a, root, cfg):
 def resolve(a, root, cfg):
     if a.decision is not None:  # refuse before anything is written, so a decision is never dropped
         # the branch below that will run: --answer wins, and --close runs only with no other mode
-        if not (a.answer or (a.close and not (a.ruling or a.to or a.redispatch))):
+        if not (a.answer or (a.close and not (a.ruling or a.to or a.redispatch or a.replan))):
             raise Refused("--decision applies only with --answer or --close")
         specstore.decision_text(a.decision)
     t = store.load_ticket(root, a.id)
@@ -744,11 +744,14 @@ def resolve(a, root, cfg):
             fh.write(f"\n\n## Answer {n}\n\n{Path(a.answer).read_text(encoding='utf-8').rstrip()}\n")
         move(to, "answer", {"answer": n, **decided("resolve --answer")})
     elif a.ruling:
-        if st != "parked" or not reason.startswith("ESCALATE"):
+        if st != "parked" or not reason.startswith(("ESCALATE", "BLOCKED")):
             if st == "parked" and (reason.startswith("NEEDS-HUMAN") or "CLARIFY" in reason):
                 raise Refused("use --answer")
-            raise Refused(f"--ruling applies to an ESCALATE park; {t['id']} is {st} ({reason or 'no park'})")
-        to = "ready-for-planner" if "planner" in reason else "ready-for-critic"
+            raise Refused(f"--ruling applies to an ESCALATE or BLOCKED park; {t['id']} is {st} ({reason or 'no park'})")
+        if reason.startswith("BLOCKED"):  # an implementer's BLOCKED: back to it, same round, ruling in its input
+            to = "ready-for-implementer"
+        else:
+            to = "ready-for-planner" if "planner" in reason else "ready-for-critic"
         dest = d / f"ruling-{_next_n(d, 'ruling')}.md"
         shutil.copyfile(a.ruling, dest)
         move(to, "ruling", {"ruling": _rel(root, dest)})
@@ -777,12 +780,26 @@ def resolve(a, root, cfg):
                     moved.append(f.stem)
         store.log_event(root, "results.superseded", ticket=t["id"], head=head, roles=moved)
         move("checks-in-flight", "redispatch", {"head": head, "superseded": moved})
+    elif a.replan:
+        # After a failed parent-close check: back to the planner with F as a ruling. Its new
+        # sub-tickets take the next free ids under this parent; the merged ones stay merged.
+        if st != "parked":
+            raise Refused(f"--replan applies to a parked parent; {t['id']} is {st}")
+        subs = store.subtickets_of(root, t["id"])
+        if not subs:
+            raise Refused(f"--replan applies to a parent with sub-tickets; {t['id']} has none")
+        unmerged = [f"{s['id']} is {s['status']}" for s in subs if s["status"] != "merged"]
+        if unmerged:
+            raise Refused(f"--replan needs every sub-ticket merged: {', '.join(unmerged)}")
+        dest = d / f"ruling-{_next_n(d, 'ruling')}.md"
+        shutil.copyfile(a.replan, dest)
+        move("ready-for-planner", "replan", {"ruling": _rel(root, dest)})
     elif a.close:
         if st == "closed":
             raise Refused(f"{t['id']} is already closed")
         move("closed", "close", decided("resolve --close"))
     else:
-        raise Refused("resolve needs one of --answer F | --ruling F | --to spec-gate | --redispatch | --close")
+        raise Refused("resolve needs one of --answer F | --ruling F | --to spec-gate | --redispatch | --replan F | --close")
 
 
 def decision_add(a, root, cfg):
@@ -1129,6 +1146,7 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--ruling")
     p.add_argument("--to")
     p.add_argument("--redispatch", action="store_true")
+    p.add_argument("--replan", metavar="F", help="a parked parent whose sub-tickets all merged: back to the planner with F as a ruling")
     p.add_argument("--close", action="store_true")
     p.add_argument("--decision", metavar="TEXT", help="with --answer or --close: also log TEXT to decisions.md")
     p.set_defaults(fn=resolve)

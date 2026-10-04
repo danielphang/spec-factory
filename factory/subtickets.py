@@ -8,6 +8,11 @@ The planner prompt asks for "ID / Title" without fixing the id's form, so real p
 `T-0001-A`, `ST-1` or `T-0001.1`, usually under a `##` heading, with bold field names. The store
 numbers them <PARENT>.1, .2, … in plan order and keeps the planner's own id as `label`.
 
+A later plan for the same parent (a re-plan after a failed parent-close check) continues that
+numbering: its sub-tickets take the next free ids after the parent's existing ones, its
+`Depends on:` lines may name an existing sub-ticket, and a head line that reuses an existing
+sub-ticket's id is refused.
+
 A field line may start with a `- ` or `* ` list bullet, before any bold marks. Every sub-ticket
 needs a `Depends on:` line (`Depends on: none` when it depends on nothing); a plan with a
 sub-ticket that has none is refused with that sub-ticket's label.
@@ -29,10 +34,12 @@ def _is_heading(line: str) -> bool:
     return bool(re.match(r"^#{1,4}\s+\S", line))
 
 
-def parse(planner_output: str, parent: str) -> list[dict]:
+def parse(planner_output: str, parent: str, existing=()) -> list[dict]:
     """Split a PLANNED planner output into sub-tickets, in plan order. Each: id (<parent>.<n>),
-    label (the planner's id), title, depends_on (sibling ids, plus other parents' ids for a
-    cross-ticket dependency), parallel_safe, text (its block, then the plan's shared sections)."""
+    label (the planner's id), title, depends_on (sibling ids, existing sub-ticket ids, plus other
+    parents' ids for a cross-ticket dependency), parallel_safe, text (its block, then the plan's
+    shared sections). `existing` holds the ids of the parent's sub-tickets already in the store;
+    new ones are numbered after the highest of them."""
     lines = planner_output.splitlines()
     for i, line in enumerate(lines):
         if line.startswith("STATUS:"):
@@ -45,7 +52,12 @@ def parse(planner_output: str, parent: str) -> list[dict]:
     dup = sorted({x for x in labels if labels.count(x) > 1})
     if dup:
         raise ValueError(f"sub-ticket id used more than once in the plan: {', '.join(dup)}")
-    alias = {m.group(1): f"{parent}.{n}" for n, (_, m) in enumerate(heads, 1)}
+    existing = set(existing)
+    for label in labels:
+        if label in existing:
+            raise ValueError(f"{label}: {label} is already a sub-ticket of {parent}; give the new sub-ticket another id")
+    first = max((int(x.rsplit(".", 1)[1]) for x in existing), default=0) + 1
+    alias = {m.group(1): f"{parent}.{n}" for n, (_, m) in enumerate(heads, first)}
 
     def block_end(start: int) -> int:
         for j in range(start + 1, len(lines)):
@@ -79,6 +91,8 @@ def parse(planner_output: str, parent: str) -> list[dict]:
                             dep = ref
                         elif ref in alias:
                             dep = alias[ref]
+                        elif ref in existing:
+                            dep = ref  # a sub-ticket of an earlier plan, usually merged
                         elif ref[:6] != parent and re.fullmatch(r"T-\d{4}.*", ref):
                             dep = ref[:6]  # another parent ticket (or one of its sub-tickets): wait for that parent
                         elif re.fullmatch(re.escape(parent) + r"\.\d+", ref):
