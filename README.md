@@ -167,8 +167,9 @@ Three places:
   harness commit this target has agreed to run with. The store is the target's record of every
   ticket. A store that `factory init` creates is a git worktree of the store branch,
   `factory-store`, at a path the integration branch has never tracked, so committing the store
-  never moves the integration branch. This repo's store and the chat-bot repo's predate that and
-  are still plain directories committed on their integration branches. Today this repo is the only
+  never moves the integration branch. This repo's store and the chat-bot repo's predate that. Each
+  is a plain directory committed on its integration branch until its operator moves it onto its
+  branch, at `.factory/store`, with `factory store migrate`. Today this repo is the only
   target on the runtime; a chat-bot repo is a target that still runs its own in-tree copy of the
   harness until its cutover.
 
@@ -188,12 +189,12 @@ flowchart TB
   DEV -- "git worktree, detached at one commit; moved only between tickets" --> RT
 
   subgraph A["target: a chat-bot repo  (after its cutover; today it runs an in-tree copy)"]
-    A1[".factory/  instance.yaml · context.md · harness.lock · state/"]:::store
+    A1[".factory/  instance.yaml · context.md · harness.lock · store/"]:::store
     A2[".claude/agents/factory-*.md  (role agents, installed by factory init)"]:::code
     A3["the repo's own code and tests"]:::code
   end
   subgraph Bx["target: this repo itself"]
-    B1[".factory/  instance.yaml · context.md · harness.lock · state/"]:::store
+    B1[".factory/  instance.yaml · context.md · harness.lock · store/"]:::store
   end
   RT -- "runs the ticket; refused unless the lock matches" --> A1
   RT -- "runs the ticket; refused unless the lock matches" --> B1
@@ -295,6 +296,66 @@ Two cautions:
   records included.
 - Run `factory init` from the repository root. From inside the store it refuses, because there
   it would build a second instance inside the live store.
+
+### Moving an existing store onto its branch
+
+A store made before the store branch existed is a plain directory committed on the integration
+branch, at `.factory/state`. `factory store migrate` moves it onto `factory-store`, checked out at
+a new path. The new path must be one the integration branch has never tracked, because at the old
+path a checkout of an older commit would overwrite the live records.
+
+Before you start, all of these must hold. The command checks each one. If one fails, it refuses,
+changes nothing, and names the runs, worktrees or files in the way.
+
+- No ticket has a run in flight.
+- No implementer worktree or checker checkout lies under the store.
+- Every store file is committed on the integration branch, and that branch is checked out at the
+  repository root.
+- No `factory-store` branch exists yet, and nothing exists at the new path.
+
+From the repository root, with `R` the runtime:
+
+```
+$R/bin/factory store migrate --to .factory/store
+```
+
+The command does six things, in this order:
+
+1. It starts `factory-store` at one commit holding the store as last committed. The commit's
+   message names the integration-branch commit it came from. The store's earlier history stays
+   readable there, with `git log <that commit> -- .factory/state`.
+2. It checks the branch out at `.factory/store`.
+3. It copies the files git ignores (run scratch directories, tripwire baselines) to the same place
+   under the new path.
+4. It checks the copy byte for byte. If anything differs, it removes the new checkout and the branch
+   and exits 1, and the old store is as it was.
+5. Only then does it untrack and delete `.factory/state`, add `/.factory/store/` to the repo's git
+   exclude file, and set `state_dir` in `instance.yaml` to the new path.
+6. It logs the move in the moved store and prints what it did.
+
+It commits nothing and pushes nothing. Review the integration-branch side, then commit both sides
+and push both branches:
+
+```
+git status                      # .factory/state deleted, state_dir changed
+git commit -a -m "store moved to its branch"
+git -C .factory/store add -A && git -C .factory/store commit -m "store: moved to its branch"
+git push origin <integration branch> factory-store
+```
+
+A checkout of a commit from before the move, in the integration checkout, brings back the old
+`.factory/state` and an `instance.yaml` whose `state_dir` names it. Commands run during that
+checkout use that stale copy, not the store. Checking the integration branch out again removes it.
+The moved store is untouched throughout.
+
+To roll back, with no run in flight and the store committed:
+
+1. Detach the checkout: `rm .factory/store/.git && git worktree prune`. Never use
+   `git worktree remove`, which deletes the directory.
+2. Move the directory back (`mv .factory/store .factory/state`) and `git add .factory/state` on the
+   integration branch.
+3. Set `state_dir` back to `.factory/state`, and remove the `/.factory/store/` line from the exclude
+   file, whose path `git rev-parse --git-path info/exclude` prints.
 
 ## Starting a run
 
@@ -463,7 +524,7 @@ from `docs/design.md` and changes only when the design does.*
 | `bin/factory` | The harness entry point |
 | `agents/` | The role-agent templates `factory init` copies into a target's `.claude/agents/` |
 | `tests/factory/` | The harness's test suite |
-| `.factory/` | This repo's own instance: config, briefing, lock, and the live store (`.factory/state/`); see `.factory/README.md` |
+| `.factory/` | This repo's own instance: config, briefing, lock, and the live store (`.factory/store/`); see `.factory/README.md` |
 
 ## Related work and history
 
@@ -478,7 +539,7 @@ planned, not done. Open work named above: `factory report`
 effort (#22); prompt changes borrowed from the ponytail project (#20); the documentation standard
 this page was rewritten to (#23). Each run's own scratch directory came from #35, and the store branch from #46. The design
 document is `docs/design.md`, its changelog `docs/changelog.md`; the working documents from
-building the harness are under `dev/`; the issue index is `dev/issues.md`. The store holds 52 tickets at `.factory/state/`; the runtime is at
+building the harness are under `dev/`; the issue index is `dev/issues.md`. The store holds 52 tickets at `.factory/store/`; the runtime is at
 `~/dev/spec-factory-harness`, revision `010d1b0`, equal to this repo's `harness.lock`.
 
 ## Maintaining this page
@@ -517,12 +578,12 @@ each section comes from:
 |---|---|---|
 | Roles, models | `.factory/instance.yaml` (`models`), `docs/prompts/` | read the files |
 | Terms, routing, states | `instance.yaml` (`routing`, `ready_state`); `factory/cli.py` (`ticket transition` guards) | read the files |
-| How a ticket moves | `factory/workflows/intake.js`, `build.js` (the `phase(...)` blocks and the `STATUS` routes); `factory/cli.py` `ticket_join`, `merge_cmd`, `archive_cmd` | read the code; confirm against the last closed ticket's run log in `.factory/state/log/` |
+| How a ticket moves | `factory/workflows/intake.js`, `build.js` (the `phase(...)` blocks and the `STATUS` routes); `factory/cli.py` `ticket_join`, `merge_cmd`, `archive_cmd` | read the code; confirm against the last closed ticket's run log in `.factory/store/log/` |
 | Where it runs, lock | `factory/instance.py` (`find`, `guard`), `instance.yaml` (`harness`, `state_dir`) | `~/dev/spec-factory-harness/bin/factory paths` (its `harness_revision` is the last commit touching harness code, not the runtime's HEAD); `cat .factory/harness.lock`, which must equal it |
 | Where a human decides | `factory/cli.py` `build_parser()`: the `approve-spec`, `request-changes`, `resolve`, `--accept-harness` arguments and the `decision` subparser | `~/dev/spec-factory-harness/bin/factory --help`; `… resolve --help`; `… decision add --help` (the runtime, not the dev checkout) |
 | Built / not built | `tests/factory/` (what has a test is built); `dev/issues.md` (what is named and open) | `uv run --frozen pytest -q -p no:cacheprovider tests/factory`; `gh issue list --state open` |
 | Where this can go | `docs/design.md` §Harness, §Routing table | read the design; nothing here comes from the code |
-| Related work and history | `.factory/state/tickets/`, `dev/issues.md`, `docs/changelog.md` | `ls .factory/state/tickets | wc -l`; `git log --oneline -20` |
+| Related work and history | `.factory/store/tickets/`, `dev/issues.md`, `docs/changelog.md` | `ls .factory/store/tickets | wc -l`; `git log --oneline -20` |
 
 Then two checks before it lands, in this order. First, the session that owns the harness code
 reads the draft against the running revision and corrects every as-built fact (today this caught
