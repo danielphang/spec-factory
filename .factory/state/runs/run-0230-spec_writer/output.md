@@ -399,3 +399,7 @@ Round 3 answers the spec gate's change request (`approvals/T-0025/changes-1.md`,
 7. [NOTE] Checking out a commit from before the move → FIXED. The README how-to carries it (`premove=1` in the README scenario), and so does Risk.
 8. [NOTE] Nanobot's `protected_paths` does not cover the store → FIXED. Operator step 3 lists adding `.factory/store/**` to `protected_paths.infra` there. Its current `infra` list names five specific paths and no store path (`~/dev/nanobot-upstream/.factory/instance.yaml`). This repo's `.factory/**` already covers `.factory/store`, and step 2 says so.
 9. Rebase on #45 (T-0024) → FIXED. Design opens by saying this change is built on #45 and keeps its fence. A.2 places #45's fence where #45 put it, before any write. B says `store migrate` is fenced by #45's default and keeps its own in-flight refusal for a marked call. Risk explains both and why #45's fence does not cover the phantom `init`. The changelog bullet expects entry 53 after #45's 52. Verification notes that the "today" outputs were captured without #45 and why #45 does not change them. The two tests that run store commands with a run in flight follow #45's marking.
+
+STATUS: READY-FOR-CRITIC
+CONFIDENCE: medium. Every NEW scenario was re-run on `abaa75a` and fails as stated, and the phantom-`init`, two-remote and `-ffdx` behaviours were reproduced. But nothing here is prototyped against #45's final fence: T-0024's spec is being revised in parallel (run-0231), so A.2's fence placement follows its v3 text.
+ESCALATIONS: none

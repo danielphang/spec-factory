@@ -360,3 +360,7 @@ Changes requested at the spec gate (the design review's findings, sent back by t
 - 5, build order, before the store-branch change (#46) → FIXED. Design A.4 and A.5 keep exactly two fence call sites: one line in `main()` before the lock, and one line in `init_cmd` right after `root` is loaded. Risk states the order and what #46 must keep, and that #46's own `init` fix is what lets this location rule cover `init` run from inside a store worktree.
 
 Earlier rounds: the round-2 critic's findings were answered in the previous version (glossing, `STRIP`, fence-before-lock order) and those changes are kept.
+
+STATUS: READY-FOR-CRITIC
+CONFIDENCE: high, every runtime scenario, the negative controls, the incident's route and the suite were run on base and on a prototype in this run, with the results quoted above
+ESCALATIONS: none

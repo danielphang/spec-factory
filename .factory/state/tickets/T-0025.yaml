@@ -3,12 +3,12 @@ type: feature
 title: 'Isolate the store from the integration branch: store commits move main and force catch-up runs'
 request: requests/T-0025.md
 source: /private/tmp/claude-501/-Users-dphang-dev-nanobot/c69bfd1d-97a6-43e3-9d5a-a517c28d382c/scratchpad/46_store_branch.md
-status: ready-for-spec-writer
+status: awaiting-spec-gate
 round:
-  spec: 0
+  spec: 1
   pr: 0
 spec:
-  version: 2
+  version: 3
   approved_version: null
 plan: null
 in_flight: []
@@ -55,6 +55,20 @@ history:
   to: ready-for-spec-writer
   by: dphang
   notes: approvals/T-0025/changes-1.md
+- ts: '2026-10-04T19:21:47+00:00'
+  from: ready-for-spec-writer
+  to: ready-for-critic
+  by: workflow
+  round:
+    spec: 1
+    pr: 0
+- ts: '2026-10-04T19:28:51+00:00'
+  from: ready-for-critic
+  to: awaiting-spec-gate
+  by: workflow
+  round:
+    spec: 1
+    pr: 0
 parent: null
 depends_on: []
 parallel_safe: true

@@ -1,0 +1,2 @@
+# run records embed verbatim diffs and outputs: their whitespace is not the store's to fix
+runs/** -whitespace
