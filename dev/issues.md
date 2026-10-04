@@ -24,7 +24,7 @@ A fix closes its issue through a reviewed change on `main`; the merge column is 
 | [17](https://github.com/danielphang/spec-factory/issues/17) | Harness: `factory report TICKET` status page | not in intake yet | — | — |
 | [18](https://github.com/danielphang/spec-factory/issues/18) | Harness: a killed checker run parks as a harness bug instead of a budget kill (found by #16's writer) | green-pilot T-0002 | green `7c0a0353d` | harness |
 | [19](https://github.com/danielphang/spec-factory/issues/19) | Repo layout: the harness moves home, each target carries a `.factory/` instance (p0; carries #7's harness side) | T-0012 (closed as applied 2026-10-03: VERIFIED, no spec store on this instance) | `70c32ab`; store move `95c1acf` | 42 |
-| [20](https://github.com/danielphang/spec-factory/issues/20) | Prompts: ponytail's check order, callers-first root-cause rule, reviewer over-building tags, `factory:` deferral marker (after #19) | T-0015 (rescoped to `docs/coding.md`; intake 2026-10-03) | — | — |
+| [20](https://github.com/danielphang/spec-factory/issues/20) | Prompts: ponytail's check order, callers-first root-cause rule, reviewer over-building tags, `factory:` deferral marker (after #19) | T-0015 (rescoped to `docs/coding.md`; acceptance approved and live 2026-10-04, runtime `d81a684`) | `530c9ef` | 44 |
 | [21](https://github.com/danielphang/spec-factory/issues/21) | Current-state spec for the factory itself: seed its own current truth, README as the overview (after #19; #13, #14 fold in) | not in intake yet | — | — |
 | [22](https://github.com/danielphang/spec-factory/issues/22) | Per-role effort setting beside `models:` (p2; do not take until the operator confirms) | not in intake | — | — |
 | [23](https://github.com/danielphang/spec-factory/issues/23) | Technical documentation standards for the factory's agents: `docs/writing.md`, preamble line, critic rubric 6 widened, reviewer check (p1; scope (a)) | T-0013 (closed as applied 2026-10-03: VERIFIED 9/9, no spec store on this instance) | `01f7524` | 43 |
@@ -34,6 +34,7 @@ A fix closes its issue through a reviewed change on `main`; the merge column is 
 | [27](https://github.com/danielphang/spec-factory/issues/27) | Requests lose their attachments: roles never see the request's source path or the files beside it (found by the Nanobot v3.5 Driver) | not in intake | — | — |
 | [28](https://github.com/danielphang/spec-factory/issues/28) | Every role agent receives the operator's latest chat message, labelled as overriding its task (Workflow tool relay; found by the v3.5 Driver) | not in intake | — | — |
 | [29](https://github.com/danielphang/spec-factory/issues/29) | Writing standard rule 11: a heading never claims more than the sentence under it (from #26's acceptance test) | not in intake | — | — |
+| [30](https://github.com/danielphang/spec-factory/issues/30) | init on a throwaway store writes a half instance; a later run crashes on the missing context.md (found by #20's acceptance test) | not in intake | — | — |
 
 Issues 1–10 are applied and can be closed against their merge; 11 applied (`9168ce1`); 13 and 14 fold into #21 (checklists until it archives); 15 closed as superseded. #12 was a duplicate of #11.
 New findings go straight to GitHub issues; this file is the index.
