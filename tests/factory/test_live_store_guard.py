@@ -141,8 +141,14 @@ def test_marked_writes_from_a_runs_scratch_directory_are_refused(target, tmp_pat
     before = snapshot(target)
     for argv in (("decision", "add", "T-0001", "x"), ("init", "--repo-name", "x"),
                  ("ticket", "new", "--file", request(tmp_path))):
-        assert_refused(cli(scratch, *argv, FACTORY_DISPATCH="1"),
-                       f"{state(target).resolve()}; called from inside its runs/")
+        cp = cli(scratch, *argv, FACTORY_DISPATCH="1")
+        if argv[0] == "init":  # refused first by T-0025's A.1: the store is a factory-store checkout
+            assert cp.returncode == 2, (cp.returncode, cp.stdout, cp.stderr)
+            assert (f"is inside the store checkout {state(target).resolve()} (branch factory-store); "
+                    "run init from the repository root") in cp.stderr
+            assert js(cp) == {"ok": False, "error": cp.stderr.strip()}
+            continue
+        assert_refused(cp, f"{state(target).resolve()}; called from inside its runs/")
     assert snapshot(target) == before
 
 
@@ -152,8 +158,14 @@ def test_marked_writes_from_under_worktrees_are_refused(target, tmp_path):
     wt.mkdir(parents=True)
     before = snapshot(target)
     for argv in (("ticket", "new", "--file", request(tmp_path)), ("init",)):
-        assert_refused(cli(wt, *argv, FACTORY_DISPATCH="1"),
-                       f"{state(target).resolve()}; called from inside its worktrees/")
+        cp = cli(wt, *argv, FACTORY_DISPATCH="1")
+        if argv[0] == "init":  # refused first by T-0025's A.1: the store is a factory-store checkout
+            assert cp.returncode == 2, (cp.returncode, cp.stdout, cp.stderr)
+            assert (f"is inside the store checkout {state(target).resolve()} (branch factory-store); "
+                    "run init from the repository root") in cp.stderr
+            assert js(cp) == {"ok": False, "error": cp.stderr.strip()}
+            continue
+        assert_refused(cp, f"{state(target).resolve()}; called from inside its worktrees/")
     assert snapshot(target) == before
 
 

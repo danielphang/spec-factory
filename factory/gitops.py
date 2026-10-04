@@ -100,6 +100,30 @@ def checkout_of(repo: Path, branch: str) -> Path | None:
     return None
 
 
+STORE_BRANCH = "factory-store"
+
+
+def common_dir(path: Path) -> str | None:
+    """The absolute git common directory of the repository at `path`, None outside one: two
+    checkouts of one repository share it, a separate repository has its own."""
+    return git(path, "rev-parse", "--path-format=absolute", "--git-common-dir", check=False) or None
+
+
+def last_tracked(repo: Path, ref: str, path: str) -> str | None:
+    """The last commit in `ref`'s history that touched a file under `path` (relative to `repo`),
+    or None. A ref with no commit yet (an unborn branch) has tracked nothing."""
+    if not git(repo, "rev-parse", "-q", "--verify", f"{ref}^{{commit}}", check=False):
+        return None
+    return git(repo, "log", "-1", "--format=%H", ref, "--", path) or None
+
+
+def remote_branches(repo: Path, branch: str) -> list[str]:
+    """Every remote-tracking ref `refs/remotes/*/<branch>`, as `<remote>/<branch>`. Git's `*` stops at
+    a slash, so a branch under a namespace (`origin/x/<branch>`) is not one."""
+    refs = git(repo, "for-each-ref", "--format=%(refname)", f"refs/remotes/*/{branch}").splitlines()
+    return [r.removeprefix("refs/remotes/") for r in refs]
+
+
 class MergeLock:
     """One merge at a time per target repo: a lock directory (mkdir is atomic). Two sibling
     sub-tickets that reach the merge gate together must not run `git merge` in one checkout at once."""

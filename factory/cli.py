@@ -843,35 +843,130 @@ def _revision() -> str:
     return rev
 
 
+def _refuse_inside_store(cwd: Path, top: Path) -> None:
+    """Refuse `init` from inside the store checkout, where it would build a second instance inside
+    the live store (design A.1). Called only with FACTORY_INSTANCE unset."""
+    if gitops.git(top, "symbolic-ref", "-q", "HEAD", check=False) == f"refs/heads/{gitops.STORE_BRANCH}":  # unborn too
+        raise Refused(f"factory init: {cwd} is inside the store checkout {top} (branch {gitops.STORE_BRANCH}); "
+                      "run init from the repository root")
+    # Whatever the store has checked out (a detached HEAD, another branch): the instance found by
+    # walking up names its store, and a checkout of the same repository at or under it is that store.
+    found = instance.find()
+    if found is None:
+        return
+    try:
+        cfg = instance.load_config(found)
+    except (OSError, yaml.YAMLError):  # an unreadable config names no store: nothing to compare
+        return
+    if not isinstance(cfg, dict) or not isinstance(cfg.get("state_dir"), str):
+        return
+    own = instance.own_state_root(found, cfg)
+    if top == own or (top.is_relative_to(own)
+                      and gitops.common_dir(top) == gitops.common_dir(instance.repo_root(found))):
+        raise Refused(f"factory init: {cwd} is inside the store {own} of the instance {found}; "
+                      "run init from the repository root")
+
+
+def _head_branch(repo: Path) -> str:
+    """The branch checked out at `repo`, or HEAD when it is detached."""
+    return gitops.git(repo, "symbolic-ref", "-q", "--short", "HEAD", check=False) or "HEAD"
+
+
+def _add_store_checkout(repo: Path, root: Path, branch: str, cfg_path: Path) -> None:
+    """Make the missing own store `root` a checkout of the store branch (design A.3): refused at a
+    path `branch` has ever tracked; the branch comes from a local branch, else the one remote that
+    carries it, else a new orphan, which needs no commit and so no git identity."""
+    store_branch = gitops.STORE_BRANCH
+    rel = root.relative_to(repo).as_posix() if root.is_relative_to(repo) else None
+    if rel is not None:
+        sha = gitops.last_tracked(repo, branch, rel)
+        if sha:
+            raise Refused(f"factory init: {branch} has tracked files under {rel} (last in commit {sha}); a checkout "
+                          f"of any older commit would overwrite a store kept there; set another state_dir in {cfg_path}")
+    local = bool(gitops.git(repo, "rev-parse", "-q", "--verify", f"refs/heads/{store_branch}", check=False))
+    remotes = [] if local else gitops.remote_branches(repo, store_branch)
+    if len(remotes) > 1:
+        raise Refused(f"factory init: no local branch {store_branch}, and more than one remote carries it "
+                      f"({', '.join(remotes)}); run git branch {store_branch} <remote>/{store_branch} for the one "
+                      "to use, then init again")
+    if local:
+        args = ["worktree", "add", "-q", str(root), store_branch]
+    elif remotes:
+        args = ["worktree", "add", "-q", "--track", "-b", store_branch, str(root), remotes[0]]
+    else:
+        args = ["worktree", "add", "-q", "--orphan", "-b", store_branch, str(root)]
+    try:
+        gitops.git(repo, *args)
+    except Refused as e:
+        raise Refused(f"factory init: cannot check out the store at {root}: {e}") from None
+    if rel is not None:  # the integration checkout ignores the store through the repo's exclude file
+        exclude = Path(gitops.git(repo, "rev-parse", "--git-path", "info/exclude"))
+        exclude = exclude if exclude.is_absolute() else repo / exclude
+        have = exclude.read_text(encoding="utf-8") if exclude.exists() else ""
+        line = f"/{rel}/"
+        if line not in have.splitlines():
+            store.write_text(exclude, have + ("" if not have or have.endswith("\n") else "\n") + line + "\n")
+
+
+def _store_hint(repo: Path, root: Path) -> None:
+    """An existing own store that is not the store branch's checkout is left alone (design A.5)."""
+    top = gitops.git(root, "rev-parse", "--show-toplevel", check=False)
+    if top and Path(top).resolve() == root.resolve() and gitops.common_dir(root) == gitops.common_dir(repo):
+        if _head_branch(root) == "HEAD":
+            print(f"the store worktree {root} is on a detached HEAD; check out {gitops.STORE_BRANCH} there",
+                  file=sys.stderr)
+        return
+    print(f"the store {root} is not on its branch {gitops.STORE_BRANCH}; factory store migrate --to PATH moves it",
+          file=sys.stderr)
+
+
 def init_cmd(a):
     """Create whatever of the instance is missing (design B.5); idempotent. The instance is
-    FACTORY_INSTANCE, else `.factory/` at the git top level of the working directory. Its pieces
-    (instance.yaml, context.md, harness.lock, agent files) are written only when the store in use
-    is the instance's own: a run on a throwaway store (FACTORY_STATE elsewhere, as every test
-    does) initialises that store and nothing else. So creating an instance while FACTORY_STATE
-    names another store is refused before anything is written: it would leave an instance.yaml
-    with no context.md."""
-    top = _git_toplevel(instance.caller_cwd())
+    FACTORY_INSTANCE, else `.factory/` at the git top level of the working directory, which may not
+    be inside the store checkout (A.1). Its pieces (instance.yaml, context.md, harness.lock, agent
+    files) are written only when the store in use is the instance's own: a run on a throwaway store
+    (FACTORY_STATE elsewhere, as every test does) initialises that store and nothing else. So
+    creating an instance while FACTORY_STATE names another store is refused before anything is
+    written: it would leave an instance.yaml with no context.md. A missing own store becomes a git
+    worktree of the store branch (A.3) before any instance file is written, so a refusal or a
+    failed git step leaves nothing behind."""
+    cwd = instance.caller_cwd()
+    top = _git_toplevel(cwd)
+    if instance.env_path("FACTORY_INSTANCE") is None:
+        _refuse_inside_store(cwd, top)
     inst = instance.env_path("FACTORY_INSTANCE") or top / instance.DIRNAME
     created: list[str] = []
     cfg_path = inst / instance.CONFIG_NAME
-    if not cfg_path.exists():
+    new_text = None
+    if cfg_path.exists():
+        cfg = instance.load_config(inst)
+    else:
         if not a.repo_name:
             raise Refused(f"factory init: {cfg_path} does not exist; pass --repo-name NAME to create it")
-        text = _new_instance_yaml(a.repo_name)
-        new_cfg = yaml.safe_load(text)
-        root = instance.state_root(inst, new_cfg)
-        if not instance.is_own_store(inst, new_cfg, root):
+        new_text = _new_instance_yaml(a.repo_name)
+        cfg = yaml.safe_load(new_text)
+    root = instance.state_root(inst, cfg)
+    fence(inst, cfg, root)
+    own = instance.is_own_store(inst, cfg, root)
+    if new_text is not None:
+        if not own:
             raise Refused(f"factory init: {inst} has no {instance.CONFIG_NAME}, and FACTORY_STATE names another "
                           f"store ({root}); create the instance with FACTORY_STATE unset, then init that store")
         _revision()  # refuse before writing anything if the lock cannot be written
-        store.write_text(cfg_path, text)
+    repo = instance.repo_root(inst)
+    existed = root.exists()
+    if own and not existed:
+        if new_text is None and (os.environ.get("FACTORY_INTEGRATION_BRANCH") or cfg.get("integration_branch")):
+            branch = gitops.integration_branch(cfg, repo)
+        else:  # its own fallback, rev-parse --abbrev-ref HEAD, fails on an unborn branch, never tracked (A.3.1)
+            branch = _head_branch(repo)
+        _add_store_checkout(repo, root, branch, cfg_path)
+    if new_text is not None:
+        store.write_text(cfg_path, new_text)
         created.append(str(cfg_path))
-    cfg = instance.load_config(inst)
-    root = instance.state_root(inst, cfg)
-    fence(inst, cfg, root)
     agents: list[str] = []
-    if instance.is_own_store(inst, cfg, root):
+    store_branch = None
+    if own:
         ctx = inst / "context.md"
         if not ctx.exists():
             store.write_text(ctx, instance.CONTEXT_TEMPLATE.read_text(encoding="utf-8"))
@@ -880,12 +975,17 @@ def init_cmd(a):
         if not lock.exists():
             store.write_text(lock, _revision() + "\n")
             created.append(str(lock))
-        dest = instance.repo_root(inst) / ".claude" / "agents"
+        dest = repo / ".claude" / "agents"
         for src in sorted(instance.AGENTS.glob("factory-*.md")):
             if not (dest / src.name).exists():
                 (dest / src.name).parent.mkdir(parents=True, exist_ok=True)
                 shutil.copyfile(src, dest / src.name)
                 agents.append(str(dest / src.name))
+        checkout = gitops.checkout_of(repo, gitops.STORE_BRANCH)
+        if checkout is not None and checkout.resolve() == root:
+            store_branch = gitops.STORE_BRANCH
+        elif existed:
+            _store_hint(repo, root)
     had_gitignore, had_gitattributes = (root / ".gitignore").exists(), (root / ".gitattributes").exists()
     store.ensure_gitignore(root)
     store.ensure_gitattributes(root)
@@ -899,7 +999,7 @@ def init_cmd(a):
     if agents:
         print("restart the session so the agents register", file=sys.stderr)
     out({"ok": True, "written": written, "active": True, "instance": str(inst), "state": str(root),
-         "created": created, "agents": agents})
+         "created": created, "agents": agents, "store_branch": store_branch})
 
 
 def paths_cmd(a):
