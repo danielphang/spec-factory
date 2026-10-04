@@ -1,0 +1,24 @@
+run_id: run-0202-verifier
+role: verifier
+ticket: T-0023.1
+model: opus
+round: 1
+spec_version: 2
+started: '2026-10-04T14:34:47+00:00'
+finished: '2026-10-04T14:46:22+00:00'
+wall_s: 695
+status: VERIFIED
+input_sources:
+- specs/T-0023.1/subticket.md
+- specs/T-0023/v2.md
+- runs/run-0201-implementer/output.md
+- runs/run-0202-verifier/diff.patch
+environment_files: []
+branch: factory/T-0023.1
+base: 1ab9540c9f5f53b505d2d7d8d8942438a71bc5e9
+head: fa09a10f700a44ab7ce5881bf3daf5615ecbbb57
+worktree: /Users/dphang/dev/spec-factory/.factory/state/runs/run-0202-verifier/wt
+confidence: high. Every acceptance command and both gates ran on the stated head. Both NEW criteria fail
+  on base for the stated reason and pass on the PR, and the probes show the launcher stubs only C.4.
+escalations: []
+escalations_note: null

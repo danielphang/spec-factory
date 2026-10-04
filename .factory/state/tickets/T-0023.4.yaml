@@ -1,0 +1,28 @@
+id: T-0023.4
+type: sub-ticket
+title: 'Store and instance setup: whitespace rule, no half instance, relative paths (parts C, E and F)'
+request: requests/T-0023.md
+source: plan:run-0200-planner
+status: waiting-dependencies
+round:
+  spec: 0
+  pr: 0
+spec:
+  version: 2
+  approved_version: 2
+plan: null
+in_flight: []
+parked: null
+created: '2026-10-04T14:25:14+00:00'
+history: []
+parent: T-0023
+depends_on:
+- T-0023.3
+parallel_safe: false
+branch: null
+head: null
+merge:
+  base_before: null
+  main_after: null
+parent_base: null
+label: T-0023-S3
