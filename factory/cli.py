@@ -763,19 +763,26 @@ def resolve(a, root, cfg):
         move("awaiting-spec-gate", "to-spec-gate", {})
     elif a.redispatch:
         # Re-run the checkers on the same head after the cause of the park is fixed outside the ticket
-        # (a harness or gate defect, a killed checker). Round unchanged; the head's earlier results are
-        # set aside under results/<head>/superseded-<n>/ so the join cannot read them as current.
+        # (a harness or gate defect, a killed checker). Round unchanged. The head's rows that did not
+        # pass are set aside under results/<head>/superseded-<n>/ so the join cannot read them as
+        # current; the build then runs only the checkers with no row. The reviewer row stays when it
+        # is APPROVE; the verifier and ci rows, written by one verifier run, stay together when they
+        # are VERIFIED and PASS.
         if st != "parked" or parked.get("from") not in ("checks-in-flight", "ready-for-merge"):
             raise Refused(f"--redispatch applies to a sub-ticket parked from its checks; {t['id']} is {st} (from {parked.get('from')})")
         head = t.get("head")
         moved = []
         if head:
+            rows = {k: v.get("status") for k, v in store.results_for(root, head).items()}
+            stale = [] if rows.get("reviewer") == "APPROVE" else ["reviewer"]
+            if not (rows.get("verifier") == "VERIFIED" and rows.get("ci") == "PASS"):
+                stale += ["verifier", "ci"]
             rd = root / "results" / head
-            if rd.exists():
-                n = len(list(rd.glob("superseded-*"))) + 1
-                dest = rd / f"superseded-{n}"
-                for f in sorted(rd.glob("*.yaml")):
-                    dest.mkdir(parents=True, exist_ok=True)
+            todo = [store.result_path(root, head, r) for r in stale if r in rows]
+            if todo:
+                dest = rd / f"superseded-{len(list(rd.glob('superseded-*'))) + 1}"
+                dest.mkdir(parents=True, exist_ok=True)
+                for f in todo:
                     f.rename(dest / f.name)
                     moved.append(f.stem)
         store.log_event(root, "results.superseded", ticket=t["id"], head=head, roles=moved)

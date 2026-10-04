@@ -58,9 +58,11 @@ async function clerk(cmd, phase, label) {
   for (let i = lines.length - 1; i >= 0 && parsed === null; i--) {
     try { parsed = JSON.parse(lines[i]) } catch (e) { parsed = null }
   }
-  if (parsed === null) return { ok: false, exit: res.exit, stderr: res.stderr || '', stdout: res.stdout || '', error: 'no JSON on stdout' }
+  if (parsed === null) return { ok: false, exit: res.exit, stderr: res.stderr || `exit ${res.exit}, no JSON on stdout`, stdout: res.stdout || '', error: 'no JSON on stdout' }
   if (res.exit !== 0 && parsed.ok !== false) parsed.ok = false
   if (!parsed.stderr && res.stderr) parsed.stderr = res.stderr
+  // A refusal prints its error as JSON on stdout too: a park reason built from stderr never ends blank.
+  if (parsed.ok === false && !parsed.stderr) parsed.stderr = parsed.error || `exit ${res.exit}, no error text`
   return parsed
 }
 
