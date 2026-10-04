@@ -1,0 +1,27 @@
+id: T-0031
+type: null
+title: Build worktrees start with no synced environment and an inherited VIRTUAL_ENV; sync once at setup,
+  unset VIRTUAL_ENV in run_env
+request: requests/T-0031.md
+source: /private/tmp/claude-501/-Users-dphang-dev-nanobot/c69bfd1d-97a6-43e3-9d5a-a517c28d382c/scratchpad/req_51.md
+status: ready-for-triage
+round:
+  spec: 0
+  pr: 0
+spec:
+  version: 0
+  approved_version: null
+plan: null
+in_flight: []
+parked: null
+created: '2026-10-04T22:16:24+00:00'
+history: []
+parent: null
+depends_on: []
+parallel_safe: true
+branch: null
+head: null
+merge:
+  base_before: null
+  main_after: null
+parent_base: null

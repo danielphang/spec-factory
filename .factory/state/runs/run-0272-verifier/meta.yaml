@@ -1,0 +1,21 @@
+run_id: run-0272-verifier
+role: verifier
+ticket: T-0025
+model: opus
+round: 0
+spec_version: 5
+started: '2026-10-04T22:03:05+00:00'
+finished: '2026-10-04T22:15:57+00:00'
+wall_s: 772
+status: VERIFIED
+input_sources:
+- specs/T-0025/v5.md
+environment_files: []
+branch: null
+base: 0b1abad474cb9c583ed8445fc33617f9f0bdc37b
+head: a8d6326dbb20513274b5508fdaee6aae15ebd888
+worktree: /Users/dphang/dev/spec-factory/.factory/state/runs/run-0272-verifier/wt
+confidence: high. All 17 scenarios ran verbatim on both trees and matched the spec's expected outputs,
+  the gate suite passed twice, and 8 probes past the tested inputs held.
+escalations: []
+escalations_note: null

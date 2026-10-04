@@ -1,0 +1,864 @@
+diff --git a/README.md b/README.md
+index fca1ac0..c2579f0 100644
+--- a/README.md
++++ b/README.md
+@@ -73,6 +73,7 @@ a command is allowed.
+ | current truth | one document per capability saying what the system does now; the pipeline keeps it |
+ | target | a repo the factory works on |
+ | instance | a target's `.factory/` directory: its config, its briefing for the roles, its store |
++| store branch | `factory-store`, the target's branch for its store; checked out as a git worktree at the store's path and never merged into the integration branch |
+ | runtime | the pinned checkout of the harness that runs tickets; distinct from the dev checkout |
+ 
+ ## How a ticket moves
+@@ -163,9 +164,13 @@ Three places:
+   mid-run.
+ - Each **target** holds only a `.factory/` directory, its instance: `instance.yaml` (config),
+   `context.md` (the briefing every role reads first), the store, and `harness.lock`, the one
+-  harness commit this target has agreed to run with. Today this repo is the only target on the
+-  runtime; a chat-bot repo is a target that still runs its own in-tree copy of the harness until
+-  its cutover.
++  harness commit this target has agreed to run with. The store is the target's record of every
++  ticket. A store that `factory init` creates is a git worktree of the store branch,
++  `factory-store`, at a path the integration branch has never tracked, so committing the store
++  never moves the integration branch. This repo's store and the chat-bot repo's predate that and
++  are still plain directories committed on their integration branches. Today this repo is the only
++  target on the runtime; a chat-bot repo is a target that still runs its own in-tree copy of the
++  harness until its cutover.
+ 
+ ```mermaid
+ flowchart TB
+@@ -252,9 +257,15 @@ the dev checkout is where you merge.
+ 
+ From inside the target repo, with `R` the runtime (`~/dev/spec-factory-harness`):
+ 
+-1. `$R/bin/factory init --repo-name NAME`. Creates `.factory/` at the repo's top level
+-   (`instance.yaml`, `context.md`, `harness.lock`, the store) and copies the role agents into
+-   `.claude/agents/`. Idempotent.
++1. `$R/bin/factory init --repo-name NAME`, from the repository root. Creates `.factory/` at the
++   repo's top level (`instance.yaml`, `context.md`, `harness.lock`) and copies the role agents into
++   `.claude/agents/`. It creates the store as a checkout of a new `factory-store` branch, and adds
++   the store's path to the repo's git exclude file so the integration checkout does not see it.
++   On a clone where `factory-store` already exists, locally or on one remote, it checks that
++   branch out instead, which restores the store. When more than one remote carries the branch it
++   refuses and names each; pick one with `git branch factory-store <remote>/factory-store` and run
++   `init` again. It also refuses from inside the store, and at a store path the integration branch
++   has ever tracked. Idempotent.
+ 2. Restart the Claude Code session so the agents register.
+ 3. Fill in `.factory/context.md`, the briefing every role reads first: which repo this is, how to
+    run its tests, what kind of request to expect. Set `gate_commands` and `protected_paths` in
+@@ -263,6 +274,28 @@ From inside the target repo, with `R` the runtime (`~/dev/spec-factory-harness`)
+ 
+ The repo is now a target. "Starting a run" is the rest.
+ 
++### Committing and pushing the store
++
++The store is its own checkout of `factory-store`, so its records are committed there, never on the
++integration branch. Set `S` to the store's path (`state_dir` in `instance.yaml`; `.factory/state`
++for a new instance), then:
++
++```
++git -C "$S" add -A && git -C "$S" commit -m "store: <what changed>"
++git push origin factory-store
++```
++
++A store commit never moves the integration branch, so it never sends a sub-ticket that is waiting
++to merge back for a catch-up run.
++
++Two cautions:
++
++- In the integration checkout, `git clean -fdx` keeps the store, because git skips a directory
++  that holds its own `.git`. `git clean -ffdx`, with a doubled `-f`, deletes it, uncommitted
++  records included.
++- Run `factory init` from the repository root. From inside the store it refuses, because there
++  it would build a second instance inside the live store.
++
+ ## Starting a run
+ 
+ A Claude Code session in the target repo asks the runtime where things are:
+@@ -303,9 +336,9 @@ real ticket.
+ 
+ **Parallel builds across tickets have not been tried.** Each sub-ticket builds in its own worktree,
+ merges into the integration branch one at a time under a lock, and gets a catch-up run if the branch
+-moved under it. Two builds at once also move the branch under each other, and committing the store
+-to the same branch moves it too; both cost catch-up runs. Until a real run shows the cost, run one
+-build at a time per target.
++moved under it. Two builds at once also move the branch under each other, which costs catch-up runs.
++A store committed on its store branch no longer moves the integration branch. Until a real run
++shows the cost, run one build at a time per target.
+ 
+ **Moving the runtime** happens only when no build is in flight on any target, because every target
+ runs from the same runtime. Each target's runner then accepts the new revision between its builds.
+@@ -443,9 +476,9 @@ A). Instance A still runs its in-tree copy of the harness; its cutover to the sh
+ planned, not done. Open work named above: `factory report`
+ (#17); current-truth seeding and the README overview this page stands in for (#21); per-role
+ effort (#22); prompt changes borrowed from the ponytail project (#20); the documentation standard
+-this page was rewritten to (#23). Each run's own scratch directory came from #35. The design
++this page was rewritten to (#23). Each run's own scratch directory came from #35, and the store branch from #46. The design
+ document is `docs/design.md`, its changelog `docs/changelog.md`; the working documents from
+-building the harness are under `dev/`; the issue index is `dev/issues.md`. The store holds 18 tickets at `.factory/state/`; the runtime is at
++building the harness are under `dev/`; the issue index is `dev/issues.md`. The store holds 52 tickets at `.factory/state/`; the runtime is at
+ `~/dev/spec-factory-harness`, revision `010d1b0`, equal to this repo's `harness.lock`.
+ 
+ ## Maintaining this page
+diff --git a/dev/build-harness.spec.md b/dev/build-harness.spec.md
+index 46feb11..4019123 100644
+--- a/dev/build-harness.spec.md
++++ b/dev/build-harness.spec.md
+@@ -114,7 +114,7 @@ Rows marked "ruling" are decided; rows marked "default" are mine and repeat unde
+ | R2 | Git server | Bare repo `~/factory-remote/nanobot.git`, pre-receive hook, one deploy key per role; GitHub remote untouched | ruling + addendum 1 |
+ | R3 | **Dispatcher** | Claude Code **Workflow tool**: `factory/workflows/intake.js` and `factory/workflows/build.js`; fresh context per `agent()`; join, round counters and routing are plain code in the script. The three v0 limits of doc §Harness table piece 2 apply: (1) no filesystem or clock, so the clerk calls the store CLI and the guards live in the CLI (B); (2) the piece-3 kill is post-hoc (I.5); (3) fresh context, not isolation: every `agent()` call shares the session's checkout, credentials and git identity (Risk R1, R6). The cron/`factory loop` dispatcher of v1 is **deferred to a later ticket** | addendum 1 |
+ | R4 | Isolated run | Implementer and retro: `agent(..., {isolation: 'worktree'})` on `~/factory/clone`; checkers: fresh context, read + shell, checkout of the head made by the clerk in `~/factory/runs/<run_id>/wt`; Docker deferred | ruling + E7 |
+-| R5 | Tracker / human surface | `tickets/` YAML + `queue.md` on branch `tickets` of the bare repo (v3 called it `factory/state`; same checkout `~/factory/state`); approved specs also exported to `knowledge_vault/sanitized_specs/<ID>.md` | ruling + addendum 2 (location: default) |
++| R5 | Tracker / human surface | `tickets/` YAML + `queue.md` on branch `factory-store` of the bare repo (v3 called it `factory/state`; same checkout `~/factory/state`); approved specs also exported to `knowledge_vault/sanitized_specs/<ID>.md` | ruling + addendum 2 (location: default) |
+ | R6 | Permissions | Never `bypassPermissions` (nor `dontAsk`). Role agent definitions carry `tools:` allowlists: checkers and read-only authors Read/Grep/Glob/Bash, no Edit/Write; implementer and retro add Edit/Write; clerk Bash only, allowed `Bash(factory *)`, `Bash(git *)`. Real runs: the operator's session runs `/factory` with `--permission-mode acceptEdits` and `--allowedTools "Bash(factory *)" "Bash(git *)" "Bash(pytest *)" "Bash(ruff *)" "Bash(mypy *)" Read Grep Glob Edit Write Skill Workflow`; anything outside that list prompts the operator (the session is attended in v0). With the per-role keys (E) this is the fence for v0 limit (3), shared identity and credentials. See Risk R6 | ruling; mode/allowlist: default (critic S3) |
+ | R7 | Faux-SPEC input / sanitized output | `knowledge_vault/specs/*.md` → `knowledge_vault/sanitized_specs/` | addendum 2 |
+ | D1 | Trunk | The bare repo's `main`, seeded once from `feat/lionbot-v3` by `factory init` | default |
+@@ -149,7 +149,7 @@ pyproject.toml                                adds the `factory` console script
+ AGENTS.md                                     adds a "Factory" section (A)
+ ```
+ 
+-State on branch `tickets` of the bare repo (the ticket store, doc §Harness table piece 1; never merged into `main`, never subject to the merge gate; v3: `factory/state`), checked out at `~/factory/state`: `tickets/`, `specs/`, `openspec/`, `decisions.md`, `requests/`, `results/`, `approvals/`, `log/`, `runs/`, `audits/`, `retros/`, `queue.md`. Keys in `~/factory-remote/keys/` (part E).
++State on branch `factory-store` of the bare repo (the ticket store, doc §Harness table piece 1; never merged into `main`, never subject to the merge gate; v3: `factory/state`), checked out at `~/factory/state`: `tickets/`, `specs/`, `openspec/`, `decisions.md`, `requests/`, `results/`, `approvals/`, `log/`, `runs/`, `audits/`, `retros/`, `queue.md`. Keys in `~/factory-remote/keys/` (part E).
+ 
+ ### A. Skeleton, agent definitions, entry skill
+ 
+@@ -157,7 +157,7 @@ State on branch `tickets` of the bare repo (the ticket store, doc §Harness tabl
+ - `factory/cli.py`: subcommands per part; exit 0 success, 2 refused precondition, 1 error; one audit event (C) per state change.
+ - `factory render`: reads `docs/design.md`, which is in the same repo as the harness (`render` reads no other path and still has no `--doc` option), and writes `docs/prompts/` and the `agents/` templates from its prompt blocks, plus **one added rule in the Triage and Spec-writer definitions** (addendum 2): "Acceptance items describe behaviour (a command a user or operator could run, or Given/When/Then) and never name a test function, class, or internal symbol; symbols belong under Root cause and Proposed change." The placeholders (`{repo name}`, protected paths, `{2}`, `{400}`, `{gate commands}`, `{3}`, `{5}`, `{force-push allowed}`) are filled per instance from `.factory/instance.yaml` when a run starts; `{writing standard}` is filled at the same time from the running harness checkout, not from `instance.yaml`, with the absolute path of its `docs/writing.md`, and `{coding standard}`, in the implementer and code-reviewer prompts, with the absolute path of its `docs/coding.md`. The doc text itself is copied verbatim and otherwise never edited by this ticket; `factory render --check` diffs the rendered bodies back against `docs/design.md` (the verbatim check the plan's BH-4 cites; item 82).
+ - `.claude/skills/factory/SKILL.md`: how to run `factory intake`, then `Workflow({scriptPath: 'factory/workflows/intake.js', args: {ticket: ID, stubs?: dir}})`, approve at the gate, then `Workflow({scriptPath: 'factory/workflows/build.js', args: {ticket: ID}})`; the human commands (`queue`, `approve-*`, `request-changes`, `resolve`, `merge`, `gate-run`, `audit-sample`, `retro`), all run with `FACTORY_KEY` set (B). Not verified: whether the Workflow registry can address these as named workflows; `scriptPath` is what the reference documents, so that is what the skill uses.
+-- `factory init`: creates `~/factory-remote/nanobot.git` (bare), seeds `main` from `feat/lionbot-v3`, creates the `tickets` branch and its checkout, mints keys (E), installs the hook (`factory install-hook`: copies the installed package to `~/factory-remote/hook-env/`, writes the shim with an absolute `FACTORY_HOOK_PYTHON`, so a pushed edit to `factory/hook.py` changes nothing until a human reinstalls). It never touches `knowledge_vault/ProjectNotes/SPEC_MAINTENANCE_WORKFLOW.md`, `webui/package-lock.json`, `port_state.json`, or `scripts/` (E9).
++- `factory init`: creates `~/factory-remote/nanobot.git` (bare), seeds `main` from `feat/lionbot-v3`, creates the `factory-store` branch and its checkout, mints keys (E), installs the hook (`factory install-hook`: copies the installed package to `~/factory-remote/hook-env/`, writes the shim with an absolute `FACTORY_HOOK_PYTHON`, so a pushed edit to `factory/hook.py` changes nothing until a human reinstalls). It never touches `knowledge_vault/ProjectNotes/SPEC_MAINTENANCE_WORKFLOW.md`, `webui/package-lock.json`, `port_state.json`, or `scripts/` (E9).
+ - `AGENTS.md`: the layout, the gates, and that `.claude/agents/factory-*`, `.claude/skills/factory*` and `factory/prompts/**` are guardrail paths.
+ 
+ ### B. Ticket store (piece 1), requests, change proposal (piece 5)
+@@ -208,7 +208,7 @@ CLI (the **store CLI** of doc §Harness table piece 1 — read, transition, reco
+ 
+ ### C. Audit log and run artifacts (piece 10)
+ 
+-`log/<YYYY-MM>.jsonl` and `runs/<run_id>/{meta.yaml,input.md,system-prompt.txt,output.md}` on `tickets`. Events: `request.created`, `ticket.created`, `ticket.transition`, `run.started`, `run.finished`, `run.killed`, `result.recorded`, `result.stale-discarded`, `approval.recorded`, `merge.refused`, `merge.done`, `escalation.queued`, `reply.sent`, `human.resolved`, `harness-bug`, `spec.exported`, `change.pinned`, `change.archived`, `decision.recorded`. `meta.yaml`: role, ticket, head, base, model, spec_version, budget_usd, resolution, started, finished, wall_s, status, escalations_note, workflow_run_id. Append-only enforced by the hook (F.3). `factory log tail [-n N] [--ticket ID] [--event E]`.
++`log/<YYYY-MM>.jsonl` and `runs/<run_id>/{meta.yaml,input.md,system-prompt.txt,output.md}` on `factory-store`. Events: `request.created`, `ticket.created`, `ticket.transition`, `run.started`, `run.finished`, `run.killed`, `result.recorded`, `result.stale-discarded`, `approval.recorded`, `merge.refused`, `merge.done`, `escalation.queued`, `reply.sent`, `human.resolved`, `harness-bug`, `spec.exported`, `change.pinned`, `change.archived`, `decision.recorded`. `meta.yaml`: role, ticket, head, base, model, spec_version, budget_usd, resolution, started, finished, wall_s, status, escalations_note, workflow_run_id. Append-only enforced by the hook (F.3). `factory log tail [-n N] [--ticket ID] [--event E]`.
+ 
+ ### D. Commit-bound results table (piece 6)
+ 
+@@ -222,7 +222,7 @@ CLI (the **store CLI** of doc §Harness table piece 1 — read, transition, reco
+ 
+ ```yaml
+ roles:
+-  harness:     {may_push: [refs/heads/main, refs/heads/tickets]}
++  harness:     {may_push: [refs/heads/main, refs/heads/factory-store]}
+   implementer: {may_push: [refs/heads/ticket/*]}
+   retro:       {may_push: [refs/heads/retro/*]}
+   reviewer: {may_push: []}   verifier: {may_push: []}   triage: {may_push: []}
+@@ -234,11 +234,11 @@ One deploy key per identity that may push (`harness`, `implementer`, `retro`, `d
+ 
+ ### F. Pre-receive hook: permissions, merge gate, guardrail and protected paths (pieces 4, 7, 8)
+ 
+-Runtime: `factory/hooks/pre-receive` is a `#!/bin/sh` shim installed into `~/factory-remote/nanobot.git/hooks/` by `factory install-hook`; it `exec`s the hook-env python with `-m factory.hook`, cwd = the bare repo. The hook reads **only server-side state**: `factory/identities.yaml` and `factory/paths.yaml` via `git cat-file -p refs/heads/main:<path>` as stored **before** the push; `factory/config.yaml` (`force_push_allowed`) the same way; `tickets/`, `results/`, `approvals/` via `refs/heads/tickets` as stored before the push. Nothing is read from the pushed objects except the diff being judged. For each `old new ref` on stdin, identity `P` = `$FACTORY_IDENTITY` (unset → `anonymous`):
++Runtime: `factory/hooks/pre-receive` is a `#!/bin/sh` shim installed into `~/factory-remote/nanobot.git/hooks/` by `factory install-hook`; it `exec`s the hook-env python with `-m factory.hook`, cwd = the bare repo. The hook reads **only server-side state**: `factory/identities.yaml` and `factory/paths.yaml` via `git cat-file -p refs/heads/main:<path>` as stored **before** the push; `factory/config.yaml` (`force_push_allowed`) the same way; `tickets/`, `results/`, `approvals/` via `refs/heads/factory-store` as stored before the push. Nothing is read from the pushed objects except the diff being judged. For each `old new ref` on stdin, identity `P` = `$FACTORY_IDENTITY` (unset → `anonymous`):
+ 
+-1. **Identity.** Human: `refs/heads/tickets`, `refs/heads/ticket/*`, `refs/heads/retro/*`, `refs/heads/revert/*`; refused on `main` (`refs/heads/main: identity daniel may not push`). Role: only its `may_push`, else `refs/heads/X: identity P may not push`. `anonymous`: all refused.
++1. **Identity.** Human: `refs/heads/factory-store`, `refs/heads/ticket/*`, `refs/heads/retro/*`, `refs/heads/revert/*`; refused on `main` (`refs/heads/main: identity daniel may not push`). Role: only its `may_push`, else `refs/heads/X: identity P may not push`. `anonymous`: all refused.
+ 2. **`refs/heads/ticket/<ID>`** by `implementer`: refused unless `tickets/<ID>.yaml` `in_flight` names a run with role `implementer` (`ticket/<ID>: no implementer run in flight`). Deletion refused; non-fast-forward refused unless server-side `config.yaml` `force_push_allowed: true` (D9, the rebase form of the conflict run).
+-3. **`refs/heads/tickets`** (the store; harness and human identities only, per rule 1; never judged by rule 4): `approvals/**` added or changed → `P` human (`approval rows need a human pusher`); `log/*.jsonl` append-only and `runs/**` existing files unchanged (`<path> is append-only`); `results/**` → only `harness` (`results/ may only be written by harness`).
++3. **`refs/heads/factory-store`** (the store; harness and human identities only, per rule 1; never judged by rule 4): `approvals/**` added or changed → `P` human (`approval rows need a human pusher`); `log/*.jsonl` append-only and `runs/**` existing files unchanged (`<path> is append-only`); `results/**` → only `harness` (`results/ may only be written by harness`).
+ 4. **`refs/heads/main`** (merge gate). Only `harness`; fast-forward only. `H = new`; ticket with `head == H`. Normal conditions, first failure named:
+    - `results/H/{ci,reviewer,verifier}.yaml` = `PASS`,`APPROVE`,`VERIFIED` (`missing: ci, reviewer, verifier for H`);
+    - `git merge-base --is-ancestor old H` (`head H does not contain main <old>`);
+@@ -306,7 +306,7 @@ No API key in any run: the CLI authenticates from the owner's login. Keys only i
+ 
+ ### K. Human surface and approval records (piece 9)
+ 
+-- Humans record every decision by pushing a row to the `tickets` branch under their own identity: `approve-*`, `request-changes`, `resolve` and `queue apply` run as the human with `FACTORY_KEY=<human>` (E); the CLI commits the row and pushes it with that key, and the hook accepts an approval row only from a human pusher (F.3). `queue.md` is notification and discussion only; nothing in it is a decision until the command runs.
++- Humans record every decision by pushing a row to the `factory-store` branch under their own identity: `approve-*`, `request-changes`, `resolve` and `queue apply` run as the human with `FACTORY_KEY=<human>` (E); the CLI commits the row and pushes it with that key, and the hook accepts an approval row only from a human pusher (F.3). `queue.md` is notification and discussion only; nothing in it is a decision until the command runs.
+ - `queue.md` regenerated by `factory queue`: sections "Parked" (reason, question or output paths, oldest first), "Spec gate", "Protected PRs", "Guardrail gate", "Waiting on requester"; each entry ends with a `Decision:` line (`approve`, `approve --edit FILE`, `changes FILE`, `answer FILE`, `ruling FILE`, `redispatch`, `close`, `to-spec-gate`). `factory queue apply` turns filled lines into the commands below, run as the human identity, and clears them. A note without `Decision:` records nothing.
+ - `factory approve-spec ID [--version N] [--edit FILE]`: pins `approved_version` (edited text saved as a new version first), copies "Tests to change" and Risk paths into the ticket, `approvals/ID/spec-v<N>.yaml`, writes the pinned version as the change folder (B; event `change.pinned`; exit 2 with nothing written when the version is malformed (B) or a delta does not apply to current truth: an ADDED requirement name already in `openspec/specs/<capability>/spec.md`, or a MODIFIED or REMOVED name not in it), → `ready-for-planner`, and **exports** the pinned text to `knowledge_vault/sanitized_specs/<ID>.md` (`factory export ID`; event `spec.exported`; the export directory is a config key for the later `specs/` → `tickets/` rename).
+ - `factory request-changes ID --notes FILE`: `round.spec: 0`, → `ready-for-spec-writer`.
+@@ -361,10 +361,10 @@ Setup: `git clone $O w; cd w; git commit --allow-empty -m c`.
+ 13. With `T-0001` `in_flight` holding an implementer run (`factory ticket set T-0001 status=ready-for-implementer`, then item 9's `run start` with `--role implementer`): `AS implementer git push $O HEAD:ticket/T-0001` → exit 0. With `in_flight: []`: a new commit pushed the same way → exit 1, stderr `ticket/T-0001: no implementer run in flight` [NEW]
+ 14. `AS implementer git push --force $O HEAD~1:ticket/T-0001` → exit 1, stderr `non-fast-forward refused`; `AS implementer git push $O :ticket/T-0001` → exit 1, `deletion refused` [NEW]
+ 15. `AS retro git push $O HEAD:retro/2026-w40` → exit 0; `AS retro git push $O HEAD:ticket/T-0001` → exit 1 [NEW]
+-16. `AS harness git push $O HEAD:tickets` → exit 0; `AS implementer git push $O HEAD:tickets` → exit 1 [NEW]
++16. `AS harness git push $O HEAD:factory-store` → exit 0; `AS implementer git push $O HEAD:factory-store` → exit 1 [NEW]
+ 17. `AS daniel git push $O HEAD:main` → exit 1, stderr `refs/heads/main: identity daniel may not push` [NEW]
+-18. On `tickets`: commit `approvals/T-0001/pr-H.yaml`; `AS harness git push $O HEAD:tickets` → exit 1, `approval rows need a human pusher`; the same commit `AS daniel` → exit 0 [NEW]
+-19. On `tickets`: edit the first line of `log/2026-10.jsonl`, push `AS daniel` → exit 1, `log/2026-10.jsonl is append-only`; append a line instead → exit 0 [NEW]
++18. On `factory-store`: commit `approvals/T-0001/pr-H.yaml`; `AS harness git push $O HEAD:factory-store` → exit 1, `approval rows need a human pusher`; the same commit `AS daniel` → exit 0 [NEW]
++19. On `factory-store`: edit the first line of `log/2026-10.jsonl`, push `AS daniel` → exit 1, `log/2026-10.jsonl is append-only`; append a line instead → exit 0 [NEW]
+ 20. **Hook reads server-side refs (S4):** `AS implementer git push $O HEAD:ticket/T-0001` where the commit edits `factory/identities.yaml` to grant `implementer` `refs/heads/main` → exit 0 (ticket branch, allowed); then `AS implementer git push $O HEAD:main` → exit 1, `refs/heads/main: identity implementer may not push` [NEW]
+ 
+ ### Merge gate (S2) ⟨bare⟩
+@@ -475,7 +475,7 @@ Driver: `claude -p … "/factory run build T-0001 --stubs tests/factory/fixtures
+ 88. ⟨bare⟩ **Change folder at the gate:** `specs/T-0001/v1.md` in the four-part FORMAT of doc §2, its delta part `=== specs/status-parser/spec.md` holding `## ADDED Requirements` with `### Requirement: trailer-read` and one scenario: `AS daniel factory approve-spec T-0001 --version 1` → `openspec/changes/T-0001/` holds `proposal.md`, `design.md`, `specs/status-parser/spec.md` and `verification.md`, each equal to its part of `v1.md` except that `verification.md` also ends with `## Critic rounds`, one entry per critic run of T-0001; `change.pinned` logged; `openspec/specs/` and `decisions.md` unchanged. A `v2.md` whose delta has `## MODIFIED Requirements` with `### Requirement: no-such-req`: `AS daniel factory approve-spec T-0001 --version 2` → exit 2, stderr names `no-such-req`, `approved_version: 1`, no `approvals/T-0001/spec-v2.yaml` [NEW]
+ 89. ⟨wf⟩⟨bare⟩ **Archive at parent close:** case `plan-three` on item 88's T-0001, after item 77's VERIFIED: `openspec/changes/T-0001` is gone; `openspec/changes/archive/<date>-T-0001/` holds item 88's four files and `tasks.md`, equal to the planner run's `output.md` above its last `STATUS:` line; its `verification.md` ends with `## Verifier results`, one line per verifier row of `T-0001.1`–`.3` and `T-0001`; `openspec/specs/status-parser/spec.md` contains `### Requirement: trailer-read` and its scenario; `decisions.md` gained one `<date> T-0001 …` line per `## Decisions` line of the proposal; in the log `change.archived` precedes the transition to `closed`. A second parent, pinned before T-0001 archived with a delta that also ADDs `trailer-read`, reaching its parent-close VERIFIED → `status: parked`, `parked.reason` starts `archive:`, and `openspec/specs/`, `decisions.md` and its change folder are unchanged [NEW]
+ 90. ⟨wf⟩⟨bare⟩ **Current truth in writer and critic input:** after item 89, `factory request new --file r.md` (a new ticket `T-000k`) and case `accept-approve` run on `T-000k` → its spec writer run's and its critic run's `input.md` each contain `### Requirement: trailer-read`, and each of those runs' `meta.yaml` `input_sources` lists `openspec/specs/status-parser/spec.md` besides the sources item 42 names for that role. Item 42 holds as written because `openspec/specs/` is empty after `factory init` [NEW]
+-91. ⟨bare⟩ **Archive refusals without a change folder (K):** T-0001 pinned as in item 88's first half (`specs/T-0001/v1.md`, `AS daniel factory approve-spec T-0001 --version 1`). (a) On the `tickets` checkout, `rm -rf openspec/changes/T-0001`; then `factory archive T-0001` → exit 2, stderr `T-0001 has no change folder to archive`. (b) Then `mv openspec ../openspec.aside` on the `tickets` checkout; `factory archive T-0001` → exit 2, stderr `no spec store (factory init not run)`. In (a) and (b) the `tickets` checkout's `git rev-parse HEAD` and `git status --porcelain` are the same after the command as before it, and `factory log tail --event change.archived` gained no line [NEW]
++91. ⟨bare⟩ **Archive refusals without a change folder (K):** T-0001 pinned as in item 88's first half (`specs/T-0001/v1.md`, `AS daniel factory approve-spec T-0001 --version 1`). (a) On the `factory-store` checkout, `rm -rf openspec/changes/T-0001`; then `factory archive T-0001` → exit 2, stderr `T-0001 has no change folder to archive`. (b) Then `mv openspec ../openspec.aside` on the `factory-store` checkout; `factory archive T-0001` → exit 2, stderr `no spec store (factory init not run)`. In (a) and (b) the `factory-store` checkout's `git rev-parse HEAD` and `git status --porcelain` are the same after the command as before it, and `factory log tail --event change.archived` gained no line [NEW]
+ 
+ ### Gates (every seam)
+ 
+@@ -515,7 +515,7 @@ Blast radius: new files under `factory/`, `.claude/agents/factory-*`, `.claude/s
+ 
+ - **R1 Identity is advisory in v0** (doc §Harness table piece 2, v0 limit (3): every `agent()` call shares the session's checkout, credentials and git identity). E4: the hook inherits the pusher's environment under the local transport and `update-ref` runs no hook; with ssh forced commands the identity comes from the key, but every key is readable by the one Unix user. Mitigations: no key for checkers; tool allowlists in the agent definitions; worktree per mutating run; the implementer branch cannot be checked out twice (E3). Docker closes it.
+ - **R2 Baseline to beat (E9):** docs/product churn ratio under 2x and at most one fix commit per unit. The factory records what it needs to measure this (`merge.done` per sub-ticket, implementer rounds in `round.pr`, diff stats in `meta.yaml`), and `audit-sample` prints both numbers for the period; they are not acceptance items because the baseline is a property of the pipeline's output over time, not of this build.
+-- The hook reads `tickets` and `main` server-side; a bug blocks every merge (fail-closed).
++- The hook reads `factory-store` and `main` server-side; a bug blocks every merge (fail-closed).
+ - The dispatcher is a Workflow script with no filesystem access (E7; doc §Harness table piece 2, v0 limit (1)): every state change is a clerk agent running a `factory` command, so a clerk that misreads its instruction can skip a transition. Mitigation: the command is given verbatim, the clerk relays its `stdout`, `exit` and `stderr` and the script parses the JSON itself (H), so the clerk never re-types the store's answer and a refusal or a reply with no JSON parks instead of routing; the round limit, the legal edges and the one-run-per-branch rule are CLI guards (B, items 68–70), so a disobedient clerk gets exit 2 and an unchanged store; items 35–53 check the store, not the script. Residual: the clerk can still miscopy `stdout`; a miscopy that breaks the JSON parks, one that still parses is not caught by the script.
+ - **R6 Permission mode in real runs** (ruling row R6): `--permission-mode acceptEdits` with the allowlist `Bash(factory *)`, `Bash(git *)`, `Bash(pytest *)`, `Bash(ruff *)`, `Bash(mypy *)`, Read, Grep, Glob, Edit, Write, Skill, Workflow; a tool call outside it prompts the operator, so an unattended session stalls rather than widens. Checkers have no key in their environment (item 56); `bypassPermissions` and `dontAsk` appear nowhere (item 54).
+ - **Bootstrap.** The seams (the plan's BH-1..BH-7) must land before the gate and `build.js` exist to merge them. Until BH-2 (bare repo, hook, `factory init`) lands, the operator merges with his normal git flow on `feat/lionbot-v3`; after BH-2, `factory init` seeds the bare repo and its `main` is the trunk; BH-3 and BH-4 (results table; agent definitions and workflows) get their `results record` rows written by hand `AS harness` from a reviewer and a verifier the operator runs himself; from then on item 67 runs on the bare repo's `main` and every later seam merges through `factory merge`.
+@@ -530,7 +530,7 @@ Round 4, to the human gate's amendments A–N (round reset; the gate amended the
+ - **C FIXED.** `merge` records `merge: {base_before, main_after}` on the ticket (B schema, G); the revert rule in F.4 compares `git diff old H` with `git diff main_after base_before` of the reverted ticket, and the `git diff X X^` rule is gone (E5 annotated: it still evidences the patch equality). Piece 8 on a revert exempts files the reverted PR added and tests its pinned spec listed under "Tests to change", the guardrail approval being their row (F.4). Exception failure: `merge` exits 2, ticket `closed` with `closed_reason`, `escalation.queued`, listed in `queue.md` (F.4, G). Items 74, 75; 30(a)(b), 31 amended; 32 kept as the extra-hunk negative.
+ - **D FIXED.** The join in H names `ci FAIL` as a trigger alongside REQUEST-CHANGES and FAILED, fires only once all three rows exist, and counts it as a round; no separate CI-fail path exists. Item 76; 47 unchanged (its FAIL arrives via the verifier and already behaves this way).
+ - **E FIXED.** `merge` records `parent_base` at a parent's first sub-ticket merge and moves a parent whose sub-tickets have all merged to `ready-for-parent-verify` (B schema and states, G); `build.js` dispatches one verifier run with the inputs doc v5 declares — pinned parent spec, head = current `main`, base = `parent_base`, `{gate commands}` — composed by `run compose`, the verifier definition taking the head and base it is given (H); VERIFIED closes, FAILED/SPEC-DEFECT parks the parent, as does a sub-ticket the human closes; resolution is `resolve --amend-spec` (re-plan) or `--close` on the parent (K). Items 77, 84; 34 amended (the parent no longer closes at merge).
+-- **F FIXED.** The store branch is `tickets` (was `factory/state`; same checkout path), restricted by rule 1 to harness and humans and never judged by rule 4 (E, F.3, R5); B names the store CLI as the home of the round and routing guards (items 68–70); operator commands without `FACTORY_KEY` refuse with `set FACTORY_KEY` (B). Item 78; 16, 18, 19 amended.
++- **F FIXED.** The store branch is `factory-store` (was `factory/state`; same checkout path), restricted by rule 1 to harness and humans and never judged by rule 4 (E, F.3, R5); B names the store CLI as the home of the round and routing guards (items 68–70); operator commands without `FACTORY_KEY` refuse with `set FACTORY_KEY` (B). Item 78; 16, 18, 19 amended.
+ - **G FIXED.** The `ready-implementers` rule in H: a `parallel_safe: false` sub-ticket runs alone — listed only when no sibling of the same parent is in flight (any role) and nothing else is listed with it; while it is in flight no sibling is listed. Item 79 asserts both directions, which doc v5's Planner row now states.
+ - **H FIXED.** D9 `force_push_allowed` (default false) fills `{force-push allowed}` in the rendered implementer definition (A); the hook lifts its non-fast-forward refusal on `ticket/*` only when it is true (F.2); the conflict run is the same-round `head does not contain main` route with `resolution: conflict` (G, H). Item 80; 52 referenced.
+ - **I FIXED.** Parser note in H: severities are not parsed; every stub that models REVISE or REQUEST-CHANGES carries a `[BLOCKING]` line. Items 38, 44, 46 amended.
+@@ -539,7 +539,7 @@ Round 4, to the human gate's amendments A–N (round reset; the gate amended the
+ - **L FIXED.** Item 42 keeps the store assertions and drops the source grep. `ticket new --type retro --output FILE` writes `retros/<date>.yaml`; `retro-input` reads `retros/*.yaml` for previous proposals (B, M). Items 53, 66 amended.
+ - **M FIXED.** `resolve --redispatch --budget USD` sets `budget_usd` on the ticket, copied into the redispatched run's `meta.yaml` (recorded, not enforced in v0, E7; Out of scope says so); `run compose` pins `spec_version` in `meta.yaml`, so in-flight siblings keep their version after `--amend-spec` (B, K). Item 83.
+ - **N FIXED.** Risk gains a one-paragraph Bootstrap note: the operator's git flow until BH-2, `factory init` after it, hand-written `results record` rows for BH-3/BH-4, item 67 on the bare repo's `main` from then on.
+-- **Doc v5 deltas folded in** (no new amendment letters): parent-close run inputs and `parent_base` (E); parent parks on a parent-close failure or a closed sub-ticket, resolved by re-plan or close (E, item 84); both-way parallel-safe exclusion (G); the routing dispatches `gate-run` (B); humans record approvals by pushing to `tickets` as themselves, stated once under K (F); ruling rows R3 and R6 and Risk R1 cite the doc's three numbered v0 limits.
++- **Doc v5 deltas folded in** (no new amendment letters): parent-close run inputs and `parent_base` (E); parent parks on a parent-close failure or a closed sub-ticket, resolved by re-plan or close (E, item 84); both-way parallel-safe exclusion (G); the routing dispatches `gate-run` (B); humans record approvals by pushing to `factory-store` as themselves, stated once under K (F); ruling rows R3 and R6 and Risk R1 cite the doc's three numbered v0 limits.
+ - No DISAGREEs; no scope beyond A–N. STATUS stays NEEDS-SPLIT: the seams are unchanged and the amendments are assigned to them under "Size and seams".
+ 
+ STATUS: NEEDS-SPLIT
+diff --git a/docs/changelog.md b/docs/changelog.md
+index 9a0fa26..b5694f9 100644
+--- a/docs/changelog.md
++++ b/docs/changelog.md
+@@ -54,5 +54,6 @@ Six review rounds ran on this doc, using the reviewer prompt in the appendix. Ro
+ 50. After issue #35 (2026-10-04), where runs at the same time shared one session scratchpad and a verifier mixed another run's stale checkout into its base results (`23 failed, 103 passed` from two trees): every run gets its own scratch directory, `runs/<run id>/scratch/` in the store. `run start` creates it for every role after every guard has passed, and always makes sure the store's `.gitignore` excludes it; `ensure_gitignore` now writes its commented block only to an absent or empty file and otherwise appends only the lines a file lacks, never a second copy. The composer names the directory's absolute path in a "Scratch directory" section after "Running code". The shared preamble gains SCRATCH FILES, between RUNNING CODE and GUARDRAIL PATHS: put every file made for the run's own use there, never in a session scratchpad, a repository checkout or another run's directory, and this takes precedence over any other instruction to use a session scratchpad. Saving a ticket whose status changes to anything but `parked` removes the scratch directory of each finished run of that ticket, so a parked ticket keeps its files for the human and they go once it moves on.
+ 51. After issue #39 (2026-10-04), a batch of harness defects found in real runs: the harness suite passes with an uncommitted harness edit. Own-store tests that are not about that refusal run a test-only launcher that stubs it. The refusal itself is unchanged and still tested. `resolve --ruling` also takes an implementer's BLOCKED park and returns the sub-ticket to its implementer at the same round, with the ruling in its input. `resolve PARENT --replan F` sends a parked parent whose sub-tickets all merged back to the planner, with F as a ruling and the existing sub-tickets listed in its input. Sub-tickets that a later plan adds take the next free ids and may depend on merged ones. A park reason always ends with the failing command's error text. The workflows fall back to the refusal's JSON `error`, then to the exit code. A redispatch sets aside only the rows that did not pass, and the build re-runs only the checkers with no row on the commit. The store's `.gitattributes` marks run records `-whitespace`, written by `init` and `run start`. `init` refuses to create an instance on a throwaway store, and a missing `context.md` refuses a compose with exit 2. A relative `FACTORY_INSTANCE`, `FACTORY_STATE` or `FACTORY_REPO` resolves against the caller's directory.
+ 52. After issue #45 (2026-10-04), where a spec writer's test run executed `init` from inside its scratch directory and initialised this repository's live store, writing a spec store, `decisions.md` and six agent files: the store CLI fences an instance's own store. A write run from inside the store's `runs/` or `worktrees/` is refused, with or without the marker and with or without a run in flight. While any run is in flight on the store, a write without `FACTORY_DISPATCH=1` in its environment is refused. The read-only commands stay open, and any command given `--accept-harness` counts as a write. Both workflow scripts put `FACTORY_DISPATCH=1` in front of every clerk command; the operator puts it in front of one command at a time and never exports it. A refusal is exit 2, writes nothing, and advises a throwaway `FACTORY_STATE` without naming the marker. The fence is checked before the harness lock, so the marker cannot get past the lock. Declined from the request: a preamble line telling roles to use a throwaway store, because the incident came from the test suite rather than a command the role typed; and a tripwire on the store root, because role runs and other tickets' clerk commands legitimately write the store during a run, so a comparison could not tell whose write it saw.
++53. After issue #46 (2026-10-04), where each store commit on the integration branch sent every sub-ticket waiting to merge back for a catch-up merge and a second round of checks that could not change the verdict: the store moves to its own branch, `factory-store`, checked out as a git worktree at the store's path and never merged into the integration branch, so a store commit no longer moves that branch; the merge gate is unchanged. A store path must be one the integration branch has never tracked, because at a once-tracked path a checkout of an older commit overwrites live records and a checkout back deletes them. `init` creates a missing own store as a worktree of an unborn `factory-store` branch, which needs no commit, or checks out the branch where it exists locally or on exactly one remote, which restores the store on a clone, and adds the store to the repo's git exclude file. It refuses when more than one remote carries the branch, naming each, and at a once-tracked path. With `FACTORY_INSTANCE` unset it refuses from inside the store checkout, on its branch or on a detached HEAD, so it can no longer build a phantom instance inside the live store; a separate repository under a run's scratch directory still gets its own instance. Every refusal comes before the first write. An existing store that is a plain directory is left alone, and `init` reports `store_branch` in its JSON.
+ 
+ Declined: a dedicated merge agent (merging is gate config plus human gates, not a judgment call).
+diff --git a/docs/design.md b/docs/design.md
+index c0ece7e..2f9781d 100644
+--- a/docs/design.md
++++ b/docs/design.md
+@@ -36,7 +36,7 @@ The prompts say what each role does. The harness enforces the wiring rules: fres
+ 
+ | # | Piece | What it must do | GitHub gives you | Minimum portable substitute |
+ |---|---|---|---|---|
+-| 1 | Ticket store | One record per ticket and sub-ticket: status, type, spec text and version, PR link, round counter, history. The spec gate pins the version the human approved, including any edits made at the gate. This is the state machine's memory. A store CLI (read, transition, record) fronts it: the dispatcher chooses the transition, the CLI rejects any not in the routing table and any round past the cutoff, and the clerk goes through it too | Issues + labels | Any tracker (Jira, Linear) or a table in a DB. A `tickets` branch of YAML works to start: the pre-receive hook restricts it to harness and human identities and exempts it from the merge gate |
++| 1 | Ticket store | One record per ticket and sub-ticket: status, type, spec text and version, PR link, round counter, history. The spec gate pins the version the human approved, including any edits made at the gate. This is the state machine's memory. A store CLI (read, transition, record) fronts it: the dispatcher chooses the transition, the CLI rejects any not in the routing table and any round past the cutoff, and the clerk goes through it too | Issues + labels | Any tracker (Jira, Linear) or a table in a DB. A `factory-store` branch of YAML works to start: the pre-receive hook restricts it to harness and human identities and exempts it from the merge gate |
+ | 2 | Event dispatcher | Notice a state change and start the right role with the right inputs. Routes on the `STATUS:` line of the last output, per the routing table | Webhooks + Actions `on:` events | A loop (cron, every 1–5 min) that queries the store for tickets in a "ready for X" state and launches X. Polling is fine; nothing here is latency-sensitive. For a v0 inside one Claude Code session, a Workflow script: each agent() call is a fresh context, the fan-out, join, and round counters are plain code, and the same routing table lifts into the loop later. Three v0 limits. (1) The script has no filesystem or clock, so store reads and writes go through a clerk agent calling the CLI; the guards live in the CLI, not the clerk. The clerk never restates a command's output: it returns stdout verbatim with the exit code and stderr, and the script parses the JSON itself, since a schema shaped like the command's output lets the clerk re-type the answer and still validate. A non-zero exit is a refusal and no JSON on stdout is a failed store call; neither is ever read as an answer. (2) A hung agent blocks the join until a human skips it, so the piece-3 kill is post-hoc. (3) v0 gives fresh context, not isolation: every agent() call shares the session's checkout, credentials, and git identity. Use a worktree per call, run the clerk's CLI under a harness identity that has no verb for approval rows (humans write those directly), and treat v0 as exercising the routing table, not as producing trusted merges |
+ | 3 | Isolated run per role | Every role invocation starts in a clean checkout with no memory of earlier runs and only its declared inputs. This is what "fresh context per checker" means in practice | Actions job on a fresh runner | A container or VM per run (Docker, Firecracker, K8s Job). Run `claude -p` with the preamble + role prompt as the system prompt and the inputs on stdin. Destroy the environment after. A run that exceeds {time budget, token budget} is killed, recorded as a result row for that head and role so no join waits on it, and its ticket parked |
+ | 4 | Scoped credentials | Each role gets only the access its rules allow. Implementer: push to its own branch. Triage, spec writer, critic, planner, reviewer, verifier, and gate runner: read-only clone plus a shell, with no secrets in the environment, since they run PR code before any security check has passed (model access through a proxy sidecar that holds the key, so the container has none to leak; no git write token; restricted egress). Retro: push a branch and open a PR, nothing else. No role can push to main. Only the harness identity and humans write the ticket store; role outputs enter it through the dispatcher, and the merge gate accepts an approval row only if a human identity pushed it, judged by the server's pusher identity, not the commit author | Job-level `permissions:` on a per-job `GITHUB_TOKEN` | One git user or deploy key per role, with server-side rights set on the git host. Secrets injected per job from a vault or env, never baked into the image |
+@@ -57,7 +57,7 @@ The prompts say what each role does. The harness enforces the wiring rules: fres
+ 
+ **Scratch directory per run.** Every run gets its own directory for temporary files, `runs/<run id>/scratch/` in the store, so runs that happen at the same time never write into one shared place and no run leaves files in a repository checkout. `run start` creates it for every role, after every guard has passed, and makes sure the store's `.gitignore` excludes `runs/*/scratch/`: an absent or empty `.gitignore` gets the harness's commented block, and an existing one keeps its own lines and gains only the lines it lacks. The composer names the directory's absolute path in a "Scratch directory" section of the run's input, directly after "Running code", and the shared preamble's SCRATCH FILES rule tells every role to put its own temporary files there and nowhere else, taking precedence over any other instruction to use a session scratchpad. When a ticket's status changes to anything other than `parked`, the harness removes the scratch directory of each finished run of that ticket; runs still in flight, other tickets' runs and every path outside `runs/*/scratch` are left alone. A park keeps the files because a human who answers a parked ticket may need to see what the run built; they are removed once the human sends the ticket on or closes it. So a role that wants a later reader to see what a prototype showed puts that in its output, since the directory is gone by the time the ticket's next role reads it.
+ 
+-**Role-context block.** Every role's input opens with a role-context block, ahead of the INPUT its role prompt declares and anything the routing table's "Receives" column adds. The block is per repo, like `{repo name}` and the protected paths: it says which repository the role works in, how to run commands and tests there, what kind of request to expect, and who reads what the roles write there. Its text is the same for every role. It is a declared input of every role, so composing from *only* declared sources includes it; it travels with the input (piece 3), not in the system prompt. A wrong block misdirects every role at once, and the checkers receive the same block, so they share the error instead of catching it. The block is kept in the repo it describes, at `.factory/context.md`. That directory, `.factory/`, is the repo's instance of the factory: `instance.yaml` (the per-repo config: `{repo name}`, protected paths, `{gate commands}`, the variables kept for code runs (`run_env`), models, routing, the store's path and the harness checkout it runs with), `context.md`, `harness.lock` (the harness revision the instance has accepted; the harness refuses to touch the instance's store under any other revision until a human accepts it, and logs the acceptance) and the store. The harness picks the instance by walking up from the working directory to the nearest `.factory/instance.yaml`, or takes it from an explicit override, and never falls back to an instance of its own; the composer prepends that instance's `context.md`, and the preamble's `{repo name}` and protected paths are filled from its `instance.yaml`, and `{writing standard}` with the path of `docs/writing.md` in the harness checkout that runs it. `{coding standard}`, in the implementer and code reviewer prompts, is filled the same way with the path of `docs/coding.md` in that checkout. The composer also gives every role a "Running code" section: a wrapper that runs one command in a subshell with `HOME` set to a fresh temporary directory, exporting any variables the instance lists in `run_env`; `{gate commands}` reach a role already wrapped. It is guidance, not a sandbox: a command can still write an absolute path, which the preamble forbids for protected paths outside the repository. Each run leaves its temporary directory behind.
++**Role-context block.** Every role's input opens with a role-context block, ahead of the INPUT its role prompt declares and anything the routing table's "Receives" column adds. The block is per repo, like `{repo name}` and the protected paths: it says which repository the role works in, how to run commands and tests there, what kind of request to expect, and who reads what the roles write there. Its text is the same for every role. It is a declared input of every role, so composing from *only* declared sources includes it; it travels with the input (piece 3), not in the system prompt. A wrong block misdirects every role at once, and the checkers receive the same block, so they share the error instead of catching it. The block is kept in the repo it describes, at `.factory/context.md`. That directory, `.factory/`, is the repo's instance of the factory: `instance.yaml` (the per-repo config: `{repo name}`, protected paths, `{gate commands}`, the variables kept for code runs (`run_env`), models, routing, the store's path and the harness checkout it runs with), `context.md`, `harness.lock` (the harness revision the instance has accepted; the harness refuses to touch the instance's store under any other revision until a human accepts it, and logs the acceptance) and the store: a git worktree of the repo's `factory-store` branch, at a path the integration branch has never tracked, because a checkout of an older commit would otherwise overwrite live records. That branch is never merged into the integration branch, so a store commit never moves it. A command run from inside a code checkout finds that checkout's own instance, whose store does not exist there, so it reports no such ticket rather than reaching the live store. The harness picks the instance by walking up from the working directory to the nearest `.factory/instance.yaml`, or takes it from an explicit override, and never falls back to an instance of its own; the composer prepends that instance's `context.md`, and the preamble's `{repo name}` and protected paths are filled from its `instance.yaml`, and `{writing standard}` with the path of `docs/writing.md` in the harness checkout that runs it. `{coding standard}`, in the implementer and code reviewer prompts, is filled the same way with the path of `docs/coding.md` in that checkout. The composer also gives every role a "Running code" section: a wrapper that runs one command in a subshell with `HOME` set to a fresh temporary directory, exporting any variables the instance lists in `run_env`; `{gate commands}` reach a role already wrapped. It is guidance, not a sandbox: a command can still write an absolute path, which the preamble forbids for protected paths outside the repository. Each run leaves its temporary directory behind.
+ 
+ **Model per role, starting point.** One rule: a role's model depends on what checks its output. Default Opus. A checker is never weaker than the author it checks, except the verifier, whose check is the commands. Fable goes where a role's output is checked only by a human: the critic, the code reviewer, the retro. Sonnet only where the output is checked mechanically inside the same loop. The verifier is the one checker whose check is the commands themselves; its probe step is judgment, so it drops to Sonnet only where probes rarely matter. Tune effort before changing model; record the model on every run so the retro can compare failure rates by model; this table is the harness's model config, so a retro diff to it is the proposal path. Never let an author and its checker share a model where you can avoid it; the verifier is again the exception.
+ 
+@@ -73,7 +73,7 @@ The prompts say what each role does. The harness enforces the wiring rules: fres
+ | Retro | Fable | Rare, high leverage, writes the rules |
+ | Clerk, parsing, routing | Haiku, or no model | Code where possible |
+ 
+-**Smallest thing that works.** A git server with per-user permissions and a pre-receive hook (pieces 4, 7, 8), a `tickets` branch of YAML as the store (1, 5, 6, 10), a cron loop that reads it and launches `claude -p` in a fresh container (2, 3); implementer and retro containers get secrets via env, every other role's container gets model access only through a proxy sidecar and no env secrets (12; the one extra component), the verifier running the gates (11), and your existing tracker as the human surface (9). Humans record approvals by pushing a row to the `tickets` branch under their own identity (the store CLI's record verb, run as themselves); the tracker is for notification and discussion only. Audit and retro counts come from the append-only log. A few hundred lines of harness. Move the store to a real DB when you want cost-per-issue numbers in one place.
++**Smallest thing that works.** A git server with per-user permissions and a pre-receive hook (pieces 4, 7, 8), a `factory-store` branch of YAML as the store (1, 5, 6, 10), a cron loop that reads it and launches `claude -p` in a fresh container (2, 3); implementer and retro containers get secrets via env, every other role's container gets model access only through a proxy sidecar and no env secrets (12; the one extra component), the verifier running the gates (11), and your existing tracker as the human surface (9). Humans record approvals by pushing a row to the `factory-store` branch under their own identity (the store CLI's record verb, run as themselves); the tracker is for notification and discussion only. Audit and retro counts come from the append-only log. A few hundred lines of harness. Move the store to a real DB when you want cost-per-issue numbers in one place.
+ 
+ **Spec store: the `spec-factory` schema.** The ticket store (piece 1) keeps specs in OpenSpec's tree (Fission-AI, MIT; layout and grammar as its `docs/concepts.md` and `docs/customization.md` give them), under a schema forked from OpenSpec's built-in `spec-driven` and named `spec-factory` (`openspec/schemas/spec-factory/schema.yaml`, selected by `openspec/config.yaml`). Current truth is `openspec/specs/<capability>/spec.md`: what each capability does now, as `### Requirement: <name>` blocks, each one SHALL or MUST sentence followed by `#### Scenario: <name>` items whose WHEN is a runnable command and THEN its expected result. A ticket's change is the folder `openspec/changes/<ticket id>/`:
+ 
+diff --git a/factory/cli.py b/factory/cli.py
+index f08aaec..8bed66f 100644
+--- a/factory/cli.py
++++ b/factory/cli.py
+@@ -843,35 +843,130 @@ def _revision() -> str:
+     return rev
+ 
+ 
++def _refuse_inside_store(cwd: Path, top: Path) -> None:
++    """Refuse `init` from inside the store checkout, where it would build a second instance inside
++    the live store (design A.1). Called only with FACTORY_INSTANCE unset."""
++    if gitops.git(top, "symbolic-ref", "-q", "HEAD", check=False) == f"refs/heads/{gitops.STORE_BRANCH}":  # unborn too
++        raise Refused(f"factory init: {cwd} is inside the store checkout {top} (branch {gitops.STORE_BRANCH}); "
++                      "run init from the repository root")
++    # Whatever the store has checked out (a detached HEAD, another branch): the instance found by
++    # walking up names its store, and a checkout of the same repository at or under it is that store.
++    found = instance.find()
++    if found is None:
++        return
++    try:
++        cfg = instance.load_config(found)
++    except (OSError, yaml.YAMLError):  # an unreadable config names no store: nothing to compare
++        return
++    if not isinstance(cfg, dict) or not isinstance(cfg.get("state_dir"), str):
++        return
++    own = instance.own_state_root(found, cfg)
++    if top == own or (top.is_relative_to(own)
++                      and gitops.common_dir(top) == gitops.common_dir(instance.repo_root(found))):
++        raise Refused(f"factory init: {cwd} is inside the store {own} of the instance {found}; "
++                      "run init from the repository root")
++
++
++def _head_branch(repo: Path) -> str:
++    """The branch checked out at `repo`, or HEAD when it is detached."""
++    return gitops.git(repo, "symbolic-ref", "-q", "--short", "HEAD", check=False) or "HEAD"
++
++
++def _add_store_checkout(repo: Path, root: Path, branch: str, cfg_path: Path) -> None:
++    """Make the missing own store `root` a checkout of the store branch (design A.3): refused at a
++    path `branch` has ever tracked; the branch comes from a local branch, else the one remote that
++    carries it, else a new orphan, which needs no commit and so no git identity."""
++    store_branch = gitops.STORE_BRANCH
++    rel = root.relative_to(repo).as_posix() if root.is_relative_to(repo) else None
++    if rel is not None:
++        sha = gitops.last_tracked(repo, branch, rel)
++        if sha:
++            raise Refused(f"factory init: {branch} has tracked files under {rel} (last in commit {sha}); a checkout "
++                          f"of any older commit would overwrite a store kept there; set another state_dir in {cfg_path}")
++    local = bool(gitops.git(repo, "rev-parse", "-q", "--verify", f"refs/heads/{store_branch}", check=False))
++    remotes = [] if local else gitops.remote_branches(repo, store_branch)
++    if len(remotes) > 1:
++        raise Refused(f"factory init: no local branch {store_branch}, and more than one remote carries it "
++                      f"({', '.join(remotes)}); run git branch {store_branch} <remote>/{store_branch} for the one "
++                      "to use, then init again")
++    if local:
++        args = ["worktree", "add", "-q", str(root), store_branch]
++    elif remotes:
++        args = ["worktree", "add", "-q", "--track", "-b", store_branch, str(root), remotes[0]]
++    else:
++        args = ["worktree", "add", "-q", "--orphan", "-b", store_branch, str(root)]
++    try:
++        gitops.git(repo, *args)
++    except Refused as e:
++        raise Refused(f"factory init: cannot check out the store at {root}: {e}") from None
++    if rel is not None:  # the integration checkout ignores the store through the repo's exclude file
++        exclude = Path(gitops.git(repo, "rev-parse", "--git-path", "info/exclude"))
++        exclude = exclude if exclude.is_absolute() else repo / exclude
++        have = exclude.read_text(encoding="utf-8") if exclude.exists() else ""
++        line = f"/{rel}/"
++        if line not in have.splitlines():
++            store.write_text(exclude, have + ("" if not have or have.endswith("\n") else "\n") + line + "\n")
++
++
++def _store_hint(repo: Path, root: Path) -> None:
++    """An existing own store that is not the store branch's checkout is left alone (design A.5)."""
++    top = gitops.git(root, "rev-parse", "--show-toplevel", check=False)
++    if top and Path(top).resolve() == root.resolve() and gitops.common_dir(root) == gitops.common_dir(repo):
++        if _head_branch(root) == "HEAD":
++            print(f"the store worktree {root} is on a detached HEAD; check out {gitops.STORE_BRANCH} there",
++                  file=sys.stderr)
++        return
++    print(f"the store {root} is not on its branch {gitops.STORE_BRANCH}; factory store migrate --to PATH moves it",
++          file=sys.stderr)
++
++
+ def init_cmd(a):
+     """Create whatever of the instance is missing (design B.5); idempotent. The instance is
+-    FACTORY_INSTANCE, else `.factory/` at the git top level of the working directory. Its pieces
+-    (instance.yaml, context.md, harness.lock, agent files) are written only when the store in use
+-    is the instance's own: a run on a throwaway store (FACTORY_STATE elsewhere, as every test
+-    does) initialises that store and nothing else. So creating an instance while FACTORY_STATE
+-    names another store is refused before anything is written: it would leave an instance.yaml
+-    with no context.md."""
+-    top = _git_toplevel(instance.caller_cwd())
++    FACTORY_INSTANCE, else `.factory/` at the git top level of the working directory, which may not
++    be inside the store checkout (A.1). Its pieces (instance.yaml, context.md, harness.lock, agent
++    files) are written only when the store in use is the instance's own: a run on a throwaway store
++    (FACTORY_STATE elsewhere, as every test does) initialises that store and nothing else. So
++    creating an instance while FACTORY_STATE names another store is refused before anything is
++    written: it would leave an instance.yaml with no context.md. A missing own store becomes a git
++    worktree of the store branch (A.3) before any instance file is written, so a refusal or a
++    failed git step leaves nothing behind."""
++    cwd = instance.caller_cwd()
++    top = _git_toplevel(cwd)
++    if instance.env_path("FACTORY_INSTANCE") is None:
++        _refuse_inside_store(cwd, top)
+     inst = instance.env_path("FACTORY_INSTANCE") or top / instance.DIRNAME
+     created: list[str] = []
+     cfg_path = inst / instance.CONFIG_NAME
+-    if not cfg_path.exists():
++    new_text = None
++    if cfg_path.exists():
++        cfg = instance.load_config(inst)
++    else:
+         if not a.repo_name:
+             raise Refused(f"factory init: {cfg_path} does not exist; pass --repo-name NAME to create it")
+-        text = _new_instance_yaml(a.repo_name)
+-        new_cfg = yaml.safe_load(text)
+-        root = instance.state_root(inst, new_cfg)
+-        if not instance.is_own_store(inst, new_cfg, root):
++        new_text = _new_instance_yaml(a.repo_name)
++        cfg = yaml.safe_load(new_text)
++    root = instance.state_root(inst, cfg)
++    fence(inst, cfg, root)
++    own = instance.is_own_store(inst, cfg, root)
++    if new_text is not None:
++        if not own:
+             raise Refused(f"factory init: {inst} has no {instance.CONFIG_NAME}, and FACTORY_STATE names another "
+                           f"store ({root}); create the instance with FACTORY_STATE unset, then init that store")
+         _revision()  # refuse before writing anything if the lock cannot be written
+-        store.write_text(cfg_path, text)
++    repo = instance.repo_root(inst)
++    existed = root.exists()
++    if own and not existed:
++        if new_text is None and (os.environ.get("FACTORY_INTEGRATION_BRANCH") or cfg.get("integration_branch")):
++            branch = gitops.integration_branch(cfg, repo)
++        else:  # its own fallback, rev-parse --abbrev-ref HEAD, fails on an unborn branch, never tracked (A.3.1)
++            branch = _head_branch(repo)
++        _add_store_checkout(repo, root, branch, cfg_path)
++    if new_text is not None:
++        store.write_text(cfg_path, new_text)
+         created.append(str(cfg_path))
+-    cfg = instance.load_config(inst)
+-    root = instance.state_root(inst, cfg)
+-    fence(inst, cfg, root)
+     agents: list[str] = []
+-    if instance.is_own_store(inst, cfg, root):
++    store_branch = None
++    if own:
+         ctx = inst / "context.md"
+         if not ctx.exists():
+             store.write_text(ctx, instance.CONTEXT_TEMPLATE.read_text(encoding="utf-8"))
+@@ -880,12 +975,17 @@ def init_cmd(a):
+         if not lock.exists():
+             store.write_text(lock, _revision() + "\n")
+             created.append(str(lock))
+-        dest = instance.repo_root(inst) / ".claude" / "agents"
++        dest = repo / ".claude" / "agents"
+         for src in sorted(instance.AGENTS.glob("factory-*.md")):
+             if not (dest / src.name).exists():
+                 (dest / src.name).parent.mkdir(parents=True, exist_ok=True)
+                 shutil.copyfile(src, dest / src.name)
+                 agents.append(str(dest / src.name))
++        checkout = gitops.checkout_of(repo, gitops.STORE_BRANCH)
++        if checkout is not None and checkout.resolve() == root:
++            store_branch = gitops.STORE_BRANCH
++        elif existed:
++            _store_hint(repo, root)
+     had_gitignore, had_gitattributes = (root / ".gitignore").exists(), (root / ".gitattributes").exists()
+     store.ensure_gitignore(root)
+     store.ensure_gitattributes(root)
+@@ -899,7 +999,7 @@ def init_cmd(a):
+     if agents:
+         print("restart the session so the agents register", file=sys.stderr)
+     out({"ok": True, "written": written, "active": True, "instance": str(inst), "state": str(root),
+-         "created": created, "agents": agents})
++         "created": created, "agents": agents, "store_branch": store_branch})
+ 
+ 
+ def paths_cmd(a):
+diff --git a/factory/gitops.py b/factory/gitops.py
+index 99542c9..5f21637 100644
+--- a/factory/gitops.py
++++ b/factory/gitops.py
+@@ -100,6 +100,30 @@ def checkout_of(repo: Path, branch: str) -> Path | None:
+     return None
+ 
+ 
++STORE_BRANCH = "factory-store"
++
++
++def common_dir(path: Path) -> str | None:
++    """The absolute git common directory of the repository at `path`, None outside one: two
++    checkouts of one repository share it, a separate repository has its own."""
++    return git(path, "rev-parse", "--path-format=absolute", "--git-common-dir", check=False) or None
++
++
++def last_tracked(repo: Path, ref: str, path: str) -> str | None:
++    """The last commit in `ref`'s history that touched a file under `path` (relative to `repo`),
++    or None. A ref with no commit yet (an unborn branch) has tracked nothing."""
++    if not git(repo, "rev-parse", "-q", "--verify", f"{ref}^{{commit}}", check=False):
++        return None
++    return git(repo, "log", "-1", "--format=%H", ref, "--", path) or None
++
++
++def remote_branches(repo: Path, branch: str) -> list[str]:
++    """Every remote-tracking ref `refs/remotes/*/<branch>`, as `<remote>/<branch>`. Git's `*` stops at
++    a slash, so a branch under a namespace (`origin/x/<branch>`) is not one."""
++    refs = git(repo, "for-each-ref", "--format=%(refname)", f"refs/remotes/*/{branch}").splitlines()
++    return [r.removeprefix("refs/remotes/") for r in refs]
++
++
+ class MergeLock:
+     """One merge at a time per target repo: a lock directory (mkdir is atomic). Two sibling
+     sub-tickets that reach the merge gate together must not run `git merge` in one checkout at once."""
+diff --git a/tests/factory/test_live_store_guard.py b/tests/factory/test_live_store_guard.py
+index c98e23e..e1d410c 100644
+--- a/tests/factory/test_live_store_guard.py
++++ b/tests/factory/test_live_store_guard.py
+@@ -141,8 +141,14 @@ def test_marked_writes_from_a_runs_scratch_directory_are_refused(target, tmp_pat
+     before = snapshot(target)
+     for argv in (("decision", "add", "T-0001", "x"), ("init", "--repo-name", "x"),
+                  ("ticket", "new", "--file", request(tmp_path))):
+-        assert_refused(cli(scratch, *argv, FACTORY_DISPATCH="1"),
+-                       f"{state(target).resolve()}; called from inside its runs/")
++        cp = cli(scratch, *argv, FACTORY_DISPATCH="1")
++        if argv[0] == "init":  # refused first by T-0025's A.1: the store is a factory-store checkout
++            assert cp.returncode == 2, (cp.returncode, cp.stdout, cp.stderr)
++            assert (f"is inside the store checkout {state(target).resolve()} (branch factory-store); "
++                    "run init from the repository root") in cp.stderr
++            assert js(cp) == {"ok": False, "error": cp.stderr.strip()}
++            continue
++        assert_refused(cp, f"{state(target).resolve()}; called from inside its runs/")
+     assert snapshot(target) == before
+ 
+ 
+@@ -152,8 +158,14 @@ def test_marked_writes_from_under_worktrees_are_refused(target, tmp_path):
+     wt.mkdir(parents=True)
+     before = snapshot(target)
+     for argv in (("ticket", "new", "--file", request(tmp_path)), ("init",)):
+-        assert_refused(cli(wt, *argv, FACTORY_DISPATCH="1"),
+-                       f"{state(target).resolve()}; called from inside its worktrees/")
++        cp = cli(wt, *argv, FACTORY_DISPATCH="1")
++        if argv[0] == "init":  # refused first by T-0025's A.1: the store is a factory-store checkout
++            assert cp.returncode == 2, (cp.returncode, cp.stdout, cp.stderr)
++            assert (f"is inside the store checkout {state(target).resolve()} (branch factory-store); "
++                    "run init from the repository root") in cp.stderr
++            assert js(cp) == {"ok": False, "error": cp.stderr.strip()}
++            continue
++        assert_refused(cp, f"{state(target).resolve()}; called from inside its worktrees/")
+     assert snapshot(target) == before
+ 
+ 
+diff --git a/tests/factory/test_store_branch.py b/tests/factory/test_store_branch.py
+new file mode 100644
+index 0000000..ec781a1
+--- /dev/null
++++ b/tests/factory/test_store_branch.py
+@@ -0,0 +1,338 @@
++"""`init` puts a new store on its own branch, `factory-store` (T-0025, part A; issue #46).
++
++A missing own store becomes a git worktree of `factory-store` at the store path, ignored by the
++integration checkout through the repo's exclude file, so a store commit never moves the
++integration branch and the merge gate no longer sends a sub-ticket back for one. `init` refuses
++from inside the store checkout, whatever it has checked out, and at a store path the integration
++branch has ever tracked; every refusal writes nothing.
++
++Black-box through `bin/factory` in scratch target repos, with the instance resolved from the
++working directory (test_instance.cli strips the conftest's FACTORY_* variables). Commits carry
++their identity in GIT_AUTHOR_* / GIT_COMMITTER_*, because the suite runs under a throwaway HOME.
++"""
++from __future__ import annotations
++
++import os
++import subprocess
++from pathlib import Path
++
++import pytest
++
++from .test_instance import cli, git_repo, js, tree
++
++BRANCH = "factory-store"
++IDENT = {"GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@t", "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@t"}
++RULE = "role runs may not write the live store"
++
++
++def git(cwd: Path, *argv: str, check: bool = True) -> str:
++    env = {**os.environ, **IDENT}
++    cp = subprocess.run(["git", *argv], cwd=cwd, capture_output=True, text=True, env=env)
++    if check:
++        assert cp.returncode == 0, (argv, cp.stderr)
++    return cp.stdout.strip()
++
++
++def state(t: Path) -> Path:
++    return t / ".factory" / "state"
++
++
++def exclude(t: Path) -> Path:
++    p = Path(git(t, "rev-parse", "--git-path", "info/exclude"))
++    return p if p.is_absolute() else t / p
++
++
++def files(t: Path) -> dict[str, bytes]:
++    """Every file under the target, its git directory aside, plus the exclude file."""
++    snap = {k: v for k, v in tree(t).items() if not k.startswith(".git/")}
++    ex = exclude(t)
++    snap["<exclude>"] = ex.read_bytes() if ex.exists() else b""
++    return snap
++
++
++def init(t: Path, *argv: str, **env: str):
++    return cli(t, "init", *argv, **env)
++
++
++@pytest.fixture
++def target(tmp_path: Path) -> Path:
++    t = git_repo(tmp_path / "target")
++    cp = init(t, "--repo-name", "demo")
++    assert cp.returncode == 0, cp.stderr
++    return t
++
++
++def request(tmp_path: Path) -> str:
++    p = tmp_path / "r.md"
++    p.write_text("# demo\n\nDo the thing.\n")
++    return str(p)
++
++
++def start_triage(t: Path, tmp_path: Path) -> Path:
++    assert cli(t, "ticket", "new", "--file", request(tmp_path)).returncode == 0
++    cp = cli(t, "run", "start", "--role", "triage", "--ticket", "T-0001")
++    assert cp.returncode == 0, cp.stderr
++    return state(t) / "runs" / js(cp)["run_id"] / "scratch"
++
++
++def ticket_status(cwd: Path) -> str | None:
++    cp = cli(cwd, "ticket", "show", "T-0001", "--json")
++    return js(cp).get("state") if cp.returncode == 0 else None
++
++
++# ----- a new store ----------------------------------------------------------------------------
++
++def test_a_new_store_is_the_checkout_of_its_branch_unseen_by_the_integration_checkout(tmp_path):
++    t = git_repo(tmp_path / "target")
++    cp = init(t, "--repo-name", "demo")
++    assert cp.returncode == 0, cp.stderr
++    assert js(cp)["store_branch"] == BRANCH
++    assert git(state(t), "symbolic-ref", "HEAD") == f"refs/heads/{BRANCH}"
++    assert (state(t) / "decisions.md").is_file() and (state(t) / ".gitignore").is_file()
++    seen = git(t, "status", "--porcelain", "--untracked-files=all").splitlines()
++    assert seen and not [ln for ln in seen if ".factory/state" in ln], seen
++    assert "/.factory/state/" in exclude(t).read_text().splitlines()
++
++
++def test_a_store_commit_leaves_the_integration_branch_where_it_was(target):
++    git(target, "add", "-A")
++    git(target, "commit", "-q", "-m", "instance")
++    main = git(target, "rev-parse", "main")
++    git(state(target), "add", "-A")
++    git(state(target), "commit", "-q", "-m", "store: first")
++    assert git(target, "rev-parse", "main") == main
++    assert git(target, "rev-parse", f"{BRANCH}~0") == git(state(target), "rev-parse", "HEAD")
++    assert git(target, "ls-files", ".factory/state") == ""
++
++
++def test_a_clone_restores_the_store_from_the_branch(target, tmp_path):
++    git(target, "add", "-A")
++    git(target, "commit", "-q", "-m", "instance")
++    git(state(target), "add", "-A")
++    git(state(target), "commit", "-q", "-m", "store: first")
++    clone = tmp_path / "clone"
++    git(tmp_path, "clone", "-q", str(target), str(clone))
++    assert not state(clone).exists()
++    cp = init(clone)
++    assert cp.returncode == 0, cp.stderr
++    assert js(cp)["store_branch"] == BRANCH
++    assert git(state(clone), "symbolic-ref", "--short", "HEAD") == BRANCH
++    assert git(state(clone), "rev-parse", "--abbrev-ref", "@{upstream}") == f"origin/{BRANCH}"
++    assert (state(clone) / "decisions.md").read_bytes() == (state(target) / "decisions.md").read_bytes()
++    assert js(cp)["written"] == []
++
++
++def test_two_remotes_carrying_the_branch_are_refused_naming_both(target, tmp_path):
++    git(target, "add", "-A")
++    git(target, "commit", "-q", "-m", "instance")
++    git(state(target), "add", "-A")
++    git(state(target), "commit", "-q", "-m", "store: first")
++    clone = tmp_path / "clone"
++    git(tmp_path, "clone", "-q", str(target), str(clone))
++    git(clone, "remote", "add", "nas", str(target))
++    git(clone, "fetch", "-q", "nas")
++    before = files(clone)
++    cp = init(clone)
++    assert cp.returncode == 2, cp.stderr
++    assert f"origin/{BRANCH}" in cp.stderr and f"nas/{BRANCH}" in cp.stderr
++    assert len(cp.stderr.strip().splitlines()) == 1
++    assert not state(clone).exists() and files(clone) == before
++    assert git(clone, "branch", "--list", BRANCH) == ""
++
++
++@pytest.mark.parametrize("with_store", [False, True], ids=["decoy-only", "decoy-and-store"])
++def test_a_remote_branch_whose_name_only_ends_in_the_store_branch_is_not_the_store(target, tmp_path, with_store):
++    """`refs/remotes/*/factory-store`, one path segment for the remote (A.3.2): `origin/x/factory-store`
++    is a code branch, neither the store to check out nor a second remote carrying it."""
++    git(target, "add", "-A")
++    git(target, "commit", "-q", "-m", "instance")
++    if with_store:
++        git(state(target), "add", "-A")
++        git(state(target), "commit", "-q", "-m", "store: first")
++    git(target, "checkout", "-q", "-b", f"x/{BRANCH}")
++    (target / "code.txt").write_text("code\n")
++    git(target, "add", "code.txt")
++    git(target, "commit", "-q", "-m", "a code branch")
++    git(target, "checkout", "-q", "main")
++    clone = tmp_path / "clone"
++    git(tmp_path, "clone", "-q", str(target), str(clone))
++    assert git(clone, "rev-parse", "-q", "--verify", f"refs/remotes/origin/x/{BRANCH}")
++    cp = init(clone)
++    assert cp.returncode == 0, cp.stderr
++    assert js(cp)["store_branch"] == BRANCH
++    assert not (state(clone) / "code.txt").exists()
++    if with_store:
++        assert git(state(clone), "rev-parse", "--abbrev-ref", "@{upstream}") == f"origin/{BRANCH}"
++    else:  # a new orphan: the branch has no commit yet
++        assert git(clone, "rev-parse", "-q", "--verify", f"refs/heads/{BRANCH}", check=False) == ""
++
++
++def test_an_existing_instance_on_an_unborn_branch_counts_as_never_tracked(tmp_path):
++    """A.3.1: with no integration_branch configured, an unborn branch at the repo root has tracked
++    nothing, so a missing store is created rather than refused with git's error."""
++    t = tmp_path / "target"
++    t.mkdir()
++    git(t, "init", "-q", "-b", "main")
++    assert init(t, "--repo-name", "demo").returncode == 0
++    subprocess.run(["rm", "-rf", str(state(t))], check=True)
++    git(t, "worktree", "prune")
++    cp = init(t)
++    assert cp.returncode == 0, cp.stderr
++    assert js(cp)["store_branch"] == BRANCH
++    assert git(state(t), "symbolic-ref", "--short", "HEAD") == BRANCH
++
++
++def test_a_store_path_the_integration_branch_once_tracked_is_refused(tmp_path):
++    t = git_repo(tmp_path / "target")
++    state(t).mkdir(parents=True)
++    (state(t) / "old.md").write_text("old\n")
++    git(t, "add", "-A")
++    git(t, "commit", "-q", "-m", "old store")
++    git(t, "rm", "-q", "-r", ".factory/state")
++    git(t, "commit", "-q", "-m", "store removed")
++    removed = git(t, "rev-parse", "HEAD")
++    before = files(t)
++    cp = init(t, "--repo-name", "demo")
++    assert cp.returncode == 2, cp.stderr
++    assert ".factory/state" in cp.stderr and removed in cp.stderr and "state_dir" in cp.stderr
++    assert len(cp.stderr.strip().splitlines()) == 1
++    assert not (t / ".factory").exists() and files(t) == before
++    assert git(t, "branch", "--list", BRANCH) == ""
++
++
++def test_a_failed_worktree_step_writes_no_instance_file(tmp_path):
++    t = git_repo(tmp_path / "target")
++    git(t, "branch", BRANCH)
++    git(t, "worktree", "add", "-q", str(tmp_path / "elsewhere"), BRANCH)
++    before = files(t)
++    cp = init(t, "--repo-name", "demo")
++    assert cp.returncode == 2, cp.stderr
++    assert "factory init: cannot check out the store" in cp.stderr
++    assert not (t / ".factory").exists() and not (t / ".claude").exists() and files(t) == before
++
++
++# ----- init from inside the store -------------------------------------------------------------
++
++@pytest.mark.parametrize("detached", [False, True], ids=["on-branch", "detached"])
++def test_init_from_inside_the_store_is_refused_and_writes_nothing(target, tmp_path, detached):
++    if detached:
++        git(state(target), "add", "-A")
++        git(state(target), "commit", "-q", "-m", "store: first")
++        git(state(target), "checkout", "-q", "--detach")
++    scratch = start_triage(target, tmp_path)
++    before = files(target)
++    cp = init(scratch, "--repo-name", "x")
++    assert cp.returncode == 2, cp.stderr
++    assert "run init from the repository root" in cp.stderr and len(cp.stderr.strip().splitlines()) == 1
++    assert (f"inside the store {state(target).resolve()} of the instance" if detached
++            else f"inside the store checkout {state(target).resolve()} (branch {BRANCH})") in cp.stderr
++    assert files(target) == before and not (state(target) / ".factory").exists()
++    assert ticket_status(scratch) == "ready-for-triage"
++
++
++def test_with_factory_instance_set_a1_does_not_apply(target, tmp_path):
++    """A.1 applies only with FACTORY_INSTANCE unset. With it set and FACTORY_STATE naming a
++    throwaway store, init from a run's scratch directory initialises that store; with the own store,
++    #45's location rule still refuses it."""
++    scratch = start_triage(target, tmp_path)
++    inst = str(target / ".factory")
++    before = files(target)
++    other = tmp_path / "throwaway"
++    cp = init(scratch, FACTORY_INSTANCE=inst, FACTORY_STATE=str(other))
++    assert cp.returncode == 0, cp.stderr
++    assert (other / "decisions.md").is_file() and js(cp)["store_branch"] is None
++    cp = init(scratch, FACTORY_INSTANCE=inst, FACTORY_DISPATCH="1")
++    assert cp.returncode == 2 and RULE in cp.stderr and "called from inside its runs/" in cp.stderr
++    assert files(target) == before
++
++
++def test_init_in_a_separate_repository_under_a_runs_scratch_directory_makes_its_instance(target, tmp_path):
++    scratch = start_triage(target, tmp_path)
++    other = git_repo(scratch / "other")
++    before = {k: v for k, v in files(target).items() if "/scratch/other/" not in k}
++    cp = init(other, "--repo-name", "other")
++    assert cp.returncode == 0, cp.stderr
++    assert (other / ".factory" / "instance.yaml").is_file() and js(cp)["store_branch"] == BRANCH
++    assert {k: v for k, v in files(target).items() if "/scratch/other/" not in k} == before
++    assert ticket_status(target) == "ready-for-triage"
++
++
++# ----- an existing store ----------------------------------------------------------------------
++
++def test_an_existing_plain_store_is_left_alone_and_pointed_to_store_migrate(tmp_path):
++    t = git_repo(tmp_path / "target")
++    state(t).mkdir(parents=True)
++    cp = init(t, "--repo-name", "demo")
++    assert cp.returncode == 0, cp.stderr
++    assert js(cp)["store_branch"] is None
++    assert "factory store migrate --to PATH" in cp.stderr
++    assert not (state(t) / ".git").exists() and git(t, "branch", "--list", BRANCH) == ""
++    assert "/.factory/state/" not in (exclude(t).read_text() if exclude(t).exists() else "")
++    before = files(t)
++    again = init(t)
++    assert again.returncode == 0 and js(again)["store_branch"] is None and "store migrate" in again.stderr
++    assert files(t) == before
++
++
++def test_a_detached_store_worktree_is_left_alone_with_its_own_hint(target):
++    git(state(target), "add", "-A")
++    git(state(target), "commit", "-q", "-m", "store: first")
++    git(state(target), "checkout", "-q", "--detach")
++    before = files(target)
++    cp = init(target)
++    assert cp.returncode == 0, cp.stderr
++    assert js(cp)["store_branch"] is None
++    assert "detached HEAD" in cp.stderr and "store migrate" not in cp.stderr
++    assert files(target) == before
++
++
++def test_a_second_init_is_a_no_op(target):
++    before = files(target)
++    cp = init(target)
++    assert cp.returncode == 0, cp.stderr
++    out = js(cp)
++    assert (out["written"], out["created"], out["agents"], out["store_branch"]) == ([], [], [], BRANCH)
++    assert files(target) == before
++    assert exclude(target).read_text().splitlines().count("/.factory/state/") == 1
++
++
++# ----- the merge gate -------------------------------------------------------------------------
++
++@pytest.fixture
++def checked(target, tmp_path) -> Path:
++    """T-0001 on branch factory/T-0001 with gate PASS, reviewer APPROVE and verifier VERIFIED on its
++    head, the instance committed on main."""
++    git(target, "add", "-A")
++    git(target, "commit", "-q", "-m", "instance")
++    git(target, "checkout", "-q", "-b", "factory/T-0001")
++    (target / "x.txt").write_text("x\n")
++    git(target, "add", "x.txt")
++    git(target, "commit", "-q", "-m", "work")
++    head = git(target, "rev-parse", "HEAD")
++    git(target, "checkout", "-q", "main")
++    assert cli(target, "ticket", "new", "--file", request(tmp_path)).returncode == 0
++    assert cli(target, "ticket", "set", "T-0001", "status=checks-in-flight", "branch=factory/T-0001",
++               f"head={head}").returncode == 0
++    for role, body, rid in (("verifier", "Gate suite: PASS\nSTATUS: VERIFIED", "run-0001-verifier"),
++                            ("reviewer", "STATUS: APPROVE", "run-0002-reviewer")):
++        p = tmp_path / f"{role}.md"
++        p.write_text(f"Commit: {head}\n{body}\nCONFIDENCE: high, fixture\nESCALATIONS: none\n")
++        cp = cli(target, "results", "record", "T-0001", "--head", head, "--role", role, "--output", str(p), "--run", rid)
++        assert cp.returncode == 0, cp.stderr
++    return target
++
++
++def test_a_sub_ticket_merges_after_a_store_commit(checked):
++    git(state(checked), "add", "-A")
++    git(state(checked), "commit", "-q", "-m", "store: rows recorded")
++    cp = cli(checked, "merge", "T-0001", **IDENT)
++    assert cp.returncode == 0, cp.stderr
++    assert js(cp)["state"] == "merged"
++
++
++def test_a_sub_ticket_is_still_refused_after_a_code_commit(checked):
++    (checked / "y.txt").write_text("y\n")
++    git(checked, "add", "y.txt")
++    git(checked, "commit", "-q", "-m", "code on main")
++    cp = cli(checked, "merge", "T-0001", **IDENT)
++    assert cp.returncode == 2 and "head does not contain main" in cp.stderr

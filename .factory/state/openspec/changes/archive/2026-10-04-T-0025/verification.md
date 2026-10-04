@@ -199,3 +199,9 @@ Suggested fix: Optional; split the "parent of `--git-common-dir`" rejection into
 ### Out-of-scope observations
 
 - The round counter in run metadata restarted at 1 after the gate's first change request (`run-0232-critic/meta.yaml` says `round: 1` for what the spec calls round 3). Harmless here, but a reader following "Round 4" through the store will not find a run numbered so.
+
+## Verifier results
+
+267ef3b4861ff29564a468c471d26f77c7f510e0 · T-0025.2 · VERIFIED · run-0270-verifier
+d001090e9b0a535d55599ce5819c497572e07cf4 · T-0025.1 · VERIFIED · run-0256-verifier
+fb72f7a7284a3208150c72ea20fe31299c9fdd4e · T-0025.1 · VERIFIED · run-0268-verifier

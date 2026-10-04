@@ -1,0 +1,282 @@
+=== proposal.md
+## Problem
+
+Once the operator approves a spec at the spec gate, nothing in the factory can change it, even after it turns out to be wrong. The spec gate is the one human sign-off on a design before code is written. The spec's acceptance scenarios are the runnable checks the code must pass. They can become impossible to pass when another approved ticket merges first and changes behaviour they rely on. The code is then correct, and the check is wrong. The operator has two workarounds today. One is a hand edit of the files in the factory's state store, the directory where the factory keeps tickets, spec versions and agent run records. No command is behind that edit. The other is a written instruction that never reaches the repository's record of what the system does.
+
+Some terms used below. At the gate the harness pins the spec: it freezes the approved version and writes it out as the ticket's change folder. Every later agent reads that pinned version. A store that keeps change folders and current truth has a spec store; a store set up without one skips both. A ticket is built as sub-tickets, each merged on its own. The planner is the agent that splits a ticket into sub-tickets, and it leaves its task list, `tasks.md`, in the change folder. When the last sub-ticket has merged and a final check passes, archive writes the change folder's scenarios into current truth. Current truth is the repository's description of how the system behaves now, and later specs are written against it. A run is in flight while an agent is working on a ticket. A ticket is parked when the pipeline stops it and hands it to a human; an implementer that cannot go on parks its sub-ticket with the status BLOCKED. A ruling is a human's written instruction, filed with the ticket, that the harness hands to later agent runs.
+
+Two things go wrong:
+
+- **No way to amend.** The only command that writes a spec version works only while the ticket waits at the gate. A ruling can tell the builders to change a scenario's setup, so the build goes on. But archive still copies the unamended scenario into current truth, where anyone who re-runs it sees it fail.
+- **Nobody checks for the conflict.** These breaks are foreseeable. When the second spec reached the gate, the first ticket was already approved and its decision was on file. The critic, the agent that grades a spec before the operator sees it, was not asked to look at other approved tickets. Its input does not list them.
+
+This ticket adds a human-only command that amends a pinned spec, and a critic check, with the input that check needs.
+
+## Evidence
+
+Two incidents, both read in the stores:
+
+- **Nanobot target, 2026-10-04.** The Nanobot target is a second repository the factory works on, with its own store. Ticket T-0002 (its spec 20) merged and made WhatsApp groups fail closed when no policy store exists. Two pinned scenarios of T-0008 (its spec 05, typing indicators) create no policy store, so they cannot pass. T-0008.1's implementer reported itself blocked (run-0166). The workaround is a ruling: `~/dev/nanobot-upstream/.factory/state/approvals/T-0008.1/ruling-1.md` and `.../T-0008/ruling-1.md` both exist. Each says "Test setup only. No behaviour change, and no change to any THEN" and seeds a `policies.json`. The requester expects the same in two more tickets. When T-0002 was approved, T-0008's spec could have been checked against it. Nothing did.
+- **This repository, 2026-10-03.** `.factory/state/approvals/T-0012/amendment-1.md` records that the operator "Applied in place to `specs/T-0012/v3.md` (the pinned version every checker reads)". No command made that edit.
+
+Today's behaviour, on a scratch store (the GIVEN fixture of the first scenario below; ticket T-0001 pinned at v1, its one scenario running `echo hi`; v2 changes it to `echo hello`):
+
+- `bin/factory spec amend T-0001 --file v2.md --reason ...` prints `factory spec: error: argument sub: invalid choice: 'amend' (choose from add, tasks)` and exits 2. No command can write a new version after the gate.
+- With T-0001 split into two sub-tickets, an implementer run on T-0001.2 receives v1: its input has `echo hi` once and `echo hello` zero times. A ruling would be the only way to tell it otherwise.
+- `bin/factory archive T-0001` then writes v1's scenario into current truth: `hello=0 hi=1`. That is the harm the ruling workaround leaves behind.
+- A critic run on a second ticket, T-0002, gets no list of other approved tickets. Its input headings are the briefing, the spec under review and its own parts, and nothing names T-0001 (`t1=0`). Its system prompt has no rule on this (`rule=0`).
+
+The design already allows amending. `docs/design.md:102` says "the human amends the spec and re-plans". Line 104 says "The human may amend the sub-ticket or the pinned spec first; the amended version is what the implementer and checkers receive." The build spec, `dev/build-harness.spec.md:314`, specifies a `resolve --amend-spec FILE` flag that was never built.
+
+The operator approved both parts as one ticket, pre-approved at the gate: `.factory/answers/operator-decisions-2026-10-04.md` says "#44: approve parts A (spec amend, human-only, logged) and B (critic cross-ticket check) as one ticket, pre-approved."
+
+The fix was prototyped in a clone of `main` at `0b1abad` in this run's scratch directory. Every scenario below printed its THEN line there. On an unmodified clone, every scenario labelled NEW printed the failure stated in verification.md. The full harness suite on the prototype: `1 failed, 264 passed`. The one failure was the test that keeps the design doc's critic block equal to `docs/prompts/03-spec-critic.md`, because the prototype had not edited the design doc yet. After that edit, the test passed (`5 passed`).
+
+## Root cause
+
+- `factory/cli.py:653-688` `approve_spec` is the only path that sets `spec.approved_version` and calls `specstore.pin`, and it refuses unless the ticket is `awaiting-spec-gate` (`cli.py:669-670`). `_add_spec_version` (`cli.py:350`) writes a version but pins nothing.
+- `factory/compose.py:172` and `:188`/`:206` hand implementer, reviewer and verifier runs `specs/<parent>/v<approved_version>.md`, and the planner gets `v<approved_version>` too (`compose.py:157`). So moving `approved_version` is enough to reach every later run. Nothing moves it.
+- `factory/specstore.py:290-303` `pin` deletes and rewrites the whole change folder (`shutil.rmtree(d)`, line 296). That would drop the planner's `tasks.md`, which `spec tasks` (`cli.py:919`) writes there.
+- `factory/specstore.py:336` `archive` applies the deltas in the change folder, so only a re-pin changes what reaches current truth.
+- `factory/compose.py:145-155`, the critic branch, adds the spec, current truth, the decision log and rulings, and nothing about other tickets. The critic's rubric item 5 (`docs/design.md:418`, `docs/prompts/03-spec-critic.md:18`, `factory/prompts/critic.md:18`) says only "doesn't conflict with open tickets".
+
+## Out of scope
+
+- How a ticket moves after an amendment. Today's routes stay as they are: `resolve --ruling` on a BLOCKED sub-ticket, `ticket transition` back to `ready-for-parent-verify`, `resolve --replan`.
+- Amending a sub-ticket's own text (`specs/<id>/subticket.md`).
+- Giving the spec writer the list of approved changes not yet archived. Only the critic gets it here.
+- Handing the amendment record itself to role runs. They receive the amended spec.
+- Re-checking merged sub-tickets against the amended scenarios. The final check on the merged result does that, as today.
+- Replacing the Nanobot target's existing rulings with amendments. That is the operator's call on that target.
+- The gate's `approve-spec`, `--edit` and `resolve` behaviour, and `archive`'s refusals: unchanged.
+- The tests that a decision overturns within one ticket. That is the queued ticket T-0022 (issue #40, part C).
+
+## Open questions
+
+none
+
+## Decisions
+
+- The command is `factory spec amend <parent> --file <F> --reason "<one line>"`, run by a human. Rejected: the build spec's unbuilt `resolve --amend-spec`. Each `resolve` mode that sends a ticket back into the pipeline acts only on a ticket the pipeline has stopped and handed to a human: a parked one, or for `--answer` one waiting on its requester (`factory/cli.py:735-811`). Its other mode, `--close`, ends the ticket. An amendment needed after another ticket merges may come while the ticket is not stopped, for example while it is `planned` with sub-tickets still waiting.
+- An amendment changes no ticket state. The operator resumes the ticket with the routes that exist: `resolve --ruling` on a BLOCKED sub-ticket, `ticket transition` to `ready-for-parent-verify`, or `resolve --replan`. Rejected: an amendment that also moves the ticket, which would duplicate those routes.
+- `spec amend` refuses while any run is in flight on the parent or one of its sub-tickets. A parked or waiting sub-ticket does not block it. Rejected: refusing while any sub-ticket is unmerged, which would block the motivating case of a sub-ticket parked BLOCKED on a scenario it cannot pass. This is a standing decision.
+- Human-only means that no workflow script and no role prompt names the command. A role run on the parent or a sub-ticket is in flight while it runs, so the in-flight refusal stops it. There is no identity check, because the harness runs under one identity.
+- `spec amend` refuses, with exit 2 and nothing written: a sub-ticket; a ticket with no approved version; a ticket at `awaiting-spec-gate`, where `approve-spec --edit` is the route; a closed ticket; a reason that is not one non-blank line; and, when the store has a spec store, a ticket whose change folder is gone because it was archived. An amended version must pass the gate's own checks: well-formed, and its deltas apply to current truth.
+- The re-pin keeps the planner's `tasks.md` in the change folder. The rest of the folder is rewritten as the gate writes it, `## Critic rounds` included.
+- Each sub-ticket that is neither merged nor closed has its spec record moved to the new version, so later runs record the version they received. Merged and closed sub-tickets keep theirs.
+- The record is `approvals/<parent>/amendment-<n>.md`, numbered after any amendment file already there. It holds who, when, the reason, the old and new version, a `- changed: <name>`, `- added: <name>` or `- removed: <name>` line per scenario that differs, a `- <id> / <title>: merged` line per sub-ticket merged before the amendment, and the unified diff. The log gets a `spec.amended` event. No `spec-v<n>.yaml`, the file the gate writes to record an approval, is written. The amendment record is that version's approval record.
+- The critic's input gains a section, "Approved changes not yet archived". It lists each change folder whose ticket is not closed, other than the reviewed ticket's own. Each entry gives the ticket id, title, state, folder path, the requirements its deltas add, modify or remove, and its Decisions lines. The section reads `none` when there are none, and is left out when the store has no spec store. Rejected: a prompt rule with no input, because the critic cannot find another target's store. Rejected: whole proposals, which would multiply the critic's input.
+- The cross-ticket rule extends the critic's rubric item 5 (Consistent). A scenario whose setup would not hold under one of the two merge orders is a BLOCKING finding that names the other ticket and its decision. This is a standing decision.
+
+## Risk
+
+Blast radius: one new command, which touches only the ticket it names and its sub-tickets' spec records. Every critic run on a store that has a spec store gets one more input section: one entry per approved ticket not yet archived (two today, T-0025 and T-0026). The critic prompt gains four lines in rubric item 5. No routing, state, gate or archive behaviour changes.
+
+Protected paths this change touches:
+- harness (`factory/**`): `factory/cli.py`, `factory/specstore.py`, `factory/compose.py`, `factory/prompts/critic.md`;
+- generated (`docs/prompts/**`): `docs/prompts/03-spec-critic.md`, re-copied from the design doc's critic block.
+
+It also edits `docs/design.md`, `docs/changelog.md`, `dev/build-harness.spec.md` and `README.md`, and adds one new test file under `tests/factory/`.
+
+Overlap with other open tickets, checked under this ticket's own new rule:
+- T-0025 (the store moves to its own branch) is approved, now `planned`, and not yet archived. It edits `factory/cli.py` (`init`), `README.md`, `docs/design.md`, `docs/changelog.md` and the build spec, so text conflicts are likely and a merge-catch-up run resolves them. Its decisions keep a throwaway store a plain directory, which is what this spec's fixture uses. The document checks below find this ticket's changelog entry by content, not as the last entry, so they hold whichever ticket merges first.
+- T-0026 (the workflow view shows a short title beside each ticket id) is approved at v2, `ready-for-planner`, and not yet archived. It changes only display text in `factory/workflows/intake.js` and `factory/workflows/build.js`; its design part E makes no change to the CLI, prompts, tests, README, design doc or changelog. This ticket does not touch the workflow scripts, and no scenario here runs them or reads their output, so every scenario holds whichever of the two merges first.
+- T-0022 (issue #40) is not yet specced. Its part C adds a check under critic rubric item 1. This ticket edits item 5, so the two edits touch different lines of the same three copies.
+
+## Operator steps
+
+none
+=== design.md
+## Proposed change
+
+The prototype was about 100 changed lines of harness code. With tests and documents, the change is roughly 250 lines, so it fits one PR.
+
+**A. `factory spec amend` (`factory/cli.py`, `factory/specstore.py`).** Add `amend` under the `spec` subparser: positional `id`, `--file` (required), `--reason` (required). Add a `spec_amend(a, root, cfg)` that does these checks in this order. Each refusal raises `Refused`, so it exits 2 with `{"ok": false, "error": ...}` and nothing written:
+
+1. The ticket has a `parent`: refuse, naming the parent.
+2. `spec.approved_version` is None, or the status is `awaiting-spec-gate` or `closed`: refuse. At the gate, point to `approve-spec --edit`.
+3. `--reason`, stripped, is empty or more than one line: refuse.
+4. Any run id is in the `in_flight` list of the ticket or of any sub-ticket (`store.subtickets_of`): refuse, naming each run id.
+5. With `specstore.is_active(root)`: the change folder `specstore.change_dir(root, id)` must exist (if it is gone, the ticket was archived); then `specstore.validate(text)` and `specstore.applies(root, deltas)` exactly as `approve_spec` runs them. Refuse with `spec not amended: <errors>`. The validator's own error texts, such as `has no NEW/REGRESSION label`, pass through.
+
+Then write, in this order:
+
+- Read the old pinned text, `specs/<id>/v<approved_version>.md`.
+- Call `_add_spec_version(root, t, text, f"amend {file}")`. It writes `specs/<id>/v<n>.md` and the copy `specs/<id>.md`, and logs `spec.added`.
+- When the store has a spec store: read `tasks.md` from the change folder if it exists, call `specstore.pin(root, id, text)`, and then write `tasks.md` back.
+- Set `spec.approved_version = n` and save.
+- For each sub-ticket whose status is neither `merged` nor `closed`, set its `spec` to `{"version": n, "approved_version": n}` and save.
+- Write `approvals/<id>/amendment-<k>.md`, with `k` from `_next_n(d, "amendment")`, so a hand-written `amendment-1.md` is counted. Content: a heading naming the ticket and `v<old> to v<n>`; `By <user> at <ts>.`; `Reason: <reason>`; `## Scenarios changed` with one line per scenario, `- changed: <name>`, `- added: <name>` or `- removed: <name>`, or `none`; `## Sub-tickets merged before this amendment` with one `- <id> / <title>: merged` line each, or `none`; `## Diff` with a fenced `difflib.unified_diff` of the old and new texts.
+- Log `spec.amended` with `ticket`, `by`, `previous`, `version`, `reason` and `record`.
+- Print `{"ok": true, "id", "version", "record"}`.
+
+Scenario comparison needs a new helper in `factory/specstore.py`, `scenario_blocks(text) -> dict[name, block]`. Over every delta part of one version (`split_parts`, `DELTA_RE`), it returns each `#### Scenario:` block: the heading line through the line before the next `##`, `###` or `####` heading, outside fences (reuse `lines_outside_fences`, `SCEN_RE` and `_heading`). A scenario is changed when its name is in both versions and its block differs.
+
+**B. The critic's input (`factory/compose.py`, critic branch, after `add_decisions()`).** When `<store>/openspec/changes/` exists, append a section headed exactly `## Approved changes not yet archived`. For each directory under it, in name order, skip `archive`, the reviewed ticket's own id, and any id whose ticket is `closed`. Write one entry per remaining directory:
+
+```
+### <id>: <title> (<status>)
+Change folder: `<absolute path>`
+Changes: <capability>: <ADDED|MODIFIED|REMOVED> <requirement name>; ...
+Decisions:
+- <each line from specstore.decisions_of(proposal.md)>
+```
+
+Use `specstore.delta_ops_of_change` for the changes. Write `none` for an empty list. Add each listed `proposal.md` to the run's `sources`. With no entries, the section body is `none`. With no `openspec/changes/`, the section is left out.
+
+**C. The critic rule (design doc block, `docs/prompts/03-spec-critic.md`, `factory/prompts/critic.md`).** Under rubric item 5, after its first line, add these four lines in all three copies. Keep each copy's existing differences: the runtime copy has `2` where the others have `{2}`.
+
+```
+   For each scenario, check whether it depends on behaviour that an
+   approved change not yet archived (listed in your input) changes. If
+   so, its setup must hold whichever of the two merges first; if it
+   would not, that is BLOCKING: name that ticket and its decision.
+```
+
+**D. Documents.**
+- `docs/design.md`: (1) the rubric block in C. (2) In the Spec store paragraph (line 88), after the sentence ending "work from the delta the human approved", add a sentence saying that after the gate only `factory spec amend <ticket id> --file <F> --reason "<line>"` changes the pinned version. A human runs it before archive, with no run in flight on the ticket or its sub-tickets. It writes a new version, re-pins the change folder keeping `tasks.md`, and records the amendment under `approvals/`. (3) The routing-table row `| Spec writer | READY-FOR-CRITIC / NEEDS-SPLIT | Critic |` (line 113): add "every other approved change not yet archived, with its decisions" to Receives.
+- `docs/changelog.md`: one new numbered entry, continuing the numbering, naming `spec amend`, that it refuses while a run is in flight, that it keeps `tasks.md`, that the critic receives approved changes not yet archived, and the rule that a scenario's setup must hold whichever ticket merges first.
+- `dev/build-harness.spec.md`: in the `factory resolve` bullet (line 314), mark `--amend-spec` as built instead as `factory spec amend PARENT --file F --reason LINE` (doc §Spec store), and say `resolve` has no `--amend-spec`. In the Spec store paragraph (line 193), add that `run compose` gives the critic the approved changes not yet archived.
+- `README.md`: in "Where a human decides", add an **Amend** row to the table: `factory spec amend T-n --file F --reason "<line>"`, for changing the pinned spec after the gate when a scenario cannot pass as written. Say it refuses while a run is in flight on the ticket, that the ticket's state does not change, and that it is tested but has not been used on a real ticket. Bump the status date if it changes.
+
+**E. Tests.** Add one new file, `tests/factory/test_spec_amend.py`, driving `bin/factory` on a throwaway `FACTORY_STATE`, as `tests/factory/test_spec_store.py` does. It should cover A's writes and each refusal, and B's section with and without other changes.
+
+## Tests to change
+
+none. The prototype ran the full suite. The only failure was the existing check that the design doc's critic block equals `docs/prompts/03-spec-critic.md`, which passes once part C edits both copies, as it must.
+=== specs/spec-amendment/spec.md
+## ADDED Requirements
+
+### Requirement: A human amends a pinned spec after the gate
+`factory spec amend PARENT --file F --reason LINE` on a ticket with an approved spec, before archive, with no run in flight on it or its sub-tickets, MUST write F as the next spec version and make it the approved one, re-pin the change folder from F while keeping its `tasks.md`, and SHALL leave merged sub-tickets merged.
+
+#### Scenario: An amendment re-pins the change and keeps the plan's tasks
+Run every command in this change from the repository root of the checkout under test, after `uv sync --frozen`. Each WHEN runs in a subshell.
+- GIVEN the fixture file written by the block below, run once at column 0 as shown (every later scenario of this change that names it reuses it)
+
+```sh
+cat > ${TMPDIR:-/tmp}/t0027-amend.sh <<'EOF'
+# Sourced from the repo root: a scratch spec store whose T-0001 has passed the spec gate with v1,
+# whose one scenario "Greeting is printed" runs `echo hi`; $T27/v2.md is the same spec with that
+# scenario running `echo hello`. T-0001 has no sub-tickets yet.
+T27=$(cd "$(mktemp -d)" && pwd -P); export FACTORY_STATE=$T27/store
+bin/factory init >/dev/null 2>&1
+spec() { printf '=== proposal.md\n## Problem\nx\n## Decisions\n- %s\n=== design.md\n## Proposed change\nx\n=== specs/demo/spec.md\n## ADDED Requirements\n### Requirement: Greets\nThe tool SHALL greet.\n\n#### Scenario: Greeting is printed\n- WHEN `%s`\n- THEN it prints `%s`\n=== verification.md\n## Acceptance\n- Greeting is printed → NEW\n' "$1" "$2" "$3"; }
+spec 'Greet by default.' 'echo hi' 'hi' > $T27/v1.md && spec 'Greet with hello.' 'echo hello' 'hello' > $T27/v2.md
+printf '# Fixture\n\nGreet.\n' > $T27/req.md
+bin/factory ticket new --file $T27/req.md >/dev/null
+bin/factory ticket transition T-0001 --to ready-for-spec-writer --by t >/dev/null
+bin/factory spec add T-0001 --file $T27/v1.md >/dev/null
+bin/factory ticket transition T-0001 --to ready-for-critic --by t --round spec:init >/dev/null
+bin/factory ticket transition T-0001 --to awaiting-spec-gate --by t >/dev/null
+bin/factory approve-spec T-0001 >/dev/null
+git init -q -b main $T27/t && git -C $T27/t -c user.email=f@x -c user.name=f commit -q --allow-empty -m init
+export FACTORY_REPO=$T27/t FACTORY_INTEGRATION_BRANCH=main
+EOF
+```
+
+- WHEN `(. ${TMPDIR:-/tmp}/t0027-amend.sh && printf 'ST-1 / First\nDepends on: none\nParallel-safe: yes\n\nST-2 / Second\nDepends on: none\nParallel-safe: yes\n' > $T27/plan.md && bin/factory subticket add T-0001 --file $T27/plan.md >/dev/null && bin/factory ticket set T-0001.1 status=merged >/dev/null && bin/factory ticket transition T-0001 --to planned --by t >/dev/null && printf 'planner tasks\n' > $FACTORY_STATE/openspec/changes/T-0001/tasks.md; bin/factory spec amend T-0001 --file $T27/v2.md --reason "Seed the greeting." >/dev/null 2>&1; echo "exit=$? $(bin/factory ticket show T-0001 --json | tail -1 | grep -o '"approved_version": [0-9]*') pinned=$(grep -c 'echo hello' $FACTORY_STATE/openspec/changes/T-0001/specs/demo/spec.md) tasks=$(grep -c 'planner tasks' $FACTORY_STATE/openspec/changes/T-0001/tasks.md) first=$(bin/factory ticket show T-0001.1 | sed -n 's/^status: //p')")`
+- THEN it prints exactly `exit=0 "approved_version": 2 pinned=1 tasks=1 first=merged`
+
+### Requirement: Later runs receive the amended spec, and the record names what changed
+After an amendment, a role run that reads the pinned spec SHALL receive the amended version, and the amendment record MUST list each changed scenario and each sub-ticket merged before it, with the reason, and the log MUST record a `spec.amended` event.
+
+#### Scenario: A later implementer run receives the amended spec, and the record lists what changed
+Needs the GIVEN block of "An amendment re-pins the change and keeps the plan's tasks" run once.
+- WHEN `(. ${TMPDIR:-/tmp}/t0027-amend.sh && printf 'ST-1 / First\nDepends on: none\nParallel-safe: yes\n\nST-2 / Second\nDepends on: none\nParallel-safe: yes\n' > $T27/plan.md && bin/factory subticket add T-0001 --file $T27/plan.md >/dev/null && bin/factory ticket set T-0001.1 status=merged >/dev/null && bin/factory ticket transition T-0001 --to planned --by t >/dev/null; bin/factory spec amend T-0001 --file $T27/v2.md --reason "Seed the greeting." >/dev/null 2>&1; A=$FACTORY_STATE/approvals/T-0001/amendment-1.md; echo "changed=$(cat $A 2>/dev/null | grep -cxF -- '- changed: Greeting is printed') merged=$(cat $A 2>/dev/null | grep -cxF -e '- T-0001.1 / First: merged' -e '- T-0001.2 / Second: merged') reason=$(cat $A 2>/dev/null | grep -c 'Seed the greeting.') logged=$(bin/factory log tail --event spec.amended | grep -c '"ticket": "T-0001"')"; R=$(bin/factory run start --role implementer --ticket T-0001.2 2>/dev/null | tail -1 | sed -n 's/.*"run_id": "\([^"]*\)".*/\1/p'); [ -n "$R" ] && bin/factory run compose $R >/dev/null; echo "amended=$(cat $FACTORY_STATE/runs/${R:-none}/input.md 2>/dev/null | grep -c 'echo hello') old=$(cat $FACTORY_STATE/runs/${R:-none}/input.md 2>/dev/null | grep -c 'echo hi`') run_version=$(sed -n 's/^spec_version: //p' $FACTORY_STATE/runs/${R:-none}/meta.yaml 2>/dev/null)")`
+- THEN it prints exactly `changed=1 merged=1 reason=1 logged=1`, then `amended=1 old=0 run_version=2`
+
+### Requirement: Archive writes the amended version into current truth
+`factory archive` after an amendment SHALL write the amended version's scenarios into current truth and its Decisions into `decisions.md`, not the version first approved.
+
+#### Scenario: Archive after an amendment writes the amended scenario and decision
+Needs the GIVEN block of "An amendment re-pins the change and keeps the plan's tasks" run once.
+- WHEN `(. ${TMPDIR:-/tmp}/t0027-amend.sh && bin/factory spec amend T-0001 --file $T27/v2.md --reason "Seed the greeting." >/dev/null 2>&1; bin/factory archive T-0001 >/dev/null 2>&1; echo "archive=$? hello=$(grep -c 'echo hello' $FACTORY_STATE/openspec/specs/demo/spec.md) hi=$(grep -c 'echo hi`' $FACTORY_STATE/openspec/specs/demo/spec.md) decision=$(grep -c 'T-0001 Greet with hello.$' $FACTORY_STATE/decisions.md)")`
+- THEN it prints exactly `archive=0 hello=1 hi=0 decision=1`
+
+### Requirement: An amendment that cannot be applied is refused and writes nothing
+`factory spec amend` MUST refuse with `"ok": false` and exit 2, writing no version, record or pin, when the ticket was archived, when it is a sub-ticket, when the reason is not one line, when the version fails the gate's checks, or while a run is in flight on the ticket or one of its sub-tickets, and the in-flight refusal SHALL name the run.
+
+#### Scenario: An amendment after archive is refused
+Needs the GIVEN block of "An amendment re-pins the change and keeps the plan's tasks" run once.
+- WHEN `(. ${TMPDIR:-/tmp}/t0027-amend.sh && bin/factory spec amend T-0001 --file $T27/v2.md --reason "Seed the greeting." >/dev/null 2>&1; bin/factory archive T-0001 >/dev/null 2>&1; echo "late=$(bin/factory spec amend T-0001 --file $T27/v1.md --reason "Too late." 2>/dev/null | tail -1 | grep -c '"ok": false') changes=$(ls $FACTORY_STATE/openspec/changes | tr '\n' ' ')hello=$(grep -c 'echo hello' $FACTORY_STATE/openspec/specs/demo/spec.md)")`
+- THEN it prints exactly `late=1 changes=archive hello=1`
+
+#### Scenario: A malformed amendment, a sub-ticket target and a two-line reason are refused and write nothing
+Needs the GIVEN block of "An amendment re-pins the change and keeps the plan's tasks" run once.
+- WHEN `(. ${TMPDIR:-/tmp}/t0027-amend.sh && printf 'ST-1 / First\nDepends on: none\nParallel-safe: yes\n' > $T27/plan.md && bin/factory subticket add T-0001 --file $T27/plan.md >/dev/null && grep -v '→ NEW' $T27/v2.md > $T27/bad.md; m=$(bin/factory spec amend T-0001 --file $T27/bad.md --reason "r" 2>/dev/null | tail -1 | grep -c 'no NEW/REGRESSION label'); s=$(bin/factory spec amend T-0001.1 --file $T27/v2.md --reason "r" 2>/dev/null | tail -1 | grep -c '"ok": false'); r=$(bin/factory spec amend T-0001 --file $T27/v2.md --reason "$(printf 'two\nlines')" 2>/dev/null | tail -1 | grep -c '"ok": false'); echo "malformed=$m subticket=$s reason=$r $(bin/factory ticket show T-0001 --json | tail -1 | grep -o '"approved_version": [0-9]*') v2=$(ls $FACTORY_STATE/specs/T-0001 | grep -c '^v2.md$') records=$(ls $FACTORY_STATE/approvals/T-0001 | grep -c '^amendment-')")`
+- THEN it prints exactly `malformed=1 subticket=1 reason=1 "approved_version": 1 v2=0 records=0`
+
+#### Scenario: An amendment is refused while a sub-ticket's run is in flight, naming the run
+Needs the GIVEN block of "An amendment re-pins the change and keeps the plan's tasks" run once.
+- WHEN `(. ${TMPDIR:-/tmp}/t0027-amend.sh && printf 'ST-1 / First\nDepends on: none\nParallel-safe: yes\n' > $T27/plan.md && bin/factory subticket add T-0001 --file $T27/plan.md >/dev/null && bin/factory run start --role implementer --ticket T-0001.1 >/dev/null 2>&1; e=$(bin/factory spec amend T-0001 --file $T27/v2.md --reason "r" 2>&1 >/dev/null); echo "exit=$? names_run=$(echo "$e" | grep -c 'run-0001-implementer') $(bin/factory ticket show T-0001 --json | tail -1 | grep -o '"approved_version": [0-9]*') v2=$(ls $FACTORY_STATE/specs/T-0001 | grep -c '^v2.md$') pinned_old=$(grep -c 'echo hi`' $FACTORY_STATE/openspec/changes/T-0001/specs/demo/spec.md) records=$(ls $FACTORY_STATE/approvals/T-0001 | grep -c '^amendment-')")`
+- THEN it prints exactly `exit=2 names_run=1 "approved_version": 1 v2=0 pinned_old=1 records=0`
+=== specs/spec-critic/spec.md
+## ADDED Requirements
+
+### Requirement: The critic sees approved changes not yet archived
+A critic run's composed input on a store with a spec store MUST contain a section `## Approved changes not yet archived` that lists every other ticket's change folder whose ticket is not closed, each with its decisions and the requirements its deltas change, and SHALL list none once that change is archived.
+
+#### Scenario: The critic's input lists approved changes not yet archived, other than its own
+Needs the GIVEN block of "An amendment re-pins the change and keeps the plan's tasks" run once.
+- WHEN `(. ${TMPDIR:-/tmp}/t0027-amend.sh && spec 'Wave at night.' 'echo wave' 'wave' > $T27/w.md && printf '# Second\n\nWave.\n' > $T27/req2.md && bin/factory ticket new --file $T27/req2.md >/dev/null && bin/factory ticket transition T-0002 --to ready-for-spec-writer --by t >/dev/null && bin/factory spec add T-0002 --file $T27/w.md >/dev/null && bin/factory ticket transition T-0002 --to ready-for-critic --by t --round spec:init >/dev/null; R=$(bin/factory run start --role critic --ticket T-0002 2>/dev/null | tail -1 | sed -n 's/.*"run_id": "\([^"]*\)".*/\1/p'); sec() { bin/factory run compose ${R:-none} >/dev/null 2>&1; awk '/^## Approved changes not yet archived$/{on=1; print; next} /^## /{on=0} on' $FACTORY_STATE/runs/${R:-none}/input.md 2>/dev/null; }; X=$(sec); echo "listed=$(echo "$X" | grep -c '^### T-0001: ') self=$(echo "$X" | grep -c '^### T-0002') decision=$(echo "$X" | grep -cxF -- '- Greet by default.') requirement=$(echo "$X" | grep -c 'Greets')"; bin/factory archive T-0001 >/dev/null 2>&1; X=$(sec); echo "after_archive: heading=$(echo "$X" | grep -c '^## Approved changes not yet archived$') listed=$(echo "$X" | grep -c '^### T-0001: ')")`
+- THEN it prints exactly `listed=1 self=0 decision=1 requirement=1`, then `after_archive: heading=1 listed=0`
+
+### Requirement: The critic's rubric asks about cross-ticket dependencies
+The critic's system prompt MUST tell it to check each scenario against approved changes not yet archived and to require the scenario's setup to hold whichever of the two merges first, and the runtime critic prompt SHALL stay a copy of `docs/prompts/03-spec-critic.md` with its round placeholder filled.
+
+#### Scenario: A critic run's system prompt carries the cross-ticket rule
+- WHEN `(T=$(cd "$(mktemp -d)" && pwd -P); export FACTORY_STATE=$T/s; printf '# F\n\nDo x.\n' > $T/req.md; bin/factory ticket new --file $T/req.md >/dev/null; bin/factory ticket transition T-0001 --to ready-for-spec-writer --by t >/dev/null; bin/factory ticket transition T-0001 --to ready-for-critic --by t >/dev/null; R=$(bin/factory run start --role critic --ticket T-0001 2>/dev/null | tail -1 | sed -n 's/.*"run_id": "\([^"]*\)".*/\1/p'); echo "rule=$(grep -c 'whichever of the two merges first' $FACTORY_STATE/runs/${R:-none}/system-prompt.txt 2>/dev/null)")`
+- THEN it prints exactly `rule=1`
+
+#### Scenario: The runtime critic prompt stays a copy of the documented one
+- WHEN `(diff <(sed 's/{2}/2/' docs/prompts/03-spec-critic.md) factory/prompts/critic.md >/dev/null && echo copies=same || echo copies=differ)`
+- THEN it prints exactly `copies=same`
+=== specs/harness-docs/spec.md
+## ADDED Requirements
+
+### Requirement: The documents record spec amendment and the cross-ticket check
+`docs/changelog.md` SHALL gain one entry, numbered without a gap, covering the amend command and the critic's cross-ticket check; `docs/design.md` SHALL name `factory spec amend` and give the critic the approved changes not yet archived in its routing row; `dev/build-harness.spec.md` SHALL name `spec amend`; README's "Where a human decides" SHALL list `factory spec amend`; and the change MUST add no whitespace errors.
+
+#### Scenario: The changelog records the amendment change in one contiguous entry
+- WHEN `(awk '/^[0-9]+\. /{n++; if (index($0, n ". ") != 1) bad=1} END{print (bad ? "GAPPED" : "CONTIGUOUS")}' docs/changelog.md; grep '^[0-9]*\. ' docs/changelog.md | grep -c 'spec amend'; grep '^[0-9]*\. ' docs/changelog.md | grep 'spec amend' | grep -oF -e 'in flight' -e tasks.md -e 'not yet archived' -e whichever | sort -u | grep -c .)`
+- THEN it prints `CONTIGUOUS`, then `1`, then `4`
+
+#### Scenario: The design doc and build spec name the amend command and the critic's new input
+- WHEN `(echo "amend=$(grep -c 'factory spec amend' docs/design.md | awk '{print ($1 > 0)}') row=$(grep '^| Spec writer | READY-FOR-CRITIC' docs/design.md | grep -c 'not yet archived') build=$(grep -c 'spec amend' dev/build-harness.spec.md | awk '{print ($1 > 0)}')")`
+- THEN it prints exactly `amend=1 row=1 build=1`
+
+#### Scenario: README lists the amend command under Where a human decides
+- WHEN `(H=$(sed -n '/^## Where a human decides/,/^## What is built/p' README.md); echo "amend=$(echo "$H" | grep -c 'factory spec amend' | awk '{print ($1 > 0)}')")`
+- THEN it prints exactly `amend=1`
+
+#### Scenario: The amendment change adds no whitespace errors
+- WHEN `(git diff --check main...HEAD; echo "exit=$?")`
+- THEN it prints only `exit=0`
+=== verification.md
+## Acceptance
+
+- An amendment re-pins the change and keeps the plan's tasks → NEW; today `spec amend` is not a command (`invalid choice: 'amend'`), so it prints `exit=2 "approved_version": 1 pinned=0 tasks=1 first=merged`
+- A later implementer run receives the amended spec, and the record lists what changed → NEW; today no record or event exists and the implementer gets v1: `changed=0 merged=0 reason=0 logged=0`, then `amended=0 old=1 run_version=1`
+- Archive after an amendment writes the amended scenario and decision → NEW; today archive writes v1: `archive=0 hello=0 hi=1 decision=0`
+- An amendment after archive is refused → NEW; today the amend attempts fail in argparse with no JSON, and archive writes v1: `late=0 changes=archive hello=0`
+- A malformed amendment, a sub-ticket target and a two-line reason are refused and write nothing → NEW; today each attempt fails in argparse with no JSON refusal: `malformed=0 subticket=0 reason=0 "approved_version": 1 v2=0 records=0`
+- An amendment is refused while a sub-ticket's run is in flight, naming the run → NEW; today it exits 2 from argparse without naming the run: `exit=2 names_run=0 "approved_version": 1 v2=0 pinned_old=1 records=0`
+- The critic's input lists approved changes not yet archived, other than its own → NEW; today the section does not exist: `listed=0 self=0 decision=0 requirement=0`, then `after_archive: heading=0 listed=0`
+- A critic run's system prompt carries the cross-ticket rule → NEW; today the critic prompt has no such rule: `rule=0`
+- The runtime critic prompt stays a copy of the documented one → REGRESSION
+- The changelog records the amendment change in one contiguous entry → NEW; today no entry names `spec amend`: `CONTIGUOUS`, `0`, `0`
+- The design doc and build spec name the amend command and the critic's new input → NEW; today `amend=0 row=0 build=0`
+- README lists the amend command under Where a human decides → NEW; today `amend=0`
+- The amendment change adds no whitespace errors → REGRESSION
+
+## Responses
+
+- [BLOCKING] Decisions, "park" not glossed → FIXED. Problem's glossary paragraph now says what a parked ticket is ("the pipeline stops it and hands it to a human") and what BLOCKED is (an implementer that cannot go on parks its sub-ticket with that status). Decisions bullet 1 restates the gloss where it rejects `resolve --amend-spec`, and gives the real reason with a line cite: each `resolve` mode that sends a ticket back into the pipeline acts only on a stopped ticket, parked or waiting on its requester (`factory/cli.py:735-811`), while an amendment may be needed for a ticket that is `planned` and not stopped. While re-reading as the gate operator I also glossed four more terms used in Decisions without a gloss: "spec store", "planner" with its `tasks.md`, "in flight" and `spec-v<n>.yaml`.
+- [SHOULD-FIX] Risk leaves out T-0026 → FIXED. Risk now says "two today, T-0025 and T-0026". The overlap list has a T-0026 line. I read its change folder on `main` at `0b1abad`. T-0026 is at `ready-for-planner`, approved at v2, and changes only display text in `factory/workflows/intake.js` and `factory/workflows/build.js`. Its design part E says "Make no change to the CLI, prompts, agents, tests, README, design doc or changelog." No scenario here runs the workflow scripts, so each scenario holds whichever ticket merges first. The T-0025 line now gives its current state, `planned`.
+- [NIT] "store" and "target" not glossed → FIXED. Problem now says the store is "the directory where the factory keeps tickets, spec versions and agent run records". Evidence now says the Nanobot target is "a second repository the factory works on, with its own store". Each gloss is its own sentence rather than a parenthetical, as writing.md rule 3 asks.
+
+No scenario, requirement, design part or acceptance label changed in this round; only proposal.md and this section did. `main` is still at `0b1abad`, the same commit the critic checked, and no harness file has changed since. I re-ran two checks through the HOME wrapper: `bin/factory spec amend T-0001 --file x --reason r` on a throwaway store still prints `factory spec: error: argument sub: invalid choice: 'amend' (choose from add, tasks)`, and the REGRESSION prompt-copy check still prints `copies=same`.
+STATUS: READY-FOR-CRITIC
+CONFIDENCE: high, all three findings were text fixes in proposal.md, checked against the store and `factory/cli.py` on `0b1abad`; the scenarios the critic ran are unchanged.
+ESCALATIONS: none

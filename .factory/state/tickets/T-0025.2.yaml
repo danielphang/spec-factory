@@ -1,0 +1,52 @@
+id: T-0025.2
+type: sub-ticket
+title: factory store migrate moves a tracked store onto its branch (parts B, C for B, D for B)
+request: requests/T-0025.md
+source: plan:run-0240-planner
+status: merged
+round:
+  spec: 0
+  pr: 1
+spec:
+  version: 5
+  approved_version: 5
+plan: null
+in_flight: []
+parked: null
+created: '2026-10-04T20:19:32+00:00'
+history:
+- ts: '2026-10-04T21:26:41+00:00'
+  from: waiting-dependencies
+  to: ready-for-implementer
+  by: merge
+- ts: '2026-10-04T21:47:33+00:00'
+  from: ready-for-implementer
+  to: checks-in-flight
+  by: workflow
+  round:
+    spec: 0
+    pr: 1
+- ts: '2026-10-04T22:02:21+00:00'
+  from: checks-in-flight
+  to: ready-for-merge
+  by: workflow
+  round:
+    spec: 0
+    pr: 1
+- ts: '2026-10-04T22:02:30+00:00'
+  from: ready-for-merge
+  to: merged
+  by: merge
+  head: 267ef3b4861ff29564a468c471d26f77c7f510e0
+parent: T-0025
+depends_on:
+- T-0025.1
+parallel_safe: false
+branch: factory/T-0025.2
+head: 267ef3b4861ff29564a468c471d26f77c7f510e0
+merge:
+  base_before: 7a437ee0b2c3109ba4b3c67a37609e1dcb9b08e2
+  main_after: a8d6326dbb20513274b5508fdaee6aae15ebd888
+parent_base: null
+label: T-0025-B
+merge_refused: null

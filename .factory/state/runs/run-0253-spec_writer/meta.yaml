@@ -1,0 +1,26 @@
+run_id: run-0253-spec_writer
+role: spec_writer
+ticket: T-0029
+model: opus
+round: 0
+spec_version: 0
+started: '2026-10-04T20:44:29+00:00'
+finished: '2026-10-04T20:54:55+00:00'
+wall_s: 626
+status: READY-FOR-CRITIC
+input_sources:
+- runs/run-0250-triage/output.md
+- requests/T-0029.md
+- openspec/specs/build-dispatch/spec.md
+- openspec/specs/harness-docs/spec.md
+- openspec/specs/harness-suite/spec.md
+- openspec/specs/human-resolution/spec.md
+- openspec/specs/live-store-guard/spec.md
+- openspec/specs/store-setup/spec.md
+- openspec/specs/sub-ticket-planning/spec.md
+- decisions.md
+confidence: high. Every scenario was run on this checkout and on a prototype of the change, with the outputs
+  above. The duplicates are visible in the store log for the runs cited. The one figure not re-derived
+  (26 of 139) is the retro's and is cited as such.
+escalations: []
+escalations_note: null

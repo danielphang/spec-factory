@@ -1,0 +1,27 @@
+id: T-0030
+type: null
+title: 'Token cost: registered role agents for every role (with tool limits for checkers), trimmed per-role
+  inputs, and effort per role (#24 A + C, folding in #22)'
+request: requests/T-0030.md
+source: /private/tmp/claude-501/-Users-dphang-dev-nanobot/c69bfd1d-97a6-43e3-9d5a-a517c28d382c/scratchpad/req_24.md
+status: ready-for-triage
+round:
+  spec: 0
+  pr: 0
+spec:
+  version: 0
+  approved_version: null
+plan: null
+in_flight: []
+parked: null
+created: '2026-10-04T22:16:23+00:00'
+history: []
+parent: null
+depends_on: []
+parallel_safe: true
+branch: null
+head: null
+merge:
+  base_before: null
+  main_after: null
+parent_base: null

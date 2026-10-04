@@ -3,14 +3,14 @@ type: feature
 title: 'Isolate the store from the integration branch: store commits move main and force catch-up runs'
 request: requests/T-0025.md
 source: /private/tmp/claude-501/-Users-dphang-dev-nanobot/c69bfd1d-97a6-43e3-9d5a-a517c28d382c/scratchpad/46_store_branch.md
-status: ready-for-planner
+status: closed
 round:
   spec: 1
   pr: 0
 spec:
   version: 5
   approved_version: 5
-plan: null
+plan: plans/T-0025.md
 in_flight: []
 parked: null
 created: '2026-10-04T17:50:05+00:00'
@@ -93,6 +93,25 @@ history:
   to: ready-for-planner
   by: dphang
   approved_version: 5
+- ts: '2026-10-04T20:19:41+00:00'
+  from: ready-for-planner
+  to: planned
+  by: workflow
+  round:
+    spec: 1
+    pr: 0
+- ts: '2026-10-04T22:02:49+00:00'
+  from: planned
+  to: ready-for-parent-verify
+  by: parent-check
+- ts: '2026-10-04T22:16:24+00:00'
+  from: ready-for-parent-verify
+  to: closed
+  by: workflow
+  round:
+    spec: 1
+    pr: 0
+  verified_by: run-0272-verifier
 parent: null
 depends_on: []
 parallel_safe: true
@@ -101,4 +120,4 @@ head: null
 merge:
   base_before: null
   main_after: null
-parent_base: null
+parent_base: 0b1abad474cb9c583ed8445fc33617f9f0bdc37b
