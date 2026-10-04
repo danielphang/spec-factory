@@ -3,7 +3,8 @@ build spec part B "Spec store", part K `approve-spec` / `archive`).
 
 Current truth is `openspec/specs/<capability>/spec.md`. A ticket's change is the folder
 `openspec/changes/<ID>/`, written by the harness when the human gate pins a version: the pinned
-text is split on its `=== <path>` lines. Only `archive` writes current truth and `decisions.md`.
+text is split on its `=== <path>` lines. Only `archive` writes current truth. `decisions.md` has
+three writers, all through `record_decision`: `archive`, `decision add` and `resolve --decision`.
 The store is active once `init` has created `openspec/`; a store without it keeps the P0
 behaviour (specs pinned as one text), so the live pilot store is unaffected.
 """
@@ -235,6 +236,31 @@ def applies(root: Path, deltas: dict[str, dict[str, dict[str, str]]]) -> list[st
     return errors
 
 
+# ----- the decision log -------------------------------------------------------------------
+
+def _utc_date() -> str:
+    return dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%d")
+
+
+def decision_text(text: str) -> str:
+    """A decision's text, stripped. Refused unless it is one non-blank line."""
+    s = text.strip()
+    if not s or len(s.splitlines()) > 1:
+        raise store.Refused("a decision is one non-blank line of text")
+    return s
+
+
+def record_decision(root: Path, tid: str, text: str, today: str | None = None) -> str:
+    """Append `<UTC date> <tid> <text>` to `decisions.md`, creating it if absent; return the line.
+    Needs no spec store: the log does not depend on `openspec/`."""
+    line = f"{today or _utc_date()} {tid} {decision_text(text)}"
+    p = root / "decisions.md"
+    p.parent.mkdir(parents=True, exist_ok=True)
+    with p.open("a", encoding="utf-8") as fh:
+        fh.write(line + "\n")
+    return line
+
+
 # ----- pin and archive ----------------------------------------------------------------------
 
 def change_dir(root: Path, tid: str) -> Path:
@@ -311,7 +337,7 @@ def archive(root: Path, tid: str, verifier_rows: list[str], today: str | None = 
     """Part K `factory archive`: verifier results, apply deltas, move the folder, append the
     decisions. Caller has checked `applies`; nothing here refuses."""
     d = change_dir(root, tid)
-    date = today or dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%d")
+    date = today or _utc_date()
     ver = d / "verification.md"
     vtext = ver.read_text(encoding="utf-8") if ver.exists() else ""
     store.write_text(ver, vtext.rstrip() + "\n\n## Verifier results\n\n" + ("\n".join(verifier_rows) + "\n" if verifier_rows else "none\n"))
@@ -326,10 +352,8 @@ def archive(root: Path, tid: str, verifier_rows: list[str], today: str | None = 
         store.write_text(tp, apply_delta(cur, cap, ops))
         applied.append(cap)
     lines = decisions_of((d / "proposal.md").read_text(encoding="utf-8")) if (d / "proposal.md").exists() else []
-    dec = root / "decisions.md"
-    with dec.open("a", encoding="utf-8") as fh:
-        for ln in lines:
-            fh.write(f"{date} {tid} {ln}\n")
+    for ln in lines:
+        record_decision(root, tid, ln, date)
     dest = root_dir(root) / "changes" / "archive" / f"{date}-{tid}"
     dest.parent.mkdir(parents=True, exist_ok=True)
     shutil.move(str(d), str(dest))

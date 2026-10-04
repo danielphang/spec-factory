@@ -673,10 +673,23 @@ def request_changes(a, root, cfg):
 
 
 def resolve(a, root, cfg):
+    if a.decision is not None:  # refuse before anything is written, so a decision is never dropped
+        # the branch below that will run: --answer wins, and --close runs only with no other mode
+        if not (a.answer or (a.close and not (a.ruling or a.to or a.redispatch))):
+            raise Refused("--decision applies only with --answer or --close")
+        specstore.decision_text(a.decision)
     t = store.load_ticket(root, a.id)
     st, parked = t["status"], t["parked"] or {}
     reason = parked.get("reason", "")
     d = _approval_dir(root, t["id"])
+
+    def decided(via: str) -> dict:
+        """Log `--decision`, once this mode's own refusals have passed; the `extra` for move()."""
+        if a.decision is None:
+            return {}
+        line = specstore.record_decision(root, t["id"], a.decision)
+        store.log_event(root, "decision.recorded", ticket=t["id"], by=_by(), line=line, via=via)
+        return {"decision": line}
 
     def move(to: str, kind: str, extra: dict) -> None:
         t["status"] = to
@@ -699,7 +712,7 @@ def resolve(a, root, cfg):
         n = req.read_text(encoding="utf-8").count("\n## Answer ") + 1
         with req.open("a", encoding="utf-8") as fh:
             fh.write(f"\n\n## Answer {n}\n\n{Path(a.answer).read_text(encoding='utf-8').rstrip()}\n")
-        move(to, "answer", {"answer": n})
+        move(to, "answer", {"answer": n, **decided("resolve --answer")})
     elif a.ruling:
         if st != "parked" or not reason.startswith("ESCALATE"):
             if st == "parked" and (reason.startswith("NEEDS-HUMAN") or "CLARIFY" in reason):
@@ -737,9 +750,16 @@ def resolve(a, root, cfg):
     elif a.close:
         if st == "closed":
             raise Refused(f"{t['id']} is already closed")
-        move("closed", "close", {})
+        move("closed", "close", decided("resolve --close"))
     else:
         raise Refused("resolve needs one of --answer F | --ruling F | --to spec-gate | --redispatch | --close")
+
+
+def decision_add(a, root, cfg):
+    t = store.load_ticket(root, a.id)  # any state, closed included
+    line = specstore.record_decision(root, t["id"], a.text)
+    store.log_event(root, "decision.recorded", ticket=t["id"], by=_by(), line=line, via="decision add")
+    out({"ok": True, "id": t["id"], "decision": line})
 
 
 # ----- spec store (doc §Harness, Spec store; part K) ----------------------------------
@@ -1079,7 +1099,13 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--to")
     p.add_argument("--redispatch", action="store_true")
     p.add_argument("--close", action="store_true")
+    p.add_argument("--decision", metavar="TEXT", help="with --answer or --close: also log TEXT to decisions.md")
     p.set_defaults(fn=resolve)
+    dc = sp.add_parser("decision").add_subparsers(dest="sub", required=True)
+    p = dc.add_parser("add", help="log one standing decision against a ticket in any state")
+    p.add_argument("id")
+    p.add_argument("text")
+    p.set_defaults(fn=decision_add)
 
     p = sp.add_parser("config")
     p.set_defaults(fn=config_cmd)
