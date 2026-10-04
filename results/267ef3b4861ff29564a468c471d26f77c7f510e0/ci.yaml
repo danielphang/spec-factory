@@ -1,0 +1,6 @@
+ticket: T-0025.2
+head: 267ef3b4861ff29564a468c471d26f77c7f510e0
+role: ci
+status: PASS
+run_id: run-0270-verifier
+at: '2026-10-04T22:02:04+00:00'

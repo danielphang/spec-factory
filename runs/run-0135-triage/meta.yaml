@@ -1,0 +1,25 @@
+run_id: run-0135-triage
+role: triage
+ticket: T-0016
+model: opus
+round: 0
+spec_version: 0
+started: '2026-10-04T00:27:06+00:00'
+finished: '2026-10-04T00:30:00+00:00'
+wall_s: 174
+status: ACCEPT
+input_sources:
+- requests/T-0016.md
+confidence: medium. The intent and the main costs are confirmed from run records and code, but part of
+  the evidence is wrong, and part D's real saving on this repo is unmeasured.
+escalations:
+- 'Part D as proposed would drop a refusal the gate gives today, which breaks the request''s own acceptance.
+  The proposal lets the suite cover only `factory/**`, `bin/factory`, `tests/**`, `pyproject.toml` and
+  `uv.lock`. But the suite reads `docs/design.md` and `docs/prompts/*` (`tests/factory/test_writing_standard.py:65,77`;
+  `tests/factory/test_coding_standard.py:74,86`). An edit to a prompt block in `docs/design.md` without
+  re-copying `docs/prompts/` fails the suite today, and under D it would be skipped. The evidence behind
+  D is also partly wrong: T-0015 (`530c9ef`) changed `factory/cli.py` and `factory/instance.py`, so it
+  was not a docs-only ticket. Once `docs/**` is covered, D would not have skipped the suite for T-0014
+  or T-0015 either. D''s saving would come mainly from the Nanobot instance''s own path list. Decide at
+  the spec gate whether D stays in this ticket on that basis.'
+escalations_note: null

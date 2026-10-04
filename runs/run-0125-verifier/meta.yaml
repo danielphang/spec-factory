@@ -1,0 +1,27 @@
+run_id: run-0125-verifier
+role: verifier
+ticket: T-0014
+model: opus
+round: 0
+spec_version: 3
+started: '2026-10-03T22:49:44+00:00'
+finished: '2026-10-03T22:53:48+00:00'
+wall_s: 244
+status: VERIFIED
+input_sources:
+- specs/T-0014/v3.md
+environment_files: []
+branch: null
+base: 431e3492d977c01f5ac3252f94b6f40f08b6c043
+head: fcc87564a0b3d9a07741c959676d28aa7d06d46a
+worktree: /Users/dphang/dev/spec-factory/.factory/state/runs/run-0125-verifier/wt
+confidence: high. Every scenario ran on head and base with the expected outputs, the text matches design.md
+  word for word, and the full suite passed (126).
+escalations:
+- The `intro=` field in the scenario "counterpart lines on the agreed rules, in place" always prints 0.
+  It would not report a `Code counterpart:` line placed before rule 1. The awk command stores lines that
+  come before any `## N.` heading under an empty key, but it prints the count for key `0`. On a scratch
+  copy with a stray line in the intro, it still printed `intro=0`. The same scenario's `misplaced=` count
+  does catch that line, so this change passes for real and is not affected. If the scenario is used again,
+  its awk should start with `BEGIN{n=0}` so the field counts what it claims to.
+escalations_note: null

@@ -1,0 +1,122 @@
+id: T-0012.4
+type: sub-ticket
+title: 'Harness lock: refuse an unaccepted or modified harness on the instance''s own store, `--accept-harness`'
+request: requests/T-0012.md
+source: plan:run-0054-planner
+status: merged
+round:
+  spec: 0
+  pr: 1
+spec:
+  version: 3
+  approved_version: 3
+plan: null
+in_flight: []
+parked: null
+created: '2026-10-03T07:49:00+00:00'
+history:
+- ts: '2026-10-03T08:59:59+00:00'
+  from: waiting-dependencies
+  to: ready-for-implementer
+  by: merge
+- ts: '2026-10-03T09:11:23+00:00'
+  from: ready-for-implementer
+  to: parked
+  by: park
+  reason: BLOCKED from implementer
+- ts: '2026-10-03T09:24:19+00:00'
+  from: parked
+  to: ready-for-implementer
+  by: dphang
+  round:
+    spec: 0
+    pr: 0
+- ts: '2026-10-03T09:44:59+00:00'
+  from: ready-for-implementer
+  to: checks-in-flight
+  by: workflow
+  round:
+    spec: 0
+    pr: 1
+- ts: '2026-10-03T09:55:13+00:00'
+  from: checks-in-flight
+  to: parked
+  by: park
+  reason: 'budget kill: reviewer'
+- ts: '2026-10-03T14:47:49+00:00'
+  from: parked
+  to: checks-in-flight
+  by: dphang
+  resolve: redispatch
+  head: 010d1b00c5835c7022a72771c63f63f8b6ab3707
+  superseded:
+  - ci
+  - reviewer
+  - verifier
+- ts: '2026-10-03T15:01:06+00:00'
+  from: checks-in-flight
+  to: ready-for-merge
+  by: workflow
+  round:
+    spec: 0
+    pr: 1
+- ts: '2026-10-03T15:01:33+00:00'
+  from: ready-for-merge
+  to: ready-for-implementer
+  by: workflow
+  round:
+    spec: 0
+    pr: 1
+- ts: '2026-10-03T15:05:29+00:00'
+  from: ready-for-implementer
+  to: checks-in-flight
+  by: workflow
+  round:
+    spec: 0
+    pr: 1
+- ts: '2026-10-03T15:14:31+00:00'
+  from: checks-in-flight
+  to: ready-for-merge
+  by: workflow
+  round:
+    spec: 0
+    pr: 1
+- ts: '2026-10-03T15:14:59+00:00'
+  from: ready-for-merge
+  to: ready-for-implementer
+  by: workflow
+  round:
+    spec: 0
+    pr: 1
+- ts: '2026-10-03T15:18:45+00:00'
+  from: ready-for-implementer
+  to: checks-in-flight
+  by: workflow
+  round:
+    spec: 0
+    pr: 1
+- ts: '2026-10-03T15:27:44+00:00'
+  from: checks-in-flight
+  to: ready-for-merge
+  by: workflow
+  round:
+    spec: 0
+    pr: 1
+- ts: '2026-10-03T15:27:55+00:00'
+  from: ready-for-merge
+  to: merged
+  by: merge
+  head: be292addbee09d9b2709fd84b54e63de8e9f6477
+parent: T-0012
+depends_on:
+- T-0012.3
+parallel_safe: false
+branch: factory/T-0012.4
+head: be292addbee09d9b2709fd84b54e63de8e9f6477
+merge:
+  base_before: 6921dfd8eaccb5fb9d2fb7440c20291c18c165c9
+  main_after: f4be7ec826121021c2c247fba9ae56db68e658e9
+parent_base: null
+label: T-0012.4
+merge_refused: null
+conflict_runs: 0

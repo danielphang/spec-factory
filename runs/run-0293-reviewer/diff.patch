@@ -1,0 +1,109 @@
+diff --git a/docs/changelog.md b/docs/changelog.md
+index 7e4a414..922bd88 100644
+--- a/docs/changelog.md
++++ b/docs/changelog.md
+@@ -56,5 +56,6 @@ Six review rounds ran on this doc, using the reviewer prompt in the appendix. Ro
+ 52. After issue #45 (2026-10-04), where a spec writer's test run executed `init` from inside its scratch directory and initialised this repository's live store, writing a spec store, `decisions.md` and six agent files: the store CLI fences an instance's own store. A write run from inside the store's `runs/` or `worktrees/` is refused, with or without the marker and with or without a run in flight. While any run is in flight on the store, a write without `FACTORY_DISPATCH=1` in its environment is refused. The read-only commands stay open, and any command given `--accept-harness` counts as a write. Both workflow scripts put `FACTORY_DISPATCH=1` in front of every clerk command; the operator puts it in front of one command at a time and never exports it. A refusal is exit 2, writes nothing, and advises a throwaway `FACTORY_STATE` without naming the marker. The fence is checked before the harness lock, so the marker cannot get past the lock. Declined from the request: a preamble line telling roles to use a throwaway store, because the incident came from the test suite rather than a command the role typed; and a tripwire on the store root, because role runs and other tickets' clerk commands legitimately write the store during a run, so a comparison could not tell whose write it saw.
+ 53. After issue #46 (2026-10-04), where each store commit on the integration branch sent every sub-ticket waiting to merge back for a catch-up merge and a second round of checks that could not change the verdict: the store moves to its own branch, `factory-store`, checked out as a git worktree at the store's path and never merged into the integration branch, so a store commit no longer moves that branch; the merge gate is unchanged. A store path must be one the integration branch has never tracked, because at a once-tracked path a checkout of an older commit overwrites live records and a checkout back deletes them. `init` creates a missing own store as a worktree of an unborn `factory-store` branch, which needs no commit, or checks out the branch where it exists locally or on exactly one remote, which restores the store on a clone, and adds the store to the repo's git exclude file. It refuses when more than one remote carries the branch, naming each, and at a once-tracked path. With `FACTORY_INSTANCE` unset it refuses from inside the store checkout, on its branch or on a detached HEAD, so it can no longer build a phantom instance inside the live store; a separate repository under a run's scratch directory still gets its own instance. Every refusal comes before the first write. An existing store that is a plain directory is left alone, and `init` reports `store_branch` in its JSON. A new command, `factory store migrate --to PATH`, moves such a store: it refuses, writing nothing, unless the store in use is the instance's own and not yet on its branch, no `factory-store` branch exists, the integration branch is checked out, no run is in flight, no git worktree lies under the store, every store file is committed, PATH does not exist, lies outside the old store and was never tracked, and `instance.yaml` has a `state_dir:` line; it then starts `factory-store` at one commit whose tree is the store as last committed and whose message names that commit, checks it out at PATH, copies the files git ignores there and verifies them byte for byte, undoing its own worktree and branch and exiting 1 on a mismatch, and only then untracks and deletes the old directory, adds PATH to the exclude file and rewrites only the value of `state_dir`; it commits and pushes nothing.
+ 54. After issue #40 (2026-10-04), where sub-tickets parked for three causes that were visible when the work was planned or specified: a NEW check copied from the whole spec already passed at the sub-ticket's own start; an implementer could not change a test an earlier sibling sub-ticket had added to pin its interim behaviour, because only the spec gate's "Tests to change" list authorized a test edit and that test did not exist at the gate; and a spec's Decision overturned an existing test that nobody listed. The planner labels each check NEW or REGRESSION against the sub-ticket's own base, the integration branch with its dependencies merged, not by the parent's label. An earlier sibling names the new test files a later sibling will break under "Interim tests", which the harness does not read. A sub-ticket's "Tests to change" may list a test file an earlier sibling added, as `` `<file>[::<test>]` (added by <sibling ID>): <reason> ``. Before each implementer run, `run start` checks in git that the file was absent at the parent's base and was first added inside a merged sibling's recorded merge; otherwise it refuses with exit 2, writing nothing, with an error that starts `BLOCKED from harness:`, and the build parks the sub-ticket with that error so `resolve --ruling` returns it to its implementer. The preamble and the code reviewer accept such a checked entry. The spec writer lists the tests each behaviour-changing Decision overturns, and critic rubric 1 makes a missing one a finding. A test that existed before the parent's first merge still needs the pinned spec's list. Rejected: letting the implementer edit a test on its own judgement.
++55. After issue #49 (2026-10-04), where the implementer and verifier queued the same declared-path list as the code reviewer: in the store's log, 10 implementer and verifier runs did this, and their lists made up 30 of the 205 items queued so far. The implementer and verifier prompts gain one RULES bullet: a protected path the sub-ticket declares is not an escalation. The code reviewer lists declared paths once for each head it reviews, through its check 6, unchanged. The other two roles may name them in their output, but not under ESCALATIONS. An undeclared protected path, or a change to a declared one that the spec does not describe, still goes under ESCALATIONS from every role. Rejected: the retro's figure of 26 of 139 items, which its own table contradicts with 38.
+ 
+ Declined: a dedicated merge agent (merging is gate config plus human gates, not a judgment call).
+diff --git a/docs/design.md b/docs/design.md
+index f08bbcc..93c2a4b 100644
+--- a/docs/design.md
++++ b/docs/design.md
+@@ -583,6 +583,12 @@ RULES
+   description, even if it might cause a rejection.
+ - On fix rounds: respond to each finding with FIXED (commit) or DISAGREE
+   (evidence). Don't comply with a finding you believe is wrong.
++- A protected path the sub-ticket declares is not an escalation: the
++  code reviewer lists the declared paths once for each head it reviews.
++  You may name them in your output, but not under ESCALATIONS. A
++  protected path still goes under ESCALATIONS when the sub-ticket does
++  not declare it, or when the change does something to it that the spec
++  does not describe.
+ 
+ PR DESCRIPTION
+ Sub-ticket: <link>
+@@ -691,6 +697,12 @@ RULES
+ - Anti-Goodharting: your job is to find out whether the thing works, not
+   whether the checklist is green. If every command passes but a probe
+   shows the fix is special-cased to the test inputs, FAIL it.
++- A protected path the sub-ticket declares is not an escalation: the
++  code reviewer lists the declared paths once for each head it reviews.
++  You may name them in your output, but not under ESCALATIONS. A
++  protected path still goes under ESCALATIONS when the sub-ticket does
++  not declare it, or when the change does something to it that the spec
++  does not describe.
+ 
+ OUTPUT
+ Commit: <head SHA you verified>
+diff --git a/docs/prompts/05-implementer.md b/docs/prompts/05-implementer.md
+index fcf1e89..20697da 100644
+--- a/docs/prompts/05-implementer.md
++++ b/docs/prompts/05-implementer.md
+@@ -40,6 +40,12 @@ RULES
+   description, even if it might cause a rejection.
+ - On fix rounds: respond to each finding with FIXED (commit) or DISAGREE
+   (evidence). Don't comply with a finding you believe is wrong.
++- A protected path the sub-ticket declares is not an escalation: the
++  code reviewer lists the declared paths once for each head it reviews.
++  You may name them in your output, but not under ESCALATIONS. A
++  protected path still goes under ESCALATIONS when the sub-ticket does
++  not declare it, or when the change does something to it that the spec
++  does not describe.
+ 
+ PR DESCRIPTION
+ Sub-ticket: <link>
+diff --git a/docs/prompts/07-verifier.md b/docs/prompts/07-verifier.md
+index 1f95b6e..a54f138 100644
+--- a/docs/prompts/07-verifier.md
++++ b/docs/prompts/07-verifier.md
+@@ -30,6 +30,12 @@ RULES
+ - Anti-Goodharting: your job is to find out whether the thing works, not
+   whether the checklist is green. If every command passes but a probe
+   shows the fix is special-cased to the test inputs, FAIL it.
++- A protected path the sub-ticket declares is not an escalation: the
++  code reviewer lists the declared paths once for each head it reviews.
++  You may name them in your output, but not under ESCALATIONS. A
++  protected path still goes under ESCALATIONS when the sub-ticket does
++  not declare it, or when the change does something to it that the spec
++  does not describe.
+ 
+ OUTPUT
+ Commit: <head SHA you verified>
+diff --git a/factory/prompts/implementer.md b/factory/prompts/implementer.md
+index 70d76e8..e8890a4 100644
+--- a/factory/prompts/implementer.md
++++ b/factory/prompts/implementer.md
+@@ -41,6 +41,12 @@ RULES
+   description, even if it might cause a rejection.
+ - On fix rounds: respond to each finding with FIXED (commit) or DISAGREE
+   (evidence). Don't comply with a finding you believe is wrong.
++- A protected path the sub-ticket declares is not an escalation: the
++  code reviewer lists the declared paths once for each head it reviews.
++  You may name them in your output, but not under ESCALATIONS. A
++  protected path still goes under ESCALATIONS when the sub-ticket does
++  not declare it, or when the change does something to it that the spec
++  does not describe.
+ 
+ PR DESCRIPTION
+ Sub-ticket: <link>
+diff --git a/factory/prompts/verifier.md b/factory/prompts/verifier.md
+index b9f7855..b436283 100644
+--- a/factory/prompts/verifier.md
++++ b/factory/prompts/verifier.md
+@@ -31,6 +31,12 @@ RULES
+ - Anti-Goodharting: your job is to find out whether the thing works, not
+   whether the checklist is green. If every command passes but a probe
+   shows the fix is special-cased to the test inputs, FAIL it.
++- A protected path the sub-ticket declares is not an escalation: the
++  code reviewer lists the declared paths once for each head it reviews.
++  You may name them in your output, but not under ESCALATIONS. A
++  protected path still goes under ESCALATIONS when the sub-ticket does
++  not declare it, or when the change does something to it that the spec
++  does not describe.
+ 
+ OUTPUT
+ Commit: <head SHA you verified>

@@ -1,0 +1,16 @@
+run_id: run-0043-critic
+role: critic
+ticket: T-0010
+model: fable
+round: 1
+spec_version: 1
+started: '2026-10-02T06:36:19+00:00'
+finished: '2026-10-02T06:40:16+00:00'
+wall_s: 237
+status: REVISE
+input_sources:
+- specs/T-0010/v1.md
+confidence: high — every cited line, every acceptance "today" value and the reference refusal order were
+  verified by command; the one blocking finding is a setup dependency the spec itself names as unstated.
+escalations: []
+escalations_note: null

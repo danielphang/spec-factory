@@ -1,0 +1,7 @@
+Changes requested at the spec gate (operator delegated to the Green session; Fable design review round 1: `.factory/answers/design-review-45-46/round-1.md`):
+
+1. SHOULD-FIX (review finding 2): add a second trigger that does not depend on the marker. A store-writing command is refused, with exit 2 and nothing written, when the caller's working directory (`instance.caller_cwd()`) lies under the own store's `runs/` or `worktrees/` directory. This holds even with `FACTORY_DISPATCH=1` set. Agents always work there; the operator and the clerk (which runs from the harness checkout) never do. This closes the copied-marker and exported-marker routes (your v3 Risk lines). Add scenarios: a marked write from `<store>/runs/<id>/scratch` is refused; a marked write from the repo root still passes. Keep saying it is not a security boundary.
+2. NOTE (review finding 9): the README paragraph on the marker is what the operator relies on. Make it unmissable, with the exact command form, and say that the refusal text deliberately doesn't name the marker.
+3. NOTE (review Q6): README line ~102 says the parent-close verifier is not listed in in_flight, but `run start` now appends it (cli.py:231). Correct that line, since this ticket touches README.
+4. NOTE (review finding 10): in Out-of-scope observations, name the separate suite-guard follow-up (run-0198: a test that still fails, safely, when TMPDIR is inside scratch).
+5. Build order: this ticket builds before #46 (T-0025), which edits `init_cmd` too. Keep your fence call placement simple, so #46 can rebase on it.

@@ -1,0 +1,7 @@
+ticket: T-0012.6
+head: 302f70bb99f5c4518ddb94de12db22653aa57385
+role: ci
+status: PASS
+run_id: run-0092-verifier
+at: '2026-10-03T15:51:38+00:00'
+detail: . Both commands were run from the worktree, exactly as written.

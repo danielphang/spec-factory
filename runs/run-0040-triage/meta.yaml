@@ -1,0 +1,17 @@
+run_id: run-0040-triage
+role: triage
+ticket: T-0010
+model: opus
+round: 0
+spec_version: 0
+started: '2026-10-02T06:25:44+00:00'
+finished: '2026-10-02T06:28:19+00:00'
+wall_s: 155
+status: NEEDS-HUMAN
+input_sources:
+- requests/T-0010.md
+confidence: high, because the spec gap, the design doc's single archive-park case, the reference refusal
+  text and the pilot states were each checked by grep or read on the cited files; the open item is a choice
+  of rule, not a missing fact.
+escalations: []
+escalations_note: null

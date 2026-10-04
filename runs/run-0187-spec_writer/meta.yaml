@@ -1,0 +1,18 @@
+run_id: run-0187-spec_writer
+role: spec_writer
+ticket: T-0021
+model: opus
+round: 0
+spec_version: 0
+started: '2026-10-04T12:03:02+00:00'
+finished: '2026-10-04T12:23:32+00:00'
+wall_s: 1230
+status: READY-FOR-CRITIC
+input_sources:
+- runs/run-0185-triage/output.md
+- requests/T-0021.md
+confidence: high. Every scenario ran on base and on a working prototype with the outputs stated, and the
+  suite on the prototype failed only the one test named under Tests to change. Whether agents obey the
+  new preamble rule cannot be checked by a command; Operator step 3 looks at the first real parallel intake.
+escalations: []
+escalations_note: null

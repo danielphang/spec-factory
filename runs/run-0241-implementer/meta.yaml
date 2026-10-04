@@ -1,0 +1,32 @@
+run_id: run-0241-implementer
+role: implementer
+ticket: T-0025.1
+model: opus
+round: 0
+spec_version: 5
+started: '2026-10-04T20:20:08+00:00'
+finished: '2026-10-04T20:38:02+00:00'
+wall_s: 1074
+status: BLOCKED
+input_sources:
+- specs/T-0025.1/subticket.md
+- specs/T-0025/v5.md
+branch: factory/T-0025.1
+base: 0b1abad474cb9c583ed8445fc33617f9f0bdc37b
+head: 0b1abad474cb9c583ed8445fc33617f9f0bdc37b
+worktree: /Users/dphang/dev/spec-factory/.factory/state/worktrees/T-0025.1
+resolution: null
+environment_files: []
+confidence: high, all 15 acceptance commands match their THEN on HEAD, and the only gate failure is the
+  conflict the parent spec predicted, confirmed to pass on the base.
+escalations:
+- 'The harness suite gate cannot pass without changing two existing tests that the approved spec does
+  not list under "Tests to change": `tests/factory/test_live_store_guard.py::test_marked_writes_from_a_runs_scratch_directory_are_refused`
+  and `::test_marked_writes_from_under_worktrees_are_refused`. Both pass on the base (`11 passed`) and
+  fail on this branch. They run `init` from inside a store''s `runs/` or `worktrees/` and assert #45''s
+  location-rule text. A.1 now refuses first, with exit 2 and nothing written; I checked that directly.
+  Decide: either amend the spec''s "Tests to change" so each test''s `init` call accepts A.1''s refusal
+  (exit 2, A.1''s message, snapshot unchanged), which re-dispatches this sub-ticket to edit only those
+  two tests; or overrule A.1''s ordering. Parent spec (Risk; Tests to change) anticipated this case and
+  said to report it.'
+escalations_note: null

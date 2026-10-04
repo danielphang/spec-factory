@@ -1,0 +1,7 @@
+ticket: T-0014.1
+head: 89e8b7d3ec7536f788d449d009f28df44fed3c1a
+role: ci
+status: PASS
+run_id: run-0124-verifier
+at: '2026-10-03T22:48:54+00:00'
+detail: .

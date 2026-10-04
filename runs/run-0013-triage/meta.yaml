@@ -1,0 +1,15 @@
+run_id: run-0013-triage
+role: triage
+ticket: T-0007
+model: opus
+round: 0
+spec_version: 0
+started: '2026-10-01T17:19:54+00:00'
+finished: '2026-10-01T17:21:27+00:00'
+wall_s: 93
+status: NEEDS-HUMAN
+input_sources:
+- requests/T-0007.md
+confidence: high. Every claim above was read from the cited files and lines. The only open point is the
+  design choice among A, B and C.
+escalations: []

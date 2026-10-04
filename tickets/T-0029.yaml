@@ -1,0 +1,86 @@
+id: T-0029
+type: chore
+title: Only the code reviewer raises the declared protected-path notice; the implementer and verifier
+  stop repeating it
+request: requests/T-0029.md
+source: /private/tmp/claude-501/-Users-dphang-dev-nanobot/c69bfd1d-97a6-43e3-9d5a-a517c28d382c/scratchpad/req_49.md
+status: closed
+round:
+  spec: 2
+  pr: 0
+spec:
+  version: 2
+  approved_version: 2
+plan: plans/T-0029.md
+in_flight: []
+parked: null
+created: '2026-10-04T20:41:22+00:00'
+history:
+- ts: '2026-10-04T20:44:20+00:00'
+  from: ready-for-triage
+  to: ready-for-spec-writer
+  by: workflow
+  round:
+    spec: 0
+    pr: 0
+- ts: '2026-10-04T20:55:13+00:00'
+  from: ready-for-spec-writer
+  to: ready-for-critic
+  by: workflow
+  round:
+    spec: 1
+    pr: 0
+- ts: '2026-10-04T20:59:42+00:00'
+  from: ready-for-critic
+  to: ready-for-spec-writer
+  by: workflow
+  round:
+    spec: 2
+    pr: 0
+- ts: '2026-10-04T21:06:45+00:00'
+  from: ready-for-spec-writer
+  to: ready-for-critic
+  by: workflow
+  round:
+    spec: 2
+    pr: 0
+- ts: '2026-10-04T21:10:07+00:00'
+  from: ready-for-critic
+  to: awaiting-spec-gate
+  by: workflow
+  round:
+    spec: 2
+    pr: 0
+- ts: '2026-10-04T21:10:15+00:00'
+  from: awaiting-spec-gate
+  to: ready-for-planner
+  by: dphang
+  approved_version: 2
+- ts: '2026-10-04T23:00:01+00:00'
+  from: ready-for-planner
+  to: planned
+  by: workflow
+  round:
+    spec: 2
+    pr: 0
+- ts: '2026-10-04T23:34:57+00:00'
+  from: planned
+  to: ready-for-parent-verify
+  by: parent-check
+- ts: '2026-10-04T23:35:22+00:00'
+  from: ready-for-parent-verify
+  to: closed
+  by: workflow
+  round:
+    spec: 2
+    pr: 0
+  verified_by: run-0287-verifier
+parent: null
+depends_on: []
+parallel_safe: true
+branch: null
+head: null
+merge:
+  base_before: null
+  main_after: null
+parent_base: 7d57998169bf08563fe33fcd098729fae200c4b9

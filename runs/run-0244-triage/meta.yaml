@@ -1,0 +1,17 @@
+run_id: run-0244-triage
+role: triage
+ticket: T-0022
+model: opus
+round: 0
+spec_version: 0
+started: '2026-10-04T20:37:38+00:00'
+finished: '2026-10-04T20:39:37+00:00'
+wall_s: 119
+status: ACCEPT
+input_sources:
+- requests/T-0022.md
+- runs/run-0186-triage/output.md
+confidence: high. Every prompt line, the operator's answer and the logged decision were read in the files
+  today. The only inference is where the new harness check runs, which is left to the spec writer.
+escalations: []
+escalations_note: null

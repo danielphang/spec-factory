@@ -1,0 +1,17 @@
+run_id: run-0219-triage
+role: triage
+ticket: T-0024
+model: opus
+round: 0
+spec_version: 0
+started: '2026-10-04T17:44:00+00:00'
+finished: '2026-10-04T17:46:14+00:00'
+wall_s: 134
+status: ACCEPT
+input_sources:
+- requests/T-0024.md
+confidence: high. Each cited fact was read from the store log, the run records or the code. The only thing
+  I could not check is the request's claim about the transcript, and the run record gives a mechanism
+  that the same fix covers.
+escalations: []
+escalations_note: null

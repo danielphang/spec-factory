@@ -1,0 +1,48 @@
+id: T-0032
+type: bug
+title: A role that ends its turn while its own background commands are still running returns no output,
+  and the harness records it as a budget kill and parks the ticket
+request: requests/T-0032.md
+source: /private/tmp/claude-501/-Users-dphang-dev-nanobot/c69bfd1d-97a6-43e3-9d5a-a517c28d382c/scratchpad/req_41.md
+status: ready-for-spec-writer
+round:
+  spec: 0
+  pr: 0
+spec:
+  version: 0
+  approved_version: null
+plan: null
+in_flight: []
+parked: null
+created: '2026-10-04T23:18:17+00:00'
+history:
+- ts: '2026-10-04T23:21:03+00:00'
+  from: ready-for-triage
+  to: parked
+  by: park
+  reason: NEEDS-HUMAN from triage
+- ts: '2026-10-04T23:21:42+00:00'
+  from: parked
+  to: ready-for-triage
+  by: dphang
+  resolve: answer
+  answer: 1
+  decision: '2026-10-04 T-0032 Empty role output (#41, T-0032): labelled EMPTY-OUTPUT with the last message,
+    re-dispatched once automatically, parked on a second; the code reviewer judges the diff and leaves
+    the test suite and gates to the verifier.'
+- ts: '2026-10-04T23:23:25+00:00'
+  from: ready-for-triage
+  to: ready-for-spec-writer
+  by: workflow
+  round:
+    spec: 0
+    pr: 0
+parent: null
+depends_on: []
+parallel_safe: true
+branch: null
+head: null
+merge:
+  base_before: null
+  main_after: null
+parent_base: null

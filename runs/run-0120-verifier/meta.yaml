@@ -1,0 +1,24 @@
+run_id: run-0120-verifier
+role: verifier
+ticket: T-0014.1
+model: opus
+round: 1
+spec_version: 3
+started: '2026-10-03T22:32:46+00:00'
+finished: '2026-10-03T22:38:22+00:00'
+wall_s: 336
+status: VERIFIED
+input_sources:
+- specs/T-0014.1/subticket.md
+- specs/T-0014/v3.md
+- runs/run-0119-implementer/output.md
+- runs/run-0120-verifier/diff.patch
+environment_files: []
+branch: factory/T-0014.1
+base: 431e3492d977c01f5ac3252f94b6f40f08b6c043
+head: c64183ac7d10f6286136a0b419764d05202736fc
+worktree: /Users/dphang/dev/spec-factory/.factory/state/runs/run-0120-verifier/wt
+confidence: high. All seven criteria and both gates were run verbatim on the head and the base, and the
+  text was diffed against design.md with no difference found.
+escalations: []
+escalations_note: null

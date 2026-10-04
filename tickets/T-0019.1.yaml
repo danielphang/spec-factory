@@ -1,0 +1,47 @@
+id: T-0019.1
+type: sub-ticket
+title: 'Role runs under a throwaway HOME: the running-code wrapper, run_env and the preamble rule'
+request: requests/T-0019.md
+source: plan:run-0167-planner
+status: merged
+round:
+  spec: 0
+  pr: 1
+spec:
+  version: 2
+  approved_version: 2
+plan: null
+in_flight: []
+parked: null
+created: '2026-10-04T08:39:49+00:00'
+history:
+- ts: '2026-10-04T08:47:25+00:00'
+  from: ready-for-implementer
+  to: checks-in-flight
+  by: workflow
+  round:
+    spec: 0
+    pr: 1
+- ts: '2026-10-04T08:54:17+00:00'
+  from: checks-in-flight
+  to: ready-for-merge
+  by: workflow
+  round:
+    spec: 0
+    pr: 1
+- ts: '2026-10-04T08:54:24+00:00'
+  from: ready-for-merge
+  to: merged
+  by: merge
+  head: 5f43cba12a208e095e48872471e4f6f2f9dc47f5
+parent: T-0019
+depends_on: []
+parallel_safe: false
+branch: factory/T-0019.1
+head: 5f43cba12a208e095e48872471e4f6f2f9dc47f5
+merge:
+  base_before: 1c5f6a7aa096c39b9a9f355b2dee286ccd3b4a84
+  main_after: 9853737e24b2acdc001546b399d2a5a8c3dd6d85
+parent_base: null
+label: T-0019-S1
+merge_refused: null

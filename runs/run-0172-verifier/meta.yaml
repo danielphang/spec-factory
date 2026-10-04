@@ -1,0 +1,30 @@
+run_id: run-0172-verifier
+role: verifier
+ticket: T-0019.1
+model: opus
+round: 1
+spec_version: 2
+started: '2026-10-04T08:47:41+00:00'
+finished: '2026-10-04T08:51:47+00:00'
+wall_s: 246
+status: VERIFIED
+input_sources:
+- specs/T-0019.1/subticket.md
+- specs/T-0019/v2.md
+- runs/run-0170-implementer/output.md
+- runs/run-0172-verifier/diff.patch
+environment_files: []
+branch: factory/T-0019.1
+base: 1c5f6a7aa096c39b9a9f355b2dee286ccd3b4a84
+head: 5f43cba12a208e095e48872471e4f6f2f9dc47f5
+worktree: /Users/dphang/dev/spec-factory/.factory/state/runs/run-0172-verifier/wt
+confidence: high. I ran every acceptance command on the PR and every NEW one on base, and each result
+  matches the spec's stated before and after. The full suite passed under a throwaway HOME. The probes
+  show the wrapper, the quoting and the refusals working on inputs beyond the tested ones.
+escalations:
+- A `run_env` value containing a backtick breaks the rendered wrapper. The composer puts the wrapper inside
+  a Markdown code span, so a role copying it gets a truncated, unrunnable command, and nothing refuses
+  the value. The implementer's Known gaps raise the same risk for gate commands only. Neither instance's
+  planned `run_env` (uv paths) has a backtick, so this is low risk. If it matters, a follow-up could refuse
+  backticks in `run_env` values and gate commands.
+escalations_note: null

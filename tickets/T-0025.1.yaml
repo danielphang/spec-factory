@@ -1,0 +1,73 @@
+id: T-0025.1
+type: sub-ticket
+title: init puts a new store on its factory-store branch and refuses from inside the store (parts A, C
+  for A and the gate, D for A)
+request: requests/T-0025.md
+source: plan:run-0240-planner
+status: merged
+round:
+  spec: 0
+  pr: 2
+spec:
+  version: 5
+  approved_version: 5
+plan: null
+in_flight: []
+parked: null
+created: '2026-10-04T20:19:32+00:00'
+history:
+- ts: '2026-10-04T20:38:16+00:00'
+  from: ready-for-implementer
+  to: parked
+  by: park
+  reason: BLOCKED from implementer
+- ts: '2026-10-04T20:38:56+00:00'
+  from: parked
+  to: ready-for-implementer
+  by: dphang
+  resolve: ruling
+  ruling: approvals/T-0025.1/ruling-1.md
+- ts: '2026-10-04T20:50:53+00:00'
+  from: ready-for-implementer
+  to: checks-in-flight
+  by: workflow
+  round:
+    spec: 0
+    pr: 1
+- ts: '2026-10-04T21:01:18+00:00'
+  from: checks-in-flight
+  to: ready-for-implementer
+  by: workflow
+  round:
+    spec: 0
+    pr: 2
+- ts: '2026-10-04T21:15:50+00:00'
+  from: ready-for-implementer
+  to: checks-in-flight
+  by: workflow
+  round:
+    spec: 0
+    pr: 2
+- ts: '2026-10-04T21:26:34+00:00'
+  from: checks-in-flight
+  to: ready-for-merge
+  by: workflow
+  round:
+    spec: 0
+    pr: 2
+- ts: '2026-10-04T21:26:41+00:00'
+  from: ready-for-merge
+  to: merged
+  by: merge
+  head: fb72f7a7284a3208150c72ea20fe31299c9fdd4e
+parent: T-0025
+depends_on: []
+parallel_safe: false
+branch: factory/T-0025.1
+head: fb72f7a7284a3208150c72ea20fe31299c9fdd4e
+merge:
+  base_before: 0b1abad474cb9c583ed8445fc33617f9f0bdc37b
+  main_after: 7a437ee0b2c3109ba4b3c67a37609e1dcb9b08e2
+parent_base: null
+label: T-0025-A
+merge_refused: null

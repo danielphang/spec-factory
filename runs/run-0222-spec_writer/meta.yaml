@@ -1,0 +1,34 @@
+run_id: run-0222-spec_writer
+role: spec_writer
+ticket: T-0025
+model: opus
+round: 0
+spec_version: 0
+started: '2026-10-04T17:52:33+00:00'
+finished: '2026-10-04T18:13:18+00:00'
+wall_s: 1245
+status: READY-FOR-CRITIC
+input_sources:
+- runs/run-0221-triage/output.md
+- requests/T-0025.md
+- openspec/specs/build-dispatch/spec.md
+- openspec/specs/harness-docs/spec.md
+- openspec/specs/harness-suite/spec.md
+- openspec/specs/human-resolution/spec.md
+- openspec/specs/store-setup/spec.md
+- openspec/specs/sub-ticket-planning/spec.md
+- decisions.md
+confidence: medium. The mechanism and both data-loss hazards were reproduced in throwaway repos, and every
+  acceptance command was run on today's code with the output shown. The proposed `init` and `store migrate`
+  are not prototyped as harness code, and the total size estimate of about 400 lines sits at the limit.
+escalations:
+- The request's evidence counts one catch-up run that this change would not have prevented. T-0014.1's
+  catch-up merge (`89e8b7d`, run-0122) brought in only `dev/issues.md`, an operator document commit, not
+  the store. Operator commits of documents to the integration branch will still cause catch-up runs after
+  this change. That needs its own ticket if it matters.
+- The B1-or-B2 choice and the store's new path (`.factory/store`) are recorded as Decisions for the operator
+  to confirm at the spec gate, as the request asks. They are not Open questions.
+- 'T-0024 (issue #45, role runs writing the live store) has its spec in flight (run-0220). Its list of
+  store-writing commands should include the new `store migrate`. The planner may need to order the two
+  tickets.'
+escalations_note: null

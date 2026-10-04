@@ -1,0 +1,636 @@
+diff --git a/README.md b/README.md
+index 4370608..60a7968 100644
+--- a/README.md
++++ b/README.md
+@@ -310,7 +310,8 @@ runs from the same runtime. Each target's runner then accepts the new revision b
+ |---|---|---|
+ | **File** | `factory ticket new --file <abs path>` | that this request is worth a ticket |
+ | **Gate** | `factory approve-spec T-n [--edit F]` · `factory request-changes T-n F` · close | the spec's intent, risk declarations, operator steps, "tests to change"; a gate edit becomes a new spec version and is what gets pinned |
+-| **Unstick** | `factory resolve T-n --answer F` (a role asked a question) · `--ruling F` (a role escalated) · `--redispatch` (re-run the checks on the same commit after an outside fix) · `--to spec-gate` · `--close` | an answer, a ruling, a re-check, a re-scope, or closing |
++| **Unstick** | `factory resolve T-n --answer F` (a role asked a question) · `--ruling F` (a role escalated) · `--redispatch` (re-run the checks on the same commit after an outside fix) · `--to spec-gate` · `--close`; with `--answer` or `--close`, add `--decision "<line>"` to also record the answer as a standing decision | an answer, a ruling, a re-check, a re-scope, or closing |
++| **Record** | `factory decision add T-n "<line>"`, at any ticket state, closed included. It appends one dated line to the target's decision log, `decisions.md`, which the spec writer, critic and planner receive with their input | that a decision binds later tickets |
+ | **Upgrade** | `factory --accept-harness <sha> <command>` | that this target adopts a new harness revision |
+ 
+ Gap, as of today: an implementer that reports itself blocked has no `resolve` verb. A plain
+@@ -443,7 +444,7 @@ each section comes from:
+ | Terms, routing, states | `instance.yaml` (`routing`, `ready_state`); `factory/cli.py` (`ticket transition` guards) | read the files |
+ | How a ticket moves | `factory/workflows/intake.js`, `build.js` (the `phase(...)` blocks and the `STATUS` routes); `factory/cli.py` `ticket_join`, `merge_cmd`, `archive_cmd` | read the code; confirm against the last closed ticket's run log in `.factory/state/log/` |
+ | Where it runs, lock | `factory/instance.py` (`find`, `guard`), `instance.yaml` (`harness`, `state_dir`) | `~/dev/spec-factory-harness/bin/factory paths` (its `harness_revision` is the last commit touching harness code, not the runtime's HEAD); `cat .factory/harness.lock`, which must equal it |
+-| Where a human decides | `factory/cli.py` `build_parser()`: the `approve-spec`, `request-changes`, `resolve`, `--accept-harness` arguments | `~/dev/spec-factory-harness/bin/factory --help`; `… resolve --help` (the runtime, not the dev checkout) |
++| Where a human decides | `factory/cli.py` `build_parser()`: the `approve-spec`, `request-changes`, `resolve`, `--accept-harness` arguments and the `decision` subparser | `~/dev/spec-factory-harness/bin/factory --help`; `… resolve --help`; `… decision add --help` (the runtime, not the dev checkout) |
+ | Built / not built | `tests/factory/` (what has a test is built); `dev/issues.md` (what is named and open) | `uv run --frozen pytest -q -p no:cacheprovider tests/factory`; `gh issue list --state open` |
+ | Where this can go | `docs/design.md` §Harness, §Routing table | read the design; nothing here comes from the code |
+ | Related work and history | `.factory/state/tickets/`, `dev/issues.md`, `docs/changelog.md` | `ls .factory/state/tickets | wc -l`; `git log --oneline -20` |
+diff --git a/dev/build-harness.spec.md b/dev/build-harness.spec.md
+index d811724..ec64614 100644
+--- a/dev/build-harness.spec.md
++++ b/dev/build-harness.spec.md
+@@ -190,7 +190,7 @@ history: []
+ 
+ Spec text `specs/<ID>/v<N>.md` (every version the writer returns, with its STATUS/CONFIDENCE/ESCALATIONS trailer removed: the text above its last `STATUS:` line, as item 42 requires); sub-ticket text `specs/<ID>/subticket.md`.
+ 
+-**Spec store** (doc §Harness, Spec store). `factory init` creates `openspec/config.yaml` (`schema: spec-factory`), `openspec/schemas/spec-factory/schema.yaml` (the artifacts of OpenSpec's `spec-driven`, `proposal`, `specs` with `generates: specs/**/*.md`, `design` and `tasks`, plus `verification` with `generates: verification.md` and `requires: [specs]`), an empty `openspec/specs/` and an empty `decisions.md`. Pinning a version (K) splits it on its `=== <path>` lines (the path is the first token after `=== `; text before the first such line is dropped) into `openspec/changes/<ID>/<path>`. A version pinned before `factory init` created `openspec/` has no change folder; its parent's archive refuses (K). A version is **well-formed** when every path is `proposal.md`, `design.md`, `verification.md` or `specs/<capability>/spec.md` with a kebab-case capability, each at most once, with at least one delta part; every delta part has at least one `## ADDED Requirements`, `## MODIFIED Requirements` or `## REMOVED Requirements` heading, and every `### Requirement:` line sits under one of them and has a name unique within its part; and the `## Acceptance` of `verification.md` labels every `#### Scenario:` name of the delta parts exactly once, `NEW` or `REGRESSION`, and labels no other name. Any other version is malformed. Every spec that `approve-spec` or `--amend-spec` pins must be well-formed, so every build case that approves a spec (items 43–53, 60, 61, 64, 77, 83, 84) needs a well-formed four-part `spec_writer-1.md` stub. `verification.md` is the writer's part plus `## Critic rounds`: per critic run of the ticket, oldest first, `round <n> · spec v<N> · <run_id> · <STATUS>` and its findings verbatim. `tasks.md` comes from `factory spec tasks`. No role writes `openspec/` or `decisions.md`, and only `factory archive` (K) writes `openspec/specs/` and `decisions.md`.
++**Spec store** (doc §Harness, Spec store). `factory init` creates `openspec/config.yaml` (`schema: spec-factory`), `openspec/schemas/spec-factory/schema.yaml` (the artifacts of OpenSpec's `spec-driven`, `proposal`, `specs` with `generates: specs/**/*.md`, `design` and `tasks`, plus `verification` with `generates: verification.md` and `requires: [specs]`), an empty `openspec/specs/` and an empty `decisions.md`. Pinning a version (K) splits it on its `=== <path>` lines (the path is the first token after `=== `; text before the first such line is dropped) into `openspec/changes/<ID>/<path>`. A version pinned before `factory init` created `openspec/` has no change folder; its parent's archive refuses (K). A version is **well-formed** when every path is `proposal.md`, `design.md`, `verification.md` or `specs/<capability>/spec.md` with a kebab-case capability, each at most once, with at least one delta part; every delta part has at least one `## ADDED Requirements`, `## MODIFIED Requirements` or `## REMOVED Requirements` heading, and every `### Requirement:` line sits under one of them and has a name unique within its part; and the `## Acceptance` of `verification.md` labels every `#### Scenario:` name of the delta parts exactly once, `NEW` or `REGRESSION`, and labels no other name. Any other version is malformed. Every spec that `approve-spec` or `--amend-spec` pins must be well-formed, so every build case that approves a spec (items 43–53, 60, 61, 64, 77, 83, 84) needs a well-formed four-part `spec_writer-1.md` stub. `verification.md` is the writer's part plus `## Critic rounds`: per critic run of the ticket, oldest first, `round <n> · spec v<N> · <run_id> · <STATUS>` and its findings verbatim. `tasks.md` comes from `factory spec tasks`. No role writes `openspec/` or `decisions.md`. Only `factory archive` (K) writes `openspec/specs/`. `decisions.md` has three writers, each appending `<YYYY-MM-DD> <ID> <line>` (UTC date): `factory archive` (K); `factory decision add ID TEXT` (K), at any ticket state; and `factory resolve ID --answer FILE` or `--close` with `--decision TEXT` (K). `run compose` gives a `decisions.md` that holds any text to the spec writer and critic after current truth, and to the planner after the approved spec.
+ 
+ States: `ready-for-triage`, `waiting-requester`, `ready-for-spec-writer`, `ready-for-critic`, `ready-for-spec-gate`, `ready-for-planner`, `waiting-dependencies`, `ready-for-implementer`, `checks-in-flight`, `ready-for-checks` (after a checker `--redispatch`; only the roles without a row on the current head run), `ready-for-merge`, `merged`, `ready-for-parent-verify` (parent only: every sub-ticket merged, one verifier run on `main` pending), `parked`, `closed`, `running`.
+ 
+@@ -208,7 +208,7 @@ CLI (the **store CLI** of doc §Harness table piece 1 — read, transition, reco
+ 
+ ### C. Audit log and run artifacts (piece 10)
+ 
+-`log/<YYYY-MM>.jsonl` and `runs/<run_id>/{meta.yaml,input.md,system-prompt.txt,output.md}` on `tickets`. Events: `request.created`, `ticket.created`, `ticket.transition`, `run.started`, `run.finished`, `run.killed`, `result.recorded`, `result.stale-discarded`, `approval.recorded`, `merge.refused`, `merge.done`, `escalation.queued`, `reply.sent`, `human.resolved`, `harness-bug`, `spec.exported`, `change.pinned`, `change.archived`. `meta.yaml`: role, ticket, head, base, model, spec_version, budget_usd, resolution, started, finished, wall_s, status, escalations_note, workflow_run_id. Append-only enforced by the hook (F.3). `factory log tail [-n N] [--ticket ID] [--event E]`.
++`log/<YYYY-MM>.jsonl` and `runs/<run_id>/{meta.yaml,input.md,system-prompt.txt,output.md}` on `tickets`. Events: `request.created`, `ticket.created`, `ticket.transition`, `run.started`, `run.finished`, `run.killed`, `result.recorded`, `result.stale-discarded`, `approval.recorded`, `merge.refused`, `merge.done`, `escalation.queued`, `reply.sent`, `human.resolved`, `harness-bug`, `spec.exported`, `change.pinned`, `change.archived`, `decision.recorded`. `meta.yaml`: role, ticket, head, base, model, spec_version, budget_usd, resolution, started, finished, wall_s, status, escalations_note, workflow_run_id. Append-only enforced by the hook (F.3). `factory log tail [-n N] [--ticket ID] [--event E]`.
+ 
+ ### D. Commit-bound results table (piece 6)
+ 
+@@ -311,8 +311,9 @@ No API key in any run: the CLI authenticates from the owner's login. Keys only i
+ - `factory approve-spec ID [--version N] [--edit FILE]`: pins `approved_version` (edited text saved as a new version first), copies "Tests to change" and Risk paths into the ticket, `approvals/ID/spec-v<N>.yaml`, writes the pinned version as the change folder (B; event `change.pinned`; exit 2 with nothing written when the version is malformed (B) or a delta does not apply to current truth: an ADDED requirement name already in `openspec/specs/<capability>/spec.md`, or a MODIFIED or REMOVED name not in it), → `ready-for-planner`, and **exports** the pinned text to `knowledge_vault/sanitized_specs/<ID>.md` (`factory export ID`; event `spec.exported`; the export directory is a config key for the later `specs/` → `tickets/` rename).
+ - `factory request-changes ID --notes FILE`: `round.spec: 0`, → `ready-for-spec-writer`.
+ - `factory approve-pr ID --head SHA` → `approvals/ID/pr-SHA.yaml`; `factory approve-guardrail ID --head SHA` → `approvals/ID/guardrail-SHA.yaml`.
+-- `factory resolve ID (--answer FILE | --ruling FILE [--to implementer] [--amend-subticket FILE] [--amend-spec FILE] | --redispatch [--budget USD] | --close | --to spec-gate)` (doc §Routing rules, resolution list): `--answer` on `waiting-requester` or a triage/spec-writer `NEEDS-HUMAN` → appended to `requests/<ID>.md` under `## Answer <n>`, ticket back to the asking role's ready state, with the asking role's previous output (the `output.md` of its most recent finished run on the ticket) added to that role's next input (doc §Routing rules) (CLARIFY and NEEDS-HUMAN are questions: `--ruling` on them → exit 2 `use --answer`); `--ruling` on a park from BLOCKED, a critic ESCALATE or a planner ESCALATE → the emitting role's ready state, **same round**, the ruling in that role's next input; `--ruling` on a PR loop at max rounds, a SPEC-DEFECT or a reviewer ESCALATE (`--to implementer`, the default there) → `round.pr: 0`, ruling becomes findings input, `ready-for-implementer`; `--amend-subticket` replaces `specs/<ID>/subticket.md`; `--amend-spec` writes `specs/<parent>/v<N+1>.md`, re-pins `approved_version` and rewrites the change folder as `approve-spec` does (`## Critic rounds` kept; the same well-formed and applies-to-current-truth checks, exit 2 with nothing re-pinned when FILE fails them), writes `approvals/<parent>/spec-v<N+1>.yaml`, re-exports; in-flight siblings keep the version their `meta.yaml` `spec_version` names (their `input.md` is already written, I.2) and the human decides whether to re-plan; `--redispatch` → the killed role's ready state, round unchanged, and `--budget USD` sets the ticket's `budget_usd`, copied into the redispatched run's `meta.yaml` (recorded, not enforced per agent in v0, E7); `--to spec-gate`; `--close`. `--close` on a sub-ticket also parks its parent (`parked.reason: sub-ticket <ID> closed`), as a parent-close FAILED or SPEC-DEFECT does (H); on a parked parent, `--amend-spec FILE` re-pins the spec and moves the parent to `ready-for-planner` (re-plan: the planner's new sub-tickets take the next free ids under the same parent, merged ones stay `merged`), or `--close` closes the parent and its unmerged sub-tickets (doc §Routing rules). Each writes `approvals/ID/resolve-<n>.yaml`, event `human.resolved`.
+-- `factory archive ID` (harness identity; `build.js` runs it on the parent-close VERIFIED, H): (1) appends `## Verifier results` to `openspec/changes/<ID>/verification.md`, one line per verifier row in `results/` for the parent's and its sub-tickets' heads, oldest first, `<head> · <ticket> · <STATUS> · <run_id>`; (2) applies every delta to `openspec/specs/<capability>/spec.md` (created with `# <capability>` and `## Requirements` when absent): ADDED appends the requirement block, MODIFIED replaces the block whose `### Requirement:` name matches, REMOVED deletes it; (3) moves `openspec/changes/<ID>` to `openspec/changes/archive/<YYYY-MM-DD>-<ID>` (UTC date); (4) appends `<YYYY-MM-DD> <ID> <line>` to `decisions.md` per line of `proposal.md`'s `## Decisions` other than `none`. One commit, event `change.archived`. Refusals, each exit 2 with nothing written, checked in this order before (1): no `openspec/` → `no spec store (factory init not run)`; no `openspec/changes/<ID>/` (its spec was pinned before `factory init`) → `<ID> has no change folder to archive`; a delta that does not apply. H parks the parent on each. A park for no spec store or no change folder is resolved by `factory resolve ID --close`, which closes the parent as applied: `openspec/specs/` and `decisions.md` stay unchanged, and if current truth should carry the spec, it is re-intaken as a new ticket (doc §Routing rules, resolution list).
++- `factory resolve ID (--answer FILE | --ruling FILE [--to implementer] [--amend-subticket FILE] [--amend-spec FILE] | --redispatch [--budget USD] | --close | --to spec-gate) [--decision TEXT]` (doc §Routing rules, resolution list): `--answer` on `waiting-requester` or a triage/spec-writer `NEEDS-HUMAN` → appended to `requests/<ID>.md` under `## Answer <n>`, ticket back to the asking role's ready state, with the asking role's previous output (the `output.md` of its most recent finished run on the ticket) added to that role's next input (doc §Routing rules) (CLARIFY and NEEDS-HUMAN are questions: `--ruling` on them → exit 2 `use --answer`); `--ruling` on a park from BLOCKED, a critic ESCALATE or a planner ESCALATE → the emitting role's ready state, **same round**, the ruling in that role's next input; `--ruling` on a PR loop at max rounds, a SPEC-DEFECT or a reviewer ESCALATE (`--to implementer`, the default there) → `round.pr: 0`, ruling becomes findings input, `ready-for-implementer`; `--amend-subticket` replaces `specs/<ID>/subticket.md`; `--amend-spec` writes `specs/<parent>/v<N+1>.md`, re-pins `approved_version` and rewrites the change folder as `approve-spec` does (`## Critic rounds` kept; the same well-formed and applies-to-current-truth checks, exit 2 with nothing re-pinned when FILE fails them), writes `approvals/<parent>/spec-v<N+1>.yaml`, re-exports; in-flight siblings keep the version their `meta.yaml` `spec_version` names (their `input.md` is already written, I.2) and the human decides whether to re-plan; `--redispatch` → the killed role's ready state, round unchanged, and `--budget USD` sets the ticket's `budget_usd`, copied into the redispatched run's `meta.yaml` (recorded, not enforced per agent in v0, E7); `--to spec-gate`; `--close`. `--close` on a sub-ticket also parks its parent (`parked.reason: sub-ticket <ID> closed`), as a parent-close FAILED or SPEC-DEFECT does (H); on a parked parent, `--amend-spec FILE` re-pins the spec and moves the parent to `ready-for-planner` (re-plan: the planner's new sub-tickets take the next free ids under the same parent, merged ones stay `merged`), or `--close` closes the parent and its unmerged sub-tickets (doc §Routing rules). Each writes `approvals/ID/resolve-<n>.yaml`, event `human.resolved`. `--decision TEXT`, valid only with `--answer` or `--close`, also appends `<YYYY-MM-DD> <ID> <TEXT>` to `decisions.md` once that mode's own checks pass, keeps the line as `decision` in the `resolve-<n>.yaml` record and the ticket history, and logs `decision.recorded` (`ticket`, `by`, `line`, `via`); alone, with any other mode, or with blank or multi-line TEXT → exit 2, nothing written.
++- `factory decision add ID TEXT`: appends `<YYYY-MM-DD> <ID> <TEXT>` (UTC date, TEXT stripped) to `decisions.md`, creating it when absent (no `factory init` needed), for a ticket in any state, closed included; event `decision.recorded` with `via: decision add`. An unknown ID, or blank or multi-line TEXT → exit 2, nothing written.
++- `factory archive ID` (harness identity; `build.js` runs it on the parent-close VERIFIED, H): (1) appends `## Verifier results` to `openspec/changes/<ID>/verification.md`, one line per verifier row in `results/` for the parent's and its sub-tickets' heads, oldest first, `<head> · <ticket> · <STATUS> · <run_id>`; (2) applies every delta to `openspec/specs/<capability>/spec.md` (created with `# <capability>` and `## Requirements` when absent): ADDED appends the requirement block, MODIFIED replaces the block whose `### Requirement:` name matches, REMOVED deletes it; (3) moves `openspec/changes/<ID>` to `openspec/changes/archive/<YYYY-MM-DD>-<ID>` (UTC date); (4) appends `<YYYY-MM-DD> <ID> <line>` to `decisions.md` per line of `proposal.md`'s `## Decisions` other than `none`. One commit, event `change.archived`. Refusals, each exit 2 with nothing written, checked in this order before (1): no `openspec/` → `no spec store (factory init not run)`; no `openspec/changes/<ID>/` (its spec was pinned before `factory init`) → `<ID> has no change folder to archive`; a delta that does not apply. H parks the parent on each. A park for no spec store or no change folder is resolved by `factory resolve ID --close`, which closes the parent as applied: `openspec/specs/` stays unchanged and archive appends nothing to `decisions.md` (the human logs any decision with `factory decision add`), and if current truth should carry the spec, it is re-intaken as a new ticket (doc §Routing rules, resolution list).
+ 
+ ### L. Verifier as gate runner (piece 11)
+ 
+diff --git a/docs/changelog.md b/docs/changelog.md
+index b07d351..83aba0a 100644
+--- a/docs/changelog.md
++++ b/docs/changelog.md
+@@ -47,5 +47,6 @@ Six review rounds ran on this doc, using the reviewer prompt in the appendix. Ro
+ 43. After issue #23 (2026-10-03), where the operator's review of the overview draft found the same three failures the factory's own outputs show (an unglossed term, a parenthetical holding a second idea, a page that assumed its reader knew the project): a one-page writing standard, `docs/writing.md`, holds eight rules an agent can check in its own output, each with a before-and-after example from the factory's own writing. The shared preamble's OUTPUT block gains one line: every section a person reads follows the standard at `{writing standard}`, a placeholder the harness fills when a run starts with the path of `docs/writing.md` in the harness checkout that runs it; the role-context block also names who reads what the roles write. Critic rubric 6 widens from the Problem section to every human-facing section of a spec (Problem, Evidence, Open questions, Decisions, Operator steps), still BLOCKING on a Problem that does not say what is wrong and for whom or a first paragraph with an unglossed term specific to this system; other departures from the standard are SHOULD-FIX or NIT. The code reviewer gains check 8, whether the operator could read the PR description's What changed and Known gaps, which is SHOULD-FIX, never BLOCKING. The briefing template gains a line naming the reader of the repo's documents.
+ 44. After issue #20 (2026-10-03), because nothing stopped a coding agent from building more than its ticket needs: a coding standard, `docs/coding.md`, the twin of the writing standard. It opens with a precedence rule (a target repository's own instructions win where they disagree with it) and holds five rules an agent can check in its own output, each with a `Check:` line, the code-design principle it applies and a before-and-after example: reuse before writing, taking the first rung of a check order that holds; grep every caller and fix a shared function once; mark each deliberate shortcut with a `factory:` comment naming its limit and upgrade trigger; tag each over-building review finding; and one name per concept from spec to code. The review tags are `reuse:` (BLOCKING) and `stdlib:`, `native:`, `yagni:` and `delete:` (SHOULD-FIX), and a review pass ends with `net: -N lines possible` or `Lean already.` The implementer's step 4 gains a line pointing to the standard at `{coding standard}`, and the code reviewer's check 7 is replaced by one: its old "Maintainability, only where it will cause real problems" text is gone. The harness fills `{coding standard}` when a run starts, with the path of `docs/coding.md` in the harness checkout that runs it, through the same helper that fills `{writing standard}`, now applied to the role prompt as well as the preamble. The spec writer gains a rule to cut any part the ticket's intent does not need, naming it under Out of scope, and critic rubric 3 makes such a part a finding. The retro's input names the marker ledger, one row per `factory:` comment in the code on the integration branch; this is design only, and the harness code that builds the ledger waits for the ticket that builds the retro. The check order and the tag vocabulary are adapted from ponytail (DietrichGebert/ponytail, MIT).
+ 45. After issue #31 (2026-10-03), from the T-0013 to T-0015 build timings, where a parent-close run took 13 to 23% of each build and only two of about six test-suite runs per build could change a verdict: a REGRESSION acceptance check runs once, after the change. The implementer runs only the NEW checks before editing, and runs a REGRESSION check on its base only when it fails after the change; the verifier runs a REGRESSION check on base only when it fails on the PR. One gate run per commit: an acceptance check that already ran a gate command exactly as written on the same commit is that gate's run, for the implementer and the verifier. A parent with one sub-ticket closes on that sub-ticket's VERIFIED run when `main` has not moved since it merged, the run checked the merged head against the parent's recorded base, and the sub-ticket's text names every scenario of the parent's pinned spec; the run stands for the parent-close run, `ticket parent-check` reports it as `reuse`, and the close records it as `verified_by`. Every other parent still gets its own parent-close run, and every refusal is kept: a NEW check that does not fail first is a SPEC-DEFECT, a failing REGRESSION check fails the branch, and a gate failure is FAILED. The requested path-scoped gate skip was cut: a correct path list for this repository covers `docs/**`, which would have skipped no suite run in those builds.
++46. After the Nanobot target's T-0003 (2026-10-04), a ticket that existed only to get a decision: the human answered its question about where the port's code lives and closed it, archive never ran, and the decision stayed in that ticket's request, so the operator copied it by hand into the two later requests that depend on it. `decisions.md` gains writers besides archive: `factory decision add <ticket id> "<line>"`, at any ticket state, closed included, and `--decision "<line>"` on `resolve --answer` or `resolve --close`, refused with any other `resolve` mode. Each appends the line in archive's format, `<YYYY-MM-DD> <ticket id> <line>`, creates the file when absent, and logs `decision.recorded`. The spec writer and the critic receive a non-empty `decisions.md` after current truth, and the planner after the approved spec; triage and the build roles do not. Triage's NEEDS-HUMAN question and the spec writer's open questions now ask whether the answer is a standing decision that later tickets must follow. Archive's own output is unchanged.
+ 
+ Declined: a dedicated merge agent (merging is gate config plus human gates, not a judgment call).
+diff --git a/docs/design.md b/docs/design.md
+index ac7d892..76ad2f6 100644
+--- a/docs/design.md
++++ b/docs/design.md
+@@ -79,7 +79,7 @@ The prompts say what each role does. The harness enforces the wiring rules: fres
+ | `tasks.md` | The sub-tickets and coverage map | Planner |
+ | `verification.md` (the artifact the fork adds) | The NEW or REGRESSION label of each scenario and the writer's Responses; every critic round's output; at archive, every verifier result recorded per head for the parent and its sub-tickets | Spec writer (labels, Responses), critic, verifier |
+ 
+-`decisions.md`, one per repo beside `openspec/`, is the decision log: one line per decision, with its ticket id. Roles return text and never write the tree; the harness writes it. The spec writer returns one document in parts (§2 FORMAT), and the store keeps every version. The human spec gate pins one version: it refuses a delta that does not apply to current truth, and writes the pinned version as the change folder, so the planner, implementer and verifier work from the delta the human approved. Labels and round-to-round churn stay in `verification.md`, out of the delta. **Archive** is the parent-close step. After the parent-close run returns VERIFIED, or a sub-ticket's VERIFIED run stands in for it (routing table, Merge gate row), the harness applies each delta to current truth (ADDED appends the requirement, MODIFIED replaces the requirement of that name whole, REMOVED deletes it), moves the folder to `openspec/changes/archive/<YYYY-MM-DD>-<ticket id>/`, and appends each line of the proposal's Decisions to `decisions.md` with the date and ticket id; then the parent closes. An archive refusal writes nothing and parks the parent. There are three: a delta that no longer applies (an ADDED name already in current truth, a MODIFIED or REMOVED name missing); no change folder, because the spec was pinned before the repo had an `openspec/` tree; and no spec store at all (no `openspec/` tree). Only the archive step writes current truth and `decisions.md`. The spec writer and the critic receive every current-truth spec with their input (routing table).
++`decisions.md`, one per repo beside `openspec/`, is the decision log: one line per decision, with its ticket id. Roles return text and never write the tree; the harness writes it. The spec writer returns one document in parts (§2 FORMAT), and the store keeps every version. The human spec gate pins one version: it refuses a delta that does not apply to current truth, and writes the pinned version as the change folder, so the planner, implementer and verifier work from the delta the human approved. Labels and round-to-round churn stay in `verification.md`, out of the delta. **Archive** is the parent-close step. After the parent-close run returns VERIFIED, or a sub-ticket's VERIFIED run stands in for it (routing table, Merge gate row), the harness applies each delta to current truth (ADDED appends the requirement, MODIFIED replaces the requirement of that name whole, REMOVED deletes it), moves the folder to `openspec/changes/archive/<YYYY-MM-DD>-<ticket id>/`, and appends each line of the proposal's Decisions to `decisions.md` with the date and ticket id; then the parent closes. An archive refusal writes nothing and parks the parent. There are three: a delta that no longer applies (an ADDED name already in current truth, a MODIFIED or REMOVED name missing); no change folder, because the spec was pinned before the repo had an `openspec/` tree; and no spec store at all (no `openspec/` tree). Only the archive step writes current truth. `decisions.md` has three writers: archive; `factory decision add <ticket id> "<line>"`, which a human runs at any ticket state, closed included; and `resolve --answer` or `resolve --close` with `--decision "<line>"`. Each appends `<YYYY-MM-DD> <ticket id> <line>`, with the UTC date. The spec writer and the critic receive every current-truth spec with their input (routing table). They and the planner also receive `decisions.md` when it holds any text.
+ 
+ **Routing table.** The dispatcher (piece 2) is this table and nothing else. Each row: a STATUS a role emits, what runs next, and what it receives. "Receives" adds to the INPUT the role prompt already declares. Both follow the role-context block (above).
+ 
+@@ -90,28 +90,28 @@ Rules the table relies on:
+ - The dispatcher reads a role's trailer by its labels, not by line position. The last `STATUS:` line wins; CONFIDENCE is the next line labelled `CONFIDENCE:` after it, and ESCALATIONS the next line labelled `ESCALATIONS:` after that. Lines between labelled lines are continuation (a wrapped reason, a remark), so a verbose but well-formed verdict routes on its STATUS. A trailer with no CONFIDENCE or no ESCALATIONS line after its last STATUS is a parse failure, which routes as a STATUS not in this table.
+ - A non-empty ESCALATIONS line is copied to the human queue without blocking the STATUS route. An ESCALATIONS line that starts with the word `none` followed by end of line or punctuation (so not `None of …`), with prose after it on that line and nothing below it, is empty for routing, and the prose is kept with the run for audit. A `none` line with further lines below it is a real list, copied verbatim from that line on. Only NEEDS-HUMAN, CLARIFY, BLOCKED, ESCALATE, SPEC-DEFECT, a max-round cutoff, a budget kill (piece 3), a parent-close FAILED, and an archive refusal (Spec store: a delta that does not apply, no change folder, or no spec store) park the ticket. A parking STATUS from one checker wins over the other's REQUEST-CHANGES or FAILED; both outputs go to the queue.
+ - When a human resolves a parked ticket:
+-  - A question returns to the role that asked, with the answer and that role's previous output (the output that asked it); a requester's CLARIFY answer returns to Triage the same way.
++  - A question returns to the role that asked, with the answer and that role's previous output (the output that asked it); a requester's CLARIFY answer returns to Triage the same way. When the answer is a standing decision, the human passes `--decision "<line>"` with the answer, or with the close, so that it lands in `decisions.md`.
+   - BLOCKED, a critic ESCALATE, and a planner ESCALATE return to the role that emitted them with the ruling, same round, or the human re-scopes (spec gate or writer round reset) or closes.
+   - A spec loop at max rounds goes to the spec gate.
+   - A parent-close FAILED or SPEC-DEFECT, an archive that does not apply, or a sub-ticket closed by the human, parks the parent: the human amends the spec and re-plans (new sub-tickets under the same parent) or closes the parent.
+-  - An archive refused for no change folder or no spec store parks the parent the same way, but its spec never entered the spec store: the human closes the parent as applied. Current truth and `decisions.md` are not updated; if current truth should carry the spec, it is re-intaken as a new ticket.
++  - An archive refused for no change folder or no spec store parks the parent the same way, but its spec never entered the spec store: the human closes the parent as applied. Current truth is not updated, and archive appends nothing to `decisions.md`; the human logs any decision with `factory decision add`. If current truth should carry the spec, it is re-intaken as a new ticket.
+   - A PR loop at max rounds, a SPEC-DEFECT, or a reviewer ESCALATE returns to the implementer with the round reset and the human's ruling as findings, or the ticket closes. The human may amend the sub-ticket or the pinned spec first; the amended version is what the implementer and checkers receive. There is no merge-gate override. A budget-killed run re-dispatches the same role on the same inputs, same round (the human may raise that run's budget or amend the sub-ticket first), or the ticket closes. In-flight siblings keep the spec version they received; the human decides whether to re-plan.
+ 
+ | From | STATUS | Next | Receives |
+ |---|---|---|---|
+ | New request | — | Triage | The request, ticket search |
+-| Triage | ACCEPT | Spec writer | The ticket; current truth (Spec store), read-only |
++| Triage | ACCEPT | Spec writer | The ticket; current truth (Spec store) and the decision log, read-only |
+ | Triage | NEEDS-HUMAN | Human queue | The question |
+ | Triage | CLARIFY | Requester, via piece 9; ticket parks until answered | The missing-info list |
+ | Triage | REJECT | Closed | — |
+-| Spec writer | READY-FOR-CRITIC / NEEDS-SPLIT | Critic | Spec, repo and current truth read-only; round 2+: prior findings, the writer's responses, previous spec version |
++| Spec writer | READY-FOR-CRITIC / NEEDS-SPLIT | Critic | Spec, repo, current truth and the decision log read-only; round 2+: prior findings, the writer's responses, previous spec version |
+ | Spec writer | NEEDS-HUMAN | Human queue | Open questions |
+ | Critic | APPROVE | Human spec gate | Spec + critic output |
+ | Critic | REVISE | Spec writer (round +1) if round < {2}, else Human queue | Findings, the spec version they apply to |
+ | Critic | ESCALATE | Human queue | Findings |
+ | Human queue, or requester (CLARIFY) | Answered (Triage asked) | Triage | The request with the answer, Triage's previous output (the question or missing-info list the answer is for) |
+ | Human queue | Answered (Spec writer asked) | Spec writer | The ticket, the answer, the writer's previous output (the spec whose open questions the answer is for) |
+-| Human spec gate | Approved | Planner | Approved spec, version pinned |
++| Human spec gate | Approved | Planner | Approved spec, version pinned; the decision log |
+ | Human spec gate | Changes requested | Spec writer (round reset) | Human's notes |
+ | Planner | PLANNED | Implementer, one run per sub-ticket. Each branches from main at dispatch; a sub-ticket dispatches only after its dependencies merge; parallel-safe ones run concurrently; one marked not parallel-safe dispatches only when no sibling of the same parent is in flight, and no sibling dispatches while it is in flight | Sub-ticket, parent spec, AGENTS.md; push to its own branch only |
+ | Planner | ESCALATE | Human queue | Planner output |
+@@ -241,7 +241,8 @@ FOR EACH REQUEST
+ 3. Decide:
+    - ACCEPT: the intent is clear and no product decision is needed.
+    - NEEDS-HUMAN: it needs a product, priority, or design call. Write the
+-     decision as one question with 2-3 concrete options.
++     decision as one question with 2-3 concrete options, and ask whether
++     the answer is a standing decision that later tickets must follow.
+    - CLARIFY: key facts are missing. List exactly what's missing.
+    - REJECT: duplicate, out of scope, or not actionable. One-line reason.
+ 4. For ACCEPT: write a title and a 2-5 sentence summary of what the
+@@ -303,7 +304,9 @@ RULES
+   would pass with a stub. Acceptance never names a test function or an
+   internal symbol: those go stale and the verifier can't run them.
+ - Open questions stay open. Don't resolve product or design ambiguity
+-  yourself; list it, and the spec goes to NEEDS-HUMAN.
++  yourself; list it, and the spec goes to NEEDS-HUMAN. For each open
++  question, ask whether the answer is a standing decision that later
++  tickets must follow.
+ - Write the Problem section for the operator who approves the spec at
+   the gate, not for the harness builder or the next role. Write it the
+   way a design doc is written: for a deeply technical reader who does
+diff --git a/docs/prompts/01-triage.md b/docs/prompts/01-triage.md
+index 06b73d3..cccd415 100644
+--- a/docs/prompts/01-triage.md
++++ b/docs/prompts/01-triage.md
+@@ -10,7 +10,8 @@ FOR EACH REQUEST
+ 3. Decide:
+    - ACCEPT: the intent is clear and no product decision is needed.
+    - NEEDS-HUMAN: it needs a product, priority, or design call. Write the
+-     decision as one question with 2-3 concrete options.
++     decision as one question with 2-3 concrete options, and ask whether
++     the answer is a standing decision that later tickets must follow.
+    - CLARIFY: key facts are missing. List exactly what's missing.
+    - REJECT: duplicate, out of scope, or not actionable. One-line reason.
+ 4. For ACCEPT: write a title and a 2-5 sentence summary of what the
+diff --git a/docs/prompts/02-spec-writer.md b/docs/prompts/02-spec-writer.md
+index 080e7ea..f2a9b2d 100644
+--- a/docs/prompts/02-spec-writer.md
++++ b/docs/prompts/02-spec-writer.md
+@@ -32,7 +32,9 @@ RULES
+   would pass with a stub. Acceptance never names a test function or an
+   internal symbol: those go stale and the verifier can't run them.
+ - Open questions stay open. Don't resolve product or design ambiguity
+-  yourself; list it, and the spec goes to NEEDS-HUMAN.
++  yourself; list it, and the spec goes to NEEDS-HUMAN. For each open
++  question, ask whether the answer is a standing decision that later
++  tickets must follow.
+ - Write the Problem section for the operator who approves the spec at
+   the gate, not for the harness builder or the next role. Write it the
+   way a design doc is written: for a deeply technical reader who does
+diff --git a/factory/cli.py b/factory/cli.py
+index 2b2bae0..9807d32 100644
+--- a/factory/cli.py
++++ b/factory/cli.py
+@@ -673,11 +673,24 @@ def request_changes(a, root, cfg):
+ 
+ 
+ def resolve(a, root, cfg):
++    if a.decision is not None:  # refuse before anything is written, so a decision is never dropped
++        # the branch below that will run: --answer wins, and --close runs only with no other mode
++        if not (a.answer or (a.close and not (a.ruling or a.to or a.redispatch))):
++            raise Refused("--decision applies only with --answer or --close")
++        specstore.decision_text(a.decision)
+     t = store.load_ticket(root, a.id)
+     st, parked = t["status"], t["parked"] or {}
+     reason = parked.get("reason", "")
+     d = _approval_dir(root, t["id"])
+ 
++    def decided(via: str) -> dict:
++        """Log `--decision`, once this mode's own refusals have passed; the `extra` for move()."""
++        if a.decision is None:
++            return {}
++        line = specstore.record_decision(root, t["id"], a.decision)
++        store.log_event(root, "decision.recorded", ticket=t["id"], by=_by(), line=line, via=via)
++        return {"decision": line}
++
+     def move(to: str, kind: str, extra: dict) -> None:
+         t["status"] = to
+         if to != "parked":
+@@ -699,7 +712,7 @@ def resolve(a, root, cfg):
+         n = req.read_text(encoding="utf-8").count("\n## Answer ") + 1
+         with req.open("a", encoding="utf-8") as fh:
+             fh.write(f"\n\n## Answer {n}\n\n{Path(a.answer).read_text(encoding='utf-8').rstrip()}\n")
+-        move(to, "answer", {"answer": n})
++        move(to, "answer", {"answer": n, **decided("resolve --answer")})
+     elif a.ruling:
+         if st != "parked" or not reason.startswith("ESCALATE"):
+             if st == "parked" and (reason.startswith("NEEDS-HUMAN") or "CLARIFY" in reason):
+@@ -737,11 +750,18 @@ def resolve(a, root, cfg):
+     elif a.close:
+         if st == "closed":
+             raise Refused(f"{t['id']} is already closed")
+-        move("closed", "close", {})
++        move("closed", "close", decided("resolve --close"))
+     else:
+         raise Refused("resolve needs one of --answer F | --ruling F | --to spec-gate | --redispatch | --close")
+ 
+ 
++def decision_add(a, root, cfg):
++    t = store.load_ticket(root, a.id)  # any state, closed included
++    line = specstore.record_decision(root, t["id"], a.text)
++    store.log_event(root, "decision.recorded", ticket=t["id"], by=_by(), line=line, via="decision add")
++    out({"ok": True, "id": t["id"], "decision": line})
++
++
+ # ----- spec store (doc §Harness, Spec store; part K) ----------------------------------
+ 
+ def _git_toplevel(cwd: Path) -> Path:
+@@ -1079,7 +1099,13 @@ def build_parser() -> argparse.ArgumentParser:
+     p.add_argument("--to")
+     p.add_argument("--redispatch", action="store_true")
+     p.add_argument("--close", action="store_true")
++    p.add_argument("--decision", metavar="TEXT", help="with --answer or --close: also log TEXT to decisions.md")
+     p.set_defaults(fn=resolve)
++    dc = sp.add_parser("decision").add_subparsers(dest="sub", required=True)
++    p = dc.add_parser("add", help="log one standing decision against a ticket in any state")
++    p.add_argument("id")
++    p.add_argument("text")
++    p.set_defaults(fn=decision_add)
+ 
+     p = sp.add_parser("config")
+     p.set_defaults(fn=config_cmd)
+diff --git a/factory/compose.py b/factory/compose.py
+index 29c8cff..f85c0da 100644
+--- a/factory/compose.py
++++ b/factory/compose.py
+@@ -68,6 +68,12 @@ def compose(root: Path, cfg: dict, meta: dict, t: dict) -> tuple[str, list[str]]
+     def add_truth() -> None:
+         for p in current_truth(root):
+             add(str(p.relative_to(root)), f"Current truth: {p.parent.name}")
++
++    def add_decisions() -> None:
++        # an empty log (the one `factory init` creates) carries nothing, so it is no input
++        p = root / "decisions.md"
++        if p.exists() and p.read_text(encoding="utf-8").strip():
++            add("decisions.md", "Decision log (decisions.md): standing decisions, read-only")
+     if role == "triage":
+         add(t["request"], "Request (raw, with any answers appended)")
+         prior = _runs_for(root, tid, "triage", run_id)
+@@ -79,6 +85,7 @@ def compose(root: Path, cfg: dict, meta: dict, t: dict) -> tuple[str, list[str]]
+             add(f"runs/{tri[-1]}/output.md", "Ticket (Triage output)")
+         add(t["request"], "Request (raw)")
+         add_truth()
++        add_decisions()
+         if rnd >= 1 and version >= 1:
+             crit = _runs_for(root, tid, "critic", run_id)
+             if crit:
+@@ -96,6 +103,7 @@ def compose(root: Path, cfg: dict, meta: dict, t: dict) -> tuple[str, list[str]]
+     elif role == "critic":
+         add(f"specs/{tid}/v{version}.md", f"Spec under review (v{version})")
+         add_truth()
++        add_decisions()
+         if rnd >= 2 and version >= 2:
+             crit = _runs_for(root, tid, "critic", run_id)
+             if crit:
+@@ -108,6 +116,7 @@ def compose(root: Path, cfg: dict, meta: dict, t: dict) -> tuple[str, list[str]]
+         if av is None:
+             raise store.Refused(f"{tid} has no approved spec version")
+         add(f"specs/{tid}/v{av}.md", f"Approved spec (v{av}, pinned)")
++        add_decisions()
+         for p in _approvals(root, tid, "ruling"):
+             add(str(p.relative_to(root)), "Human ruling")
+     elif role in ("implementer", "reviewer", "verifier"):
+diff --git a/factory/prompts/spec_writer.md b/factory/prompts/spec_writer.md
+index a3b0dec..d84cadd 100644
+--- a/factory/prompts/spec_writer.md
++++ b/factory/prompts/spec_writer.md
+@@ -32,7 +32,9 @@ RULES
+   would pass with a stub. Acceptance never names a test function or an
+   internal symbol: those go stale and the verifier can't run them.
+ - Open questions stay open. Don't resolve product or design ambiguity
+-  yourself; list it, and the spec goes to NEEDS-HUMAN.
++  yourself; list it, and the spec goes to NEEDS-HUMAN. For each open
++  question, ask whether the answer is a standing decision that later
++  tickets must follow.
+ - Write the Problem section for the operator who approves the spec at
+   the gate, not for the harness builder or the next role. Write it the
+   way a design doc is written: for a deeply technical reader who does
+diff --git a/factory/prompts/triage.md b/factory/prompts/triage.md
+index bef1ec6..dfe55f6 100644
+--- a/factory/prompts/triage.md
++++ b/factory/prompts/triage.md
+@@ -10,7 +10,8 @@ FOR EACH REQUEST
+ 3. Decide:
+    - ACCEPT: the intent is clear and no product decision is needed.
+    - NEEDS-HUMAN: it needs a product, priority, or design call. Write the
+-     decision as one question with 2-3 concrete options.
++     decision as one question with 2-3 concrete options, and ask whether
++     the answer is a standing decision that later tickets must follow.
+    - CLARIFY: key facts are missing. List exactly what's missing.
+    - REJECT: duplicate, out of scope, or not actionable. One-line reason.
+ 4. For ACCEPT: write a title and a 2-5 sentence summary of what the
+diff --git a/factory/specstore.py b/factory/specstore.py
+index 2492f82..6c457d1 100644
+--- a/factory/specstore.py
++++ b/factory/specstore.py
+@@ -3,7 +3,8 @@ build spec part B "Spec store", part K `approve-spec` / `archive`).
+ 
+ Current truth is `openspec/specs/<capability>/spec.md`. A ticket's change is the folder
+ `openspec/changes/<ID>/`, written by the harness when the human gate pins a version: the pinned
+-text is split on its `=== <path>` lines. Only `archive` writes current truth and `decisions.md`.
++text is split on its `=== <path>` lines. Only `archive` writes current truth. `decisions.md` has
++three writers, all through `record_decision`: `archive`, `decision add` and `resolve --decision`.
+ The store is active once `init` has created `openspec/`; a store without it keeps the P0
+ behaviour (specs pinned as one text), so the live pilot store is unaffected.
+ """
+@@ -235,6 +236,31 @@ def applies(root: Path, deltas: dict[str, dict[str, dict[str, str]]]) -> list[st
+     return errors
+ 
+ 
++# ----- the decision log -------------------------------------------------------------------
++
++def _utc_date() -> str:
++    return dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%d")
++
++
++def decision_text(text: str) -> str:
++    """A decision's text, stripped. Refused unless it is one non-blank line."""
++    s = text.strip()
++    if not s or len(s.splitlines()) > 1:
++        raise store.Refused("a decision is one non-blank line of text")
++    return s
++
++
++def record_decision(root: Path, tid: str, text: str, today: str | None = None) -> str:
++    """Append `<UTC date> <tid> <text>` to `decisions.md`, creating it if absent; return the line.
++    Needs no spec store: the log does not depend on `openspec/`."""
++    line = f"{today or _utc_date()} {tid} {decision_text(text)}"
++    p = root / "decisions.md"
++    p.parent.mkdir(parents=True, exist_ok=True)
++    with p.open("a", encoding="utf-8") as fh:
++        fh.write(line + "\n")
++    return line
++
++
+ # ----- pin and archive ----------------------------------------------------------------------
+ 
+ def change_dir(root: Path, tid: str) -> Path:
+@@ -311,7 +337,7 @@ def archive(root: Path, tid: str, verifier_rows: list[str], today: str | None =
+     """Part K `factory archive`: verifier results, apply deltas, move the folder, append the
+     decisions. Caller has checked `applies`; nothing here refuses."""
+     d = change_dir(root, tid)
+-    date = today or dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%d")
++    date = today or _utc_date()
+     ver = d / "verification.md"
+     vtext = ver.read_text(encoding="utf-8") if ver.exists() else ""
+     store.write_text(ver, vtext.rstrip() + "\n\n## Verifier results\n\n" + ("\n".join(verifier_rows) + "\n" if verifier_rows else "none\n"))
+@@ -326,10 +352,8 @@ def archive(root: Path, tid: str, verifier_rows: list[str], today: str | None =
+         store.write_text(tp, apply_delta(cur, cap, ops))
+         applied.append(cap)
+     lines = decisions_of((d / "proposal.md").read_text(encoding="utf-8")) if (d / "proposal.md").exists() else []
+-    dec = root / "decisions.md"
+-    with dec.open("a", encoding="utf-8") as fh:
+-        for ln in lines:
+-            fh.write(f"{date} {tid} {ln}\n")
++    for ln in lines:
++        record_decision(root, tid, ln, date)
+     dest = root_dir(root) / "changes" / "archive" / f"{date}-{tid}"
+     dest.parent.mkdir(parents=True, exist_ok=True)
+     shutil.move(str(d), str(dest))
+diff --git a/tests/factory/test_decision_log.py b/tests/factory/test_decision_log.py
+new file mode 100644
+index 0000000..87b541b
+--- /dev/null
++++ b/tests/factory/test_decision_log.py
+@@ -0,0 +1,255 @@
++"""The decision log (spec-factory T-0017): `decision add` and `resolve --decision` write
++`decisions.md` at any ticket state; the spec writer, critic and planner receive a non-empty log;
++the triage and spec-writer prompts ask whether an answer is a standing decision.
++
++Black-box through `bin/factory` on a throwaway store (FACTORY_STATE), as test_spec_store.py does.
++"""
++from __future__ import annotations
++
++import datetime as dt
++import json
++import os
++import re
++import subprocess
++from pathlib import Path
++
++import pytest
++import yaml
++
++REPO = Path(__file__).resolve().parents[2]
++BIN = REPO / "bin" / "factory"
++FENCE = "`" * 3
++
++
++def run(store: Path, *argv: str) -> subprocess.CompletedProcess:
++    env = {**os.environ, "FACTORY_STATE": str(store), "PYTHONDONTWRITEBYTECODE": "1"}
++    return subprocess.run([str(BIN), *argv], capture_output=True, text=True, env=env, cwd=REPO)
++
++
++def js(cp):
++    return json.loads(cp.stdout.strip().splitlines()[-1])
++
++
++def today() -> str:
++    return dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%d")
++
++
++def log_lines(store: Path) -> list[str]:
++    """The decision log's lines with the UTC date replaced by TODAY."""
++    p = store / "decisions.md"
++    if not p.exists():
++        return []
++    d = today() + " "
++    return ["TODAY " + ln[len(d):] if ln.startswith(d) else ln for ln in p.read_text(encoding="utf-8").splitlines()]
++
++
++def events(store: Path, name: str) -> list[dict]:
++    return [json.loads(ln) for ln in run(store, "log", "tail", "-n", "200", "--event", name).stdout.splitlines()]
++
++
++def ticket(store: Path) -> dict:
++    return yaml.safe_load((store / "tickets" / "T-0001.yaml").read_text())
++
++
++@pytest.fixture
++def store(tmp_path: Path) -> Path:
++    s = tmp_path / "state"
++    req = tmp_path / "r.md"
++    req.write_text("# demo\n\nDo it.\n")
++    assert run(s, "ticket", "new", "--file", str(req)).returncode == 0
++    return s
++
++
++def park(store: Path, reason: str) -> None:
++    assert run(store, "ticket", "park", "T-0001", "--reason", reason).returncode == 0
++
++
++# ----- part A: decision add -----------------------------------------------------------------
++
++def test_decision_add_logs_against_a_closed_ticket_in_archives_format(store):
++    assert run(store, "resolve", "T-0001", "--close").returncode == 0
++    cp = run(store, "decision", "add", "T-0001", "Lionbot code lives under lionbot/")
++    assert cp.returncode == 0, cp.stderr
++    assert js(cp) == {"ok": True, "id": "T-0001", "decision": f"{today()} T-0001 Lionbot code lives under lionbot/"}
++    assert ticket(store)["status"] == "closed"
++    assert run(store, "decision", "add", "T-0001", "  Second rule  ").returncode == 0
++    assert log_lines(store) == ["TODAY T-0001 Lionbot code lives under lionbot/", "TODAY T-0001 Second rule"]
++    ev = events(store, "decision.recorded")
++    assert [(e["ticket"], e["via"], e["line"]) for e in ev] == [
++        ("T-0001", "decision add", f"{today()} T-0001 Lionbot code lives under lionbot/"),
++        ("T-0001", "decision add", f"{today()} T-0001 Second rule")]
++    assert all(e["by"] for e in ev)
++
++
++def test_decision_add_needs_no_spec_store_and_appends_to_an_existing_log(store):
++    assert not (store / "openspec").exists()
++    (store / "decisions.md").write_text("2026-01-01 T-0009 kept\n")
++    assert run(store, "decision", "add", "T-0001", "new").returncode == 0
++    assert (store / "decisions.md").read_text() == f"2026-01-01 T-0009 kept\n{today()} T-0001 new\n"
++    assert not (store / "openspec").exists()
++
++
++@pytest.mark.parametrize("tid, text", [("T-0009", "x"), ("T-0001", "  "), ("T-0001", ""),
++                                       ("T-0001", "one\ntwo"), ("T-0001", "one\rtwo")])
++def test_decision_add_refuses_an_unknown_ticket_and_blank_or_multi_line_text(store, tid, text):
++    cp = run(store, "decision", "add", tid, text)
++    assert cp.returncode == 2, cp.stderr
++    assert js(cp)["ok"] is False
++    assert not (store / "decisions.md").exists()
++    assert events(store, "decision.recorded") == []
++
++
++# ----- part A: resolve --decision ----------------------------------------------------------
++
++def test_resolve_answer_and_close_each_log_a_decision_and_keep_it_in_the_record(store, tmp_path):
++    ans = tmp_path / "a.md"
++    ans.write_text("Use option B.\n")
++    park(store, "NEEDS-HUMAN from triage")
++    cp = run(store, "resolve", "T-0001", "--answer", str(ans), "--decision", "Option B is the standing rule")
++    assert cp.returncode == 0, cp.stderr
++    line1 = f"{today()} T-0001 Option B is the standing rule"
++    assert js(cp)["decision"] == line1 and js(cp)["state"] == "ready-for-triage"
++    assert (store / "requests" / "T-0001.md").read_text().count("## Answer ") == 1
++    cp = run(store, "resolve", "T-0001", "--close", "--decision", "Closed as a recorded decision")
++    assert cp.returncode == 0, cp.stderr
++    line2 = f"{today()} T-0001 Closed as a recorded decision"
++    assert ticket(store)["status"] == "closed"
++    assert log_lines(store) == ["TODAY T-0001 Option B is the standing rule", "TODAY T-0001 Closed as a recorded decision"]
++    recs = [yaml.safe_load((store / "approvals" / "T-0001" / f"resolve-{n}.yaml").read_text()) for n in (1, 2)]
++    assert [(r["kind"], r["decision"]) for r in recs] == [("answer", line1), ("close", line2)]
++    hist = [h for h in ticket(store)["history"] if "resolve" in h]
++    assert [(h["resolve"], h["decision"]) for h in hist] == [("answer", line1), ("close", line2)]
++    ev = events(store, "decision.recorded")
++    assert [(e["via"], e["line"]) for e in ev] == [("resolve --answer", line1), ("resolve --close", line2)]
++
++
++def test_resolve_without_decision_writes_no_decision_key(store):
++    assert run(store, "resolve", "T-0001", "--close").returncode == 0
++    rec = yaml.safe_load((store / "approvals" / "T-0001" / "resolve-1.yaml").read_text())
++    assert "decision" not in rec
++    assert not (store / "decisions.md").exists()
++
++
++def test_resolve_decision_alone_or_with_a_mode_that_cannot_carry_one_is_refused(store, tmp_path):
++    ruling = tmp_path / "r2.md"
++    ruling.write_text("Ruling.\n")
++    park(store, "ESCALATE from critic")
++    before = ticket(store)
++    for argv in (["--decision", "x"],
++                 ["--ruling", str(ruling), "--decision", "x"],
++                 ["--to", "spec-gate", "--decision", "x"],
++                 ["--redispatch", "--decision", "x"],
++                 # --ruling runs ahead of --close, so the close (and its decision) would not happen
++                 ["--ruling", str(ruling), "--close", "--decision", "x"]):
++        cp = run(store, "resolve", "T-0001", *argv)
++        assert cp.returncode == 2, (argv, cp.stderr)
++        assert "--decision applies only with --answer or --close" in cp.stderr
++    assert ticket(store) == before
++    assert not list((store / "approvals" / "T-0001").glob("ruling-*"))
++    assert not (store / "decisions.md").exists()
++
++
++def test_resolve_decision_is_not_logged_when_the_close_or_answer_is_refused(store, tmp_path):
++    ans = tmp_path / "a.md"
++    ans.write_text("B.\n")
++    # --answer on a ticket that is not parked NEEDS-HUMAN: refused, no answer, no decision
++    cp = run(store, "resolve", "T-0001", "--answer", str(ans), "--decision", "x")
++    assert cp.returncode == 2
++    assert "## Answer" not in (store / "requests" / "T-0001.md").read_text()
++    assert run(store, "resolve", "T-0001", "--close", "--decision", "Closed with a rule").returncode == 0
++    cp = run(store, "resolve", "T-0001", "--close", "--decision", "Again")
++    assert cp.returncode == 2
++    assert log_lines(store) == ["TODAY T-0001 Closed with a rule"]
++    assert len(events(store, "decision.recorded")) == 1
++
++
++def test_resolve_bad_decision_text_refuses_before_the_answer_is_appended(store, tmp_path):
++    ans = tmp_path / "a.md"
++    ans.write_text("B.\n")
++    park(store, "NEEDS-HUMAN from triage")
++    req_before = (store / "requests" / "T-0001.md").read_text()
++    for text in ("   ", "one\ntwo"):
++        cp = run(store, "resolve", "T-0001", "--answer", str(ans), "--decision", text)
++        assert cp.returncode == 2, cp.stderr
++    assert (store / "requests" / "T-0001.md").read_text() == req_before
++    assert ticket(store)["status"] == "parked"
++    assert not (store / "approvals" / "T-0001").exists() or not list((store / "approvals" / "T-0001").glob("resolve-*"))
++    assert not (store / "decisions.md").exists()
++
++
++# ----- part B: the decision log as role input --------------------------------------------------
++
++def start_and_compose(store: Path, role: str, status: str) -> tuple[list[str], str]:
++    assert run(store, "ticket", "set", "T-0001", f"status={status}", "in_flight=[]").returncode == 0
++    rid = js(run(store, "run", "start", "--role", role, "--ticket", "T-0001"))["run_id"]
++    cp = run(store, "run", "compose", rid)
++    assert cp.returncode == 0, cp.stderr
++    return js(cp)["sources"], (store / "runs" / rid / "input.md").read_text()
++
++
++@pytest.fixture
++def spec_store(store: Path) -> Path:
++    assert run(store, "init").returncode == 0
++    (store / "openspec" / "specs" / "thing").mkdir(parents=True)
++    (store / "openspec" / "specs" / "thing" / "spec.md").write_text("# thing\n\n## Requirements\n")
++    (store / "specs" / "T-0001").mkdir(parents=True)
++    (store / "specs" / "T-0001" / "v1.md").write_text("spec\n")
++    assert run(store, "ticket", "set", "T-0001", "spec.version=1", "spec.approved_version=1").returncode == 0
++    return store
++
++
++def test_spec_writer_critic_and_planner_receive_a_non_empty_log_and_triage_does_not(spec_store):
++    s = spec_store
++    (s / "decisions.md").write_text("2026-10-01 T-0009 SENTINEL keep the old format\n")
++    got = {r: start_and_compose(s, r, st) for r, st in (
++        ("triage", "ready-for-triage"), ("spec_writer", "ready-for-spec-writer"),
++        ("critic", "ready-for-critic"), ("planner", "ready-for-planner"))}
++    assert got["triage"][0] == ["requests/T-0001.md"]
++    assert got["spec_writer"][0] == ["requests/T-0001.md", "openspec/specs/thing/spec.md", "decisions.md"]
++    assert got["critic"][0] == ["specs/T-0001/v1.md", "openspec/specs/thing/spec.md", "decisions.md"]
++    assert got["planner"][0] == ["specs/T-0001/v1.md", "decisions.md"]
++    assert "SENTINEL" not in got["triage"][1]
++    for r in ("spec_writer", "critic", "planner"):
++        text = got[r][1]
++        assert text.count("SENTINEL") == 1
++        assert "## Decision log (decisions.md): standing decisions, read-only\n\n2026-10-01 T-0009 SENTINEL" in text
++
++
++def test_planner_gets_the_log_before_a_ruling(spec_store):
++    s = spec_store
++    (s / "decisions.md").write_text("2026-10-01 T-0009 SENTINEL\n")
++    (s / "approvals" / "T-0001").mkdir(parents=True)
++    (s / "approvals" / "T-0001" / "ruling-1.md").write_text("Ruling.\n")
++    sources, _ = start_and_compose(s, "planner", "ready-for-planner")
++    assert sources == ["specs/T-0001/v1.md", "decisions.md", "approvals/T-0001/ruling-1.md"]
++
++
++@pytest.mark.parametrize("content", [None, "", "\n", "  \n\t\n"])
++def test_an_absent_or_whitespace_only_log_adds_no_source(spec_store, content):
++    s = spec_store
++    if content is None:
++        (s / "decisions.md").unlink()
++    else:
++        (s / "decisions.md").write_text(content)
++    assert start_and_compose(s, "spec_writer", "ready-for-spec-writer")[0] == ["requests/T-0001.md", "openspec/specs/thing/spec.md"]
++    assert start_and_compose(s, "critic", "ready-for-critic")[0] == ["specs/T-0001/v1.md", "openspec/specs/thing/spec.md"]
++    assert start_and_compose(s, "planner", "ready-for-planner")[0] == ["specs/T-0001/v1.md"]
++
++
++# ----- part C: the questions ask whether an answer is standing ------------------------------------
++
++def test_triage_and_spec_writer_system_prompts_ask_about_standing_decisions(store):
++    for role, status in (("triage", "ready-for-triage"), ("spec_writer", "ready-for-spec-writer")):
++        assert run(store, "ticket", "set", "T-0001", f"status={status}", "in_flight=[]").returncode == 0
++        rid = js(run(store, "run", "start", "--role", role, "--ticket", "T-0001"))["run_id"]
++        assert "standing decision" in (store / "runs" / rid / "system-prompt.txt").read_text(), role
++
++
++@pytest.mark.parametrize("heading, copy", [("1. Triage", "01-triage.md"), ("2. Spec writer", "02-spec-writer.md")])
++def test_triage_and_spec_writer_design_blocks_equal_their_copies(heading, copy):
++    design = (REPO / "docs" / "design.md").read_text(encoding="utf-8")
++    m = re.search(r"^## " + re.escape(heading) + r"\n.*?^" + FENCE + r"text\n(.*?)^" + FENCE + "$", design, re.M | re.S)
++    assert m is not None
++    block = m.group(1)
++    assert "standing decision" in block
++    assert block == (REPO / "docs" / "prompts" / copy).read_text(encoding="utf-8")

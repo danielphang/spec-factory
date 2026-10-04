@@ -1,0 +1,31 @@
+run_id: run-0205-verifier
+role: verifier
+ticket: T-0023.2
+model: opus
+round: 1
+spec_version: 2
+started: '2026-10-04T15:01:22+00:00'
+finished: '2026-10-04T15:13:47+00:00'
+wall_s: 745
+status: VERIFIED
+input_sources:
+- specs/T-0023.2/subticket.md
+- specs/T-0023/v2.md
+- runs/run-0204-implementer/output.md
+- runs/run-0205-verifier/diff.patch
+environment_files: []
+branch: factory/T-0023.2
+base: 2e61b852d1da27a85208eb94c8d10b8a5557e2c7
+head: a78de4b5a03a3c2f87e9976542035fb4a1ab0f07
+worktree: /Users/dphang/dev/spec-factory/.factory/state/runs/run-0205-verifier/wt
+confidence: high. Every acceptance command and both gates ran on the clean PR head. Each NEW command failed
+  on a fresh base clone for the reason the spec states and passed on the PR. The probes show the numbering
+  and dependency logic is not special-cased to `.3`.
+escalations:
+- 'The scenario "A re-plan is refused while a sub-ticket is not merged" depends on the shell. It prints
+  `names=1` under bash, which is the spec''s expected result, and `names=2` under zsh, the default shell
+  in this environment''s tool runner. The cause is `2>&1 >/dev/null |` combined with zsh MULTIOS: the
+  stdout JSON copy of the refusal also reaches grep. The implementer reported the same thing. Decision
+  for the operator: either run this change''s scenarios under bash or sh, or, at the next spec revision,
+  change the WHEN to send stderr to a file and grep that file.'
+escalations_note: null

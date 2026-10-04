@@ -1,0 +1,20 @@
+run_id: run-0189-spec_writer
+role: spec_writer
+ticket: T-0021
+model: opus
+round: 2
+spec_version: 1
+started: '2026-10-04T12:27:56+00:00'
+finished: '2026-10-04T12:36:55+00:00'
+wall_s: 539
+status: READY-FOR-CRITIC
+input_sources:
+- runs/run-0185-triage/output.md
+- requests/T-0021.md
+- runs/run-0188-critic/output.md
+- specs/T-0021/v1.md
+confidence: high, because the changed oracle was run on `main` (`0`) and on a committed prototype of the
+  new preamble text (`1`, suite `203 passed`), and the other scenarios are unchanged from round 1, which
+  the critic re-ran.
+escalations: []
+escalations_note: null

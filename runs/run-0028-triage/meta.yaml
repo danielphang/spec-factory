@@ -1,0 +1,17 @@
+run_id: run-0028-triage
+role: triage
+ticket: T-0008
+model: opus
+round: 0
+spec_version: 0
+started: '2026-10-01T20:49:01+00:00'
+finished: '2026-10-01T20:50:13+00:00'
+wall_s: 72
+status: ACCEPT
+input_sources:
+- requests/T-0008.md
+- runs/run-0027-triage/output.md
+confidence: medium. Every location and the operator's answers are confirmed on this checkout. The OpenSpec
+  grammar and CLI facts are unverified requester claims, and the merge order with T-0005/T-0007 is unresolved.
+escalations:
+- none. The read-only green scope from my previous run is resolved by the operator's A1 confirmation.

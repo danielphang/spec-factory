@@ -1,0 +1,18 @@
+run_id: run-0009-spec_writer
+role: spec_writer
+ticket: T-0004
+model: opus
+round: 0
+spec_version: 0
+started: '2026-10-01T17:02:06+00:00'
+finished: '2026-10-01T17:09:03+00:00'
+wall_s: 417
+status: READY-FOR-CRITIC
+input_sources:
+- runs/run-0008-triage/output.md
+- requests/T-0004.md
+confidence: 'high. I applied the exact change in a scratch clone and ran all eight Acceptance items against
+  both `main` and the patched branch. I ran the P0-9 command verbatim against passing and failing fixtures
+  on Claude Code 2.1.286. The docs quotes come from the fetched page. Not reproduced by me: the in-session
+  "not found" failure itself (cited from the request and the reference harness comment).'
+escalations: []

@@ -1,0 +1,21 @@
+run_id: run-0038-spec_writer
+role: spec_writer
+ticket: T-0008
+model: opus
+round: 2
+spec_version: 2
+started: '2026-10-01T21:23:40+00:00'
+finished: '2026-10-01T21:32:39+00:00'
+wall_s: 539
+status: READY-FOR-CRITIC
+input_sources:
+- runs/run-0028-triage/output.md
+- requests/T-0008.md
+- runs/run-0036-critic/output.md
+- specs/T-0008/v2.md
+confidence: high. All five findings are addressed in the text. Every OLD anchor matched exactly once under
+  a script that asserts it. All 20 Acceptance commands were run as written on `main` and on the trial
+  clone, and the results are quoted above. The OpenSpec grammar is cited from its docs and was confirmed
+  by the critic.
+escalations: []
+escalations_note: null

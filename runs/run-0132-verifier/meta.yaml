@@ -1,0 +1,25 @@
+run_id: run-0132-verifier
+role: verifier
+ticket: T-0015.1
+model: opus
+round: 1
+spec_version: 2
+started: '2026-10-03T23:56:13+00:00'
+finished: '2026-10-04T00:02:34+00:00'
+wall_s: 381
+status: VERIFIED
+input_sources:
+- specs/T-0015.1/subticket.md
+- specs/T-0015/v2.md
+- runs/run-0131-implementer/output.md
+- runs/run-0132-verifier/diff.patch
+environment_files: []
+branch: factory/T-0015.1
+base: 61d92bef32d05c89bb9187f8455f4eb298b2a99f
+head: 27d6d63fcb2f5c03d64696f6769abf871e4f2bc0
+worktree: /Users/dphang/dev/spec-factory/.factory/state/runs/run-0132-verifier/wt
+confidence: high. All 11 criteria and both gate commands were run as written on the head and on the base,
+  and each printed its expected result. The probes show the path fill tracks the running checkout and
+  fails as the spec says when the fill is missing.
+escalations: []
+escalations_note: null

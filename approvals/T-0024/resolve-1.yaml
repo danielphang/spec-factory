@@ -1,0 +1,8 @@
+by: dphang
+at: '2026-10-04T18:15:47+00:00'
+kind: answer
+from: parked
+to: ready-for-spec-writer
+answer: 1
+decision: '2026-10-04 T-0024 T-0024: instance B keeps the spec store created 2026-10-04 by run-0196; its
+  tickets close by archive into current truth (operator)'

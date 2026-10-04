@@ -1,0 +1,37 @@
+run_id: run-0256-verifier
+role: verifier
+ticket: T-0025.1
+model: opus
+round: 1
+spec_version: 5
+started: '2026-10-04T20:51:10+00:00'
+finished: '2026-10-04T21:00:32+00:00'
+wall_s: 562
+status: VERIFIED
+input_sources:
+- specs/T-0025.1/subticket.md
+- specs/T-0025/v5.md
+- runs/run-0247-implementer/output.md
+- runs/run-0256-verifier/diff.patch
+- approvals/T-0025.1/ruling-1.md
+environment_files: []
+branch: factory/T-0025.1
+base: 0b1abad474cb9c583ed8445fc33617f9f0bdc37b
+head: d001090e9b0a535d55599ce5819c497572e07cf4
+worktree: /Users/dphang/dev/spec-factory/.factory/state/runs/run-0256-verifier/wt
+confidence: high. All 17 acceptance commands printed their THEN on `d001090`. Every NEW criterion printed
+  the spec's own "today" output on `0b1abad`. Both gates exited 0. The one probe concern lies outside
+  the criteria.
+escalations:
+- 'A remote branch whose name only ends in `factory-store` can be mistaken for the store branch (`factory/gitops.py`
+  `remote_branches`, used by `_add_store_checkout` in `factory/cli.py`). The function filters with `r.endswith(f"/{branch}")`.
+  So a remote code branch such as `origin/feature/factory-store` is treated as the remote store branch.
+  Reproduced: on a clone whose only such ref was `origin/feature/factory-store`, `init` exited 0. It checked
+  that code branch out as the store, with upstream `origin/feature/factory-store`, and `.factory/state/code.txt`
+  was present. Design A.3.2 specifies `refs/remotes/*/factory-store`, and git''s ref glob does not let
+  `*` cross a `/`. The same matching would also refuse a clone that has both `origin/factory-store` and
+  `origin/feature/factory-store` as "more than one remote". Suggested follow-up: match exactly `refs/remotes/<name>/factory-store`
+  for each name `git remote` lists, or use `git for-each-ref refs/remotes/*/factory-store`, which is not
+  the same when a remote''s name contains a slash. This sits outside T-0025.1''s acceptance criteria,
+  so it does not change the verdict. It is a fix for the reviewer, or for T-0025.2, to pick up.'
+escalations_note: null

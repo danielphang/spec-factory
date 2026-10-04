@@ -1,0 +1,16 @@
+run_id: run-0158-planner
+role: planner
+ticket: T-0018
+model: opus
+round: 2
+spec_version: 2
+started: '2026-10-04T07:46:34+00:00'
+finished: '2026-10-04T07:51:36+00:00'
+wall_s: 302
+status: PLANNED
+input_sources:
+- specs/T-0018/v2.md
+confidence: high, every cited location and every scenario's base output checked on `d0300d3`, and no split
+  reduces shared files.
+escalations: []
+escalations_note: null

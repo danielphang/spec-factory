@@ -1,0 +1,17 @@
+run_id: run-0024-spec_writer
+role: spec_writer
+ticket: T-0007
+model: opus
+round: 0
+spec_version: 0
+started: '2026-10-01T20:27:29+00:00'
+finished: '2026-10-01T20:33:32+00:00'
+wall_s: 363
+status: NEEDS-HUMAN
+input_sources:
+- runs/run-0023-triage/output.md
+- requests/T-0007.md
+confidence: high. I applied every edit on a scratch clone and ran all 13 criteria on both `main` and the
+  clone, and I re-read the cited lines in both documents, the reference composer and four live run directories
+  in this run.
+escalations: []

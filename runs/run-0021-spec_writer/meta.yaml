@@ -1,0 +1,17 @@
+run_id: run-0021-spec_writer
+role: spec_writer
+ticket: T-0006
+model: opus
+round: 0
+spec_version: 0
+started: '2026-10-01T20:08:40+00:00'
+finished: '2026-10-01T20:16:07+00:00'
+wall_s: 447
+status: READY-FOR-CRITIC
+input_sources:
+- runs/run-0020-triage/output.md
+- requests/T-0006.md
+confidence: high. Every Acceptance command was run against the unchanged checkout and against a scratch
+  copy carrying the proposed change, with the base and PR outputs quoted above. Both fixtures also fail
+  against the triage's naive de-fencing.
+escalations: []

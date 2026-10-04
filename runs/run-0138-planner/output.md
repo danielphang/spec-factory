@@ -1,0 +1,64 @@
+T-0016.1 / Run REGRESSION checks and gates once, and let a single-sub-ticket parent close on its sub-ticket's VERIFIED run
+  Parent: T-0016, approved spec v1 (`.factory/state/specs/T-0016/v1.md`). Read it for context. Do NOT implement parts outside this sub-ticket.
+  Depends on: none
+  Parallel-safe: yes (it is the only sub-ticket)
+  Scope: parts A, B, C, D and E of the parent, all of them.
+    - A: implementer step 2, step 5 and the PR DESCRIPTION line, in the design block `## 5. Implementer` (`docs/design.md`), `docs/prompts/05-implementer.md` (re-copied verbatim from the block) and `factory/prompts/implementer.md` (keeps its own step 5 gate wording and step 6 rebase wording).
+    - B: verifier step 3, the new step 4 sentence and the OUTPUT `Per criterion:` line, in `## 7. Verifier` (`docs/design.md`), `docs/prompts/07-verifier.md` (re-copied verbatim) and `factory/prompts/verifier.md` (keeps its own step 4 gate wording). Verdict rules unchanged.
+    - C: `_reused_subticket_run` in `factory/cli.py` with conditions (1) to (4) and one `factory:` comment naming its limit; `_parent_close_verified` returns a run id; `ticket_transition` to `closed` records `verified_by`; `ticket parent-check` adds `reuse`; `factory/workflows/build.js` phase 3 calls `parent-check` first and skips the verifier when `reuse` names a run.
+    - D: `docs/design.md` Merge gate row (line 126) and Archive paragraph (line 82); `dev/build-harness.spec.md:285`; `docs/changelog.md` entry 45 before `Declined:`; `README.md` "How a ticket moves" sentence and status date.
+    - E: new file `tests/factory/test_parent_close_reuse.py`; the one-line edit to each of the two `test_shepherd.py` tests below.
+  Acceptance (all from the parent's `verification.md`; run with bash from the root of the checkout under test):
+    - implementer-runs-regression-checks-once (NEW)
+      WHEN `n() { tr '\n' ' ' < "$2" | tr -s ' ' | grep -oF -- "$1" | wc -l | tr -d ' '; }; for f in docs/design.md docs/prompts/05-implementer.md factory/prompts/implementer.md; do echo "${f##*/} new=$(n '2. Run the NEW acceptance commands first.' $f) after=$(n 'A REGRESSION command that fails here' $f) old=$(n '2. Run the acceptance commands first.' $f)"; done`
+      THEN `design.md new=1 after=1 old=0`, `05-implementer.md new=1 after=1 old=0`, `implementer.md new=1 after=1 old=0`, one per line
+    - verifier-runs-regression-on-base-only-on-failure (NEW)
+      WHEN `n() { tr '\n' ' ' < "$2" | tr -s ' ' | grep -oF -- "$1" | wc -l | tr -d ' '; }; for f in docs/design.md docs/prompts/07-verifier.md factory/prompts/verifier.md; do echo "${f##*/} new=$(n '3. Run the NEW commands on the base you were given' $f) onfail=$(n 'Run a REGRESSION command on base only when it fails on the PR' $f) old=$(n '3. Run the same commands on the base you were given' $f) defect=$(n 'is a SPEC-DEFECT, not a pass or a fail' $f) gate=$(n 'A gate failure' $f)"; done`
+      THEN `design.md new=1 onfail=1 old=0 defect=1 gate=2`, `07-verifier.md new=1 onfail=1 old=0 defect=1 gate=1`, `verifier.md new=1 onfail=1 old=0 defect=1 gate=1`, one per line
+    - one-run-serves-scenario-and-gate (NEW)
+      WHEN `n() { tr '\n' ' ' < "$2" | tr -s ' ' | grep -oF -- "$1" | wc -l | tr -d ' '; }; for f in docs/design.md docs/prompts/05-implementer.md docs/prompts/07-verifier.md factory/prompts/implementer.md factory/prompts/verifier.md; do printf '%s=%s ' "${f##*/}" "$(n 'ran a gate command exactly as written' $f)"; done; echo`
+      THEN `design.md=2 05-implementer.md=1 07-verifier.md=1 implementer.md=1 verifier.md=1` (a trailing space is allowed)
+    - changed-blocks-copied-verbatim (REGRESSION)
+      WHEN `q=$(printf '\140\140\140'); for s in "5. Implementer:05-implementer" "7. Verifier:07-verifier"; do f=${s##*:}; sed -n "/^## ${s%%:*}\$/,/^$q\$/p" docs/design.md | sed "1,/^${q}text\$/d;\$d" | cmp -s - docs/prompts/$f.md && echo "$f verbatim" || echo "$f differs"; done`
+      THEN `05-implementer verbatim` then `07-verifier verbatim`
+    - one-sub-ticket-parent-closes-on-its-verified-run (NEW)
+      GIVEN the function `fx` exactly as written in the parent spec's GIVEN for this scenario (copy it verbatim; it works only under `mktemp -d`)
+      WHEN `fx one`
+      THEN `one: subs=1 ready-for-parent-verify reuse=run-0004-verifier closed parent_runs=0 verified_by=run-0004-verifier`
+    - parent-close-run-still-required-otherwise (REGRESSION)
+      GIVEN `fx` as above, in the same bash session
+      WHEN `for v in moved two uncovered; do fx $v; done`
+      THEN exactly `moved: subs=1 ready-for-parent-verify reuse=None refused parent_runs=0 verified_by=`, `two: subs=2 ready-for-parent-verify reuse=None refused parent_runs=0 verified_by=`, `uncovered: subs=1 ready-for-parent-verify reuse=None refused parent_runs=0 verified_by=`, one per line
+    - rule-recorded-in-design-build-spec-readme-changelog (NEW)
+      WHEN `n() { tr '\n' ' ' < "$2" | tr -s ' ' | grep -oF -- "$1" | wc -l | tr -d ' '; }; echo "design=$(n 'stands for the parent-close run' docs/design.md) buildspec=$(n 'stands for the parent-close run' dev/build-harness.spec.md) readme=$(n 'already checked the same code' README.md) changelog=$(awk '/^45\. /{e=NR} /^Declined:/{d=NR} END{print (e>0 && e<d) ? "before-declined" : "missing"}' docs/changelog.md)"`
+      THEN `design`, `buildspec` and `readme` each 1 or more, and `changelog=before-declined`
+    - Intermediate checks: none. The gate commands (`git diff --check main...HEAD` and `uv run --frozen pytest -q -p no:cacheprovider tests/factory`) run in every verifier run; the suite gate covers the new test file and the two edited `test_shepherd.py` tests. The `build.js` skip has no runnable check: the reviewer checks it against part C, and the parent's Operator step 2 observes it.
+  Tests to change: `tests/factory/test_shepherd.py::test_the_planned_ticket_is_built_checked_merged_and_archived` and `tests/factory/test_shepherd.py::test_a_parent_does_not_close_by_a_plain_transition_before_its_parent_close_run`, each gaining only `f.git("commit", "-q", "--allow-empty", "-m", "another change on main")` after the sub-ticket merges and before `f.parent_check(tid)`. No assertion removed or weakened.
+  Protected paths: harness: `factory/cli.py`, `factory/prompts/implementer.md`, `factory/prompts/verifier.md`, `factory/workflows/build.js`; generated: `docs/prompts/05-implementer.md`, `docs/prompts/07-verifier.md` (re-copied from the changed design blocks only).
+  Out of scope: the path-scoped gate skip; the clerk agent and typed role agents (#24); the whitespace gate's empty comparison on a parent-close run; what spec writers put in acceptance lists; any change to NEW checks' before and base runs, the gate commands, the merge gate, the join decision, conflict runs, or parent closes with two or more sub-tickets; `.factory/**` (including `instance.yaml`), `agents/**`, `bin/factory`, `pyproject.toml`, `uv.lock`; moving the runtime checkout (operator step 1).
+
+Coverage map:
+  implementer-runs-regression-checks-once → T-0016.1
+  verifier-runs-regression-on-base-only-on-failure → T-0016.1
+  one-run-serves-scenario-and-gate → T-0016.1
+  changed-blocks-copied-verbatim → T-0016.1
+  one-sub-ticket-parent-closes-on-its-verified-run → T-0016.1
+  parent-close-run-still-required-otherwise → T-0016.1
+  rule-recorded-in-design-build-spec-readme-changelog → T-0016.1
+
+Why one sub-ticket. I considered two: the prompt changes (A, B) and the parent-close reuse (C, E). Splitting them does not make review or rollback easier enough to justify a second build:
+- Both halves edit `docs/design.md` and `docs/changelog.md`, so they could not run in parallel.
+- The spec asks for one changelog entry, 45, describing all three changes. With a split, either the first half lands design-doc changes with no changelog entry, which breaks the design doc's own convention if the second half never lands, or the second half rewrites the first half's entry, which changes what the spec asks for.
+- A second sequential build adds about 1,650 to 1,880 s of run time (T-0013 to T-0015) plus a parent-close run. That is the cost this ticket exists to cut.
+
+What I verified, on `main` at `924513e`, read-only:
+- `main` moved from the spec's base `3b87d6c` to `924513e`. `git diff --stat 3b87d6c..HEAD` shows only `.factory/state/**` and `dev/issues.md`, so none of the files this ticket edits changed.
+- Every path and function the spec names exists: `factory/cli.py` defines `ticket_transition` (149), `merge_cmd` (494), `ticket_parent_check` (586), `_parent_close_verified` (860) and `archive_cmd` (880). `store.subtickets_of`, `store.results_for`, `specstore.scenario_names`, `gitops.integration_branch` and `gitops.rev` also exist. `build.js` phase 3 is at lines 217-226. The cited `test_shepherd.py` assertions are at 227-228 and 487-488. Changelog entry 44 is at line 48 and `Declined:` at line 50. The parent-close run is described at `dev/build-harness.spec.md:285`. The README paragraph is at line 94. `tests/factory/test_parent_close_reuse.py` does not exist yet.
+- I ran every scenario's command on this checkout. Each printed the "today" output that `verification.md` gives: the three implementer lines `new=0 after=0 old=1`; the verifier lines `new=0 onfail=0 old=1 defect=1 gate=2|1|1`; all five gate-sharing counts `=0`; `05-implementer verbatim` and `07-verifier verbatim`; `design=0 buildspec=0 readme=0 changelog=missing`. The fixture, extracted verbatim from the pinned spec and run under `mktemp -d`, gave `one: ... reuse=None refused ...` and the three `moved`/`two`/`uncovered` lines exactly as in the REGRESSION THEN. `git status` was unchanged afterwards.
+
+Out-of-scope observations:
+- This sub-ticket's text names all seven of the parent's scenarios. Once the runtime is upgraded, a ticket shaped like this one would close on its sub-ticket's run. T-0016 itself will still get today's parent-close run, because the runtime checkout does not move until operator step 1.
+
+STATUS: PLANNED
+CONFIDENCE: high, every cited path and line exists on current main, every acceptance command reproduces its "today" output, and the spec fits one PR without changing what it asks for.
+ESCALATIONS: none

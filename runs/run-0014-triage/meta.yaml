@@ -1,0 +1,21 @@
+run_id: run-0014-triage
+role: triage
+ticket: T-0001
+model: opus
+round: 0
+spec_version: 0
+started: '2026-10-01T19:35:05+00:00'
+finished: '2026-10-01T19:36:58+00:00'
+wall_s: 113
+status: ACCEPT
+input_sources:
+- requests/T-0001.md
+- runs/run-0001-triage/output.md
+confidence: medium — the cited lines were re-read and the parser was run on this checkout, but A3 (how
+  to tell `none.` from `None of`) is my reading of Answer 1, not a stated rule, and GitHub was not searched
+  for duplicates
+escalations:
+- 'A3: Answer 1''s "whole word `none` (word boundary)" would also match `None of …`, which the same answer
+  says is not none. My working rule is `none`, case-insensitive, followed by end-of-line or punctuation,
+  never by a space and a word. The operator should confirm this at the spec gate, or say if lowercase-only
+  was meant.'

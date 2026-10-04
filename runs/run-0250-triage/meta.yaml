@@ -1,0 +1,22 @@
+run_id: run-0250-triage
+role: triage
+ticket: T-0029
+model: opus
+round: 0
+spec_version: 0
+started: '2026-10-04T20:41:44+00:00'
+finished: '2026-10-04T20:44:08+00:00'
+wall_s: 144
+status: ACCEPT
+input_sources:
+- requests/T-0029.md
+confidence: high. The duplication is visible in the store log on the cited runs, and the prompt text that
+  allows it is confirmed. The only figure I did not re-derive exactly is the retro's 26 of 139.
+escalations:
+- 'The request''s risk argument says the merge gate reads the sub-ticket''s declaration, but the running
+  harness has no protected-path check at merge: `ticket_join` (`factory/cli.py:580-617`) merges on ci
+  PASS, APPROVE and VERIFIED alone, and the piece-8 approval is remote mode, which `README.md` lists as
+  not built. This does not block the ticket. It means the reviewer''s notice, which this ticket keeps,
+  is the operator''s only signal before a declared protected path merges. The spec''s Risk section should
+  say so rather than rely on the gate.'
+escalations_note: null

@@ -1,0 +1,102 @@
+id: T-0012
+type: chore
+title: 'Move the harness into spec-factory and give each target repo a `.factory/` instance (instance
+  B first; carries #7''s harness side)'
+request: requests/T-0012.md
+source: /Users/dphang/dev/spec-factory/intake/requests/19_harness_home.md
+status: closed
+round:
+  spec: 2
+  pr: 0
+spec:
+  version: 3
+  approved_version: 3
+plan: plans/T-0012.md
+in_flight: []
+parked: null
+created: '2026-10-03T06:18:28+00:00'
+history:
+- ts: '2026-10-03T06:20:50+00:00'
+  from: ready-for-triage
+  to: ready-for-spec-writer
+  by: workflow
+  round:
+    spec: 0
+    pr: 0
+- ts: '2026-10-03T06:49:28+00:00'
+  from: ready-for-spec-writer
+  to: ready-for-critic
+  by: workflow
+  round:
+    spec: 1
+    pr: 0
+- ts: '2026-10-03T06:58:44+00:00'
+  from: ready-for-critic
+  to: ready-for-spec-writer
+  by: workflow
+  round:
+    spec: 2
+    pr: 0
+- ts: '2026-10-03T07:04:05+00:00'
+  from: ready-for-spec-writer
+  to: ready-for-critic
+  by: workflow
+  round:
+    spec: 2
+    pr: 0
+- ts: '2026-10-03T07:07:51+00:00'
+  from: ready-for-critic
+  to: awaiting-spec-gate
+  by: workflow
+  round:
+    spec: 2
+    pr: 0
+- ts: '2026-10-03T07:39:06+00:00'
+  from: awaiting-spec-gate
+  to: ready-for-planner
+  by: dphang
+  approved_version: 3
+- ts: '2026-10-03T07:49:09+00:00'
+  from: ready-for-planner
+  to: planned
+  by: workflow
+  round:
+    spec: 2
+    pr: 0
+- ts: '2026-10-03T16:36:13+00:00'
+  from: planned
+  to: ready-for-parent-verify
+  by: parent-check
+- ts: '2026-10-03T16:46:16+00:00'
+  from: ready-for-parent-verify
+  to: parked
+  by: park
+  reason: SPEC-DEFECT from parent-close verifier
+- ts: '2026-10-03T16:46:55+00:00'
+  from: parked
+  to: ready-for-parent-verify
+  by: dphang
+  round:
+    spec: 2
+    pr: 0
+- ts: '2026-10-03T16:58:21+00:00'
+  from: ready-for-parent-verify
+  to: parked
+  by: park
+  reason: 'archive: no spec store (factory init not run)
+
+    {''ok'': false, ''error'': ''no spec store (factory init not run)''}'
+- ts: '2026-10-03T16:58:44+00:00'
+  from: parked
+  to: closed
+  by: dphang
+  resolve: close
+parent: null
+depends_on: []
+parallel_safe: true
+branch: null
+head: null
+merge:
+  base_before: null
+  main_after: null
+parent_base: cdb1c6769ecc39208e62edc65578f62f5a23908f

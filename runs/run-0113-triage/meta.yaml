@@ -1,0 +1,16 @@
+run_id: run-0113-triage
+role: triage
+ticket: T-0014
+model: opus
+round: 0
+spec_version: 0
+started: '2026-10-03T22:08:12+00:00'
+finished: '2026-10-03T22:09:32+00:00'
+wall_s: 80
+status: ACCEPT
+input_sources:
+- requests/T-0014.md
+confidence: 'high. Every evidence claim was checked against `docs/writing.md`, `README.md` and the #23
+  comment. The one stray mapping row has a stated default, and the requester left the mapping to the writer.'
+escalations: []
+escalations_note: null

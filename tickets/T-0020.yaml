@@ -1,0 +1,74 @@
+id: T-0020
+type: feature
+title: Detect a role run that changes a target's listed live files, and add a coding rule against tests
+  that escape a patched path through an import made at collection
+request: requests/T-0020.md
+source: /private/tmp/claude-501/-Users-dphang-dev-nanobot/c69bfd1d-97a6-43e3-9d5a-a517c28d382c/scratchpad/38_tripwire.md
+status: closed
+round:
+  spec: 1
+  pr: 0
+spec:
+  version: 1
+  approved_version: 1
+plan: plans/T-0020.md
+in_flight: []
+parked: null
+created: '2026-10-04T08:36:27+00:00'
+history:
+- ts: '2026-10-04T08:38:30+00:00'
+  from: ready-for-triage
+  to: ready-for-spec-writer
+  by: workflow
+  round:
+    spec: 0
+    pr: 0
+- ts: '2026-10-04T08:54:34+00:00'
+  from: ready-for-spec-writer
+  to: ready-for-critic
+  by: workflow
+  round:
+    spec: 1
+    pr: 0
+- ts: '2026-10-04T08:59:40+00:00'
+  from: ready-for-critic
+  to: awaiting-spec-gate
+  by: workflow
+  round:
+    spec: 1
+    pr: 0
+- ts: '2026-10-04T08:59:49+00:00'
+  from: awaiting-spec-gate
+  to: ready-for-planner
+  by: dphang
+  approved_version: 1
+- ts: '2026-10-04T09:35:49+00:00'
+  from: ready-for-planner
+  to: planned
+  by: workflow
+  round:
+    spec: 1
+    pr: 0
+- ts: '2026-10-04T09:54:16+00:00'
+  from: planned
+  to: ready-for-parent-verify
+  by: parent-check
+- ts: '2026-10-04T09:54:39+00:00'
+  from: ready-for-parent-verify
+  to: parked
+  by: park
+  reason: 'archive: '
+- ts: '2026-10-04T09:54:57+00:00'
+  from: parked
+  to: closed
+  by: dphang
+  resolve: close
+parent: null
+depends_on: []
+parallel_safe: true
+branch: null
+head: null
+merge:
+  base_before: null
+  main_after: null
+parent_base: 02465fa0356b30d72ce6211ea874e230d5113236

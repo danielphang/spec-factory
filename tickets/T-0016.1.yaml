@@ -1,0 +1,48 @@
+id: T-0016.1
+type: sub-ticket
+title: Run REGRESSION checks and gates once, and let a single-sub-ticket parent close on its sub-ticket's
+  VERIFIED run
+request: requests/T-0016.md
+source: plan:run-0138-planner
+status: merged
+round:
+  spec: 0
+  pr: 1
+spec:
+  version: 1
+  approved_version: 1
+plan: null
+in_flight: []
+parked: null
+created: '2026-10-04T05:44:25+00:00'
+history:
+- ts: '2026-10-04T06:01:56+00:00'
+  from: ready-for-implementer
+  to: checks-in-flight
+  by: workflow
+  round:
+    spec: 0
+    pr: 1
+- ts: '2026-10-04T06:09:23+00:00'
+  from: checks-in-flight
+  to: ready-for-merge
+  by: workflow
+  round:
+    spec: 0
+    pr: 1
+- ts: '2026-10-04T06:09:31+00:00'
+  from: ready-for-merge
+  to: merged
+  by: merge
+  head: d45f0601ba30199152da28af556513dd2fc0caf0
+parent: T-0016
+depends_on: []
+parallel_safe: true
+branch: factory/T-0016.1
+head: d45f0601ba30199152da28af556513dd2fc0caf0
+merge:
+  base_before: 924513ecb731b57f4396b602ff31a1169150b3e3
+  main_after: 3bf76422a3e58e1b44c1073213af737842159e2b
+parent_base: null
+label: T-0016.1
+merge_refused: null

@@ -1,0 +1,23 @@
+run_id: run-0154-spec_writer
+role: spec_writer
+ticket: T-0018
+model: opus
+round: 0
+spec_version: 0
+started: '2026-10-04T07:17:45+00:00'
+finished: '2026-10-04T07:33:43+00:00'
+wall_s: 958
+status: READY-FOR-CRITIC
+input_sources:
+- runs/run-0153-triage/output.md
+- requests/T-0018.md
+confidence: 'high. Every NEW scenario was run on `main` at `429d218` and failed as stated, and every REGRESSION
+  scenario passed. The one inference is that an unknown agent type makes `agent()` throw rather than return
+  null; it rests on the #24 symptoms, which the reproduction matches.'
+escalations:
+- 'This change edits protected and guardrail paths: the harness code under `factory/**`, including the
+  verifier''s role prompt, and the generated prompt copy `docs/prompts/07-verifier.md`. The Risk section
+  declares all of them, and the spec gate is pre-approved for #33. Under the same pre-approval policy,
+  the prompt change still needs the operator''s acceptance test before the runtime moves. That test is
+  listed under Operator steps, step 1.'
+escalations_note: null

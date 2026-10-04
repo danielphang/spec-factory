@@ -1,0 +1,31 @@
+run_id: run-0068-reviewer
+role: reviewer
+ticket: T-0012.3
+model: fable
+round: 1
+spec_version: 3
+started: '2026-10-03T08:49:47+00:00'
+finished: '2026-10-03T08:56:45+00:00'
+wall_s: 418
+status: APPROVE
+input_sources:
+- specs/T-0012.3/subticket.md
+- specs/T-0012/v3.md
+- runs/run-0066-implementer/output.md
+- runs/run-0068-reviewer/diff.patch
+environment_files: []
+branch: factory/T-0012.3
+base: 51ea76c94740462b299941d40bf8a431d07ee9ba
+head: f5d820346e2ed3edd2b8d160f280dc02d74d57f1
+worktree: /Users/dphang/dev/spec-factory/intake/state/runs/run-0068-reviewer/wt
+confidence: high. Every acceptance scenario and both gate commands were run from the worktree at f5d8203
+  with bash and printed the expected results; the three NITs are edge behaviours I reproduced, none of
+  which the spec's scenarios or the imported tests reach.
+escalations:
+- 'declared guardrail touches, for the gate''s human approval as the parent Risk lists them: four one-line
+  pointer replacements in `agents/factory-{triage,spec-writer,spec-critic,planner}.md`; `factory/prompts/preamble.md`
+  replaced by the design doc''s block (byte-identical to `docs/prompts/00-preamble.md`); new test files
+  `tests/factory/conftest.py`, `tests/factory/fixtures/instance/*`, `tests/factory/test_instance.py`.
+  No undeclared protected path is touched by the diff; the PR''s disclosed transient write into the worktree''s
+  `intake/state/` copy on the old code was reverted and is absent from `main...HEAD`.'
+escalations_note: null

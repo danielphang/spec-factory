@@ -1,0 +1,19 @@
+run_id: run-0165-spec_writer
+role: spec_writer
+ticket: T-0019
+model: opus
+round: 2
+spec_version: 1
+started: '2026-10-04T08:25:31+00:00'
+finished: '2026-10-04T08:32:38+00:00'
+wall_s: 427
+status: NEEDS-SPLIT
+input_sources:
+- runs/run-0160-triage/output.md
+- requests/T-0019.md
+- runs/run-0164-critic/output.md
+- specs/T-0019/v1.md
+confidence: high; `main` is unchanged since v1, the two re-run checks match, and each critic finding is
+  addressed with the evidence it asked for.
+escalations: []
+escalations_note: null

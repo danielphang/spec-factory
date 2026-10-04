@@ -1,0 +1,47 @@
+id: T-0024.1
+type: sub-ticket
+title: Live-store fence, dispatcher marker and its documents
+request: requests/T-0024.md
+source: plan:run-0234-planner
+status: merged
+round:
+  spec: 0
+  pr: 1
+spec:
+  version: 5
+  approved_version: 5
+plan: null
+in_flight: []
+parked: null
+created: '2026-10-04T19:44:30+00:00'
+history:
+- ts: '2026-10-04T19:59:21+00:00'
+  from: ready-for-implementer
+  to: checks-in-flight
+  by: workflow
+  round:
+    spec: 0
+    pr: 1
+- ts: '2026-10-04T20:12:35+00:00'
+  from: checks-in-flight
+  to: ready-for-merge
+  by: workflow
+  round:
+    spec: 0
+    pr: 1
+- ts: '2026-10-04T20:12:43+00:00'
+  from: ready-for-merge
+  to: merged
+  by: merge
+  head: 74bc15d3dfae4cb43242ab567558b4a728e779f4
+parent: T-0024
+depends_on: []
+parallel_safe: true
+branch: factory/T-0024.1
+head: 74bc15d3dfae4cb43242ab567558b4a728e779f4
+merge:
+  base_before: d2a51436922119790099d7c6ea6cb8f59bb87b9f
+  main_after: 4f8f1d5f32ac4d3528d7c1e4dfd1472ec6ba9ccb
+parent_base: null
+label: T-0024-1
+merge_refused: null

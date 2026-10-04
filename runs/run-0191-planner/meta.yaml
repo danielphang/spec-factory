@@ -1,0 +1,18 @@
+run_id: run-0191-planner
+role: planner
+ticket: T-0021
+model: opus
+round: 2
+spec_version: 2
+started: '2026-10-04T12:39:48+00:00'
+finished: '2026-10-04T12:42:06+00:00'
+wall_s: 138
+status: PLANNED
+input_sources:
+- specs/T-0021/v2.md
+confidence: high. The parent is one PR in size, and its parts depend on each other. I re-checked every
+  anchor it names on `main` at `a32f90e`, where the harness, tests and documents have not changed since
+  the spec's base `d15d833`. I did not run the scenarios myself; the spec writer ran them on `d15d833`
+  and on a prototype.
+escalations: []
+escalations_note: null

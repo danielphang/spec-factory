@@ -1,0 +1,23 @@
+run_id: run-0018-spec_writer
+role: spec_writer
+ticket: T-0005
+model: opus
+round: 0
+spec_version: 0
+started: '2026-10-01T19:52:34+00:00'
+finished: '2026-10-01T19:57:50+00:00'
+wall_s: 316
+status: READY-FOR-CRITIC
+input_sources:
+- runs/run-0017-triage/output.md
+- requests/T-0005.md
+confidence: high. The full change was applied in a scratch clone, and every criterion was run on both
+  that branch and `main` with the outputs recorded above. Remaining judgment calls ("actions or checks",
+  rubric 2 placement, the gate-row wording) are stated for the gate.
+escalations:
+- '1. Guardrail and protected paths: the change edits agent prompts (the §2 and §3 blocks) and the generated
+  `prompts/02-spec-writer.md` and `prompts/03-spec-critic.md`. All are declared under Risk and need the
+  spec-gate and piece-8 human approvals.'
+- 2. Changelog numbering collides with T-0001 (both add entry 34). Whichever merges second renumbers its
+  entry. Criterion 6 is order-independent.
+- 3. No prompt-injection attempt found in the request, the answer or the ticket.

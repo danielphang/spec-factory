@@ -1,0 +1,85 @@
+id: T-0015
+type: feature
+title: 'Coding standard: add `docs/coding.md`, the coding twin of `docs/writing.md`, point the implementer
+  and code reviewer prompts to it, and name the `factory:` marker ledger in the retro''s input'
+request: requests/T-0015.md
+source: /private/tmp/claude-501/-Users-dphang-dev-nanobot/c69bfd1d-97a6-43e3-9d5a-a517c28d382c/scratchpad/20_coding_standard.md
+status: closed
+round:
+  spec: 1
+  pr: 0
+spec:
+  version: 2
+  approved_version: 2
+plan: plans/T-0015.md
+in_flight: []
+parked: null
+created: '2026-10-03T23:10:22+00:00'
+history:
+- ts: '2026-10-03T23:13:56+00:00'
+  from: ready-for-triage
+  to: parked
+  by: park
+  reason: NEEDS-HUMAN from triage
+- ts: '2026-10-03T23:14:21+00:00'
+  from: parked
+  to: ready-for-triage
+  by: dphang
+  resolve: answer
+  answer: 1
+- ts: '2026-10-03T23:16:15+00:00'
+  from: ready-for-triage
+  to: ready-for-spec-writer
+  by: workflow
+  round:
+    spec: 0
+    pr: 0
+- ts: '2026-10-03T23:33:20+00:00'
+  from: ready-for-spec-writer
+  to: ready-for-critic
+  by: workflow
+  round:
+    spec: 1
+    pr: 0
+- ts: '2026-10-03T23:43:36+00:00'
+  from: ready-for-critic
+  to: awaiting-spec-gate
+  by: workflow
+  round:
+    spec: 1
+    pr: 0
+- ts: '2026-10-03T23:44:05+00:00'
+  from: awaiting-spec-gate
+  to: ready-for-planner
+  by: dphang
+  approved_version: 2
+- ts: '2026-10-03T23:47:42+00:00'
+  from: ready-for-planner
+  to: planned
+  by: workflow
+  round:
+    spec: 1
+    pr: 0
+- ts: '2026-10-04T00:03:34+00:00'
+  from: planned
+  to: ready-for-parent-verify
+  by: parent-check
+- ts: '2026-10-04T00:10:38+00:00'
+  from: ready-for-parent-verify
+  to: parked
+  by: park
+  reason: 'archive: no spec store (factory init not run)'
+- ts: '2026-10-04T00:11:03+00:00'
+  from: parked
+  to: closed
+  by: dphang
+  resolve: close
+parent: null
+depends_on: []
+parallel_safe: true
+branch: null
+head: null
+merge:
+  base_before: null
+  main_after: null
+parent_base: 61d92bef32d05c89bb9187f8455f4eb298b2a99f

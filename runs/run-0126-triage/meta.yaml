@@ -1,0 +1,17 @@
+run_id: run-0126-triage
+role: triage
+ticket: T-0015
+model: opus
+round: 0
+spec_version: 0
+started: '2026-10-03T23:10:51+00:00'
+finished: '2026-10-03T23:13:46+00:00'
+wall_s: 175
+status: NEEDS-HUMAN
+input_sources:
+- requests/T-0015.md
+confidence: medium. The deliverable and the wiring are clear and checked against the tree. Part E's sentence
+  supports two readings, and they differ in whether this is a documentation-only ticket or also touches
+  harness code.
+escalations: []
+escalations_note: null

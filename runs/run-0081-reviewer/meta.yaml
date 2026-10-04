@@ -1,0 +1,24 @@
+run_id: run-0081-reviewer
+role: reviewer
+ticket: T-0012.4
+model: fable
+round: 1
+spec_version: 3
+started: '2026-10-03T14:48:47+00:00'
+finished: '2026-10-03T14:56:00+00:00'
+wall_s: 433
+status: APPROVE
+input_sources:
+- specs/T-0012.4/subticket.md
+- specs/T-0012/v3.md
+- runs/run-0075-implementer/output.md
+- runs/run-0081-reviewer/diff.patch
+environment_files: []
+branch: factory/T-0012.4
+base: 68e89456939ac7939ef659975dfbb37812bd6f83
+head: 010d1b00c5835c7022a72771c63f63f8b6ab3707
+worktree: /Users/dphang/dev/spec-factory/intake/state/runs/run-0081-reviewer/wt
+confidence: high. Every C scenario and both gates reproduced on the head commit; the new tests are red
+  at base (18/24) and green at head; the only existing-test change is the operator's ruled line.
+escalations: []
+escalations_note: null

@@ -1,0 +1,69 @@
+id: T-0014.1
+type: sub-ticket
+title: Add rules 9–12 and code counterpart lines to the writing standard
+request: requests/T-0014.md
+source: plan:/Users/dphang/dev/spec-factory/.factory/answers/T-0014-plan-normalised.md
+status: merged
+round:
+  spec: 0
+  pr: 1
+spec:
+  version: 3
+  approved_version: 3
+plan: null
+in_flight: []
+parked: null
+created: '2026-10-03T22:27:49+00:00'
+history:
+- ts: '2026-10-03T22:32:30+00:00'
+  from: ready-for-implementer
+  to: checks-in-flight
+  by: workflow
+  round:
+    spec: 0
+    pr: 1
+- ts: '2026-10-03T22:38:56+00:00'
+  from: checks-in-flight
+  to: ready-for-merge
+  by: workflow
+  round:
+    spec: 0
+    pr: 1
+- ts: '2026-10-03T22:39:20+00:00'
+  from: ready-for-merge
+  to: ready-for-implementer
+  by: workflow
+  round:
+    spec: 0
+    pr: 1
+- ts: '2026-10-03T22:42:52+00:00'
+  from: ready-for-implementer
+  to: checks-in-flight
+  by: workflow
+  round:
+    spec: 0
+    pr: 1
+- ts: '2026-10-03T22:49:10+00:00'
+  from: checks-in-flight
+  to: ready-for-merge
+  by: workflow
+  round:
+    spec: 0
+    pr: 1
+- ts: '2026-10-03T22:49:20+00:00'
+  from: ready-for-merge
+  to: merged
+  by: merge
+  head: 89e8b7d3ec7536f788d449d009f28df44fed3c1a
+parent: T-0014
+depends_on: []
+parallel_safe: true
+branch: factory/T-0014.1
+head: 89e8b7d3ec7536f788d449d009f28df44fed3c1a
+merge:
+  base_before: 431e3492d977c01f5ac3252f94b6f40f08b6c043
+  main_after: fcc87564a0b3d9a07741c959676d28aa7d06d46a
+parent_base: null
+label: ST-1
+merge_refused: null
+conflict_runs: 0

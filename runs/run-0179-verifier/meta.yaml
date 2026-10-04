@@ -1,0 +1,35 @@
+run_id: run-0179-verifier
+role: verifier
+ticket: T-0019.2
+model: opus
+round: 2
+spec_version: 2
+started: '2026-10-04T09:16:24+00:00'
+finished: '2026-10-04T09:22:44+00:00'
+wall_s: 380
+status: VERIFIED
+input_sources:
+- specs/T-0019.2/subticket.md
+- specs/T-0019/v2.md
+- runs/run-0177-implementer/output.md
+- runs/run-0179-verifier/diff.patch
+- runs/run-0176-reviewer/output.md
+- runs/run-0175-verifier/output.md
+environment_files: []
+branch: factory/T-0019.2
+base: 9853737e24b2acdc001546b399d2a5a8c3dd6d85
+head: 9300012d8c63e1304d27b0c47415928a6eb9d840
+worktree: /Users/dphang/dev/spec-factory/.factory/state/runs/run-0179-verifier/wt
+confidence: high. I ran every acceptance command on this head with the fixture written verbatim, ran every
+  NEW command on base, and both gate commands passed exactly as written. The probes show the parser change
+  is general.
+escalations:
+- An empty `Depends on:` line passes the new check. The new rule refuses a sub-ticket with no `Depends
+  on:` line, but a bare `- Depends on:` still counts as "none", because of the existing `NONE_RE` empty-value
+  rule. A planner that leaves the value blank still gets no dependencies without a word. The spec does
+  not cover this case. The operator decides whether a later ticket should refuse it.
+- A bulleted `Depends on:` line nested in a sub-ticket's Acceptance list is read as the field, as the
+  PR's Known gaps says. It can also stand in for a missing top-level line, so that sub-ticket is not refused.
+- 'Protected paths touched, all declared by the sub-ticket: harness `factory/subtickets.py` and `factory/prompts/planner.md`,
+  and generated `docs/prompts/04-planner.md`. The merge gate needs a human approval for them.'
+escalations_note: null

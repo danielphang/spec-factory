@@ -1,0 +1,36 @@
+run_id: run-0193-verifier
+role: verifier
+ticket: T-0021.1
+model: fable
+round: 1
+spec_version: 2
+started: '2026-10-04T12:51:29+00:00'
+finished: '2026-10-04T13:02:28+00:00'
+wall_s: 659
+status: VERIFIED
+input_sources:
+- specs/T-0021.1/subticket.md
+- specs/T-0021/v2.md
+- runs/run-0192-implementer/output.md
+- runs/run-0193-verifier/diff.patch
+environment_files: []
+branch: factory/T-0021.1
+base: a32f90e8495bb8574110954fd9b18767ea6a0d41
+head: 82d516be16b1e7590150012e0299669604b4e9a7
+worktree: /Users/dphang/dev/spec-factory/.factory/state/runs/run-0193-verifier/wt
+confidence: high. Every acceptance command printed its THEN text on the PR head and every NEW scenario
+  failed on the base clone for the reason the parent's verification.md states; both gates passed with
+  recorded exit 0; probes beyond the tested inputs behaved as the design says, with the one failure being
+  a gap the PR already declares.
+escalations:
+- 'Label nit, no action needed to merge: the intermediate check "a refused `run start` leaves no `runs/`
+  entry" is marked NEW, but the refusal behaviour exists on base (item 70 of the build spec); with the
+  new test file placed on the base clone that one test passes there. What is new is the file and its assertion
+  that no `scratch/` appears, which the criterion also asks for. The sub-ticket itself says the parent
+  has no scenario for it, so I report it rather than call it a SPEC-DEFECT.'
+- 'Declared gap, confirmed by probe: a read-only directory inside a finished run''s scratch makes `clear_scratch`
+  raise after the ticket''s new status is written, so the state-changing command exits 1 with the state
+  change already done and the scratch kept. The PR''s Known gaps names this and marks the code `factory:`.
+  A workflow script that treats that exit 1 as a failed transition would see a ticket already moved on.
+  Outside this sub-ticket''s criteria; flagged for whoever picks up the marker.'
+escalations_note: null

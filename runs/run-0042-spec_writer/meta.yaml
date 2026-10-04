@@ -1,0 +1,18 @@
+run_id: run-0042-spec_writer
+role: spec_writer
+ticket: T-0010
+model: opus
+round: 0
+spec_version: 0
+started: '2026-10-02T06:31:00+00:00'
+finished: '2026-10-02T06:35:46+00:00'
+wall_s: 286
+status: READY-FOR-CRITIC
+input_sources:
+- runs/run-0041-triage/output.md
+- requests/T-0010.md
+confidence: high, because every anchor line, today value and reference-harness refusal was read on this
+  checkout (`555c119`) and on green (`0a5eb7238`, `820290e0d`); medium only on item 91's setup wording,
+  which is new test prose not run against a harness.
+escalations: []
+escalations_note: null

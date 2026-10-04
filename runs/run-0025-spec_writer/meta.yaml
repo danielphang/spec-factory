@@ -1,0 +1,18 @@
+run_id: run-0025-spec_writer
+role: spec_writer
+ticket: T-0007
+model: opus
+round: 0
+spec_version: 1
+started: '2026-10-01T20:34:55+00:00'
+finished: '2026-10-01T20:37:55+00:00'
+wall_s: 180
+status: READY-FOR-CRITIC
+input_sources:
+- runs/run-0023-triage/output.md
+- requests/T-0007.md
+confidence: high. I re-applied A–D on a fresh clone of `main` `172a71e` and ran all 13 criteria on both.
+  I re-read the cited lines of both documents, the reference composer on `feat/lionbot-v3` (unchanged
+  since the intake pin) and this run's own input and meta, and checked the other pending specs' Changelog
+  and build-spec edits.
+escalations: []

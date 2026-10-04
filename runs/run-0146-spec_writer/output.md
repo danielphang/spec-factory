@@ -1,0 +1,299 @@
+=== proposal.md
+## Problem
+
+The factory forgets a standing rule that a human sets when answering one of its questions, so later tickets that depend on the rule are written without it. This hurts the AI agents that write, review and plan specs for those later tickets, and the operator, who today copies each such rule by hand into every request it affects.
+
+Some background. The factory is a pipeline of AI agents, each with one fixed role, that turns a written request (a ticket) into merged code. The harness is the code that runs the pipeline and keeps its records. The harness keeps a decision log, `decisions.md`: one file per target repository, holding one dated line per decision, each tagged with the ticket that made it. The log has two gaps.
+
+1. Only one step writes it. That step is archive, which runs when a finished ticket closes. Archive folds the ticket's approved spec into the repository's record of how the system behaves now, and copies the spec's Decisions section into the log. A decision made in any other way is never logged. The common case is a ticket that exists only to get a decision. An agent parks the ticket with a question for a human (the NEEDS-HUMAN status), the human answers, and the ticket closes without building anything. Archive never runs, so the answer stays in that one ticket's request file.
+2. No agent receives the log. The harness builds each agent's input from a fixed list of files, and `decisions.md` is not on that list. Three agents need it: the spec writer (writes the spec), the critic (reviews the spec) and the planner (splits an approved spec into pieces that merge separately). Today they see a logged decision only if one of them happens to open the file.
+
+This change does three things. It lets the human log a decision at any point in a ticket's life. It gives the log to those three agents. And it makes the agents' questions to a human ask whether the answer is a standing decision.
+
+The pieces it adds have these names. `factory` is the harness's command line. `resolve` is the existing `factory` command a human runs to unstick a parked ticket: `--answer` answers its question, and `--close` closes it. The change adds a new command, `factory decision add <ticket> "<line>"`, and a new `--decision "<line>"` flag on `resolve --answer` and `resolve --close`; each appends one line to `decisions.md`. Each target keeps its records in a store, a directory of tickets, requests, run inputs and logs. `factory init` is the command that adds the spec tree to a store: the directory of current-truth specs that archive updates, plus an empty `decisions.md`. The new command and flag do not need `factory init` to have run.
+
+## Evidence
+
+Every command below ran from `~/dev/spec-factory` on `main` at `9a48194` (round 1); `main` is now at `98b9b31`, which differs only in `dev/issues.md` (`git diff --stat 9a48194 98b9b31`), so every observation holds. Commands ran against a throwaway store (`FACTORY_STATE` under `mktemp -d`). The live store was not touched.
+
+- No command logs a decision. `bin/factory decision add T-0001 "…"` printed `factory: error: argument cmd: invalid choice: 'decision'` and exited 2. `bin/factory resolve T-0001 --close --decision "…"` printed `factory: error: unrecognized arguments: --decision …` and exited 2. Answering or closing a ticket cannot log what was decided.
+- Archive is the only writer. `grep -rn decisions factory/` matches only `factory/specstore.py`. `init` creates an empty file at lines 67-70. `archive` appends at lines 328-333. The docstring at line 6 says "Only `archive` writes current truth and `decisions.md`."
+- No agent receives the log. The scenario "Spec writer, critic and planner receive the decision log" (fixture: a store holding one current-truth spec and a `decisions.md` with one line containing `SENTINEL`) printed these input sources today:
+  - triage `['requests/T-0001.md']`
+  - spec_writer `['requests/T-0001.md', 'openspec/specs/thing/spec.md']`
+  - critic `['specs/T-0001/v1.md', 'openspec/specs/thing/spec.md']`
+  - planner `['specs/T-0001/v1.md']`
+
+  Each role's input printed `in_input=0`: the logged line reaches none of them.
+- The agents' questions do not ask whether an answer is standing. `grep 'standing decision'` finds nothing in the triage or spec-writer system prompt of a started run, or in `docs/prompts/01-triage.md` or `docs/prompts/02-spec-writer.md`. The triage prompt says only "Write the decision as one question with 2-3 concrete options."
+- The design states the current rule. `docs/design.md` line 82 says "Only the archive step writes current truth and `decisions.md`." Line 97 says that a parent closed as applied leaves "Current truth and `decisions.md` … not updated". `dev/build-harness.spec.md` line 193 says "only `factory archive` (K) writes `openspec/specs/` and `decisions.md`", and line 315 repeats the closed-as-applied rule.
+- The real case, in the Nanobot target's store (read only, `~/dev/nanobot-upstream/.factory/state`). Ticket T-0003 asked only for a decision about where the port's code lives. Its history shows: parked, then `to: ready-for-triage`, `by: dphang`, `resolve: answer`, then `to: closed`, `by: workflow`. Its request file `requests/T-0003.md` says, in Answer 1, "Close it as a recorded decision so that T-0011 (SPEC-06) and T-0013 (BUG-03) build on it." When this request was triaged, after T-0003 had closed, that store's `decisions.md` was 0 bytes (triage's `wc -c`). It has grown since: today `wc -l` prints `4`, all four lines dated `2026-10-04` and tagged `T-0012`, appended by archive when T-0012 closed; `grep -c T-0003` on it prints `0`, so T-0003's decision is still not logged. `requests/T-0011.md` and `requests/T-0013.md` each carry one hand-added paragraph headed "Port decision that binds this ticket (added by the v3.5 driver, 2026-10-04)" (`grep -c` prints `1` for each).
+- Who runs `resolve`. No workflow script calls it: `grep -n resolve factory/workflows/*.js` matches nothing. T-0003's history records `by: dphang`. So the human, or the operator's session acting for them, runs `resolve`. The clerk (the small agent a workflow uses to run one store command) never does.
+- The suite is green on base: `uv run --frozen pytest -q -p no:cacheprovider tests/factory` printed `136 passed` (re-run on `98b9b31`: `136 passed in 212.52s`).
+
+## Root cause
+
+- `factory/specstore.py` `archive()` (lines 310-336) is the only code that appends to `decisions.md`. `init()` (lines 55-71) creates the file empty.
+- `factory/compose.py` `compose()` (lines 52-169) has no source for `decisions.md`. The spec writer and critic get current truth through `add_truth()` (lines 68-70, called at 81 and 98). The planner gets the approved spec and any ruling (lines 106-112).
+- `factory/cli.py` `resolve()` (lines 675-742) and its parser (lines 1075-1082) have no decision argument. No `decision` command exists in `build_parser()`.
+- The triage and spec-writer prompt blocks in `docs/design.md` (§1 Triage, §2 Spec writer), their copies in `docs/prompts/01-triage.md` and `02-spec-writer.md`, and the harness prompts `factory/prompts/triage.md` and `spec_writer.md` never ask whether an answer is standing.
+
+## Out of scope
+
+- Backfilling past answers. Each store's operator does that by hand with the new command, if they choose (Operator steps).
+- A new triage status.
+- Giving the log to triage, implementer, reviewer or verifier. The request names three roles. Triage not seeing standing decisions is noted under Out-of-scope observations.
+- Recording a decision from `resolve --ruling`, `--to spec-gate` or `--redispatch`. These refuse `--decision` instead of ignoring it.
+- What archive writes and when. Its line format, refusals and current-truth behaviour do not change.
+- The harness lock, the routing rules, the merge gate, the gate commands.
+
+## Open questions
+
+none
+
+## Decisions
+
+- When `decisions.md` does not exist, `factory decision add` and `resolve --decision` create it. The decision log does not depend on the spec tree. Rejected: refusing with "no spec store" as archive does. Archive refuses there only because it must apply the spec's changes to the spec tree, and a refusal would leave every store that never ran `factory init` (this repo's among them) with no way to log a decision.
+- A logged line has archive's shape, `<YYYY-MM-DD> <ticket id> <text>`, with the UTC date and the text stripped of surrounding whitespace. There is one log format, whichever step writes it.
+- The text must be one non-blank line, and the ticket must exist; otherwise the command exits 2 and writes nothing. A line break would break one line per decision.
+- A decision may be logged against a ticket in any state, closed included. Closed is where T-0003's decision ended up.
+- `--decision` is accepted only with `--answer` or `--close`. With any other `resolve` mode (`--ruling`, which answers an escalation; `--to spec-gate`, which sends the ticket back to the human's spec approval; `--redispatch`, which re-runs the checks), or alone, it exits 2 and writes nothing, so a decision is never silently dropped. It is logged only after that mode's own checks pass: a refused `resolve` writes no decision.
+- The human who runs `resolve` decides whether an answer is standing, and passes `--decision`. The harness never infers a decision from the answer file. Rejected: parsing a marker line out of the answer file, which ties a free-text file to the store and silently misses a mistyped marker.
+- An empty or whitespace-only `decisions.md` is not given to any role. It carries nothing, and the empty file `factory init` creates would otherwise add an empty section to every input.
+- The spec writer and critic get the log right after current truth. The planner gets it right after the approved spec, before any ruling.
+- Each logged decision also writes the event `decision.recorded` (ticket, who, the text, and which command logged it) to the harness's append-only event log. When `resolve` logs it, the decision is also kept in the record `resolve` writes for each call and in the ticket's history. The log file itself does not say who decided.
+
+## Risk
+
+Blast radius: every spec writer, critic and planner run in every target whose `decisions.md` is non-empty gets one more input section. In the Nanobot target that is immediate: its log holds four lines (from T-0012's archive), so from the first run after the runtime moves, its spec writer, critic and planner each receive those four lines. This repo has no `decisions.md`, so its runs change only once a decision is logged here. Each decision costs one line of input tokens per run, for those three roles. `resolve` gains an optional flag, and its existing modes behave as before without it. Archive's behaviour does not change.
+
+Protected and guardrail paths this touches:
+- harness (`factory/**`): `factory/cli.py`, `factory/compose.py`, `factory/specstore.py`, and the agent prompts `factory/prompts/triage.md` and `factory/prompts/spec_writer.md`. The ticket's part C asks for the prompt change.
+- generated (`docs/prompts/**`): `docs/prompts/01-triage.md` and `docs/prompts/02-spec-writer.md`, each re-copied from its changed `docs/design.md` block, never edited by hand.
+
+Also changed (not protected): `docs/design.md`, `docs/changelog.md`, `dev/build-harness.spec.md`, `README.md`, and one new test file under `tests/factory/`. Not touched: `.factory/**`, `bin/factory`, `agents/**`, `pyproject.toml`, `uv.lock`, `~/dev/nanobot-upstream/**`, `~/.nanobot/**`.
+
+Rollback: move the runtime back to the previous harness revision. Lines already logged stay in `decisions.md`, in the same format archive writes.
+
+## Operator steps
+
+1. The runtime is the separate checkout, `~/dev/spec-factory-harness`, pinned to the harness revision that actually runs tickets; merging this change does not move it. The pre-approval policy (`.factory/answers/queue-preapproval-policy.md`) lets small changes pass the spec gate without you, but keeps your acceptance test for any prompt change before the runtime moves. So, before the runtime moves to this revision, run that test on the prompt change (part C): read the new NEEDS-HUMAN wording in `factory/prompts/triage.md` and `factory/prompts/spec_writer.md`.
+2. Optional, per store, after the runtime moves: backfill decisions you want later tickets to see. For the Nanobot store that means running `factory decision add T-0003 "<the decision as one line>"` from `~/dev/nanobot-upstream`, and then deciding whether to remove the hand-added paragraphs in T-0011's and T-0013's requests.
+
+## Out-of-scope observations
+
+- Triage does not receive the log. A triage run can therefore re-ask a question that a standing decision already settled. The request does not ask for this.
+- Two other queued requests also change what each role receives from the same function, `compose()` in `factory/compose.py`: #24 (role-specific inputs) and #27 (roles never see a request's attachments). If they are built close together, they will conflict there.
+- `dev/build-harness.spec.md` line 207 lists the operator commands that need `FACTORY_KEY`, and this tree does not implement that check. This spec does not add `decision add` to that list.
+
+=== design.md
+## Proposed change
+
+**A. Log a decision at any ticket state** (`factory/specstore.py`, `factory/cli.py`).
+1. Add `specstore.record_decision(root, tid, text, today=None) -> str`. It strips `text`, raises `store.Refused` when the result is empty or contains a line break, and builds `f"{date} {tid} {text}"` with the UTC date archive uses. It appends that line plus a newline to `root / "decisions.md"`, creating the file and its parent if absent, and returns the line. Make `archive()` append each Decisions line through it (same date, same format), so that one function writes the log. Update the module docstring (line 6): archive is the only writer of current truth, and archive, `decision add` and `resolve --decision` write `decisions.md`.
+2. New command `factory decision add ID TEXT` (a `decision` subparser with `add`, positional `id` and `text`). It loads the ticket (an unknown id refuses with `no ticket ID`), with no check on its state, then calls `record_decision`. It logs event `decision.recorded` with `ticket`, `by=_by()`, `line`, `via="decision add"`, and prints `{"ok": true, "id": ..., "decision": <line>}`.
+3. `resolve` gets `--decision TEXT`. At the top of `resolve()`, before anything is written: if `--decision` is given without `--answer` or `--close`, refuse with `--decision applies only with --answer or --close`. Also validate the text, by calling the same strip and one-line check before any write, so that a bad text refuses before the answer is appended. In the `--answer` and `--close` branches, once that branch's own refusals have passed, call `record_decision`, log `decision.recorded` with `via="resolve --answer"` or `"resolve --close"`, and pass `{"decision": <line>}` in the `extra` given to `move()`. The line then lands in the ticket history, the `resolve-<n>.yaml` record and the printed result. Without `--decision`, every branch behaves exactly as today.
+
+**B. Give the log to the spec writer, critic and planner** (`factory/compose.py`).
+Add an `add_decisions()` beside `add_truth()`. When `root / "decisions.md"` exists and holds non-whitespace text, it adds that file under the heading `Decision log (decisions.md): standing decisions, read-only`, with source `decisions.md`. It adds nothing otherwise. Call it right after `add_truth()` in the `spec_writer` and `critic` branches, and right after the approved spec in the `planner` branch, before the rulings loop. Triage and the build roles are unchanged.
+
+**C. Questions to a human ask whether the answer is standing** (`docs/design.md` §1 and §2 blocks, then copies).
+1. `docs/design.md` §1 Triage, step 3, the NEEDS-HUMAN item becomes:
+   ```
+      - NEEDS-HUMAN: it needs a product, priority, or design call. Write the
+        decision as one question with 2-3 concrete options, and ask whether
+        the answer is a standing decision that later tickets must follow.
+   ```
+2. `docs/design.md` §2 Spec writer, the "Open questions stay open" rule becomes:
+   ```
+   - Open questions stay open. Don't resolve product or design ambiguity
+     yourself; list it, and the spec goes to NEEDS-HUMAN. For each open
+     question, ask whether the answer is a standing decision that later
+     tickets must follow.
+   ```
+3. Re-copy each changed block verbatim to `docs/prompts/01-triage.md` and `docs/prompts/02-spec-writer.md`. Make the same edit in `factory/prompts/triage.md` and `factory/prompts/spec_writer.md`, keeping their existing differences from the copies: the "Acceptance items describe behaviour" rule, and `400` in place of `{400}`.
+
+**D. Documents** (`docs/design.md`, `dev/build-harness.spec.md`, `docs/changelog.md`, `README.md`).
+1. `docs/design.md` line 82: replace "Only the archive step writes current truth and `decisions.md`." with text saying that only archive writes current truth, and that `decisions.md` has three writers: archive, `factory decision add <ticket id> "<line>"` at any ticket state, and `resolve --answer` or `--close` with `--decision "<line>"`. Each appends `<YYYY-MM-DD> <ticket id> <line>`. Extend the sentence on what the spec writer and critic receive: they and the planner also receive a non-empty `decisions.md`. Line 97: archive appends nothing to `decisions.md` for a parent closed as applied, and the human logs any decision with `factory decision add`. Resolution list, the "A question returns to the role that asked" item: when the answer is a standing decision, the human passes `--decision`. Routing table "Receives": add "the decision log" to the Triage ACCEPT → Spec writer row, the Spec writer READY-FOR-CRITIC → Critic row and the Human spec gate Approved → Planner row.
+2. `dev/build-harness.spec.md`: at line 193, replace "only `factory archive` (K) writes `openspec/specs/` and `decisions.md`" with the same three-writer rule, naming `factory decision add`. At line 314, add `--decision TEXT` to the `resolve` synopsis, with its one-line effect and refusals. At line 315, apply line 97's change. Add `decision.recorded` to the event list at line 211.
+3. `docs/changelog.md`: entry `46.` before "Declined:", in the existing style. It says why (a decision answered at a park and then closed without archive was lost, from the Nanobot T-0003 case), and what changed: the second writer of `decisions.md`, the three roles that receive it, and the question wording.
+4. `README.md`, "Where a human decides": add `--decision "<line>"` to the Unstick row, valid with `--answer` or `--close`. Add a row **Record**: `factory decision add T-n "<line>"`, deciding "that a decision binds later tickets". In "Maintaining this page", the "Where a human decides" source-of-truth row: add "the `decision` subparser" to the arguments it lists, and `… decision add --help` to its re-derive column. Bump the status-header date, per "Maintaining this page".
+
+**E. Tests** (new file `tests/factory/test_decision_log.py`, black-box through `bin/factory` on a `FACTORY_STATE` throwaway store, as `tests/factory/test_spec_store.py` does). Cover the scenarios of parts A and B, and the design-block-equals-copy check for §1 and §2. No existing test changes.
+
+## Tests to change
+
+none. Existing tests that assert exact input sources (`tests/factory/test_shepherd.py` lines 48, 54 and 69; `tests/factory/test_spec_store.py` lines 60, 66 and 71; `tests/factory/test_p0_cli.py` lines 108, 153 and 172) run on stores with no `decisions.md`, or with the empty one `factory init` creates. Decision B adds no source for either.
+
+=== specs/decision-log/spec.md
+## ADDED Requirements
+
+### Requirement: A decision can be logged against a ticket in any state
+`factory decision add <ticket id> "<text>"` SHALL append one line `<UTC YYYY-MM-DD> <ticket id> <text, stripped>` to the store's `decisions.md`, creating the file when absent, for a ticket in any state, and SHALL log one `decision.recorded` event per line.
+
+#### Scenario: Decision logged against a closed ticket
+- WHEN this is run with bash from `~/dev/spec-factory`:
+  ```
+  ( H=$PWD; T=$(mktemp -d); export FACTORY_STATE=$T/s PYTHONDONTWRITEBYTECODE=1; f() { "$H/bin/factory" "$@"; }; printf '# demo\n\nDo it.\n' > $T/r.md; f ticket new --file $T/r.md >/dev/null; f resolve T-0001 --close >/dev/null; f decision add T-0001 "Lionbot code lives under lionbot/" >/dev/null 2>&1; echo "first=$? state=$(sed -n 's/^status: //p' $FACTORY_STATE/tickets/T-0001.yaml)"; f decision add T-0001 "  Second rule  " >/dev/null 2>&1; echo "second=$?"; sed "s/^$(date -u +%F) /TODAY /" $FACTORY_STATE/decisions.md 2>/dev/null; echo "events=$(f log tail -n 50 --event decision.recorded | wc -l | tr -d ' ')"; rm -rf $T )
+  ```
+- THEN it prints exactly:
+  ```
+  first=0 state=closed
+  second=0
+  TODAY T-0001 Lionbot code lives under lionbot/
+  TODAY T-0001 Second rule
+  events=2
+  ```
+
+### Requirement: A bad decision is refused and writes nothing
+`factory decision add` MUST exit 2 and leave `decisions.md` unchanged when the ticket does not exist or the text is blank or spans more than one line.
+
+#### Scenario: Unknown ticket, blank text and multi-line text are refused
+- WHEN this is run with bash from `~/dev/spec-factory`:
+  ```
+  ( H=$PWD; T=$(mktemp -d); export FACTORY_STATE=$T/s PYTHONDONTWRITEBYTECODE=1; f() { "$H/bin/factory" "$@"; }; printf '# demo\n\nDo it.\n' > $T/r.md; f ticket new --file $T/r.md >/dev/null; f decision add T-0009 "x" >/dev/null 2>&1; a=$?; f decision add T-0001 "  " >/dev/null 2>&1; b=$?; f decision add T-0001 "$(printf 'one\ntwo')" >/dev/null 2>&1; c=$?; echo "unknown=$a blank=$b multiline=$c lines=$(cat $FACTORY_STATE/decisions.md 2>/dev/null | wc -l | tr -d ' ')"; f decision add T-0001 "one" >/dev/null 2>&1; echo "valid=$? lines=$(cat $FACTORY_STATE/decisions.md 2>/dev/null | wc -l | tr -d ' ')"; rm -rf $T )
+  ```
+- THEN it prints exactly:
+  ```
+  unknown=2 blank=2 multiline=2 lines=0
+  valid=0 lines=1
+  ```
+
+### Requirement: Answering or closing a ticket can log a decision
+`factory resolve <id> --answer F --decision "<text>"` and `factory resolve <id> --close --decision "<text>"` SHALL do what they do without `--decision`, and SHALL also append the decision line in the same format.
+
+#### Scenario: Answer and close each log a decision
+- WHEN this is run with bash from `~/dev/spec-factory`:
+  ```
+  ( H=$PWD; T=$(mktemp -d); export FACTORY_STATE=$T/s PYTHONDONTWRITEBYTECODE=1; f() { "$H/bin/factory" "$@"; }; st() { sed -n 's/^status: //p' $FACTORY_STATE/tickets/T-0001.yaml; }; printf '# demo\n\nDo it.\n' > $T/r.md; printf 'Use option B.\n' > $T/a.md; f ticket new --file $T/r.md >/dev/null; f ticket park T-0001 --reason "NEEDS-HUMAN from triage" >/dev/null; f resolve T-0001 --answer $T/a.md --decision "Option B is the standing rule" >/dev/null 2>&1; echo "answer=$? state=$(st) answers=$(grep -c '^## Answer ' $FACTORY_STATE/requests/T-0001.md)"; f resolve T-0001 --close --decision "Closed as a recorded decision" >/dev/null 2>&1; echo "close=$? state=$(st)"; sed "s/^$(date -u +%F) /TODAY /" $FACTORY_STATE/decisions.md 2>/dev/null; rm -rf $T )
+  ```
+- THEN it prints exactly:
+  ```
+  answer=0 state=ready-for-triage answers=1
+  close=0 state=closed
+  TODAY T-0001 Option B is the standing rule
+  TODAY T-0001 Closed as a recorded decision
+  ```
+
+### Requirement: A decision on a resolve that cannot carry one is refused
+`factory resolve` MUST exit 2, write no decision and leave the ticket unchanged when `--decision` is given alone, with `--ruling`, `--to` or `--redispatch`, or with a `--close` or `--answer` that is itself refused.
+
+#### Scenario: Decision refused alone, with a ruling, and on a second close
+- WHEN this is run with bash from `~/dev/spec-factory`:
+  ```
+  ( H=$PWD; T=$(mktemp -d); export FACTORY_STATE=$T/s PYTHONDONTWRITEBYTECODE=1; f() { "$H/bin/factory" "$@"; }; st() { sed -n 's/^status: //p' $FACTORY_STATE/tickets/T-0001.yaml; }; n() { cat $FACTORY_STATE/decisions.md 2>/dev/null | wc -l | tr -d ' '; }; printf '# demo\n\nDo it.\n' > $T/r.md; printf 'Ruling.\n' > $T/r2.md; f ticket new --file $T/r.md >/dev/null; f ticket park T-0001 --reason "ESCALATE from critic" >/dev/null; f resolve T-0001 --decision "x" >/dev/null 2>&1; a=$?; f resolve T-0001 --ruling $T/r2.md --decision "x" >/dev/null 2>&1; echo "alone=$a ruling=$? state=$(st) rulings=$(ls $FACTORY_STATE/approvals/T-0001 2>/dev/null | grep -c ruling) lines=$(n)"; f resolve T-0001 --close --decision "Closed with a rule" >/dev/null 2>&1; echo "close=$? state=$(st) lines=$(n)"; f resolve T-0001 --close --decision "Again" >/dev/null 2>&1; echo "again=$? lines=$(n)"; rm -rf $T )
+  ```
+- THEN it prints exactly:
+  ```
+  alone=2 ruling=2 state=parked rulings=0 lines=0
+  close=0 state=closed lines=1
+  again=2 lines=1
+  ```
+
+### Requirement: The design documents name every writer of the decision log
+`docs/design.md`, `dev/build-harness.spec.md` and `README.md` SHALL name `factory decision add` as a writer of `decisions.md`; the two design documents SHALL no longer say that only archive writes it; and `docs/changelog.md` SHALL carry entry 46 about `decisions.md`.
+
+#### Scenario: Documents describe the new writers
+- WHEN this is run with bash from `~/dev/spec-factory`:
+  ```
+  y() { grep -qF "$1" "$2" && echo yes || echo no; }; echo "old_design=$(y 'Only the archive step writes current truth and `decisions.md`' docs/design.md) old_build=$(y 'only `factory archive` (K) writes `openspec/specs/` and `decisions.md`' dev/build-harness.spec.md) design=$(y 'factory decision add' docs/design.md) build=$(y 'factory decision add' dev/build-harness.spec.md) readme=$(y 'factory decision add' README.md) changelog=$(grep -qE '^46\. .*decisions\.md' docs/changelog.md && echo yes || echo no)"
+  ```
+- THEN it prints exactly `old_design=no old_build=no design=yes build=yes readme=yes changelog=yes`
+
+=== specs/role-input/spec.md
+## ADDED Requirements
+
+### Requirement: Spec writer, critic and planner receive the decision log
+`run compose` SHALL add a non-empty `decisions.md` to the input of the spec writer and the critic right after current truth, and to the planner's right after the approved spec, and SHALL NOT add it to triage's input.
+
+#### Scenario: Spec writer, critic and planner receive the decision log
+- WHEN this is run with bash from `~/dev/spec-factory`:
+  ```
+  ( H=$PWD; T=$(mktemp -d); export FACTORY_STATE=$T/s PYTHONDONTWRITEBYTECODE=1; f() { "$H/bin/factory" "$@"; }; S=$FACTORY_STATE; printf '# demo\n\nDo it.\n' > $T/r.md; f ticket new --file $T/r.md >/dev/null; f init >/dev/null 2>&1; mkdir -p $S/openspec/specs/thing $S/specs/T-0001; printf '# thing\n\n## Requirements\n' > $S/openspec/specs/thing/spec.md; printf 'spec\n' > $S/specs/T-0001/v1.md; printf '2026-10-01 T-0009 SENTINEL keep the old format\n' > $S/decisions.md; f ticket set T-0001 spec.version=1 spec.approved_version=1 >/dev/null; go() { f ticket set T-0001 status=$2 'in_flight=[]' >/dev/null; i=$(f run start --role $1 --ticket T-0001 | python3 -c 'import json,sys; print(json.load(sys.stdin)["run_id"])'); f run compose $i | python3 -c 'import json,sys; print("'$1'", json.load(sys.stdin)["sources"])'; echo "  in_input=$(grep -c SENTINEL $S/runs/$i/input.md)"; }; go triage ready-for-triage; go spec_writer ready-for-spec-writer; go critic ready-for-critic; go planner ready-for-planner; rm -rf $T )
+  ```
+- THEN it prints exactly:
+  ```
+  triage ['requests/T-0001.md']
+    in_input=0
+  spec_writer ['requests/T-0001.md', 'openspec/specs/thing/spec.md', 'decisions.md']
+    in_input=1
+  critic ['specs/T-0001/v1.md', 'openspec/specs/thing/spec.md', 'decisions.md']
+    in_input=1
+  planner ['specs/T-0001/v1.md', 'decisions.md']
+    in_input=1
+  ```
+
+### Requirement: An empty or absent decision log adds nothing to role input
+`run compose` MUST NOT add `decisions.md` to any role's input when the file is absent or holds only whitespace.
+
+#### Scenario: Empty and absent decision logs add no input source
+- WHEN this is run with bash from `~/dev/spec-factory`:
+  ```
+  ( H=$PWD; T=$(mktemp -d); export FACTORY_STATE=$T/s PYTHONDONTWRITEBYTECODE=1; f() { "$H/bin/factory" "$@"; }; S=$FACTORY_STATE; printf '# demo\n\nDo it.\n' > $T/r.md; f ticket new --file $T/r.md >/dev/null; f init >/dev/null 2>&1; mkdir -p $S/specs/T-0001; printf 'spec\n' > $S/specs/T-0001/v1.md; f ticket set T-0001 spec.version=1 spec.approved_version=1 >/dev/null; go() { f ticket set T-0001 status=$2 'in_flight=[]' >/dev/null; i=$(f run start --role $1 --ticket T-0001 | python3 -c 'import json,sys; print(json.load(sys.stdin)["run_id"])'); f run compose $i | python3 -c 'import json,sys; print("'$3' '$1'", json.load(sys.stdin)["sources"])'; }; printf '\n' > $S/decisions.md; go spec_writer ready-for-spec-writer empty; go critic ready-for-critic empty; go planner ready-for-planner empty; rm $S/decisions.md; go spec_writer ready-for-spec-writer absent; go planner ready-for-planner absent; rm -rf $T )
+  ```
+- THEN it prints exactly:
+  ```
+  empty spec_writer ['requests/T-0001.md']
+  empty critic ['specs/T-0001/v1.md']
+  empty planner ['specs/T-0001/v1.md']
+  absent spec_writer ['requests/T-0001.md']
+  absent planner ['specs/T-0001/v1.md']
+  ```
+
+=== specs/needs-human-questions/spec.md
+## ADDED Requirements
+
+### Requirement: A question to a human asks whether its answer is a standing decision
+The triage and spec-writer prompts, as a run receives them and in their `docs/prompts/` copies, SHALL tell the role to ask, with each NEEDS-HUMAN question, whether the answer is a standing decision.
+
+#### Scenario: Triage and spec-writer prompts ask about standing decisions
+- WHEN this is run with bash from `~/dev/spec-factory`:
+  ```
+  ( H=$PWD; T=$(mktemp -d); export FACTORY_STATE=$T/s PYTHONDONTWRITEBYTECODE=1; f() { "$H/bin/factory" "$@"; }; y() { grep -q 'standing decision' "$1" && echo yes || echo no; }; printf '# demo\n\nDo it.\n' > $T/r.md; f ticket new --file $T/r.md >/dev/null; for r in triage:ready-for-triage spec_writer:ready-for-spec-writer; do f ticket set T-0001 status=${r#*:} 'in_flight=[]' >/dev/null; i=$(f run start --role ${r%%:*} --ticket T-0001 | python3 -c 'import json,sys; print(json.load(sys.stdin)["run_id"])'); echo "${r%%:*} prompt=$(y $FACTORY_STATE/runs/$i/system-prompt.txt)"; done; for c in 01-triage 02-spec-writer; do echo "$c copy=$(y docs/prompts/$c.md)"; done; rm -rf $T )
+  ```
+- THEN it prints exactly:
+  ```
+  triage prompt=yes
+  spec_writer prompt=yes
+  01-triage copy=yes
+  02-spec-writer copy=yes
+  ```
+
+### Requirement: The triage and spec-writer prompt copies stay verbatim
+`docs/prompts/01-triage.md` and `docs/prompts/02-spec-writer.md` MUST each equal the fenced `text` block under its heading in `docs/design.md`.
+
+#### Scenario: Triage and spec-writer design blocks equal their copies
+- WHEN this is run with bash from `~/dev/spec-factory`:
+  ```
+  python3 -c 'import re; d=open("docs/design.md").read(); F="`"*3; [print(h, "SAME" if re.search(r"^## "+re.escape(h)+r"\n.*?^"+F+r"text\n(.*?)^"+F+"$", d, re.M|re.S).group(1)==open("docs/prompts/"+c).read() else "DIFFERENT") for h, c in (("1. Triage","01-triage.md"),("2. Spec writer","02-spec-writer.md"))]'
+  ```
+- THEN it prints exactly:
+  ```
+  1. Triage SAME
+  2. Spec writer SAME
+  ```
+
+=== verification.md
+## Acceptance
+
+Run every command with bash from the root of the `~/dev/spec-factory` checkout under test. The fixtures need `python3` and write only under `mktemp -d`; each runs in a subshell, so its `FACTORY_STATE` does not leak. "Today" means `main` at `9a48194`, where every today output below was observed in round 1; `main` has since moved to `98b9b31`, which changes only `dev/issues.md`, and the "Spec writer, critic and planner receive the decision log" and "Documents describe the new writers" commands were re-run there with the same today output. `TODAY` stands for the UTC date when the scenario runs. A run that straddles UTC midnight can print the raw date instead; re-run it. No scenario repeats the gate commands (`git diff --check main...HEAD` and the harness suite, `136 passed` today), because the verifier runs them.
+
+- Decision logged against a closed ticket → NEW. Today it prints `first=2 state=closed`, `second=2`, no decision lines, and `events=0`: `decision` is not a command (`invalid choice: 'decision'`).
+- Unknown ticket, blank text and multi-line text are refused → NEW. Today it prints `unknown=2 blank=2 multiline=2 lines=0` then `valid=2 lines=0`: the refusals are argparse's, and the valid add also fails, so no line is ever written.
+- Answer and close each log a decision → NEW. Today it prints `answer=2 state=parked answers=0` then `close=2 state=parked`, and no decision lines: `--decision` is an unrecognized argument, so neither the answer nor the close happens.
+- Decision refused alone, with a ruling, and on a second close → NEW. Today it prints `alone=2 ruling=2 state=parked rulings=0 lines=0`, `close=2 state=parked lines=0`, `again=2 lines=0`. The first line already matches, only because the flag does not exist. The valid close fails, so the second and third lines differ.
+- Documents describe the new writers → NEW. Today it prints `old_design=yes old_build=yes design=no build=no readme=no changelog=no`.
+- Spec writer, critic and planner receive the decision log → NEW. Today the triage line matches, but spec_writer, critic and planner lack `'decisions.md'` in their sources, and each prints `in_input=0`.
+- Empty and absent decision logs add no input source → REGRESSION. Today it prints exactly the expected five lines, and it must still do so after the change (decision: an empty log is not input).
+- Triage and spec-writer prompts ask about standing decisions → NEW. Today all four lines print `no`.
+- Triage and spec-writer design blocks equal their copies → REGRESSION. Today both lines print `SAME`. It must still pass after part C edits the blocks and re-copies them.
+
+## Responses
+
+- [BLOCKING] unglossed names in Decisions and Operator steps: FIXED. The Problem now ends with a paragraph that names and glosses `factory`, `resolve` (with `--answer` and `--close`), the new `factory decision add` command and `--decision` flag, the store, the spec tree and `factory init`. Decisions now spell the command and flag in full and gloss `--ruling`, `--to spec-gate`, `--redispatch`, the event log and the `resolve` record. Operator step 1 now opens by saying what the runtime is (the pinned `~/dev/spec-factory-harness` checkout that runs tickets, which a merge does not move) and what the pre-approval policy requires (the operator's acceptance test of any prompt change before the runtime moves), with its path.
+- [SHOULD-FIX] Nanobot `decisions.md` no longer 0 bytes: FIXED. Confirmed today: `wc -l` prints `4`, all `2026-10-04 T-0012` lines, and `grep -c T-0003` prints `0`. Evidence now dates the 0-byte reading to triage of this request and states the current contents; Risk now says the Nanobot target's spec writer, critic and planner receive those four lines from the first run after the runtime moves, and this repo's runs change only once a decision is logged here. While editing that bullet I also removed the Nanobot request line numbers, which the briefing says never to copy into a spec; the quoted text and a `grep -c` count replace them.
+- [NIT] README "Maintaining this page" derivation row: FIXED. D.4 now adds "the `decision` subparser" to the "Where a human decides" source-of-truth row (README line 446) and `… decision add --help` to its re-derive column.
+
+STATUS: READY-FOR-CRITIC
+CONFIDENCE: high; all three findings checked against the files they name (Nanobot `decisions.md`, README line 446), and on `main` at `98b9b31` the suite printed `136 passed` and two NEW scenarios re-ran with the today output verification.md states.
+ESCALATIONS: none

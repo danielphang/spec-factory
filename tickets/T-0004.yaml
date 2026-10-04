@@ -1,0 +1,49 @@
+id: T-0004
+type: bug
+title: P0 plan does not warn that a session started before `.claude/agents/` existed cannot address the
+  factory-* role agents, and does not check for them before P0-2
+request: requests/T-0004.md
+source: /Users/dphang/dev/spec-factory/issues/04_p0_agents_dir.md
+status: closed
+round:
+  spec: 1
+  pr: 0
+spec:
+  version: 1
+  approved_version: 1
+plan: null
+in_flight: []
+parked: null
+created: '2026-10-01T16:28:24+00:00'
+history:
+- ts: '2026-10-01T17:01:58+00:00'
+  from: ready-for-triage
+  to: ready-for-spec-writer
+  by: workflow
+  round:
+    spec: 0
+    pr: 0
+- ts: '2026-10-01T17:09:24+00:00'
+  from: ready-for-spec-writer
+  to: ready-for-critic
+  by: workflow
+  round:
+    spec: 1
+    pr: 0
+- ts: '2026-10-01T17:13:07+00:00'
+  from: ready-for-critic
+  to: awaiting-spec-gate
+  by: workflow
+  round:
+    spec: 1
+    pr: 0
+- ts: '2026-10-01T20:39:31+00:00'
+  from: awaiting-spec-gate
+  to: ready-for-planner
+  by: dphang
+  approved_version: 1
+- ts: '2026-10-01T21:10:32+00:00'
+  from: ready-for-planner
+  to: closed
+  by: dphang
+  resolve: close

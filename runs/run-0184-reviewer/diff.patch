@@ -1,0 +1,625 @@
+diff --git a/README.md b/README.md
+index e9cb379..4d5cb93 100644
+--- a/README.md
++++ b/README.md
+@@ -319,7 +319,9 @@ runs from the same runtime. Each target's runner then accepts the new revision b
+ | **Upgrade** | `factory --accept-harness <sha> <command>` | that this target adopts a new harness revision |
+ 
+ Gap, as of today: an implementer that reports itself blocked has no `resolve` verb. A plain
+-`ticket transition --to ready-for-implementer` returns it. Everything else is the harness's and
++`ticket transition --to ready-for-implementer` returns it. A ticket the tripwire parked returns the
++same way, to the state its record names as `parked.from`, once the operator has checked the named
++files; a checker park can use `resolve --redispatch` instead. Everything else is the harness's and
+ the scripts': which role runs next, how many rounds, what the checkers receive, when a merge is
+ allowed, when the ticket closes.
+ 
+@@ -342,6 +344,12 @@ allowed, when the ticket closes.
+   `archive` applies the deltas, so the description of the system is kept current by the pipeline.
+ - **Instances and the harness lock.** One runtime serves any number of targets. Each adopts a new
+   harness revision only when its operator accepts it. See "Where it runs".
++- **Tripwire on live files.** An instance can list files outside the repo that no role run should
++  change, such as a live bot's credentials, under `tripwire` in `instance.yaml`: a `park` list and
++  an `escalate` list. The harness hashes each file when a run starts and compares when the run ends,
++  killed runs included. A changed `park` file parks the ticket; a changed `escalate` file is queued
++  for the operator and the run goes on. Neither prints a file's contents. It is tested, and has not
++  yet fired on a real ticket.
+ 
+ **Not built**
+ 
+diff --git a/docs/changelog.md b/docs/changelog.md
+index 1874795..baf1750 100644
+--- a/docs/changelog.md
++++ b/docs/changelog.md
+@@ -50,5 +50,6 @@ Six review rounds ran on this doc, using the reviewer prompt in the appendix. Ro
+ 46. After the Nanobot target's T-0003 (2026-10-04), a ticket that existed only to get a decision: the human answered its question about where the port's code lives and closed it, archive never ran, and the decision stayed in that ticket's request, so the operator copied it by hand into the two later requests that depend on it. `decisions.md` gains writers besides archive: `factory decision add <ticket id> "<line>"`, at any ticket state, closed included, and `--decision "<line>"` on `resolve --answer` or `resolve --close`, refused with any other `resolve` mode. Each appends the line in archive's format, `<YYYY-MM-DD> <ticket id> <line>`, creates the file when absent, and logs `decision.recorded`. The spec writer and the critic receive a non-empty `decisions.md` after current truth, and the planner after the approved spec; triage and the build roles do not. Triage's NEEDS-HUMAN question and the spec writer's open questions now ask whether the answer is a standing decision that later tickets must follow. Archive's own output is unchanged.
+ 47. After issue #33 (2026-10-04), where six approved tickets on the Nanobot target stalled with no record of why: intake ends at the spec gate, and the build owns planning. A build that finds a planned parent with no sub-tickets creates them from the planner run named by the parent's latest `plan.added` event (`subticket add PARENT` with no `--run`), or parks the parent with a reason containing `no sub-tickets`. No stop is silent any more: an `agent()` call that throws finishes its run KILLED and parks the ticket with `agent call failed: <role>: <error>`, and a refused `parent-check` parks the parent with its refusal. The verifier writes `Gate suite:` as a plain line, never a heading or bold, and the harness also reads that line in heading or bold form, so a verifier's PASS written as `## Gate suite: PASS` is no longer recorded as a missing gate line.
+ 48. After issue #36 (2026-10-04): a role's test run overwrote the Nanobot bot's live permission file, so every role now runs tests, scripts and prototypes through a wrapper the composer hands it, which sets a throwaway `HOME`, with gate commands already wrapped and `run_env` for tool caches; and the preamble forbids running anything that could write a protected path outside the repository. A plan's bulleted field lines lost every sub-ticket's dependencies, so the harness now reads `Depends on:` and `Parallel-safe:` lines that start with a list bullet and refuses a sub-ticket with no `Depends on:` line; and the planner prompt shows the three parsed lines at the start of a line and says `yes` means alongside every sibling.
++49. After the 2026-10-04 Nanobot incident, where a role's tests overwrote the live bot's permission file and nothing in the factory noticed: an instance may list files outside the repository under `tripwire` in `instance.yaml`, as a `park` list and an `escalate` list, files only, with `~` meaning the account's home and never `HOME`. `run start` records a SHA-256 of each file, or that it is absent, in a per-run baseline that the store's `.gitignore` excludes, and refuses a directory or an entry that is neither absolute nor `~/`. Each run is compared once, when it leaves the in-flight list: at `run finish`, killed runs included, or at a `ticket set` that drops it. A changed `park` file parks the ticket with `tripwire: <files> changed during <run>`, "during" because overlapping runs and the operator's own edits cannot be told apart; on a ticket already parked or closed the reason is queued as an escalation instead. A changed `escalate` file queues an escalation and the run goes on. Nothing prints a file's contents, and the workflow scripts stop on a `run finish` that parked the ticket instead of routing on the role's STATUS. The tripwire detects a write after the fact; it does not prevent one. The incident's code-level cause, a test module that imported a path function by name before the fixture replaced it, gives the coding standard rule 6: a test reaches a patched path through its module's attribute, and a new path outside the repository ships with a test guard that fails any test resolving it outside `tmp_path`; rule 4 lists rule 6 among the rules whose findings take no tag.
+ 
+ Declined: a dedicated merge agent (merging is gate config plus human gates, not a judgment call).
+diff --git a/docs/coding.md b/docs/coding.md
+index cc27e2d..c83c77d 100644
+--- a/docs/coding.md
++++ b/docs/coding.md
+@@ -64,9 +64,9 @@ is greppable: `grep -rnE '(#|//|/\*) ?factory:'` lists every one in the code.
+ Check: each over-building finding (code the change could have reused, or did not need) starts,
+ after its severity, with one tag from the table (`[BLOCKING] reuse: file:line: problem →
+ consequence`), names what the table says to name, and has the table's severity. A finding against
+-rule 2, 3 or 5 takes no tag; it earns its severity as a correctness or scope finding. The pass ends
+-with `net: -N lines possible`, where N is the lines the tagged findings would remove, or with
+-`Lean already.`
++rule 2, 3, 5 or 6 takes no tag; it earns its severity as a correctness or scope finding. The pass
++ends with `net: -N lines possible`, where N is the lines the tagged findings would remove, or
++with `Lean already.`
+ Principle: per tag, in the table.
+ 
+ | Tag | Flags | Names | Severity | Principle |
+@@ -94,5 +94,23 @@ state `on_hold` and a function `hold_ticket()` for the same thing.
+ After: the state stays `parked` and the command stays `ticket park`, the names the store and the
+ README already use.
+ 
++## 6. A test reaches a patched path through its module, and a new outside path ships with a guard.
++Check: each function or constant your tests patch to redirect a path outside the repository is
++called in test code as an attribute of its module (`store.policy_store_path()`), never through a
++name imported when the test file loads. Each path your diff adds outside the repository (a data
++directory, a config file) comes with an autouse test fixture that fails any test resolving that
++path outside `tmp_path`.
++Principle: patch where the name is looked up (the Python `unittest.mock` documentation, "Where to
++patch"); and fail-safe defaults (Saltzer and Schroeder): a test that stops is cheaper than one that
++writes live data.
++Before (a Nanobot implementer run, 2026-10-04): the test module ran
++`from nanobot.policy.store import policy_store_path` when pytest collected it. The conftest fixture
++then replaced `nanobot.policy.store.policy_store_path`, but the test helpers still held the real
++function. The tests overwrote the live bot's `~/.nanobot/policies.json` and its `.bak`, and an
++unrelated `FileExistsError` was the only sign.
++After: the test module runs `from nanobot.policy import store` and calls `store.policy_store_path()`,
++so the fixture's patch reaches every call. An autouse fixture fails any test whose resolved policy
++path is not under `tmp_path`, so the next escape stops a test instead of writing live data.
++
+ The check order (rule 1) and the tag vocabulary (rule 4) are adapted from ponytail
+ (DietrichGebert/ponytail, MIT), as the design document's changelog records.
+diff --git a/docs/design.md b/docs/design.md
+index 1ef552d..7a1aaa5 100644
+--- a/docs/design.md
++++ b/docs/design.md
+@@ -51,6 +51,8 @@ The prompts say what each role does. The harness enforces the wiring rules: fres
+ 
+ **What the harness itself owns** (no platform provides these): the routing table, the round counter and the max-round cutoff, composing each role's input from *only* its declared sources, choosing the model per role, and the escalation queue view for the daily human pass.
+ 
++**Tripwire on live files.** An instance may list files outside the repository under `tripwire` in `instance.yaml`, as a `park` list and an `escalate` list. A `~/` entry means the account's home directory, never the `HOME` variable, so a run under a throwaway `HOME` still watches the real files. The lists hold files only: a directory, or an entry that is neither absolute nor `~/`, refuses `run start`. `run start` records a SHA-256 of each listed file, or that it is absent, in a baseline in the run's directory, which the store's `.gitignore` excludes so no store commit carries a digest of a live secret. The run is compared once, when it leaves the in-flight list: at `run finish`, killed runs included, or at a `ticket set` that drops it. A file created, deleted or modified counts as changed. A changed `park` file parks the ticket with the reason `tripwire: <files> changed during <run>`. The reason says "during", not "by", because runs on other tickets and the operator's own edits can overlap a run, and the tripwire cannot tell them apart. On a ticket already parked or closed, the same reason is queued as an escalation instead. A changed `escalate` file queues an escalation and the run goes on; that list is for files with legitimate outside writers. No event, reason or output names more than a file's path: nothing prints a file's contents. The workflow scripts stop on a `run finish` that parked the ticket, instead of routing on the role's STATUS. The tripwire detects a write after the fact; it does not prevent one.
++
+ **Role-context block.** Every role's input opens with a role-context block, ahead of the INPUT its role prompt declares and anything the routing table's "Receives" column adds. The block is per repo, like `{repo name}` and the protected paths: it says which repository the role works in, how to run commands and tests there, what kind of request to expect, and who reads what the roles write there. Its text is the same for every role. It is a declared input of every role, so composing from *only* declared sources includes it; it travels with the input (piece 3), not in the system prompt. A wrong block misdirects every role at once, and the checkers receive the same block, so they share the error instead of catching it. The block is kept in the repo it describes, at `.factory/context.md`. That directory, `.factory/`, is the repo's instance of the factory: `instance.yaml` (the per-repo config: `{repo name}`, protected paths, `{gate commands}`, the variables kept for code runs (`run_env`), models, routing, the store's path and the harness checkout it runs with), `context.md`, `harness.lock` (the harness revision the instance has accepted; the harness refuses to touch the instance's store under any other revision until a human accepts it, and logs the acceptance) and the store. The harness picks the instance by walking up from the working directory to the nearest `.factory/instance.yaml`, or takes it from an explicit override, and never falls back to an instance of its own; the composer prepends that instance's `context.md`, and the preamble's `{repo name}` and protected paths are filled from its `instance.yaml`, and `{writing standard}` with the path of `docs/writing.md` in the harness checkout that runs it. `{coding standard}`, in the implementer and code reviewer prompts, is filled the same way with the path of `docs/coding.md` in that checkout. The composer also gives every role a "Running code" section: a wrapper that runs one command in a subshell with `HOME` set to a fresh temporary directory, exporting any variables the instance lists in `run_env`; `{gate commands}` reach a role already wrapped. It is guidance, not a sandbox: a command can still write an absolute path, which the preamble forbids for protected paths outside the repository. Each run leaves its temporary directory behind.
+ 
+ **Model per role, starting point.** One rule: a role's model depends on what checks its output. Default Opus. A checker is never weaker than the author it checks, except the verifier, whose check is the commands. Fable goes where a role's output is checked only by a human: the critic, the code reviewer, the retro. Sonnet only where the output is checked mechanically inside the same loop. The verifier is the one checker whose check is the commands themselves; its probe step is judgment, so it drops to Sonnet only where probes rarely matter. Tune effort before changing model; record the model on every run so the retro can compare failure rates by model; this table is the harness's model config, so a retro diff to it is the proposal path. Never let an author and its checker share a model where you can avoid it; the verifier is again the exception.
+diff --git a/factory/cli.py b/factory/cli.py
+index 8a96fc4..f1c1195 100644
+--- a/factory/cli.py
++++ b/factory/cli.py
+@@ -18,7 +18,7 @@ from pathlib import Path
+ 
+ import yaml
+ 
+-from factory import compose, gitops, instance, specstore, status, store, subtickets
++from factory import compose, gitops, instance, specstore, status, store, subtickets, tripwire
+ from factory.store import Refused
+ 
+ ROLES = ("triage", "spec_writer", "critic", "planner", "implementer", "reviewer", "verifier")
+@@ -108,6 +108,7 @@ def _set_dotted(obj: dict, key: str, value) -> None:
+ 
+ def ticket_set(a, root, cfg):
+     t = store.load_ticket(root, a.id)
++    was_in_flight = list(t.get("in_flight") or [])
+     changes = {}
+     for kv in a.assignments:
+         if "=" not in kv:
+@@ -118,7 +119,13 @@ def ticket_set(a, root, cfg):
+         changes[k] = val
+     store.save_ticket(root, t)
+     store.log_event(root, "ticket.set", ticket=t["id"], changes=changes)
+-    out({"ok": True, "id": t["id"], "changes": changes})
++    res = {"ok": True, "id": t["id"], "changes": changes}
++    for rid in was_in_flight:  # a run dropped by hand is compared now, as run finish would
++        if rid not in (t.get("in_flight") or []):
++            tw = tripwire.compare(root, rid, t["id"])
++            if tw and tw["parked"]:
++                res["parked"] = tw["parked"]
++    out(res)
+ 
+ 
+ def _apply_round(t: dict, op: str | None, cfg: dict) -> None:
+@@ -175,13 +182,7 @@ def ticket_park(a, root, cfg):
+     frm = t["status"]
+     if frm in ("closed", "parked"):
+         raise Refused(f"{t['id']} is {frm}; cannot park")
+-    t["status"] = "parked"
+-    t["parked"] = {"reason": a.reason, "since": store.now(), "from": frm,
+-                   "outputs": [x for x in (a.outputs or "").split(",") if x], "question": a.question}
+-    t["history"].append({"ts": store.now(), "from": frm, "to": "parked", "by": "park", "reason": a.reason})
+-    store.save_ticket(root, t)
+-    store.log_event(root, "ticket.parked", ticket=t["id"], **{"from": frm, "reason": a.reason})
+-    store.log_event(root, "escalation.queued", ticket=t["id"], items=[a.reason])
++    store.park_ticket(root, t, a.reason, [x for x in (a.outputs or "").split(",") if x], a.question)
+     out({"ok": True, "id": t["id"], "state": "parked", "reason": a.reason})
+ 
+ 
+@@ -208,6 +209,7 @@ def run_start(a, root, cfg):
+         raise Refused(f"{t['id']} already has a {a.role} run in flight")
+     if a.role in ("triage", "spec_writer", "critic", "planner") and t["in_flight"]:
+         raise Refused(f"{t['id']} already has run {t['in_flight'][0]} in flight")
++    baseline = tripwire.baseline(cfg)  # hashed before the run id is reserved: a refusal writes nothing
+     rid = store.next_run_id(root, a.role)
+     model = a.model or cfg["models"][a.role]
+     d = root / "runs" / rid
+@@ -217,6 +219,9 @@ def run_start(a, root, cfg):
+     if a.role in BUILD_ROLES:
+         _start_build_run(root, cfg, t, meta, d, parent_close)
+     store.write_yaml(d / "meta.yaml", meta)
++    if baseline:
++        store.ensure_gitignore(root)
++        store.write_yaml(d / "tripwire.yaml", baseline)
+     prompt_name = a.role
+     preamble = instance.fill_preamble((PROMPTS / "preamble.md").read_text(encoding="utf-8"), cfg)
+     role_prompt = instance.fill_standards((PROMPTS / f"{prompt_name}.md").read_text(encoding="utf-8"))
+@@ -316,8 +321,14 @@ def run_finish(a, root, cfg):
+     store.log_event(root, ev, ticket=t["id"], run=a.run, role=meta["role"], status=parsed["status"], wall_s=meta["wall_s"])
+     if parsed.get("escalations"):
+         store.log_event(root, "escalation.queued", ticket=t["id"], run=a.run, items=parsed["escalations"])
+-    out({"ok": True, "run_id": a.run, "status": parsed["status"], "confidence": parsed.get("confidence"),
+-         "escalations": parsed.get("escalations", [])})
++    res = {"ok": True, "run_id": a.run, "status": parsed["status"], "confidence": parsed.get("confidence"),
++           "escalations": parsed.get("escalations", [])}
++    tw = tripwire.compare(root, a.run, t["id"])
++    if tw:
++        res["tripwire"] = {"park": tw["park"], "escalate": tw["escalate"]}
++        if tw["parked"]:
++            res["parked"] = tw["parked"]
++    out(res)
+ 
+ 
+ # ----- spec / plan ----------------------------------------------------------------
+diff --git a/factory/instance.template.yaml b/factory/instance.template.yaml
+index 8674d5d..ccabbdb 100644
+--- a/factory/instance.template.yaml
++++ b/factory/instance.template.yaml
+@@ -11,6 +11,11 @@ state_dir: .factory/state
+ # Filled into the preamble's protected-path line at run start as `class (glob, glob), ...`.
+ protected_paths:
+   infra: [".factory/instance.yaml", ".factory/harness.lock", ".factory/context.md"]
++# Live files outside the repo that no role run should change, as absolute or `~/` paths (`~` is the
++# account's home, never $HOME). `run start` hashes each; the comparison runs when the run leaves the
++# in-flight list. A changed `park` file parks the ticket; a changed `escalate` file queues an
++# escalation and the run goes on. Contents are never printed. Files only: a directory is refused.
++# tripwire: {park: [], escalate: []}
+ # Commands every implementer and verifier runs in the checkout under test, each exactly as written.
+ # `{integration}` is replaced with the checkout that has the integration branch.
+ gate_commands: []
+diff --git a/factory/store.py b/factory/store.py
+index 024f10f..295c111 100644
+--- a/factory/store.py
++++ b/factory/store.py
+@@ -46,15 +46,17 @@ def now() -> str:
+     return dt.datetime.now(dt.timezone.utc).replace(microsecond=0).isoformat()
+ 
+ 
+-STORE_GITIGNORE = "# git worktrees the build half creates; they are checkouts, never store content\nworktrees/\nruns/*/wt/\n"
++STORE_GITIGNORE = ("# git worktrees the build half creates; they are checkouts, never store content\nworktrees/\nruns/*/wt/\n"
++                   "# tripwire baselines: digests of the operator's live files, never committed\nruns/*/tripwire.yaml\n")
+ 
+ 
+ def ensure_gitignore(root: Path) -> None:
+     """The store keeps implementer worktrees under worktrees/ and checker checkouts under runs/<id>/wt/.
+-    Both are nested git checkouts: a store committed by directory must not pick them up."""
++    Both are nested git checkouts: a store committed by directory must not pick them up. Nor may it
++    pick up a run's tripwire baseline, runs/<id>/tripwire.yaml, which holds digests of live files."""
+     p = root / ".gitignore"
+     have = p.read_text(encoding="utf-8") if p.exists() else ""
+-    missing = [ln for ln in ("worktrees/", "runs/*/wt/") if ln not in have.splitlines()]
++    missing = [ln for ln in ("worktrees/", "runs/*/wt/", "runs/*/tripwire.yaml") if ln not in have.splitlines()]
+     if missing:
+         root.mkdir(parents=True, exist_ok=True)
+         p.write_text((have.rstrip() + "\n\n" if have.strip() else "") + STORE_GITIGNORE, encoding="utf-8")
+@@ -97,6 +99,19 @@ def save_ticket(root: Path, t: dict) -> None:
+     write_yaml(ticket_path(root, t["id"]), t)
+ 
+ 
++def park_ticket(root: Path, t: dict, reason: str, outputs: list[str], question: str | None = None,
++                by: str = "park") -> None:
++    """Park ticket `t` (the caller has checked it is not parked or closed): record where it came
++    from, save it, and queue the reason for the operator."""
++    frm = t["status"]
++    t["status"] = "parked"
++    t["parked"] = {"reason": reason, "since": now(), "from": frm, "outputs": outputs, "question": question}
++    t["history"].append({"ts": now(), "from": frm, "to": "parked", "by": by, "reason": reason})
++    save_ticket(root, t)
++    log_event(root, "ticket.parked", ticket=t["id"], **{"from": frm, "reason": reason})
++    log_event(root, "escalation.queued", ticket=t["id"], items=[reason])
++
++
+ def next_ticket_id(root: Path, prefix: str = "T") -> str:
+     tickets = root / "tickets"
+     nums = []
+diff --git a/factory/tripwire.py b/factory/tripwire.py
+new file mode 100644
+index 0000000..294910a
+--- /dev/null
++++ b/factory/tripwire.py
+@@ -0,0 +1,109 @@
++"""Tripwire on live files: notice when a role run changes a file outside the repo.
++
++An instance lists files under `tripwire` in `instance.yaml`, as a `park` list and an `escalate` list.
++`run start` records each file's SHA-256 (or `absent`) in `runs/<id>/tripwire.yaml`, which the store's
++`.gitignore` excludes. The run is compared once, when it leaves the in-flight list: a changed `park`
++file parks the ticket, a changed `escalate` file queues an escalation. Nothing here reads a file's
++bytes into an event, a reason or an output; only paths are named.
++"""
++from __future__ import annotations
++
++import hashlib
++import os
++import pwd
++from pathlib import Path
++
++from factory import store
++from factory.store import Refused
++
++LISTS = ("park", "escalate")
++
++
++def _expand(entry: str) -> str:
++    """`~/` is the account's home from the user database, never $HOME: a role run under a throwaway
++    HOME must still watch the real files."""
++    return pwd.getpwuid(os.getuid()).pw_dir + entry[1:] if entry.startswith("~/") else entry
++
++
++def _digest(path: str) -> str:
++    """Hex SHA-256 of the file's bytes, or `absent`. OSError when it exists but cannot be read."""
++    try:
++        with open(path, "rb") as fh:
++            return hashlib.file_digest(fh, "sha256").hexdigest()
++    except FileNotFoundError:
++        return "absent"
++
++
++def baseline(cfg: dict) -> dict | None:
++    """The instance's listed files hashed now, as `{park: {path: state}, escalate: {...}, compared:
++    None}`; None when the tripwire is off (no key, null, or both lists empty). Refused for a list
++    that is not a mapping of string lists, or an entry that is not absolute after expansion, exists
++    and is not a regular file, or exists and cannot be read."""
++    tw = cfg.get("tripwire")
++    if tw is None:
++        return None
++    if not isinstance(tw, dict) or set(tw) - set(LISTS):
++        raise Refused(f"tripwire must be a mapping with only the keys park and escalate, got {tw!r}")
++    lists = {}
++    for name in LISTS:
++        entries = tw.get(name) or []
++        if not isinstance(entries, list) or not all(isinstance(e, str) for e in entries):
++            raise Refused(f"tripwire.{name} must be a list of file paths, got {entries!r}")
++        lists[name] = [(e, _expand(e)) for e in entries]
++    if not any(lists.values()):
++        return None
++    base: dict = {}
++    for name, entries in lists.items():
++        base[name] = {}
++        for written, path in entries:
++            what = f"tripwire.{name} entry {written!r} ({path})"
++            if not os.path.isabs(path):
++                raise Refused(f"{what} is not an absolute or ~/ path")
++            if os.path.exists(path) and not os.path.isfile(path):
++                raise Refused(f"{what} exists and is not a regular file; list files only")
++            try:
++                base[name][path] = _digest(path)
++            except OSError as e:
++                raise Refused(f"{what} cannot be read: {e.strerror}")
++    base["compared"] = None
++    return base
++
++
++def compare(root: Path, rid: str, tid: str) -> dict | None:
++    """Compare run `rid`'s baseline with the files now, once, and act on ticket `tid`: a changed
++    `park` file parks it (or, if it is already parked or closed, queues the reason as an
++    escalation); a changed `escalate` file queues an escalation. Returns `{park: [...], escalate:
++    [...], parked: <reason> | None}`, or None when the run has no baseline or was compared before."""
++    p = root / "runs" / rid / "tripwire.yaml"
++    if not p.exists():
++        return None
++    base = store.read_yaml(p)
++    if base.get("compared"):
++        return None
++    changed = {}
++    for name in LISTS:
++        changed[name] = []
++        for path, before in (base.get(name) or {}).items():
++            try:
++                now = _digest(path)
++            except OSError:
++                now = "unreadable"  # cannot be read now: counts as changed
++            if now != before:
++                changed[name].append(path)
++    base["compared"] = store.now()
++    store.write_yaml(p, base)
++    parked = None
++    if changed["park"]:
++        reason = f"tripwire: {', '.join(changed['park'])} changed during {rid}"
++        t = store.load_ticket(root, tid)
++        if t["status"] in ("parked", "closed"):
++            store.log_event(root, "escalation.queued", ticket=tid, run=rid, items=[reason])
++        else:
++            store.park_ticket(root, t, reason, [rid], by="tripwire")
++            parked = reason
++    if changed["escalate"]:
++        item = f"tripwire (escalate): {', '.join(changed['escalate'])} changed during {rid}"
++        store.log_event(root, "escalation.queued", ticket=tid, run=rid, items=[item])
++    if changed["park"] or changed["escalate"]:
++        store.log_event(root, "tripwire.changed", ticket=tid, run=rid, **changed)
++    return {**changed, "parked": parked}
+diff --git a/factory/workflows/build.js b/factory/workflows/build.js
+index 4ece3ff..9219d8b 100644
+--- a/factory/workflows/build.js
++++ b/factory/workflows/build.js
+@@ -105,6 +105,8 @@ async function runRole(role, ticket, phase) {
+     : await clerk(`${BIN} run finish ${runId}`, phase, `run finish ${role}`)
+   if (role === 'reviewer' || role === 'verifier') await clerk(`${BIN} run cleanup ${runId}`, phase, `run cleanup ${role}`)
+   if (!fin.ok) { await park(ticket, `harness-bug: run finish ${role}: ${fin.stderr || ''}`, [runId], phase); return null }
++  // run finish parked the ticket (the tripwire saw a listed live file change): stop, do not route on STATUS
++  if (fin.parked) { log(`${ticket} parked: ${fin.parked}`); return null }
+   log(`${role} ${runId} (${ticket}): ${fin.status}`)
+   return { runId, status: fin.status, outputPath }
+ }
+diff --git a/factory/workflows/intake.js b/factory/workflows/intake.js
+index b145f46..0ca3158 100644
+--- a/factory/workflows/intake.js
++++ b/factory/workflows/intake.js
+@@ -106,6 +106,8 @@ async function runRole(role, phase) {
+     ? await clerk(`${BIN} run finish ${runId} --status-override KILLED`, phase, `run finish ${role} (killed)`)
+     : await clerk(`${BIN} run finish ${runId}`, phase, `run finish ${role}`)
+   if (!fin.ok) { await park(`harness-bug: run finish ${role}: ${fin.stderr || ''}`, [runId], phase); return null }
++  // run finish parked the ticket (the tripwire saw a listed live file change): stop, do not route on STATUS
++  if (fin.parked) { log(`${TICKET} parked: ${fin.parked}`); return null }
+   log(`${role} ${runId}: ${fin.status}${fin.escalations && fin.escalations.length ? ` (+${fin.escalations.length} escalations)` : ''}`)
+   return { runId, status: fin.status, escalations: fin.escalations || [] }
+ }
+diff --git a/tests/factory/test_tripwire.py b/tests/factory/test_tripwire.py
+new file mode 100644
+index 0000000..fd6467f
+--- /dev/null
++++ b/tests/factory/test_tripwire.py
+@@ -0,0 +1,238 @@
++"""The tripwire on live files (issue #38): an instance's `tripwire` lists files outside the repo;
++`run start` hashes each into a git-ignored baseline, and the run is compared once, when it leaves
++the in-flight list (`run finish`, killed runs included, or a `ticket set` that drops it). A changed
++`park` file parks the ticket; a changed `escalate` file queues an escalation. Nothing prints a
++file's contents.
++
++Black-box through `bin/factory`, each case on a throwaway store (FACTORY_STATE) and a copy of the
++suite's fixture instance (FACTORY_INSTANCE) with a `tripwire` key appended. Every listed file that
++exists lives under tmp_path.
++"""
++from __future__ import annotations
++
++import hashlib
++import json
++import os
++import pwd
++import shutil
++import subprocess
++import uuid
++from pathlib import Path
++
++REPO = Path(__file__).resolve().parents[2]
++BIN = REPO / "bin" / "factory"
++FIXTURE_INSTANCE = Path(__file__).resolve().parent / "fixtures" / "instance"
++SECRET = '{"token": "TRIPWIRE-SECRET-A"}\n'
++OUT = "Type: bug\nTitle: Fixture\n\nSTATUS: ACCEPT\nCONFIDENCE: high\nESCALATIONS: none\n"
++
++
++class Inst:
++    """A scratch instance and store with ticket T-0001 ready for triage. `tripwire` is the YAML
++    text appended to the instance (None: no key)."""
++
++    def __init__(self, tmp_path: Path, tripwire: str | None):
++        self.tmp = tmp_path
++        self.store = tmp_path / "store"
++        inst = tmp_path / "inst"
++        shutil.copytree(FIXTURE_INSTANCE, inst)
++        if tripwire is not None:
++            with (inst / "instance.yaml").open("a", encoding="utf-8") as f:
++                f.write(tripwire + "\n")
++        self.env = {**os.environ, "FACTORY_STATE": str(self.store), "FACTORY_INSTANCE": str(inst),
++                    "PYTHONDONTWRITEBYTECODE": "1"}
++        req = tmp_path / "req.md"
++        req.write_text("# Fixture\n\nDo the thing.\n")
++        self.ok("ticket", "new", "--file", str(req))
++        (tmp_path / "out.md").write_text(OUT)
++
++    def cli(self, *argv: str) -> subprocess.CompletedProcess:
++        return subprocess.run([str(BIN), *argv], capture_output=True, text=True, env=self.env, cwd=REPO)
++
++    def ok(self, *argv: str) -> dict:
++        cp = self.cli(*argv)
++        assert cp.returncode == 0, cp.stderr
++        return json.loads(cp.stdout.strip().splitlines()[-1])
++
++    def start(self) -> str:
++        return self.ok("run", "start", "--role", "triage", "--ticket", "T-0001")["run_id"]
++
++    def finish(self, rid: str, *extra: str) -> dict:
++        return self.ok("run", "finish", rid, *(extra or ("--output-file", str(self.tmp / "out.md"))))
++
++    def ticket(self) -> dict:
++        return self.ok("ticket", "show", "T-0001", "--json")
++
++    def events(self, name: str) -> list[dict]:
++        cp = self.cli("log", "tail", "-n", "1000", "--event", name)
++        return [json.loads(ln) for ln in cp.stdout.splitlines() if ln.strip()]
++
++    def store_text(self) -> str:
++        return "".join(p.read_text(encoding="utf-8", errors="replace") for p in self.store.rglob("*") if p.is_file())
++
++
++def live(tmp_path: Path) -> tuple[Inst, Path, Path, Path]:
++    """The fixture of the spec's scenarios: park [policies.json, new.json], escalate [pairing.json],
++    policies.json and pairing.json present, new.json absent."""
++    d = tmp_path / "live"
++    d.mkdir()
++    pol, new, pair = d / "policies.json", d / "new.json", d / "pairing.json"
++    pol.write_text(SECRET)
++    pair.write_text('{"chat": "TRIPWIRE-SECRET-B"}\n')
++    return Inst(tmp_path, f"tripwire:\n  park: [{pol}, {new}]\n  escalate: [{pair}]"), pol, new, pair
++
++
++def test_a_changed_park_file_parks_the_ticket_and_prints_no_contents(tmp_path):
++    f, pol, _, _ = live(tmp_path)
++    rid = f.start()
++    pol.write_text('{"token": "TRIPWIRE-SECRET-C"}\n')
++    cp = f.cli("run", "finish", rid, "--output-file", str(tmp_path / "out.md"))
++    assert cp.returncode == 0, cp.stderr
++    reason = f"tripwire: {pol} changed during {rid}"
++    fin = json.loads(cp.stdout.strip().splitlines()[-1])
++    assert fin["tripwire"] == {"park": [str(pol)], "escalate": []}
++    assert fin["parked"] == reason
++    t = f.ticket()
++    assert t["state"] == "parked" and t["parked"]["reason"] == reason and t["parked"]["outputs"] == [rid]
++    assert [e["items"] for e in f.events("escalation.queued")] == [[reason]]
++    changed = f.events("tripwire.changed")
++    assert [(e["run"], e["park"], e["escalate"]) for e in changed] == [(rid, [str(pol)], [])]
++    assert "TRIPWIRE-SECRET" not in cp.stdout + cp.stderr + f.store_text()
++
++
++def test_a_deleted_and_a_created_park_file_both_count_as_changed(tmp_path):
++    f, pol, new, _ = live(tmp_path)
++    rid = f.start()
++    pol.unlink()
++    new.write_text("{}\n")
++    f.finish(rid)
++    assert f.ticket()["parked"]["reason"] == f"tripwire: {pol}, {new} changed during {rid}"
++
++
++def test_a_killed_run_is_still_compared(tmp_path):
++    f, pol, _, _ = live(tmp_path)
++    rid = f.start()
++    pol.write_text("x\n")
++    fin = f.finish(rid, "--status-override", "KILLED")
++    assert fin["status"] == "KILLED" and fin["parked"] == f"tripwire: {pol} changed during {rid}"
++    assert f.ticket()["state"] == "parked"
++
++
++def test_a_changed_escalate_file_is_queued_and_the_ticket_still_moves(tmp_path):
++    f, _, _, pair = live(tmp_path)
++    rid = f.start()
++    pair.write_text('{"chat": "TRIPWIRE-SECRET-D"}\n')
++    fin = f.finish(rid)
++    assert fin["tripwire"] == {"park": [], "escalate": [str(pair)]} and "parked" not in fin
++    assert f.ticket()["state"] == "ready-for-triage"
++    queued = f.events("escalation.queued")
++    assert [(e["run"], e["items"]) for e in queued] == [(rid, [f"tripwire (escalate): {pair} changed during {rid}"])]
++    f.ok("ticket", "transition", "T-0001", "--to", "ready-for-spec-writer", "--by", "t")
++    assert "TRIPWIRE-SECRET" not in f.store_text()
++
++
++def test_unchanged_files_neither_park_nor_escalate(tmp_path):
++    f, _, _, _ = live(tmp_path)
++    fin = f.finish(f.start())
++    assert fin["status"] == "ACCEPT" and fin["tripwire"] == {"park": [], "escalate": []} and "parked" not in fin
++    assert f.ticket()["state"] == "ready-for-triage"
++    assert f.events("escalation.queued") == [] and f.events("tripwire.changed") == []
++
++
++def test_a_park_change_on_a_ticket_already_parked_is_queued_not_parked_again(tmp_path):
++    f, pol, _, _ = live(tmp_path)
++    rid = f.start()
++    f.ok("ticket", "park", "T-0001", "--reason", "operator hold")
++    pol.write_text("x\n")
++    fin = f.finish(rid)
++    assert "parked" not in fin and fin["tripwire"]["park"] == [str(pol)]
++    assert f.ticket()["parked"]["reason"] == "operator hold"
++    reason = f"tripwire: {pol} changed during {rid}"
++    assert [e["items"] for e in f.events("escalation.queued")] == [["operator hold"], [reason]]
++    assert len(f.events("ticket.parked")) == 1
++
++
++def test_ticket_set_compares_a_dropped_run_and_not_one_still_in_flight(tmp_path):
++    f, pol, _, _ = live(tmp_path)
++    rid = f.start()
++    pol.write_text("x\n")
++    f.ok("ticket", "set", "T-0001", "title=Renamed")
++    assert f.ticket()["state"] == "ready-for-triage" and f.events("tripwire.changed") == []
++    out = f.ok("ticket", "set", "T-0001", "in_flight=[]")
++    reason = f"tripwire: {pol} changed during {rid}"
++    assert out["parked"] == reason
++    assert f.ticket()["parked"]["reason"] == reason
++    # compared once: a later run finish of the same run does not compare it again
++    f.ok("ticket", "transition", "T-0001", "--to", "ready-for-triage", "--by", "t")
++    pol.write_text("y\n")
++    assert "parked" not in f.finish(rid)
++    assert f.ticket()["state"] == "ready-for-triage" and len(f.events("tripwire.changed")) == 1
++
++
++def test_a_home_entry_resolves_against_the_account_home_not_HOME(tmp_path):
++    name = f".tripwire-probe-{uuid.uuid4().hex}"
++    account = Path(pwd.getpwuid(os.getuid()).pw_dir) / name
++    assert not account.exists()  # never list a real file under the account's home
++    home = tmp_path / "home"
++    home.mkdir()
++    (home / name).write_text("a\n")
++    other = tmp_path / "live.json"
++    other.write_text("a\n")
++    f = Inst(tmp_path, f'tripwire: {{park: ["~/{name}", {other}]}}')
++    f.env["HOME"] = str(home)
++    rid = f.start()
++    base = (f.store / "runs" / rid / "tripwire.yaml").read_text()
++    assert str(account) in base and str(home) not in base
++    (home / name).write_text("b\n")
++    other.write_text("b\n")
++    f.finish(rid, "--status-override", "KILLED")
++    assert f.ticket()["parked"]["reason"] == f"tripwire: {other} changed during {rid}"
++    assert not account.exists()
++
++
++def test_a_directory_refuses_run_start_and_records_no_run(tmp_path):
++    d = tmp_path / "live"
++    d.mkdir()
++    f = Inst(tmp_path, f"tripwire: {{park: [{d}]}}")
++    cp = f.cli("run", "start", "--role", "triage", "--ticket", "T-0001")
++    assert cp.returncode == 2 and str(d) in cp.stderr and "tripwire" in cp.stderr
++    assert not (f.store / "runs").exists() or not any((f.store / "runs").iterdir())
++    assert f.ticket()["in_flight"] == []
++
++
++def test_a_bad_list_refuses_run_start(tmp_path):
++    for i, bad in enumerate(["tripwire: {park: [relative/file.json]}", "tripwire: {watch: []}",
++                             "tripwire: [a]", "tripwire: {park: [1]}"]):
++        (tmp_path / str(i)).mkdir()
++        f = Inst(tmp_path / str(i), bad)
++        cp = f.cli("run", "start", "--role", "triage", "--ticket", "T-0001")
++        assert cp.returncode == 2 and "tripwire" in cp.stderr, (bad, cp.stderr)
++        assert not (f.store / "runs").exists() or not any((f.store / "runs").iterdir())
++
++
++def test_the_baseline_is_kept_once_and_never_committed(tmp_path):
++    f, _, _, _ = live(tmp_path)
++    f.start()
++    digest = hashlib.sha256(SECRET.encode()).hexdigest()
++    holders = [p for p in f.store.rglob("*") if p.is_file() and digest in p.read_text(errors="replace")]
++    assert [p.name for p in holders] == ["tripwire.yaml"]
++    subprocess.run(["git", "-C", str(f.store), "init", "-q"], check=True)
++    subprocess.run(["git", "-C", str(f.store), "add", "-A"], check=True)
++    staged = subprocess.run(["git", "-C", str(f.store), "grep", "--cached", "-l", digest],
++                            capture_output=True, text=True)
++    assert staged.stdout == ""
++
++
++def test_no_tripwire_key_writes_and_prints_what_it_did_before(tmp_path):
++    f = Inst(tmp_path, None)
++    rid = f.start()
++    fin = f.finish(rid)
++    assert sorted(fin) == ["confidence", "escalations", "ok", "run_id", "status"]
++    assert sorted(p.name for p in (f.store / "runs" / rid).iterdir()) == ["meta.yaml", "output.md", "system-prompt.txt"]
++    assert not (f.store / ".gitignore").exists()
++
++
++def test_empty_lists_are_off(tmp_path):
++    f = Inst(tmp_path, "tripwire: {park: [], escalate: []}")
++    rid = f.start()
++    assert "tripwire" not in f.finish(rid)
++    assert not (f.store / "runs" / rid / "tripwire.yaml").exists()

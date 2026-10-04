@@ -1,0 +1,16 @@
+run_id: run-0130-planner
+role: planner
+ticket: T-0015
+model: opus
+round: 1
+spec_version: 2
+started: '2026-10-03T23:44:52+00:00'
+finished: '2026-10-03T23:47:11+00:00'
+wall_s: 139
+status: PLANNED
+input_sources:
+- specs/T-0015/v2.md
+confidence: high. The spec fits the 400-line budget, its parts share `docs/design.md` and one changelog
+  entry, and the touched files have not drifted since its base commit.
+escalations: []
+escalations_note: null

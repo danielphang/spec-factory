@@ -1,0 +1,27 @@
+run_id: run-0228-spec_writer
+role: spec_writer
+ticket: T-0024
+model: opus
+round: 2
+spec_version: 2
+started: '2026-10-04T18:39:44+00:00'
+finished: '2026-10-04T18:50:52+00:00'
+wall_s: 668
+status: READY-FOR-CRITIC
+input_sources:
+- runs/run-0219-triage/output.md
+- requests/T-0024.md
+- openspec/specs/build-dispatch/spec.md
+- openspec/specs/harness-docs/spec.md
+- openspec/specs/harness-suite/spec.md
+- openspec/specs/human-resolution/spec.md
+- openspec/specs/store-setup/spec.md
+- openspec/specs/sub-ticket-planning/spec.md
+- decisions.md
+- runs/run-0227-critic/output.md
+- specs/T-0024/v2.md
+confidence: high, the fix shape, the marker count, the end-to-end run, its negative control, the new lock
+  scenario and the suite were re-run on a rebuilt prototype this round; the remaining scenarios rely on
+  v2's runs and the critic's base checks.
+escalations: []
+escalations_note: null

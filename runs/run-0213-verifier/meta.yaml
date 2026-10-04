@@ -1,0 +1,25 @@
+run_id: run-0213-verifier
+role: verifier
+ticket: T-0023.3
+model: opus
+round: 1
+spec_version: 2
+started: '2026-10-04T16:51:14+00:00'
+finished: '2026-10-04T16:57:16+00:00'
+wall_s: 362
+status: VERIFIED
+input_sources:
+- specs/T-0023.3/subticket.md
+- specs/T-0023/v2.md
+- runs/run-0212-implementer/output.md
+- runs/run-0213-verifier/diff.patch
+environment_files: []
+branch: factory/T-0023.3
+base: 5ea66e917b6c7be13e4c24ca4aedc83da936bd49
+head: a1b271843cb2e99f2d4f845c57e0f47ec3799031
+worktree: /Users/dphang/dev/spec-factory/.factory/state/runs/run-0213-verifier/wt
+confidence: high, every acceptance command ran verbatim with its expected output. The six NEW behaviour
+  criteria printed the parent's stated "today" output on base, and both gates passed on `a1b2718`. The
+  probes showed the fix is general, not special-cased to the tested inputs.
+escalations: []
+escalations_note: null

@@ -1,0 +1,16 @@
+run_id: run-0181-planner
+role: planner
+ticket: T-0020
+model: opus
+round: 1
+spec_version: 1
+started: '2026-10-04T09:32:14+00:00'
+finished: '2026-10-04T09:35:17+00:00'
+wall_s: 183
+status: PLANNED
+input_sources:
+- specs/T-0020/v1.md
+confidence: high, because the parent itself chooses one change, and I re-checked every file anchor it
+  edits on `main` at `02465fa`, after T-0019 merged.
+escalations: []
+escalations_note: null

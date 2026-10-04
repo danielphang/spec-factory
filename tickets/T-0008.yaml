@@ -1,0 +1,86 @@
+id: T-0008
+type: feature
+title: Adopt OpenSpec's storage model and lifecycle as a forked `spec-factory` schema (current-truth specs,
+  change folders with deltas plus a factory `verification.md`, archive at parent close, repo-level `decisions.md`),
+  keeping the factory's roles, runnable verification and gates
+request: requests/T-0008.md
+source: /Users/dphang/dev/spec-factory/issues/08_openspec_schema.md
+status: closed
+round:
+  spec: 2
+  pr: 0
+spec:
+  version: 3
+  approved_version: 3
+plan: null
+in_flight: []
+parked: null
+created: '2026-10-01T20:14:51+00:00'
+history:
+- ts: '2026-10-01T20:46:18+00:00'
+  from: ready-for-triage
+  to: parked
+  by: park
+  reason: NEEDS-HUMAN from triage
+- ts: '2026-10-01T20:48:06+00:00'
+  from: parked
+  to: ready-for-triage
+  by: dphang
+  resolve: answer
+  answer: 1
+- ts: '2026-10-01T20:50:23+00:00'
+  from: ready-for-triage
+  to: ready-for-spec-writer
+  by: workflow
+  round:
+    spec: 0
+    pr: 0
+- ts: '2026-10-01T21:06:28+00:00'
+  from: ready-for-spec-writer
+  to: parked
+  by: park
+  reason: NEEDS-HUMAN from spec writer
+- ts: '2026-10-01T21:07:15+00:00'
+  from: parked
+  to: ready-for-spec-writer
+  by: dphang
+  resolve: answer
+  answer: 2
+- ts: '2026-10-01T21:13:51+00:00'
+  from: ready-for-spec-writer
+  to: ready-for-critic
+  by: workflow
+  round:
+    spec: 1
+    pr: 0
+- ts: '2026-10-01T21:23:31+00:00'
+  from: ready-for-critic
+  to: ready-for-spec-writer
+  by: workflow
+  round:
+    spec: 2
+    pr: 0
+- ts: '2026-10-01T21:33:06+00:00'
+  from: ready-for-spec-writer
+  to: ready-for-critic
+  by: workflow
+  round:
+    spec: 2
+    pr: 0
+- ts: '2026-10-01T21:40:22+00:00'
+  from: ready-for-critic
+  to: awaiting-spec-gate
+  by: workflow
+  round:
+    spec: 2
+    pr: 0
+- ts: '2026-10-02T01:47:55+00:00'
+  from: awaiting-spec-gate
+  to: ready-for-planner
+  by: dphang
+  approved_version: 3
+- ts: '2026-10-02T01:51:25+00:00'
+  from: ready-for-planner
+  to: closed
+  by: dphang
+  resolve: close

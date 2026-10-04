@@ -1,0 +1,8 @@
+ticket: T-0012.5
+head: 7090d9d21f17688df45fd3701dc5ee26f01452c4
+role: ci
+status: PASS
+run_id: run-0071-verifier
+at: '2026-10-03T09:22:55+00:00'
+detail: '. Both commands were run from the worktree `/Users/dphang/dev/spec-factory/intake/state/runs/run-0071-verifier/wt`,
+  exactly as written:'

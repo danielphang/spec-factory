@@ -1,0 +1,7 @@
+ticket: T-0012.2
+head: c367bef72e2ed70a4417e98de907c91dbbe31320
+role: ci
+status: PASS
+run_id: run-0057-verifier
+at: '2026-10-03T07:58:39+00:00'
+detail: . `git diff --check main...HEAD` from the worktree printed nothing, exit 0.

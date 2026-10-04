@@ -1,0 +1,23 @@
+run_id: run-0174-implementer
+role: implementer
+ticket: T-0019.2
+model: opus
+round: 0
+spec_version: 2
+started: '2026-10-04T08:54:50+00:00'
+finished: '2026-10-04T09:00:13+00:00'
+wall_s: 323
+status: READY-FOR-REVIEW
+input_sources:
+- specs/T-0019.2/subticket.md
+- specs/T-0019/v2.md
+branch: factory/T-0019.2
+base: 9853737e24b2acdc001546b399d2a5a8c3dd6d85
+head: 9853737e24b2acdc001546b399d2a5a8c3dd6d85
+worktree: /Users/dphang/dev/spec-factory/.factory/state/worktrees/T-0019.2
+resolution: null
+environment_files: []
+confidence: high. Every acceptance command and both gates were run on `381f4c6` and printed the expected
+  output, and the new tests failed on base for the stated faults.
+escalations: []
+escalations_note: null

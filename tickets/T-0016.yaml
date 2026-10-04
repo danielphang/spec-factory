@@ -1,0 +1,73 @@
+id: T-0016
+type: feature
+title: 'Build speed: run each check and the test suite only where its result can change the verdict'
+request: requests/T-0016.md
+source: /private/tmp/claude-501/-Users-dphang-dev-nanobot/c69bfd1d-97a6-43e3-9d5a-a517c28d382c/scratchpad/31_suite_runs.md
+status: closed
+round:
+  spec: 1
+  pr: 0
+spec:
+  version: 1
+  approved_version: 1
+plan: plans/T-0016.md
+in_flight: []
+parked: null
+created: '2026-10-04T00:26:25+00:00'
+history:
+- ts: '2026-10-04T00:30:14+00:00'
+  from: ready-for-triage
+  to: ready-for-spec-writer
+  by: workflow
+  round:
+    spec: 0
+    pr: 0
+- ts: '2026-10-04T00:46:31+00:00'
+  from: ready-for-spec-writer
+  to: ready-for-critic
+  by: workflow
+  round:
+    spec: 1
+    pr: 0
+- ts: '2026-10-04T00:57:22+00:00'
+  from: ready-for-critic
+  to: awaiting-spec-gate
+  by: workflow
+  round:
+    spec: 1
+    pr: 0
+- ts: '2026-10-04T05:40:59+00:00'
+  from: awaiting-spec-gate
+  to: ready-for-planner
+  by: dphang
+  approved_version: 1
+- ts: '2026-10-04T05:44:33+00:00'
+  from: ready-for-planner
+  to: planned
+  by: workflow
+  round:
+    spec: 1
+    pr: 0
+- ts: '2026-10-04T06:09:49+00:00'
+  from: planned
+  to: ready-for-parent-verify
+  by: parent-check
+- ts: '2026-10-04T06:18:04+00:00'
+  from: ready-for-parent-verify
+  to: parked
+  by: park
+  reason: 'archive: '
+- ts: '2026-10-04T06:18:28+00:00'
+  from: parked
+  to: closed
+  by: dphang
+  resolve: close
+parent: null
+depends_on: []
+parallel_safe: true
+branch: null
+head: null
+merge:
+  base_before: null
+  main_after: null
+parent_base: 924513ecb731b57f4396b602ff31a1169150b3e3

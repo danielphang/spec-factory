@@ -1,0 +1,26 @@
+run_id: run-0210-reviewer
+role: reviewer
+ticket: T-0023.3
+model: fable
+round: 1
+spec_version: 2
+started: '2026-10-04T15:41:01+00:00'
+finished: '2026-10-04T15:49:26+00:00'
+wall_s: 505
+status: APPROVE
+input_sources:
+- specs/T-0023.3/subticket.md
+- specs/T-0023/v2.md
+- runs/run-0207-implementer/output.md
+- runs/run-0210-reviewer/diff.patch
+environment_files: []
+branch: factory/T-0023.3
+base: 5ea66e917b6c7be13e4c24ca4aedc83da936bd49
+head: 7463a1e5ad82c68d5a156ebb4d34689b890e09a1
+worktree: /Users/dphang/dev/spec-factory/.factory/state/runs/run-0210-reviewer/wt
+confidence: 'high: every acceptance scenario of the sub-ticket printed its expected output when I ran
+  it, both gates passed on the reviewed head, and the one test edit is exactly the one the parent lists.'
+escalations:
+- 'protected paths touched, all declared by the sub-ticket: harness `factory/cli.py`, `factory/workflows/build.js`,
+  `factory/workflows/intake.js`. The merge gate needs a human approval for them; the code earns APPROVE.'
+escalations_note: null

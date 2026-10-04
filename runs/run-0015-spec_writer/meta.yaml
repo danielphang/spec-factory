@@ -1,0 +1,21 @@
+run_id: run-0015-spec_writer
+role: spec_writer
+ticket: T-0001
+model: opus
+round: 0
+spec_version: 0
+started: '2026-10-01T19:37:17+00:00'
+finished: '2026-10-01T19:44:26+00:00'
+wall_s: 429
+status: READY-FOR-CRITIC
+input_sources:
+- runs/run-0014-triage/output.md
+- requests/T-0001.md
+confidence: medium — every criterion was run on main and on a scratch clone with A–E applied, and every
+  cited line was re-read; but the meta.yaml `escalations_note` location (A2) and the `none`-head regex
+  (A3) are my choices pending the spec gate
+escalations:
+- 'A3 (meaning of a `none` head): this spec adopts `(?i)^none\s*($|[.,;:—–-])`, so `none` in any case
+  followed by end of line or punctuation counts, and a space plus a word (`None of …`, `none of it`) never
+  does. Answer 1''s "word boundary" would also match `None of …`. The operator should confirm at the spec
+  gate, or say whether lowercase-only, or other punctuation such as `(`, was meant.'
