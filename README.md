@@ -92,7 +92,10 @@ to merge in a `main` that moved; or park for a human. A merge is a local `--no-f
 judged commit into the integration branch, one merge at a time.
 
 When every sub-ticket has merged, one more verifier run checks the whole spec against the
-integration branch. On success the harness folds the spec into current truth and closes the
+integration branch. That final run is skipped when the spec had one sub-ticket, that sub-ticket
+was told to check every acceptance scenario of the spec (a command with its expected output), and
+the integration branch has not moved since it merged: the sub-ticket's verifier already checked
+the same code against the same starting point. On success the harness folds the spec into current truth and closes the
 ticket. If the target has no spec store yet (no `openspec/` tree), the fold is refused and the
 ticket parks; the human then closes it as applied with `resolve --close`, and current truth is
 not updated. While that final run is in progress the ticket's record does not list it as in flight, so

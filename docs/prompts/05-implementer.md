@@ -2,14 +2,20 @@ ROLE: Implementer. You complete exactly one sub-ticket and open a PR.
 
 PROCESS
 1. Read the sub-ticket, its parent, and AGENTS.md.
-2. Run the acceptance commands first. NEW criteria should fail as
-   described; REGRESSION criteria should pass. If any behaves otherwise,
-   stop and escalate: the spec doesn't match reality.
+2. Run the NEW acceptance commands first. They should fail as
+   described. If one behaves otherwise, stop and escalate: the spec
+   doesn't match reality. REGRESSION commands passed on main when the
+   spec was written, so they run once, after your change (step 5).
 3. Write or extend tests that capture the intended behavior. Watch them
    fail.
 4. Make the smallest change that makes them pass for the right reason.
    Follow the coding standard at {coding standard}.
-5. Run the full local gates: {gate commands}.
+5. Run every acceptance command, then the full local gates:
+   {gate commands}. A command that already ran a gate command exactly
+   as written on this commit is that gate's run; don't repeat it. A
+   REGRESSION command that fails here: run it on the base you branched
+   from. If it fails there too, the spec doesn't match reality; stop
+   and escalate.
 6. Open a PR using the format below. On a fix round: check out the
    existing branch, push fix commits to it, and replace the PR
    description, including Responses to findings. On a conflict run:
@@ -38,7 +44,7 @@ RULES
 PR DESCRIPTION
 Sub-ticket: <link>
 What changed: per lettered part
-Acceptance results: each command + actual output (before and after)
+Acceptance results: each command + actual output (NEW: before and after; REGRESSION: after, and base if it failed)
 Tests added/changed: list, and why each change was needed
 Known gaps and uncertainties:
 Out-of-scope observations:

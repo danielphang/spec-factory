@@ -150,10 +150,12 @@ def ticket_transition(a, root, cfg):
     t = store.load_ticket(root, a.id)
     frm = t["status"]
     _check_edge(cfg, frm, a.to)
+    verified_by = None
     if a.to == "closed" and store.subtickets_of(root, t["id"]):
         # A parent closes through its parent-close run (then archive). A human who wants it closed
         # without one says so with `resolve --close`.
-        if not _parent_close_verified(root, cfg, t):
+        verified_by = _parent_close_verified(root, cfg, t)
+        if not verified_by:
             raise Refused(f"{t['id']} has sub-tickets: it closes after a VERIFIED parent-close run (or `resolve {t['id']} --close`)")
         if specstore.is_active(root) and specstore.change_dir(root, t["id"]).exists():
             raise Refused(f"{t['id']} is verified but not archived: run `archive {t['id']}` first")
@@ -161,7 +163,8 @@ def ticket_transition(a, root, cfg):
     t["status"] = a.to
     if a.to != "parked":
         t["parked"] = None
-    t["history"].append({"ts": store.now(), "from": frm, "to": a.to, "by": a.by, "round": dict(t["round"])})
+    t["history"].append({"ts": store.now(), "from": frm, "to": a.to, "by": a.by, "round": dict(t["round"]),
+                         **({"verified_by": verified_by} if verified_by else {})})
     store.save_ticket(root, t)
     store.log_event(root, "ticket.transition", ticket=t["id"], **{"from": frm, "to": a.to, "by": a.by, "round": t["round"]})
     out({"ok": True, "id": t["id"], "state": t["status"], "round": t["round"]})
@@ -595,8 +598,9 @@ def ticket_parent_check(a, root, cfg):
         parent["history"].append({"ts": store.now(), "from": frm, "to": "ready-for-parent-verify", "by": "parent-check"})
         store.save_ticket(root, parent)
         store.log_event(root, "ticket.transition", ticket=parent["id"], **{"from": frm, "to": "ready-for-parent-verify", "by": "parent-check"})
+    reuse = _reused_subticket_run(root, cfg, parent) if parent["status"] == "ready-for-parent-verify" else None
     out({"ok": True, "id": parent["id"], "state": parent["status"],
-         "subtickets": {s["id"]: s["status"] for s in subs}})
+         "subtickets": {s["id"]: s["status"] for s in subs}, "reuse": reuse})
 
 
 # ----- human surface (K-lite) -----------------------------------------------------
@@ -857,12 +861,45 @@ def _verifier_rows(root: Path, tid: str) -> list[str]:
     return rows
 
 
-def _parent_close_verified(root: Path, cfg: dict, t: dict) -> bool:
-    """Every sub-ticket merged, and a finished verifier run on the parent itself said VERIFIED on a
-    head that contains every one of those merges (a run from before the last merge does not count)."""
+def _reused_subticket_run(root: Path, cfg: dict, t: dict) -> str | None:
+    """The run id of a sub-ticket's VERIFIED verifier run that stands for the parent-close run
+    (design doc routing table, Merge gate row), or None when the parent needs its own run."""
+    # factory: one sub-ticket only, and scenario coverage is read from scenario names occurring in
+    # the sub-ticket's text; widen only when the store can check a coverage map per sub-ticket.
+    subs = store.subtickets_of(root, t["id"])
+    if len(subs) != 1 or not t.get("parent_base"):
+        return None
+    s = subs[0]
+    after = (s.get("merge") or {}).get("main_after")
+    if s["status"] != "merged" or not after or not s.get("head"):
+        return None
+    repo = gitops.repo_root(cfg)
+    if gitops.rev(repo, gitops.integration_branch(cfg, repo)) != after:
+        return None
+    row = store.results_for(root, s["head"]).get("verifier") or {}
+    rid = row.get("run_id")
+    mp = root / "runs" / str(rid) / "meta.yaml"
+    if row.get("status") != "VERIFIED" or not rid or not mp.exists():
+        return None
+    m = store.read_yaml(mp) or {}
+    if m.get("status") != "VERIFIED" or m.get("head") != s["head"] or m.get("base") != t["parent_base"]:
+        return None
+    spec = root / "specs" / t["id"] / f"v{t['spec'].get('approved_version')}.md"
+    sub = root / "specs" / s["id"] / "subticket.md"
+    if not spec.exists() or not sub.exists():
+        return None
+    names = specstore.scenario_names(spec.read_text(encoding="utf-8"))
+    text = sub.read_text(encoding="utf-8")
+    return rid if names and all(n in text for n in names) else None
+
+
+def _parent_close_verified(root: Path, cfg: dict, t: dict) -> str | None:
+    """The run that verifies the parent: every sub-ticket merged, and a finished verifier run on the
+    parent itself said VERIFIED on a head that contains every one of those merges (a run from before
+    the last merge does not count); else a sub-ticket's run that stands for it; else None."""
     subs = store.subtickets_of(root, t["id"])
     if any(s["status"] != "merged" for s in subs):
-        return False
+        return None
     repo = gitops.repo_root(cfg)
     runs = root / "runs"
     for d in sorted(runs.iterdir()) if runs.exists() else []:
@@ -873,8 +910,8 @@ def _parent_close_verified(root: Path, cfg: dict, t: dict) -> bool:
         if m.get("ticket") != t["id"] or m.get("role") != "verifier" or m.get("status") != "VERIFIED" or not m.get("head"):
             continue
         if all(gitops.head_contains(repo, m["head"], s["merge"]["main_after"]) for s in subs if s["merge"].get("main_after")):
-            return True
-    return False
+            return d.name
+    return _reused_subticket_run(root, cfg, t)
 
 
 def archive_cmd(a, root, cfg):
