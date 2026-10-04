@@ -3,7 +3,7 @@ type: sub-ticket
 title: Dispatcher park reasons and a redispatch that keeps passing rows (parts B and D)
 request: requests/T-0023.md
 source: plan:run-0200-planner
-status: checks-in-flight
+status: merged
 round:
   spec: 0
   pr: 1
@@ -41,14 +41,61 @@ history:
   - ci
   - reviewer
   - verifier
+- ts: '2026-10-04T15:50:04+00:00'
+  from: checks-in-flight
+  to: parked
+  by: park
+  reason: SPEC-DEFECT from verifier
+- ts: '2026-10-04T15:51:16+00:00'
+  from: parked
+  to: checks-in-flight
+  by: dphang
+  round:
+    spec: 0
+    pr: 1
+- ts: '2026-10-04T15:51:29+00:00'
+  from: checks-in-flight
+  to: ready-for-merge
+  by: dphang
+  round:
+    spec: 0
+    pr: 1
+- ts: '2026-10-04T16:45:45+00:00'
+  from: ready-for-merge
+  to: ready-for-implementer
+  by: dphang
+  round:
+    spec: 0
+    pr: 1
+- ts: '2026-10-04T16:50:57+00:00'
+  from: ready-for-implementer
+  to: checks-in-flight
+  by: workflow
+  round:
+    spec: 0
+    pr: 1
+- ts: '2026-10-04T16:58:48+00:00'
+  from: checks-in-flight
+  to: ready-for-merge
+  by: workflow
+  round:
+    spec: 0
+    pr: 1
+- ts: '2026-10-04T16:58:57+00:00'
+  from: ready-for-merge
+  to: merged
+  by: merge
+  head: a1b271843cb2e99f2d4f845c57e0f47ec3799031
 parent: T-0023
 depends_on:
 - T-0023.2
 parallel_safe: false
 branch: factory/T-0023.3
-head: 7463a1e5ad82c68d5a156ebb4d34689b890e09a1
+head: a1b271843cb2e99f2d4f845c57e0f47ec3799031
 merge:
-  base_before: null
-  main_after: null
+  base_before: 5ea66e917b6c7be13e4c24ca4aedc83da936bd49
+  main_after: cf6e2bc6aa19a748648e159c37204dba418b1df8
 parent_base: null
 label: T-0023-S2
+merge_refused: null
+conflict_runs: 0

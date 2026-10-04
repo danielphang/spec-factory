@@ -3,10 +3,10 @@ type: sub-ticket
 title: 'Store and instance setup: whitespace rule, no half instance, relative paths (parts C, E and F)'
 request: requests/T-0023.md
 source: plan:run-0200-planner
-status: waiting-dependencies
+status: merged
 round:
   spec: 0
-  pr: 0
+  pr: 1
 spec:
   version: 2
   approved_version: 2
@@ -14,15 +14,39 @@ plan: null
 in_flight: []
 parked: null
 created: '2026-10-04T14:25:14+00:00'
-history: []
+history:
+- ts: '2026-10-04T16:58:57+00:00'
+  from: waiting-dependencies
+  to: ready-for-implementer
+  by: merge
+- ts: '2026-10-04T17:13:35+00:00'
+  from: ready-for-implementer
+  to: checks-in-flight
+  by: workflow
+  round:
+    spec: 0
+    pr: 1
+- ts: '2026-10-04T17:25:32+00:00'
+  from: checks-in-flight
+  to: ready-for-merge
+  by: workflow
+  round:
+    spec: 0
+    pr: 1
+- ts: '2026-10-04T17:25:54+00:00'
+  from: ready-for-merge
+  to: merged
+  by: merge
+  head: 3bf45779ddee6e0874ba3b1eda5170235ededfc1
 parent: T-0023
 depends_on:
 - T-0023.3
 parallel_safe: false
-branch: null
-head: null
+branch: factory/T-0023.4
+head: 3bf45779ddee6e0874ba3b1eda5170235ededfc1
 merge:
-  base_before: null
-  main_after: null
+  base_before: cf6e2bc6aa19a748648e159c37204dba418b1df8
+  main_after: 2630f7559958db1d1f398839c6c227a0aa35caec
 parent_base: null
 label: T-0023-S3
+merge_refused: null

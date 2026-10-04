@@ -118,3 +118,12 @@ Suggested fix: none required; leave it.
 ### Not findings, noted so the writer does not change them
 - The GIVEN fixture files go to `${TMPDIR:-/tmp}`, so a role with `TMPDIR` set to its scratch directory writes them there; only the suite scenario writes under `/tmp`, by the Decision that records it.
 - The REGRESSION scenario "A plan that reuses an existing sub-ticket id" prints the same text today and after; the writer says why it still guards the change (the label must not silently become `T-0001.3`). Acceptable.
+
+## Verifier results
+
+3bf45779ddee6e0874ba3b1eda5170235ededfc1 · T-0023.4 · VERIFIED · run-0216-verifier
+7463a1e5ad82c68d5a156ebb4d34689b890e09a1 · T-0023.3 · VERIFIED · run-0208-verifier
+7463a1e5ad82c68d5a156ebb4d34689b890e09a1 · T-0023.3 · SPEC-DEFECT · run-0211-verifier
+a1b271843cb2e99f2d4f845c57e0f47ec3799031 · T-0023.3 · VERIFIED · run-0213-verifier
+a78de4b5a03a3c2f87e9976542035fb4a1ab0f07 · T-0023.2 · VERIFIED · run-0205-verifier
+fa09a10f700a44ab7ce5881bf3daf5615ecbbb57 · T-0023.1 · VERIFIED · run-0202-verifier

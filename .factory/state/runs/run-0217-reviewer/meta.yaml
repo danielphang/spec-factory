@@ -1,0 +1,28 @@
+run_id: run-0217-reviewer
+role: reviewer
+ticket: T-0023.4
+model: fable
+round: 1
+spec_version: 2
+started: '2026-10-04T17:13:52+00:00'
+finished: '2026-10-04T17:22:16+00:00'
+wall_s: 504
+status: APPROVE
+input_sources:
+- specs/T-0023.4/subticket.md
+- specs/T-0023/v2.md
+- runs/run-0215-implementer/output.md
+- runs/run-0217-reviewer/diff.patch
+environment_files: []
+branch: factory/T-0023.4
+base: cf6e2bc6aa19a748648e159c37204dba418b1df8
+head: 3bf45779ddee6e0874ba3b1eda5170235ededfc1
+worktree: /Users/dphang/dev/spec-factory/.factory/state/runs/run-0217-reviewer/wt
+confidence: high, every acceptance scenario, both gates and the uncommitted-edit suite scenario were run
+  by me on `3bf4577` and printed the expected output; the diff was read line by line against parts C,
+  E and F.
+escalations:
+- 'protected harness paths touched, all declared by the sub-ticket: `factory/cli.py`, `factory/store.py`,
+  `factory/instance.py`, `factory/compose.py`. The merge gate needs a human approval for them; the code
+  itself earns APPROVE.'
+escalations_note: null

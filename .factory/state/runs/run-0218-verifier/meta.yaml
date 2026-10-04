@@ -1,0 +1,30 @@
+run_id: run-0218-verifier
+role: verifier
+ticket: T-0023
+model: opus
+round: 0
+spec_version: 2
+started: '2026-10-04T17:26:30+00:00'
+finished: '2026-10-04T17:41:18+00:00'
+wall_s: 888
+status: VERIFIED
+input_sources:
+- specs/T-0023/v2.md
+environment_files: []
+branch: null
+base: 1ab9540c9f5f53b505d2d7d8d8942438a71bc5e9
+head: 2630f7559958db1d1f398839c6c227a0aa35caec
+worktree: /Users/dphang/dev/spec-factory/.factory/state/runs/run-0218-verifier/wt
+confidence: high, every scenario ran verbatim on both base and main, each NEW one moved from its documented
+  base output to its expected output, and the probes show behaviour that generalises past the tested inputs.
+escalations:
+- The whitespace gate checks nothing on a parent-close run. The gate `git diff --check main...HEAD` compares
+  `main` with itself here, so its range is empty. Run over the whole parent, `git diff --check 1ab9540
+  2630f75` exits 2. Every path it reports is a store run record, such as `.factory/state/runs/run-0202-verifier/diff.patch`
+  and `input.md` through `run-0208`. The same range with `.factory/state` excluded exits 0, so the harness
+  code adds no whitespace errors. This is the defect that H3 fixes. The store's `.gitattributes` does
+  not exist yet on `main`, because operator step 1 runs only after the runtime moves to this change. The
+  runtime is the pinned harness checkout that runs tickets. Until the operator does that step and commits
+  the file, whole-range whitespace checks will keep reporting run records. This is not a failure of any
+  criterion here.
+escalations_note: null
