@@ -293,7 +293,9 @@ reports harness problems to the session that owns this repo, which fixes them th
 **Parallel intake works today.** Start one intake per ticket from a runner. Tickets share only the
 store, and every store write goes through `bin/factory`, which allocates run ids atomically. On
 2026-10-04 the two stores had 41 and 11 overlapping runs of different tickets (triage, spec writers,
-critics, planners).
+critics, planners). One caveat until #35 lands: agents of parallel runs share the launching session's
+scratchpad and can overwrite each other's files, so don't run parallel intakes on tickets whose roles
+may prototype in the same part of the code.
 
 **Parallel builds across tickets have not been tried.** Each sub-ticket builds in its own worktree,
 merges into the integration branch one at a time under a lock, and gets a catch-up run if the branch
