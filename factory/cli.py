@@ -846,8 +846,7 @@ def _revision() -> str:
 def _refuse_inside_store(cwd: Path, top: Path) -> None:
     """Refuse `init` from inside the store checkout, where it would build a second instance inside
     the live store (design A.1). Called only with FACTORY_INSTANCE unset."""
-    head = subprocess.run(["git", "-C", str(top), "symbolic-ref", "-q", "HEAD"], capture_output=True, text=True)
-    if head.stdout.strip() == f"refs/heads/{gitops.STORE_BRANCH}":  # an unborn branch too
+    if gitops.git(top, "symbolic-ref", "-q", "HEAD", check=False) == f"refs/heads/{gitops.STORE_BRANCH}":  # unborn too
         raise Refused(f"factory init: {cwd} is inside the store checkout {top} (branch {gitops.STORE_BRANCH}); "
                       "run init from the repository root")
     # Whatever the store has checked out (a detached HEAD, another branch): the instance found by
@@ -870,8 +869,7 @@ def _refuse_inside_store(cwd: Path, top: Path) -> None:
 
 def _head_branch(repo: Path) -> str:
     """The branch checked out at `repo`, or HEAD when it is detached."""
-    cp = subprocess.run(["git", "symbolic-ref", "-q", "--short", "HEAD"], cwd=repo, capture_output=True, text=True)
-    return cp.stdout.strip() or "HEAD"
+    return gitops.git(repo, "symbolic-ref", "-q", "--short", "HEAD", check=False) or "HEAD"
 
 
 def _add_store_checkout(repo: Path, root: Path, branch: str, cfg_path: Path) -> None:
@@ -885,8 +883,7 @@ def _add_store_checkout(repo: Path, root: Path, branch: str, cfg_path: Path) -> 
         if sha:
             raise Refused(f"factory init: {branch} has tracked files under {rel} (last in commit {sha}); a checkout "
                           f"of any older commit would overwrite a store kept there; set another state_dir in {cfg_path}")
-    local = subprocess.run(["git", "rev-parse", "-q", "--verify", f"refs/heads/{store_branch}"], cwd=repo,
-                           capture_output=True).returncode == 0
+    local = bool(gitops.git(repo, "rev-parse", "-q", "--verify", f"refs/heads/{store_branch}", check=False))
     remotes = [] if local else gitops.remote_branches(repo, store_branch)
     if len(remotes) > 1:
         raise Refused(f"factory init: no local branch {store_branch}, and more than one remote carries it "
@@ -915,9 +912,7 @@ def _store_hint(repo: Path, root: Path) -> None:
     """An existing own store that is not the store branch's checkout is left alone (design A.5)."""
     top = gitops.git(root, "rev-parse", "--show-toplevel", check=False)
     if top and Path(top).resolve() == root.resolve() and gitops.common_dir(root) == gitops.common_dir(repo):
-        detached = subprocess.run(["git", "-C", str(root), "symbolic-ref", "-q", "HEAD"],
-                                  capture_output=True).returncode != 0
-        if detached:
+        if _head_branch(root) == "HEAD":
             print(f"the store worktree {root} is on a detached HEAD; check out {gitops.STORE_BRANCH} there",
                   file=sys.stderr)
         return
@@ -961,7 +956,10 @@ def init_cmd(a):
     repo = instance.repo_root(inst)
     existed = root.exists()
     if own and not existed:
-        branch = _head_branch(repo) if new_text is not None else gitops.integration_branch(cfg, repo)
+        if new_text is None and (os.environ.get("FACTORY_INTEGRATION_BRANCH") or cfg.get("integration_branch")):
+            branch = gitops.integration_branch(cfg, repo)
+        else:  # its own fallback, rev-parse --abbrev-ref HEAD, fails on an unborn branch, never tracked (A.3.1)
+            branch = _head_branch(repo)
         _add_store_checkout(repo, root, branch, cfg_path)
     if new_text is not None:
         store.write_text(cfg_path, new_text)

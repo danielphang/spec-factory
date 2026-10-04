@@ -140,6 +140,48 @@ def test_two_remotes_carrying_the_branch_are_refused_naming_both(target, tmp_pat
     assert git(clone, "branch", "--list", BRANCH) == ""
 
 
+@pytest.mark.parametrize("with_store", [False, True], ids=["decoy-only", "decoy-and-store"])
+def test_a_remote_branch_whose_name_only_ends_in_the_store_branch_is_not_the_store(target, tmp_path, with_store):
+    """`refs/remotes/*/factory-store`, one path segment for the remote (A.3.2): `origin/x/factory-store`
+    is a code branch, neither the store to check out nor a second remote carrying it."""
+    git(target, "add", "-A")
+    git(target, "commit", "-q", "-m", "instance")
+    if with_store:
+        git(state(target), "add", "-A")
+        git(state(target), "commit", "-q", "-m", "store: first")
+    git(target, "checkout", "-q", "-b", f"x/{BRANCH}")
+    (target / "code.txt").write_text("code\n")
+    git(target, "add", "code.txt")
+    git(target, "commit", "-q", "-m", "a code branch")
+    git(target, "checkout", "-q", "main")
+    clone = tmp_path / "clone"
+    git(tmp_path, "clone", "-q", str(target), str(clone))
+    assert git(clone, "rev-parse", "-q", "--verify", f"refs/remotes/origin/x/{BRANCH}")
+    cp = init(clone)
+    assert cp.returncode == 0, cp.stderr
+    assert js(cp)["store_branch"] == BRANCH
+    assert not (state(clone) / "code.txt").exists()
+    if with_store:
+        assert git(state(clone), "rev-parse", "--abbrev-ref", "@{upstream}") == f"origin/{BRANCH}"
+    else:  # a new orphan: the branch has no commit yet
+        assert git(clone, "rev-parse", "-q", "--verify", f"refs/heads/{BRANCH}", check=False) == ""
+
+
+def test_an_existing_instance_on_an_unborn_branch_counts_as_never_tracked(tmp_path):
+    """A.3.1: with no integration_branch configured, an unborn branch at the repo root has tracked
+    nothing, so a missing store is created rather than refused with git's error."""
+    t = tmp_path / "target"
+    t.mkdir()
+    git(t, "init", "-q", "-b", "main")
+    assert init(t, "--repo-name", "demo").returncode == 0
+    subprocess.run(["rm", "-rf", str(state(t))], check=True)
+    git(t, "worktree", "prune")
+    cp = init(t)
+    assert cp.returncode == 0, cp.stderr
+    assert js(cp)["store_branch"] == BRANCH
+    assert git(state(t), "symbolic-ref", "--short", "HEAD") == BRANCH
+
+
 def test_a_store_path_the_integration_branch_once_tracked_is_refused(tmp_path):
     t = git_repo(tmp_path / "target")
     state(t).mkdir(parents=True)
