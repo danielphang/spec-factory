@@ -1,20 +1,41 @@
 id: T-0016
-type: null
-title: 'Build speed: run each test suite only where it can change the verdict'
+type: feature
+title: 'Build speed: run each check and the test suite only where its result can change the verdict'
 request: requests/T-0016.md
 source: /private/tmp/claude-501/-Users-dphang-dev-nanobot/c69bfd1d-97a6-43e3-9d5a-a517c28d382c/scratchpad/31_suite_runs.md
-status: ready-for-triage
+status: awaiting-spec-gate
 round:
-  spec: 0
+  spec: 1
   pr: 0
 spec:
-  version: 0
+  version: 1
   approved_version: null
 plan: null
 in_flight: []
 parked: null
 created: '2026-10-04T00:26:25+00:00'
-history: []
+history:
+- ts: '2026-10-04T00:30:14+00:00'
+  from: ready-for-triage
+  to: ready-for-spec-writer
+  by: workflow
+  round:
+    spec: 0
+    pr: 0
+- ts: '2026-10-04T00:46:31+00:00'
+  from: ready-for-spec-writer
+  to: ready-for-critic
+  by: workflow
+  round:
+    spec: 1
+    pr: 0
+- ts: '2026-10-04T00:57:22+00:00'
+  from: ready-for-critic
+  to: awaiting-spec-gate
+  by: workflow
+  round:
+    spec: 1
+    pr: 0
 parent: null
 depends_on: []
 parallel_safe: true
