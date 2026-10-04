@@ -49,9 +49,11 @@ async function clerk(cmd, phase, label) {
   for (let i = lines.length - 1; i >= 0 && parsed === null; i--) {
     try { parsed = JSON.parse(lines[i]) } catch (e) { parsed = null }
   }
-  if (parsed === null) return { ok: false, exit: res.exit, stderr: res.stderr || '', stdout: res.stdout || '', error: 'no JSON on stdout' }
+  if (parsed === null) return { ok: false, exit: res.exit, stderr: res.stderr || `exit ${res.exit}, no JSON on stdout`, stdout: res.stdout || '', error: 'no JSON on stdout' }
   if (res.exit !== 0 && parsed.ok !== false) parsed.ok = false
   if (!parsed.stderr && res.stderr) parsed.stderr = res.stderr
+  // A refusal prints its error as JSON on stdout too: a park reason built from stderr never ends blank.
+  if (parsed.ok === false && !parsed.stderr) parsed.stderr = parsed.error || `exit ${res.exit}, no error text`
   return parsed
 }
 
@@ -123,7 +125,8 @@ async function buildOne(st) {
   while (true) {
     const show = await clerk(`${BIN} ticket show ${st} --json`, 'Build', `ticket show ${st}`)
     if (!show.ok) return
-    if (show.state === 'ready-for-implementer') {
+    const implemented = show.state === 'ready-for-implementer'
+    if (implemented) {
       const impl = await runRole('implementer', st, 'Build')
       if (!impl) return
       if (impl.status === 'KILLED') { await park(st, 'budget kill: implementer', [impl.runId], 'Build'); return }
@@ -142,11 +145,20 @@ async function buildOne(st) {
     } else if (show.state !== 'checks-in-flight') {
       return  // parked, merged, closed or waiting: nothing for this loop to do
     }
-    // Both checkers on the same head, fresh contexts, in parallel; each result recorded against that head.
+    // The checkers on the same head, fresh contexts, in parallel; each result recorded against that head.
+    // After an implementer run both run. Entered at checks-in-flight (a redispatch or a resumed
+    // sub-ticket), only the checkers with no row on this head run; the verifier writes the ci row too.
     const headNow = await clerk(`${BIN} ticket head ${st}`, 'Build', `ticket head ${st}`)
     const sha = headNow.ok ? headNow.head : null
     if (!sha || !/^[0-9a-f]{40}$/.test(sha)) { await park(st, `harness-bug: no head for the checkers: ${headNow.stderr || ''}`, [], 'Build'); return }
-    const checked = await parallel(['reviewer', 'verifier'].map(role => async () => {
+    let roles = ['reviewer', 'verifier']
+    if (!implemented) {
+      const rows = await clerk(`${BIN} results show ${st}`, 'Build', `results show ${st}`)
+      if (!rows.ok) { await park(st, `harness-bug: results show: ${rows.stderr || ''}`, [], 'Build'); return }
+      const missing = rows.missing || []
+      roles = roles.filter(role => missing.includes(role) || (role === 'verifier' && missing.includes('ci')))
+    }
+    const checked = await parallel(roles.map(role => async () => {
       const r = await runRole(role, st, 'Build')
       if (!r) return null
       const rec = await clerk(`${BIN} results record ${st} --head ${sha} --role ${role} --output ${r.outputPath} --run ${r.runId}${r.status === 'KILLED' ? ' --killed' : ''}`, 'Build', `results record ${role}`)

@@ -569,7 +569,7 @@ def test_worktrees_get_the_integration_checkout_s_untracked_lockfile(tmp_path):
 
 def test_redispatch_re_runs_the_checks_on_the_same_head_after_a_harness_fix(tmp_path):
     """A SPEC-DEFECT caused by the gate, not the change: the human fixes the gate and redispatches. The
-    checkers run again on the same commit, the round does not move, and the old rows are set aside."""
+    checkers run again on the same commit, the round does not move, and the rows that did not pass are set aside."""
     f, tid, (st,) = built_to_implementer(tmp_path)
     f.dispatch("implementer", st)
     head = f.ticket(st)["head"]
@@ -582,9 +582,8 @@ def test_redispatch_re_runs_the_checks_on_the_same_head_after_a_harness_fix(tmp_
     assert cp.returncode == 2
     f.human_runs("resolve", st, "--redispatch")
     assert f.state(st) == "checks-in-flight" and f.ticket(st)["round"]["pr"] == 1 and f.ticket(st)["head"] == head
-    assert f.results(st) == {} and sorted(p.name for p in (f.store / "results" / head / "superseded-1").iterdir()) == ["ci.yaml", "reviewer.yaml", "verifier.yaml"]
+    assert f.results(st) == {"reviewer": "APPROVE"} and sorted(p.name for p in (f.store / "results" / head / "superseded-1").iterdir()) == ["ci.yaml", "verifier.yaml"]
     assert f.ok("ticket", "ready-implementers", tid)["resumable"] == [st]
-    f.dispatch("reviewer", st, stub="accept-approve/reviewer-1.md")
     f.dispatch("verifier", st, stub="accept-approve/verifier-1.md")
     assert f.state(st) == "merged"
 
