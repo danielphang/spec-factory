@@ -1,0 +1,31 @@
+run_id: run-0133-reviewer
+role: reviewer
+ticket: T-0015.1
+model: fable
+round: 1
+spec_version: 2
+started: '2026-10-03T23:56:13+00:00'
+finished: '2026-10-04T00:01:06+00:00'
+wall_s: 293
+status: APPROVE
+input_sources:
+- specs/T-0015.1/subticket.md
+- specs/T-0015/v2.md
+- runs/run-0131-implementer/output.md
+- runs/run-0133-reviewer/diff.patch
+environment_files: []
+branch: factory/T-0015.1
+base: 61d92bef32d05c89bb9187f8455f4eb298b2a99f
+head: 27d6d63fcb2f5c03d64696f6769abf871e4f2bc0
+worktree: /Users/dphang/dev/spec-factory/.factory/state/runs/run-0133-reviewer/wt
+confidence: high. All eleven acceptance scenarios and both gates were re-run here and printed the THEN
+  values; the new prompt-path tests were seen to fail on a scratch clone of `main`; `docs/coding.md` is
+  byte-identical to the approved block.
+escalations:
+- 'protected paths touched, all declared in the sub-ticket (merge gate needs the human approval): harness
+  `factory/instance.py`, `factory/cli.py`, `factory/prompts/implementer.md`, `factory/prompts/reviewer.md`,
+  `factory/prompts/spec_writer.md`, `factory/prompts/critic.md`; generated `docs/prompts/02-spec-writer.md`,
+  `03-spec-critic.md`, `05-implementer.md`, `06-code-reviewer.md`, `08-retro.md`, each verbatim to its
+  design block (scenario 8); guardrail agent-prompt blocks in `docs/design.md` (spec writer, spec critic,
+  implementer, code reviewer, retro).'
+escalations_note: null

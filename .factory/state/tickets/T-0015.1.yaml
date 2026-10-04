@@ -1,0 +1,47 @@
+id: T-0015.1
+type: sub-ticket
+title: Add the coding standard and point the implementer, reviewer, spec writer, critic and retro at it
+request: requests/T-0015.md
+source: plan:run-0130-planner
+status: merged
+round:
+  spec: 0
+  pr: 1
+spec:
+  version: 2
+  approved_version: 2
+plan: null
+in_flight: []
+parked: null
+created: '2026-10-03T23:47:34+00:00'
+history:
+- ts: '2026-10-03T23:55:58+00:00'
+  from: ready-for-implementer
+  to: checks-in-flight
+  by: workflow
+  round:
+    spec: 0
+    pr: 1
+- ts: '2026-10-04T00:03:09+00:00'
+  from: checks-in-flight
+  to: ready-for-merge
+  by: workflow
+  round:
+    spec: 0
+    pr: 1
+- ts: '2026-10-04T00:03:17+00:00'
+  from: ready-for-merge
+  to: merged
+  by: merge
+  head: 27d6d63fcb2f5c03d64696f6769abf871e4f2bc0
+parent: T-0015
+depends_on: []
+parallel_safe: true
+branch: factory/T-0015.1
+head: 27d6d63fcb2f5c03d64696f6769abf871e4f2bc0
+merge:
+  base_before: 61d92bef32d05c89bb9187f8455f4eb298b2a99f
+  main_after: 530c9ef3b8a557b5a340b3662cd610eb4f2d0a41
+parent_base: null
+label: T-0015.1
+merge_refused: null
