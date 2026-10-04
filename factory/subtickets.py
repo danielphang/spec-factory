@@ -7,6 +7,10 @@ A sub-ticket is a ticket record like any other (tickets/<PARENT>.<n>.yaml) with 
 The planner prompt asks for "ID / Title" without fixing the id's form, so real plans use
 `T-0001-A`, `ST-1` or `T-0001.1`, usually under a `##` heading, with bold field names. The store
 numbers them <PARENT>.1, .2, … in plan order and keeps the planner's own id as `label`.
+
+A field line may start with a `- ` or `* ` list bullet, before any bold marks. Every sub-ticket
+needs a `Depends on:` line (`Depends on: none` when it depends on nothing); a plan with a
+sub-ticket that has none is refused with that sub-ticket's label.
 """
 from __future__ import annotations
 
@@ -14,7 +18,7 @@ import re
 
 LABEL = r"(?:T-\d{4}[.-][A-Za-z0-9]+|ST-\d+)"
 HEAD_RE = re.compile(r"^(?:#{1,4}\s+)?\**(" + LABEL + r")\**\s+/\s+(.+?)\s*$")  # a heading or a line at column 0, never a bullet
-FIELD_RE = re.compile(r"^\s*\**\s*([A-Z][A-Za-z -]+?)\s*:\s*\**\s*(.*)$")
+FIELD_RE = re.compile(r"^\s*(?:[-*]\s+)?\**\s*([A-Z][A-Za-z -]+?)\s*:\s*\**\s*(.*)$")
 REF_RE = re.compile(r"T-\d{4}(?:[.-][A-Za-z0-9]+)?|ST-\d+")
 SATISFIED = ("merged", "closed")
 NONE_RE = re.compile(r"^\W*(none|n/?a|nothing|no dependenc)|^\W*$", re.I)  # "none.", "n/a", "— (none)", "-"
@@ -60,12 +64,14 @@ def parse(planner_output: str, parent: str) -> list[dict]:
         # Parallel-safe defaults to no: a plan that does not say "yes" runs that sub-ticket alone.
         sub = {"id": alias[m.group(1)], "label": m.group(1), "title": m.group(2).strip(" :*"),
                "depends_on": [], "parallel_safe": False}
+        has_depends_on = False
         for line in body[1:]:
             f = FIELD_RE.match(line)
             if not f:
                 continue
             key, val = f.group(1).strip().lower(), f.group(2).strip()
             if key == "depends on":
+                has_depends_on = True
                 deps: list[str] = []
                 if not NONE_RE.match(val):
                     for ref in REF_RE.findall(val) + [f"{parent}{x}" for x in re.findall(r"(?<![\w-])\.\d+\b", val)]:
@@ -86,6 +92,8 @@ def parse(planner_output: str, parent: str) -> list[dict]:
                 sub["depends_on"] = deps
             elif key == "parallel-safe":
                 sub["parallel_safe"] = val.lower().startswith("yes")
+        if not has_depends_on:
+            raise ValueError(f'{sub["label"]}: no "Depends on:" line; write "Depends on: none" when it depends on nothing')
         text = "\n".join(body).rstrip() + "\n"
         if preamble:
             text += "\n## Shared plan context (from the plan; applies to every sub-ticket)\n\n" + preamble + "\n"

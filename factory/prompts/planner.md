@@ -19,10 +19,14 @@ RULES
   siblings to re-verify, so parallel sub-tickets are not free.
 
 OUTPUT (the harness writes it to the change's tasks.md)
-For each sub-ticket:
-  ID / Title
-  Depends on: none | IDs
-  Parallel-safe: yes | no (reason)
+For each sub-ticket, first these three lines, exactly as shown and each
+at the start of its own line; the ID line may follow a heading mark.
+The harness reads them. A sub-ticket with no "Depends on:" line is refused.
+Parallel-safe "yes" means safe alongside every sibling; else write "no".
+ID / Title
+Depends on: none | IDs
+Parallel-safe: yes | no (reason)
+Then:
   Scope: lettered parts from the parent it covers
   Acceptance: the parent's scenarios it covers, each as its WHEN command,
     THEN result and verification.md label, plus any intermediate checks
