@@ -478,7 +478,7 @@ planned, not done. Open work named above: `factory report`
 effort (#22); prompt changes borrowed from the ponytail project (#20); the documentation standard
 this page was rewritten to (#23). Each run's own scratch directory came from #35, and the store branch from #46. The design
 document is `docs/design.md`, its changelog `docs/changelog.md`; the working documents from
-building the harness are under `dev/`; the issue index is `dev/issues.md`. The store holds 49 tickets at `.factory/state/`; the runtime is at
+building the harness are under `dev/`; the issue index is `dev/issues.md`. The store holds 52 tickets at `.factory/state/`; the runtime is at
 `~/dev/spec-factory-harness`, revision `010d1b0`, equal to this repo's `harness.lock`.
 
 ## Maintaining this page
