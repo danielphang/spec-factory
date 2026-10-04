@@ -73,6 +73,7 @@ a command is allowed.
 | current truth | one document per capability saying what the system does now; the pipeline keeps it |
 | target | a repo the factory works on |
 | instance | a target's `.factory/` directory: its config, its briefing for the roles, its store |
+| store branch | `factory-store`, the target's branch for its store; checked out as a git worktree at the store's path and never merged into the integration branch |
 | runtime | the pinned checkout of the harness that runs tickets; distinct from the dev checkout |
 
 ## How a ticket moves
@@ -163,9 +164,13 @@ Three places:
   mid-run.
 - Each **target** holds only a `.factory/` directory, its instance: `instance.yaml` (config),
   `context.md` (the briefing every role reads first), the store, and `harness.lock`, the one
-  harness commit this target has agreed to run with. Today this repo is the only target on the
-  runtime; a chat-bot repo is a target that still runs its own in-tree copy of the harness until
-  its cutover.
+  harness commit this target has agreed to run with. The store is the target's record of every
+  ticket. A store that `factory init` creates is a git worktree of the store branch,
+  `factory-store`, at a path the integration branch has never tracked, so committing the store
+  never moves the integration branch. This repo's store and the chat-bot repo's predate that and
+  are still plain directories committed on their integration branches. Today this repo is the only
+  target on the runtime; a chat-bot repo is a target that still runs its own in-tree copy of the
+  harness until its cutover.
 
 ```mermaid
 flowchart TB
@@ -252,9 +257,15 @@ the dev checkout is where you merge.
 
 From inside the target repo, with `R` the runtime (`~/dev/spec-factory-harness`):
 
-1. `$R/bin/factory init --repo-name NAME`. Creates `.factory/` at the repo's top level
-   (`instance.yaml`, `context.md`, `harness.lock`, the store) and copies the role agents into
-   `.claude/agents/`. Idempotent.
+1. `$R/bin/factory init --repo-name NAME`, from the repository root. Creates `.factory/` at the
+   repo's top level (`instance.yaml`, `context.md`, `harness.lock`) and copies the role agents into
+   `.claude/agents/`. It creates the store as a checkout of a new `factory-store` branch, and adds
+   the store's path to the repo's git exclude file so the integration checkout does not see it.
+   On a clone where `factory-store` already exists, locally or on one remote, it checks that
+   branch out instead, which restores the store. When more than one remote carries the branch it
+   refuses and names each; pick one with `git branch factory-store <remote>/factory-store` and run
+   `init` again. It also refuses from inside the store, and at a store path the integration branch
+   has ever tracked. Idempotent.
 2. Restart the Claude Code session so the agents register.
 3. Fill in `.factory/context.md`, the briefing every role reads first: which repo this is, how to
    run its tests, what kind of request to expect. Set `gate_commands` and `protected_paths` in
@@ -262,6 +273,28 @@ From inside the target repo, with `R` the runtime (`~/dev/spec-factory-harness`)
    so it still finds that cache from inside the fresh temporary HOME.
 
 The repo is now a target. "Starting a run" is the rest.
+
+### Committing and pushing the store
+
+The store is its own checkout of `factory-store`, so its records are committed there, never on the
+integration branch. Set `S` to the store's path (`state_dir` in `instance.yaml`; `.factory/state`
+for a new instance), then:
+
+```
+git -C "$S" add -A && git -C "$S" commit -m "store: <what changed>"
+git push origin factory-store
+```
+
+A store commit never moves the integration branch, so it never sends a sub-ticket that is waiting
+to merge back for a catch-up run.
+
+Two cautions:
+
+- In the integration checkout, `git clean -fdx` keeps the store, because git skips a directory
+  that holds its own `.git`. `git clean -ffdx`, with a doubled `-f`, deletes it, uncommitted
+  records included.
+- Run `factory init` from the repository root. From inside the store it refuses, because there
+  it would build a second instance inside the live store.
 
 ## Starting a run
 
@@ -303,9 +336,9 @@ real ticket.
 
 **Parallel builds across tickets have not been tried.** Each sub-ticket builds in its own worktree,
 merges into the integration branch one at a time under a lock, and gets a catch-up run if the branch
-moved under it. Two builds at once also move the branch under each other, and committing the store
-to the same branch moves it too; both cost catch-up runs. Until a real run shows the cost, run one
-build at a time per target.
+moved under it. Two builds at once also move the branch under each other, which costs catch-up runs.
+A store committed on its store branch no longer moves the integration branch. Until a real run
+shows the cost, run one build at a time per target.
 
 **Moving the runtime** happens only when no build is in flight on any target, because every target
 runs from the same runtime. Each target's runner then accepts the new revision between its builds.
@@ -443,9 +476,9 @@ A). Instance A still runs its in-tree copy of the harness; its cutover to the sh
 planned, not done. Open work named above: `factory report`
 (#17); current-truth seeding and the README overview this page stands in for (#21); per-role
 effort (#22); prompt changes borrowed from the ponytail project (#20); the documentation standard
-this page was rewritten to (#23). Each run's own scratch directory came from #35. The design
+this page was rewritten to (#23). Each run's own scratch directory came from #35, and the store branch from #46. The design
 document is `docs/design.md`, its changelog `docs/changelog.md`; the working documents from
-building the harness are under `dev/`; the issue index is `dev/issues.md`. The store holds 18 tickets at `.factory/state/`; the runtime is at
+building the harness are under `dev/`; the issue index is `dev/issues.md`. The store holds 49 tickets at `.factory/state/`; the runtime is at
 `~/dev/spec-factory-harness`, revision `010d1b0`, equal to this repo's `harness.lock`.
 
 ## Maintaining this page
