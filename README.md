@@ -6,7 +6,7 @@ table, and human gates. This page is the system as it runs today; install and us
 
 | | |
 |---|---|
-| **Status** | Current state as of 2026-10-03. Intake works end to end. Build works, in local-only mode. |
+| **Status** | Current state as of 2026-10-04. Intake works end to end. Build works, in local-only mode. |
 | **Reader** | Technical, seeing this project for the first time. Terms specific to this system are defined where they first appear. |
 | **Scope** | What runs now. The intended design and its reasoning are in `docs/design.md`; where the two disagree, this page is right about what runs and the design is amended. |
 | **Internal references** | Ticket ids, issue numbers and who did what are in "Related work and history" near the end. |
@@ -270,8 +270,39 @@ $RUNTIME/bin/factory paths      # the harness, its entry point, both workflow sc
 
 It then calls the Workflow tool with `scriptPath` set to the intake script and args
 `{ticket, repo: <runtime>, instance: <.factory>}`. After the gate, the same call with the build
-script. On a target without the role agents installed in `.claude/agents/`, add
-`inlineRoles: true`; roles then read their prompt from the run's `system-prompt.txt`.
+script. Add `inlineRoles: true` on every target for now: `agents/` ships agent definitions only for
+the intake roles, so a build without it fails at the first implementer call (#24). With it, roles
+read their prompt from the run's `system-prompt.txt`, and run without per-role tool limits. Start the
+build script after the spec gate, never the intake script (#33).
+
+### Running many tickets: runner and operator sessions
+
+Keep deciding and running in different Claude Code sessions.
+
+| Session | Does | Does not |
+|---|---|---|
+| Operator session | Talks with the human: gate approvals, acceptance tests, rulings, priorities | Launch workflows or read run output |
+| Runner session, one per target | Launches workflows, recovers stopped tickets, sends harness problems to the session that owns the harness | Make the human's decisions |
+
+Why it matters: an agent the workflow starts never sees either session's conversation. Each launch
+and each completion notice, though, is a turn of the session that launched it, and that turn re-reads
+the session's whole history. A long decision conversation that also dispatches pays for its own
+length on every one of those turns. The Nanobot port runs this way: its runner (the "Driver" session)
+reports harness problems to the session that owns this repo, which fixes them through tickets here.
+
+**Parallel intake works today.** Start one intake per ticket from a runner. Tickets share only the
+store, and every store write goes through `bin/factory`, which allocates run ids atomically. On
+2026-10-04 the two stores had 41 and 11 overlapping runs of different tickets (triage, spec writers,
+critics, planners).
+
+**Parallel builds across tickets have not been tried.** Each sub-ticket builds in its own worktree,
+merges into the integration branch one at a time under a lock, and gets a catch-up run if the branch
+moved under it. Two builds at once also move the branch under each other, and committing the store
+to the same branch moves it too; both cost catch-up runs. Until a real run shows the cost, run one
+build at a time per target.
+
+**Moving the runtime** happens only when no build is in flight on any target, because every target
+runs from the same runtime. Each target's runner then accepts the new revision between its builds.
 
 ## Where a human decides
 

@@ -14,8 +14,9 @@ design and the harness that runs it:
   `tests/factory/` (its suite). Install with `uv sync --frozen`; test with
   `uv run --frozen pytest -q -p no:cacheprovider tests/factory`;
 - `.factory/`, this repo's own instance of the factory: `instance.yaml`, this briefing,
-  `harness.lock`, and closed records (`answers/`, `green-pilot/`). Its live store is still
-  `intake/state/` until an operator step moves it.
+  `harness.lock`, closed records (`answers/`, `green-pilot/`) and the live store, `state/`.
+  The store is tracked on `main` and the operator commits it between steps, so `main` moves even
+  when no ticket merges.
 
 Two checkouts. Tickets are built and merged in the dev checkout, `~/dev/spec-factory` on `main`.
 The factory runs from the runtime checkout, `~/dev/spec-factory-harness`, a detached worktree of
@@ -24,9 +25,9 @@ changes the running code; only the upgrade step moves the runtime, after which t
 refuses its store until `--accept-harness`. Your shell may start in another directory: use
 absolute paths, or `cd ~/dev/spec-factory && <cmd>`.
 
-Green, the Nanobot fork at `~/dev/nanobot-upstream` (branch `feat/lionbot-v3`), is instance A: it
-still runs its own in-tree copy of the harness, from which this repo's harness was imported. Read
-it only to observe what a fix does there today; never write there, and never copy its test names,
+The Nanobot fork at `~/dev/nanobot-upstream` (branch `feat/lionbot-v3.5`) is instance A: a target
+with only `.factory/`, run from the same runtime by its own Driver session. This repo's harness was
+imported from its retired `feat/lionbot-v3` branch. Read it only to observe what a fix does there; never write there, and never copy its test names,
 line numbers or commit SHAs into a spec. Never read or write `~/.nanobot/` (live credentials).
 
 Acceptance commands must be runnable as written from `~/dev/spec-factory` (grep, sed, diff,
