@@ -1177,3 +1177,8 @@
 {"ts": "2026-10-04T19:29:36+00:00", "event": "run.started", "ticket": "T-0024", "run": "run-0233-critic", "role": "critic", "model": "fable"}
 {"ts": "2026-10-04T19:35:03+00:00", "event": "run.finished", "ticket": "T-0024", "run": "run-0233-critic", "role": "critic", "status": "APPROVE", "wall_s": 327}
 {"ts": "2026-10-04T19:35:15+00:00", "event": "ticket.transition", "ticket": "T-0024", "from": "ready-for-critic", "to": "awaiting-spec-gate", "by": "workflow", "round": {"spec": 1, "pr": 0}}
+{"ts": "2026-10-04T19:41:45+00:00", "event": "spec.added", "ticket": "T-0024", "version": 5, "source": "gate edit /Users/dphang/dev/spec-factory/.factory/answers/T-0024-gate-edit.md"}
+{"ts": "2026-10-04T19:41:46+00:00", "event": "approval.recorded", "ticket": "T-0024", "kind": "spec", "version": 5, "by": "dphang"}
+{"ts": "2026-10-04T19:41:46+00:00", "event": "change.pinned", "ticket": "T-0024", "version": 5, "files": ["openspec/changes/T-0024/proposal.md", "openspec/changes/T-0024/design.md", "openspec/changes/T-0024/specs/live-store-guard/spec.md", "openspec/changes/T-0024/specs/build-dispatch/spec.md", "openspec/changes/T-0024/specs/harness-docs/spec.md", "openspec/changes/T-0024/verification.md"]}
+{"ts": "2026-10-04T19:41:46+00:00", "event": "ticket.transition", "ticket": "T-0024", "from": "awaiting-spec-gate", "to": "ready-for-planner", "by": "dphang"}
+{"ts": "2026-10-04T19:42:06+00:00", "event": "human.resolved", "ticket": "T-0025", "kind": "request-changes", "by": "dphang", "notes": "approvals/T-0025/changes-2.md"}
