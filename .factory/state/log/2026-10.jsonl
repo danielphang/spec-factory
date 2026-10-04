@@ -910,3 +910,25 @@
 {"ts": "2026-10-04T09:31:28+00:00", "event": "ticket.parked", "ticket": "T-0019", "from": "ready-for-parent-verify", "reason": "archive: no spec store (factory init not run)"}
 {"ts": "2026-10-04T09:31:28+00:00", "event": "escalation.queued", "ticket": "T-0019", "items": ["archive: no spec store (factory init not run)"]}
 {"ts": "2026-10-04T09:31:54+00:00", "event": "human.resolved", "ticket": "T-0019", "kind": "close", "by": "dphang", "from": "parked", "to": "closed"}
+{"ts": "2026-10-04T09:32:14+00:00", "event": "run.started", "ticket": "T-0020", "run": "run-0181-planner", "role": "planner", "model": "opus"}
+{"ts": "2026-10-04T09:35:17+00:00", "event": "run.finished", "ticket": "T-0020", "run": "run-0181-planner", "role": "planner", "status": "PLANNED", "wall_s": 183}
+{"ts": "2026-10-04T09:35:34+00:00", "event": "plan.added", "ticket": "T-0020", "source": "run-0181-planner"}
+{"ts": "2026-10-04T09:35:42+00:00", "event": "ticket.created", "ticket": "T-0020.1", "parent": "T-0020", "status": "ready-for-implementer"}
+{"ts": "2026-10-04T09:35:49+00:00", "event": "ticket.transition", "ticket": "T-0020", "from": "ready-for-planner", "to": "planned", "by": "workflow", "round": {"spec": 1, "pr": 0}}
+{"ts": "2026-10-04T09:36:17+00:00", "event": "run.started", "ticket": "T-0020.1", "run": "run-0182-implementer", "role": "implementer", "model": "opus"}
+{"ts": "2026-10-04T09:45:18+00:00", "event": "run.finished", "ticket": "T-0020.1", "run": "run-0182-implementer", "role": "implementer", "status": "READY-FOR-REVIEW", "wall_s": 541}
+{"ts": "2026-10-04T09:45:36+00:00", "event": "ticket.transition", "ticket": "T-0020.1", "from": "ready-for-implementer", "to": "checks-in-flight", "by": "workflow", "round": {"spec": 0, "pr": 1}}
+{"ts": "2026-10-04T09:45:52+00:00", "event": "run.started", "ticket": "T-0020.1", "run": "run-0184-reviewer", "role": "reviewer", "model": "fable"}
+{"ts": "2026-10-04T09:45:52+00:00", "event": "run.started", "ticket": "T-0020.1", "run": "run-0183-verifier", "role": "verifier", "model": "opus"}
+{"ts": "2026-10-04T09:50:01+00:00", "event": "run.finished", "ticket": "T-0020.1", "run": "run-0183-verifier", "role": "verifier", "status": "VERIFIED", "wall_s": 250}
+{"ts": "2026-10-04T09:50:18+00:00", "event": "result.recorded", "ticket": "T-0020.1", "head": "b45462df5b0c9570634b4d6d2074b3054ac296b6", "role": "verifier", "status": "VERIFIED", "run": "run-0183-verifier"}
+{"ts": "2026-10-04T09:50:18+00:00", "event": "result.recorded", "ticket": "T-0020.1", "head": "b45462df5b0c9570634b4d6d2074b3054ac296b6", "role": "ci", "status": "PASS", "run": "run-0183-verifier"}
+{"ts": "2026-10-04T09:53:16+00:00", "event": "run.finished", "ticket": "T-0020.1", "run": "run-0184-reviewer", "role": "reviewer", "status": "APPROVE", "wall_s": 445}
+{"ts": "2026-10-04T09:53:16+00:00", "event": "escalation.queued", "ticket": "T-0020.1", "run": "run-0184-reviewer", "items": ["Protected paths touched, all declared in the parent's Risk list: harness `factory/tripwire.py` (new), `factory/cli.py`, `factory/store.py`, `factory/workflows/intake.js`, `factory/workflows/build.js`, `factory/instance.template.yaml`. Guardrail path `docs/coding.md`, declared under part E. The merge gate requires a human approval for these; the code earns APPROVE."]}
+{"ts": "2026-10-04T09:53:34+00:00", "event": "result.recorded", "ticket": "T-0020.1", "head": "b45462df5b0c9570634b4d6d2074b3054ac296b6", "role": "reviewer", "status": "APPROVE", "run": "run-0184-reviewer"}
+{"ts": "2026-10-04T09:53:52+00:00", "event": "ticket.transition", "ticket": "T-0020.1", "from": "checks-in-flight", "to": "ready-for-merge", "by": "workflow", "round": {"spec": 0, "pr": 1}}
+{"ts": "2026-10-04T09:53:59+00:00", "event": "merge.done", "ticket": "T-0020.1", "head": "b45462df5b0c9570634b4d6d2074b3054ac296b6", "base_before": "02465fa0356b30d72ce6211ea874e230d5113236", "main_after": "24d199677a300e4cd8ae21b81ac50ae03593f28d"}
+{"ts": "2026-10-04T09:54:16+00:00", "event": "ticket.transition", "ticket": "T-0020", "from": "planned", "to": "ready-for-parent-verify", "by": "parent-check"}
+{"ts": "2026-10-04T09:54:39+00:00", "event": "ticket.parked", "ticket": "T-0020", "from": "ready-for-parent-verify", "reason": "archive: "}
+{"ts": "2026-10-04T09:54:39+00:00", "event": "escalation.queued", "ticket": "T-0020", "items": ["archive: "]}
+{"ts": "2026-10-04T09:54:57+00:00", "event": "human.resolved", "ticket": "T-0020", "kind": "close", "by": "dphang", "from": "parked", "to": "closed"}
