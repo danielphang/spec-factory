@@ -64,9 +64,9 @@ is greppable: `grep -rnE '(#|//|/\*) ?factory:'` lists every one in the code.
 Check: each over-building finding (code the change could have reused, or did not need) starts,
 after its severity, with one tag from the table (`[BLOCKING] reuse: file:line: problem →
 consequence`), names what the table says to name, and has the table's severity. A finding against
-rule 2, 3 or 5 takes no tag; it earns its severity as a correctness or scope finding. The pass ends
-with `net: -N lines possible`, where N is the lines the tagged findings would remove, or with
-`Lean already.`
+rule 2, 3, 5 or 6 takes no tag; it earns its severity as a correctness or scope finding. The pass
+ends with `net: -N lines possible`, where N is the lines the tagged findings would remove, or
+with `Lean already.`
 Principle: per tag, in the table.
 
 | Tag | Flags | Names | Severity | Principle |
@@ -93,6 +93,24 @@ Before (illustration): the README's terms table defines a "parked" ticket, and a
 state `on_hold` and a function `hold_ticket()` for the same thing.
 After: the state stays `parked` and the command stays `ticket park`, the names the store and the
 README already use.
+
+## 6. A test reaches a patched path through its module, and a new outside path ships with a guard.
+Check: each function or constant your tests patch to redirect a path outside the repository is
+called in test code as an attribute of its module (`store.policy_store_path()`), never through a
+name imported when the test file loads. Each path your diff adds outside the repository (a data
+directory, a config file) comes with an autouse test fixture that fails any test resolving that
+path outside `tmp_path`.
+Principle: patch where the name is looked up (the Python `unittest.mock` documentation, "Where to
+patch"); and fail-safe defaults (Saltzer and Schroeder): a test that stops is cheaper than one that
+writes live data.
+Before (a Nanobot implementer run, 2026-10-04): the test module ran
+`from nanobot.policy.store import policy_store_path` when pytest collected it. The conftest fixture
+then replaced `nanobot.policy.store.policy_store_path`, but the test helpers still held the real
+function. The tests overwrote the live bot's `~/.nanobot/policies.json` and its `.bak`, and an
+unrelated `FileExistsError` was the only sign.
+After: the test module runs `from nanobot.policy import store` and calls `store.policy_store_path()`,
+so the fixture's patch reaches every call. An autouse fixture fails any test whose resolved policy
+path is not under `tmp_path`, so the next escape stops a test instead of writing live data.
 
 The check order (rule 1) and the tag vocabulary (rule 4) are adapted from ponytail
 (DietrichGebert/ponytail, MIT), as the design document's changelog records.

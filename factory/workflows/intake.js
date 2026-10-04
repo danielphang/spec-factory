@@ -106,6 +106,8 @@ async function runRole(role, phase) {
     ? await clerk(`${BIN} run finish ${runId} --status-override KILLED`, phase, `run finish ${role} (killed)`)
     : await clerk(`${BIN} run finish ${runId}`, phase, `run finish ${role}`)
   if (!fin.ok) { await park(`harness-bug: run finish ${role}: ${fin.stderr || ''}`, [runId], phase); return null }
+  // run finish parked the ticket (the tripwire saw a listed live file change): stop, do not route on STATUS
+  if (fin.parked) { log(`${TICKET} parked: ${fin.parked}`); return null }
   log(`${role} ${runId}: ${fin.status}${fin.escalations && fin.escalations.length ? ` (+${fin.escalations.length} escalations)` : ''}`)
   return { runId, status: fin.status, escalations: fin.escalations || [] }
 }

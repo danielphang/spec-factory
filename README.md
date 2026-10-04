@@ -319,7 +319,9 @@ runs from the same runtime. Each target's runner then accepts the new revision b
 | **Upgrade** | `factory --accept-harness <sha> <command>` | that this target adopts a new harness revision |
 
 Gap, as of today: an implementer that reports itself blocked has no `resolve` verb. A plain
-`ticket transition --to ready-for-implementer` returns it. Everything else is the harness's and
+`ticket transition --to ready-for-implementer` returns it. A ticket the tripwire parked returns the
+same way, to the state its record names as `parked.from`, once the operator has checked the named
+files; a checker park can use `resolve --redispatch` instead. Everything else is the harness's and
 the scripts': which role runs next, how many rounds, what the checkers receive, when a merge is
 allowed, when the ticket closes.
 
@@ -342,6 +344,12 @@ allowed, when the ticket closes.
   `archive` applies the deltas, so the description of the system is kept current by the pipeline.
 - **Instances and the harness lock.** One runtime serves any number of targets. Each adopts a new
   harness revision only when its operator accepts it. See "Where it runs".
+- **Tripwire on live files.** An instance can list files outside the repo that no role run should
+  change, such as a live bot's credentials, under `tripwire` in `instance.yaml`: a `park` list and
+  an `escalate` list. The harness hashes each file when a run starts and compares when the run ends,
+  killed runs included. A changed `park` file parks the ticket; a changed `escalate` file is queued
+  for the operator and the run goes on. Neither prints a file's contents. It is tested, and has not
+  yet fired on a real ticket.
 
 **Not built**
 

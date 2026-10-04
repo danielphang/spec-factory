@@ -105,6 +105,8 @@ async function runRole(role, ticket, phase) {
     : await clerk(`${BIN} run finish ${runId}`, phase, `run finish ${role}`)
   if (role === 'reviewer' || role === 'verifier') await clerk(`${BIN} run cleanup ${runId}`, phase, `run cleanup ${role}`)
   if (!fin.ok) { await park(ticket, `harness-bug: run finish ${role}: ${fin.stderr || ''}`, [runId], phase); return null }
+  // run finish parked the ticket (the tripwire saw a listed live file change): stop, do not route on STATUS
+  if (fin.parked) { log(`${ticket} parked: ${fin.parked}`); return null }
   log(`${role} ${runId} (${ticket}): ${fin.status}`)
   return { runId, status: fin.status, outputPath }
 }
