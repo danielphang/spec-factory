@@ -157,6 +157,11 @@ def compose(root: Path, cfg: dict, meta: dict, t: dict) -> tuple[str, list[str]]
         add_decisions()
         for p in _approvals(root, tid, "ruling"):
             add(str(p.relative_to(root)), "Human ruling")
+        subs = store.subtickets_of(root, tid)
+        if subs:  # a re-plan: the new plan numbers after these and may depend on them
+            parts.append(f"\n## Sub-tickets already under {tid}\n\nA new plan's sub-tickets are numbered after these. "
+                         "A `Depends on:` line may name any of these ids.\n\n"
+                         + "".join(f"- {s['id']} / {s['title']}: {s['status']}\n" for s in subs))
     elif role in ("implementer", "reviewer", "verifier"):
         parent = t.get("parent") or tid  # the parent-close verifier runs on the parent itself
         pt = store.load_ticket(root, parent) if parent != tid else t
