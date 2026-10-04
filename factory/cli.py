@@ -862,7 +862,7 @@ def _refuse_inside_store(cwd: Path, top: Path) -> None:
     if not isinstance(cfg, dict) or not isinstance(cfg.get("state_dir"), str):
         return
     own = instance.own_state_root(found, cfg)
-    if top == own or (top.is_relative_to(own) and gitops.common_dir(top) is not None
+    if top == own or (top.is_relative_to(own)
                       and gitops.common_dir(top) == gitops.common_dir(instance.repo_root(found))):
         raise Refused(f"factory init: {cwd} is inside the store {own} of the instance {found}; "
                       "run init from the repository root")
