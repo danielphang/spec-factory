@@ -9,7 +9,6 @@ import argparse
 import datetime as dt
 import getpass
 import json
-import os
 import re
 import shutil
 import subprocess
@@ -220,6 +219,7 @@ def run_start(a, root, cfg):
         _start_build_run(root, cfg, t, meta, d, parent_close)
     store.write_yaml(d / "meta.yaml", meta)
     store.ensure_gitignore(root)
+    store.ensure_gitattributes(root)
     (d / "scratch").mkdir(exist_ok=True)
     if baseline:
         store.write_yaml(d / "tripwire.yaml", baseline)
@@ -847,17 +847,24 @@ def init_cmd(a):
     FACTORY_INSTANCE, else `.factory/` at the git top level of the working directory. Its pieces
     (instance.yaml, context.md, harness.lock, agent files) are written only when the store in use
     is the instance's own: a run on a throwaway store (FACTORY_STATE elsewhere, as every test
-    does) initialises that store and nothing else."""
+    does) initialises that store and nothing else. So creating an instance while FACTORY_STATE
+    names another store is refused before anything is written: it would leave an instance.yaml
+    with no context.md."""
     top = _git_toplevel(instance.caller_cwd())
-    env = os.environ.get("FACTORY_INSTANCE")
-    inst = Path(env).expanduser().resolve() if env else top / instance.DIRNAME
+    inst = instance.env_path("FACTORY_INSTANCE") or top / instance.DIRNAME
     created: list[str] = []
     cfg_path = inst / instance.CONFIG_NAME
     if not cfg_path.exists():
         if not a.repo_name:
             raise Refused(f"factory init: {cfg_path} does not exist; pass --repo-name NAME to create it")
+        text = _new_instance_yaml(a.repo_name)
+        new_cfg = yaml.safe_load(text)
+        root = instance.state_root(inst, new_cfg)
+        if not instance.is_own_store(inst, new_cfg, root):
+            raise Refused(f"factory init: {inst} has no {instance.CONFIG_NAME}, and FACTORY_STATE names another "
+                          f"store ({root}); create the instance with FACTORY_STATE unset, then init that store")
         _revision()  # refuse before writing anything if the lock cannot be written
-        store.write_text(cfg_path, _new_instance_yaml(a.repo_name))
+        store.write_text(cfg_path, text)
         created.append(str(cfg_path))
     cfg = instance.load_config(inst)
     root = instance.state_root(inst, cfg)
@@ -877,11 +884,14 @@ def init_cmd(a):
                 (dest / src.name).parent.mkdir(parents=True, exist_ok=True)
                 shutil.copyfile(src, dest / src.name)
                 agents.append(str(dest / src.name))
-    had_gitignore = (root / ".gitignore").exists()
+    had_gitignore, had_gitattributes = (root / ".gitignore").exists(), (root / ".gitattributes").exists()
     store.ensure_gitignore(root)
+    store.ensure_gitattributes(root)
     written = specstore.init(root)
     if not had_gitignore:
         written.insert(0, ".gitignore")
+    if not had_gitattributes:
+        written.insert(0, ".gitattributes")
     if written or created or agents:
         store.log_event(root, "store.initialised", files=written, instance=created, agents=agents)
     if agents:

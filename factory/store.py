@@ -7,7 +7,6 @@ from __future__ import annotations
 import datetime as dt
 import hashlib
 import json
-import os
 import shutil
 from pathlib import Path
 
@@ -36,9 +35,9 @@ def load_config() -> dict:
 def state_root(cfg: dict | None = None) -> Path:
     """FACTORY_STATE, else the instance's `state_dir` under its repo root."""
     from factory import instance
-    env = os.environ.get("FACTORY_STATE")
+    env = instance.env_path("FACTORY_STATE")
     if env:
-        return Path(env).expanduser().resolve()
+        return env
     inst = instance.require()
     return instance.state_root(inst, cfg or instance.load_config(inst))
 
@@ -57,15 +56,30 @@ def ensure_gitignore(root: Path) -> None:
     """The store keeps implementer worktrees under worktrees/ and checker checkouts under runs/<id>/wt/.
     Both are nested git checkouts: a store committed by directory must not pick them up. Nor may it
     pick up a run's tripwire baseline, runs/<id>/tripwire.yaml, which holds digests of live files, or
-    a run's temporary files under runs/<id>/scratch/. An absent or empty file gets the commented block;
-    an existing one keeps its own lines and gains only the lines it lacks."""
-    p = root / ".gitignore"
+    a run's temporary files under runs/<id>/scratch/."""
+    _ensure_block(root / ".gitignore", STORE_GITIGNORE)
+
+
+STORE_GITATTRIBUTES = ("# run records embed verbatim diffs and outputs: their whitespace is not the store's to fix\n"
+                       "runs/** -whitespace\n")
+
+
+def ensure_gitattributes(root: Path) -> None:
+    """Exempt run records from git's whitespace checks. A record under runs/ copies diffs and agent
+    output verbatim, so `git diff --check` over store commits reported them (a blank diff context line
+    is a single space). Every other store file is still checked."""
+    _ensure_block(root / ".gitattributes", STORE_GITATTRIBUTES)
+
+
+def _ensure_block(p: Path, block: str) -> None:
+    """An absent or empty file gets the commented block; an existing one keeps its own lines and gains
+    only the non-comment lines it lacks."""
     have = p.read_text(encoding="utf-8") if p.exists() else ""
     if not have.strip():
-        write_text(p, STORE_GITIGNORE)
+        write_text(p, block)
         return
     lines = have.splitlines()
-    missing = [ln for ln in STORE_GITIGNORE.splitlines() if not ln.startswith("#") and ln not in lines]
+    missing = [ln for ln in block.splitlines() if not ln.startswith("#") and ln not in lines]
     if missing:
         write_text(p, have.rstrip("\n") + "\n" + "".join(ln + "\n" for ln in missing))
 

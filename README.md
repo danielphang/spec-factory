@@ -201,7 +201,9 @@ flowchart TB
 
 **How the harness finds a target.** From any directory inside the target it walks up to the
 nearest `.factory/instance.yaml`, or takes `FACTORY_INSTANCE`. `instance.yaml` names the runtime,
-the store, the protected paths and the repo's test gates.
+the store, the protected paths and the repo's test gates. `FACTORY_STATE` names a store to use
+instead, and `FACTORY_REPO` a repo root. A relative `FACTORY_INSTANCE`, `FACTORY_STATE` or
+`FACTORY_REPO` is taken from the directory the command runs in.
 
 ### Accepting a harness revision
 

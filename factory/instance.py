@@ -12,6 +12,9 @@ Resolution, used by store, gitops, compose and cli:
 
 The repo root is the parent of the instance directory; FACTORY_REPO overrides it. `state_dir` is
 relative to the repo root; FACTORY_STATE overrides it.
+
+A relative FACTORY_INSTANCE, FACTORY_REPO or FACTORY_STATE is taken from the caller's directory
+(FACTORY_CWD, else the working directory), never from the harness checkout (`env_path`).
 """
 from __future__ import annotations
 
@@ -39,11 +42,20 @@ def caller_cwd() -> Path:
     return Path(os.environ.get("FACTORY_CWD") or os.getcwd()).expanduser().resolve()
 
 
+def env_path(name: str) -> Path | None:
+    """The path in environment variable `name`, a relative one taken from the caller's directory;
+    None when it is unset or empty."""
+    env = os.environ.get(name)
+    if not env:
+        return None
+    p = Path(env).expanduser()
+    return (p if p.is_absolute() else caller_cwd() / p).resolve()
+
+
 def find() -> Path | None:
     """The instance directory, or None. FACTORY_INSTANCE wins; then the walk-up."""
-    env = os.environ.get("FACTORY_INSTANCE")
-    if env:
-        p = Path(env).expanduser().resolve()
+    p = env_path("FACTORY_INSTANCE")
+    if p:
         return p if (p / CONFIG_NAME).is_file() else None
     cwd = caller_cwd()
     for d in (cwd, *cwd.parents):
@@ -67,9 +79,9 @@ def require() -> Path:
 
 
 def repo_root(inst: Path | None = None) -> Path:
-    env = os.environ.get("FACTORY_REPO")
+    env = env_path("FACTORY_REPO")
     if env:
-        return Path(env).expanduser().resolve()
+        return env
     return (inst or require()).parent
 
 
@@ -84,9 +96,9 @@ def own_state_root(inst: Path, cfg: dict) -> Path:
 
 
 def state_root(inst: Path, cfg: dict) -> Path:
-    env = os.environ.get("FACTORY_STATE")
+    env = env_path("FACTORY_STATE")
     if env:
-        return Path(env).expanduser().resolve()
+        return env
     return own_state_root(inst, cfg)
 
 
