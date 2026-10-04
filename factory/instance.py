@@ -157,13 +157,20 @@ def guard(inst: Path, cfg: dict, root: Path, accept: str | None) -> None:
 PROTECTED_PLACEHOLDER = "  {auth, payments, migrations, infra, public API, dependencies}"
 
 
+def fill_standards(text: str) -> str:
+    """`{writing standard}` and `{coding standard}` filled from the running harness checkout, not
+    the instance: the absolute paths of its `docs/writing.md` and `docs/coding.md`, which ship in
+    the same checkout as this code. Applied to the preamble and to each role prompt."""
+    text = text.replace("{writing standard}", str(HARNESS / "docs" / "writing.md"))
+    return text.replace("{coding standard}", str(HARNESS / "docs" / "coding.md"))
+
+
 def fill_preamble(text: str, cfg: dict) -> str:
     """The design doc's preamble block with `{repo name}` and the protected-path line filled from
     the instance (B.4). The line becomes `  <class> (<glob>, <glob>)` per class, joined by `, `.
-    `{writing standard}` is filled from the running harness checkout, not the instance: the
-    absolute path of its `docs/writing.md`, which ships in the same checkout as this code."""
+    The standards' paths are filled by `fill_standards`."""
     text = text.replace("{repo name}", str(cfg["repo_name"]))
-    text = text.replace("{writing standard}", str(HARNESS / "docs" / "writing.md"))
+    text = fill_standards(text)
     classes = []
     for cls, globs in (cfg.get("protected_paths") or {}).items():
         globs = [globs] if isinstance(globs, str) else list(globs or [])

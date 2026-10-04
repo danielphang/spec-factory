@@ -216,7 +216,8 @@ def run_start(a, root, cfg):
     store.write_yaml(d / "meta.yaml", meta)
     prompt_name = a.role
     preamble = instance.fill_preamble((PROMPTS / "preamble.md").read_text(encoding="utf-8"), cfg)
-    sysp = preamble.rstrip() + "\n\n" + (PROMPTS / f"{prompt_name}.md").read_text(encoding="utf-8")
+    role_prompt = instance.fill_standards((PROMPTS / f"{prompt_name}.md").read_text(encoding="utf-8"))
+    sysp = preamble.rstrip() + "\n\n" + role_prompt
     store.write_text(d / "system-prompt.txt", sysp)
     t["in_flight"].append(rid)
     store.save_ticket(root, t)

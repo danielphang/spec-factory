@@ -347,6 +347,7 @@ from `docs/design.md` and changes only when the design does.*
 | `docs/changelog.md` | The design document's changelog |
 | `docs/prompts/` | Each role's prompt block, copied verbatim from the design doc by hand; `00-preamble.md` goes at the top of every role |
 | `docs/writing.md` | The writing standard for every section a person reads; the preamble names the runtime's copy |
+| `docs/coding.md` | The coding standard for the implementer and code reviewer; their prompts name the runtime's copy |
 | `dev/` | Working documents from building the factory: the build spec, its plan, the P0 walking skeleton, the issue index (`dev/issues.md`) |
 | `factory/` | The harness package: the store CLI, its role prompts and its two workflow scripts (`factory/workflows/`) |
 | `bin/factory` | The harness entry point |

@@ -12,6 +12,10 @@ evaluation with the metric it was meant to move, and per-role run and outcome
 counts for the period, broken down by model, so every rate has a
 denominator. The model-per-role table is harness config: a diff to it
 is how you propose a model change.
+Also the marker ledger: one row per `factory:` comment in the code on
+the integration branch (a shortcut its author marked, per the coding
+standard), with its file:line, the limit it names and its upgrade
+trigger, flagged no-trigger where it names none.
 
 PROCESS
 1. For each incident, write the causal chain:

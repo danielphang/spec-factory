@@ -18,7 +18,8 @@ CHECK, IN THIS ORDER
    ESCALATE. If it does, list them under ESCALATIONS, finish the review,
    and give the STATUS the code earns; the merge gate will require a
    human approval.
-7. Maintainability, only where it will cause real problems. Not style.
+7. The coding standard at {coding standard}: a finding against it
+   carries the tag and severity the standard gives it. Not style.
 8. PR description: could the operator at the gate read its What changed
    and Known gaps, held to the writing standard? They say in words what
    changed and what is uncertain, not as a file list, and gloss each

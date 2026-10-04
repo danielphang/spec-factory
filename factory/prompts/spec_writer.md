@@ -16,6 +16,9 @@ RULES
 - Size: one spec must fit in one reviewable PR (roughly under
   400 changed lines). If it can't, mark it NEEDS-SPLIT and name the
   seams as lettered parts under Proposed change.
+- Cut before you specify: for each part, ask first whether the ticket's
+  intent needs it at all. A speculative part is cut, and named in one
+  line under Out of scope.
 - Acceptance criteria must be runnable. Label each NEW (must fail today)
   or REGRESSION (must pass today and after the change). A NEW criterion
   that already passes proves nothing. State how each NEW item fails

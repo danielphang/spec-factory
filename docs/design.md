@@ -51,7 +51,7 @@ The prompts say what each role does. The harness enforces the wiring rules: fres
 
 **What the harness itself owns** (no platform provides these): the routing table, the round counter and the max-round cutoff, composing each role's input from *only* its declared sources, choosing the model per role, and the escalation queue view for the daily human pass.
 
-**Role-context block.** Every role's input opens with a role-context block, ahead of the INPUT its role prompt declares and anything the routing table's "Receives" column adds. The block is per repo, like `{repo name}` and the protected paths: it says which repository the role works in, how to run commands and tests there, what kind of request to expect, and who reads what the roles write there. Its text is the same for every role. It is a declared input of every role, so composing from *only* declared sources includes it; it travels with the input (piece 3), not in the system prompt. A wrong block misdirects every role at once, and the checkers receive the same block, so they share the error instead of catching it. The block is kept in the repo it describes, at `.factory/context.md`. That directory, `.factory/`, is the repo's instance of the factory: `instance.yaml` (the per-repo config: `{repo name}`, protected paths, `{gate commands}`, models, routing, the store's path and the harness checkout it runs with), `context.md`, `harness.lock` (the harness revision the instance has accepted; the harness refuses to touch the instance's store under any other revision until a human accepts it, and logs the acceptance) and the store. The harness picks the instance by walking up from the working directory to the nearest `.factory/instance.yaml`, or takes it from an explicit override, and never falls back to an instance of its own; the composer prepends that instance's `context.md`, and the preamble's `{repo name}` and protected paths are filled from its `instance.yaml`, and `{writing standard}` with the path of `docs/writing.md` in the harness checkout that runs it.
+**Role-context block.** Every role's input opens with a role-context block, ahead of the INPUT its role prompt declares and anything the routing table's "Receives" column adds. The block is per repo, like `{repo name}` and the protected paths: it says which repository the role works in, how to run commands and tests there, what kind of request to expect, and who reads what the roles write there. Its text is the same for every role. It is a declared input of every role, so composing from *only* declared sources includes it; it travels with the input (piece 3), not in the system prompt. A wrong block misdirects every role at once, and the checkers receive the same block, so they share the error instead of catching it. The block is kept in the repo it describes, at `.factory/context.md`. That directory, `.factory/`, is the repo's instance of the factory: `instance.yaml` (the per-repo config: `{repo name}`, protected paths, `{gate commands}`, models, routing, the store's path and the harness checkout it runs with), `context.md`, `harness.lock` (the harness revision the instance has accepted; the harness refuses to touch the instance's store under any other revision until a human accepts it, and logs the acceptance) and the store. The harness picks the instance by walking up from the working directory to the nearest `.factory/instance.yaml`, or takes it from an explicit override, and never falls back to an instance of its own; the composer prepends that instance's `context.md`, and the preamble's `{repo name}` and protected paths are filled from its `instance.yaml`, and `{writing standard}` with the path of `docs/writing.md` in the harness checkout that runs it. `{coding standard}`, in the implementer and code reviewer prompts, is filled the same way with the path of `docs/coding.md` in that checkout.
 
 **Model per role, starting point.** One rule: a role's model depends on what checks its output. Default Opus. A checker is never weaker than the author it checks, except the verifier, whose check is the commands. Fable goes where a role's output is checked only by a human: the critic, the code reviewer, the retro. Sonnet only where the output is checked mechanically inside the same loop. The verifier is the one checker whose check is the commands themselves; its probe step is judgment, so it drops to Sonnet only where probes rarely matter. Tune effort before changing model; record the model on every run so the retro can compare failure rates by model; this table is the harness's model config, so a retro diff to it is the proposal path. Never let an author and its checker share a model where you can avoid it; the verifier is again the exception.
 
@@ -124,7 +124,7 @@ Rules the table relies on:
 | Verifier | SPEC-DEFECT | Human queue | Verifier output |
 | Merge gate | Head does not contain current main | Implementer (same round, conflict run): merge main into the branch, or rebase where {force-push allowed} | Conflict output; the new head re-runs CI and both checkers |
 | Merge gate | CI green + APPROVE + VERIFIED on current head + head contains main + piece-8 approvals | Merge; then dispatch sub-tickets that depended on this one. When all sub-tickets have merged, one verifier run on main against the parent's full Acceptance list (every scenario of its pinned delta, with its `verification.md` label): VERIFIED archives the change (Spec store), then closes the parent; FAILED, SPEC-DEFECT or an archive refusal (Spec store: a delta that does not apply, no change folder, or no spec store) parks the parent in the human queue | Parent-close run: pinned parent spec; head = current main; base = the main SHA recorded before the parent's first sub-ticket merged; `{gate commands}` |
-| Weekly audit done, or on demand | — | Retro | Full outputs behind every outcome signal since the last retro (piece 10), current instruction files, every proposal still under evaluation with its metric, and per-role run and outcome counts, broken down by model, for the period and for each prior proposal's window |
+| Weekly audit done, or on demand | — | Retro | Full outputs behind every outcome signal since the last retro (piece 10), current instruction files, every proposal still under evaluation with its metric, and per-role run and outcome counts, broken down by model, for the period and for each prior proposal's window, and the marker ledger: one row per `factory:` comment in the code on the integration branch, with file:line, limit and upgrade trigger, flagged `no-trigger` where it names none, composed by the harness when the retro runs |
 | Retro | PROPOSED | Guardrail-changes gate (human); on approval, the no-sub-ticket merge row | PR |
 | Retro | NO-CHANGES | Log only | — |
 | Retro or revert PR (no sub-ticket) | Guardrail-gate human approval on current head | Gate runner on the head; then merge on CI green + head contains main + that approval; no checkers (piece 7 exception). Fails the exception test: closed, logged to the human queue | — |
@@ -287,6 +287,9 @@ RULES
 - Size: one spec must fit in one reviewable PR (roughly under
   {400} changed lines). If it can't, mark it NEEDS-SPLIT and name the
   seams as lettered parts under Proposed change.
+- Cut before you specify: for each part, ask first whether the ticket's
+  intent needs it at all. A speculative part is cut, and named in one
+  line under Out of scope.
 - Acceptance criteria must be runnable. Label each NEW (must fail today)
   or REGRESSION (must pass today and after the change). A NEW criterion
   that already passes proves nothing. State how each NEW item fails
@@ -379,7 +382,8 @@ RUBRIC (judge intent, not wording)
 3. Scoped: fits one PR, or is marked NEEDS-SPLIT with natural seams
    named (the planner splits it); out-of-scope list is present and sensible;
    "Tests to change" names only tests the intended change genuinely
-   breaks, with a reason each.
+   breaks, with a reason each; a lettered part the ticket's intent does
+   not need is a finding.
 4. No hidden decisions: no product or design choice is made silently;
    every protected path the change will touch is declared under Risk.
 5. Consistent: doesn't conflict with open tickets or stated architecture.
@@ -491,6 +495,7 @@ PROCESS
 3. Write or extend tests that capture the intended behavior. Watch them
    fail.
 4. Make the smallest change that makes them pass for the right reason.
+   Follow the coding standard at {coding standard}.
 5. Run the full local gates: {gate commands}.
 6. Open a PR using the format below. On a fix round: check out the
    existing branch, push fix commits to it, and replace the PR
@@ -552,7 +557,8 @@ CHECK, IN THIS ORDER
    ESCALATE. If it does, list them under ESCALATIONS, finish the review,
    and give the STATUS the code earns; the merge gate will require a
    human approval.
-7. Maintainability, only where it will cause real problems. Not style.
+7. The coding standard at {coding standard}: a finding against it
+   carries the tag and severity the standard gives it. Not style.
 8. PR description: could the operator at the gate read its What changed
    and Known gaps, held to the writing standard? They say in words what
    changed and what is uncertain, not as a file list, and gloss each
@@ -646,6 +652,10 @@ evaluation with the metric it was meant to move, and per-role run and outcome
 counts for the period, broken down by model, so every rate has a
 denominator. The model-per-role table is harness config: a diff to it
 is how you propose a model change.
+Also the marker ledger: one row per `factory:` comment in the code on
+the integration branch (a shortcut its author marked, per the coding
+standard), with its file:line, the limit it names and its upgrade
+trigger, flagged no-trigger where it names none.
 
 PROCESS
 1. For each incident, write the causal chain:
