@@ -1,0 +1,75 @@
+id: T-0024
+type: bug
+title: Role runs can write the live instance store; a spec writer's test run initialised spec-factory's
+  own store
+request: requests/T-0024.md
+source: /private/tmp/claude-501/-Users-dphang-dev-nanobot/c69bfd1d-97a6-43e3-9d5a-a517c28d382c/scratchpad/req_45.md
+status: awaiting-spec-gate
+round:
+  spec: 2
+  pr: 0
+spec:
+  version: 3
+  approved_version: null
+plan: null
+in_flight: []
+parked: null
+created: '2026-10-04T17:43:37+00:00'
+history:
+- ts: '2026-10-04T17:46:26+00:00'
+  from: ready-for-triage
+  to: ready-for-spec-writer
+  by: workflow
+  round:
+    spec: 0
+    pr: 0
+- ts: '2026-10-04T18:06:53+00:00'
+  from: ready-for-spec-writer
+  to: parked
+  by: park
+  reason: NEEDS-HUMAN from spec writer
+- ts: '2026-10-04T18:15:46+00:00'
+  from: parked
+  to: ready-for-spec-writer
+  by: dphang
+  resolve: answer
+  answer: 1
+  decision: '2026-10-04 T-0024 T-0024: instance B keeps the spec store created 2026-10-04 by run-0196;
+    its tickets close by archive into current truth (operator)'
+- ts: '2026-10-04T18:35:30+00:00'
+  from: ready-for-spec-writer
+  to: ready-for-critic
+  by: workflow
+  round:
+    spec: 1
+    pr: 0
+- ts: '2026-10-04T18:39:35+00:00'
+  from: ready-for-critic
+  to: ready-for-spec-writer
+  by: workflow
+  round:
+    spec: 2
+    pr: 0
+- ts: '2026-10-04T18:51:10+00:00'
+  from: ready-for-spec-writer
+  to: ready-for-critic
+  by: workflow
+  round:
+    spec: 2
+    pr: 0
+- ts: '2026-10-04T18:54:02+00:00'
+  from: ready-for-critic
+  to: awaiting-spec-gate
+  by: workflow
+  round:
+    spec: 2
+    pr: 0
+parent: null
+depends_on: []
+parallel_safe: true
+branch: null
+head: null
+merge:
+  base_before: null
+  main_after: null
+parent_base: null

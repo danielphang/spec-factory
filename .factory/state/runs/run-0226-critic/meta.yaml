@@ -1,0 +1,25 @@
+run_id: run-0226-critic
+role: critic
+ticket: T-0025
+model: fable
+round: 2
+spec_version: 2
+started: '2026-10-04T18:26:53+00:00'
+finished: '2026-10-04T18:29:45+00:00'
+wall_s: 172
+status: APPROVE
+input_sources:
+- specs/T-0025/v2.md
+- openspec/specs/build-dispatch/spec.md
+- openspec/specs/harness-docs/spec.md
+- openspec/specs/harness-suite/spec.md
+- openspec/specs/human-resolution/spec.md
+- openspec/specs/store-setup/spec.md
+- openspec/specs/sub-ticket-planning/spec.md
+- decisions.md
+- runs/run-0223-critic/output.md
+- specs/T-0025/v1.md
+confidence: high, every round-1 finding is fixed as described, the rewritten scenario and both re-run
+  acceptance commands print what verification.md says, and the inlined prototype claims reproduce.
+escalations: []
+escalations_note: null
