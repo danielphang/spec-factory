@@ -684,3 +684,4 @@
 {"ts": "2026-10-04T00:10:38+00:00", "event": "ticket.parked", "ticket": "T-0015", "from": "ready-for-parent-verify", "reason": "archive: no spec store (factory init not run)"}
 {"ts": "2026-10-04T00:10:38+00:00", "event": "escalation.queued", "ticket": "T-0015", "items": ["archive: no spec store (factory init not run)"]}
 {"ts": "2026-10-04T00:11:03+00:00", "event": "human.resolved", "ticket": "T-0015", "kind": "close", "by": "dphang", "from": "parked", "to": "closed"}
+{"ts": "2026-10-04T00:25:12+00:00", "event": "harness.accepted", "instance": "/Users/dphang/dev/spec-factory/.factory", "old": "e703c1bfb1216079f802ba25e3d3a218246f385d", "new": "27d6d63fcb2f5c03d64696f6769abf871e4f2bc0"}
