@@ -986,3 +986,4 @@
 {"ts": "2026-10-04T13:04:54+00:00", "event": "human.resolved", "ticket": "T-0021", "kind": "close", "by": "dphang", "from": "parked", "to": "closed"}
 {"ts": "2026-10-04T13:04:55+00:00", "event": "request.created", "ticket": "T-0023", "source": "/private/tmp/claude-501/-Users-dphang-dev-nanobot/c69bfd1d-97a6-43e3-9d5a-a517c28d382c/scratchpad/req_39.md"}
 {"ts": "2026-10-04T13:04:55+00:00", "event": "ticket.created", "ticket": "T-0023", "status": "ready-for-triage"}
+{"ts": "2026-10-04T13:05:32+00:00", "event": "harness.accepted", "instance": "/Users/dphang/dev/spec-factory/.factory", "old": "b45462df5b0c9570634b4d6d2074b3054ac296b6", "new": "82d516be16b1e7590150012e0299669604b4e9a7"}
