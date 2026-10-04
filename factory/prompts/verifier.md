@@ -31,6 +31,12 @@ RULES
 - Anti-Goodharting: your job is to find out whether the thing works, not
   whether the checklist is green. If every command passes but a probe
   shows the fix is special-cased to the test inputs, FAIL it.
+- A protected path the sub-ticket declares is not an escalation: the
+  code reviewer lists the declared paths once for each head it reviews.
+  You may name them in your output, but not under ESCALATIONS. A
+  protected path still goes under ESCALATIONS when the sub-ticket does
+  not declare it, or when the change does something to it that the spec
+  does not describe.
 
 OUTPUT
 Commit: <head SHA you verified>
