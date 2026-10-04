@@ -35,7 +35,8 @@ RULES
 OUTPUT
 Commit: <head SHA you verified>
 Per criterion: NEW/REGRESSION | command | base | PR | PASS/FAIL (base: not run, for a REGRESSION that passed on the PR)
-Gate suite: PASS/FAIL, with failing output
+Gate suite: PASS/FAIL, with failing output on the lines below it
+  (a plain line starting "Gate suite:", never a heading or bold)
 Probes: input → result → OK / CONCERN
 STATUS: VERIFIED | FAILED | SPEC-DEFECT (precedence: SPEC-DEFECT > FAILED)
 CONFIDENCE / ESCALATIONS

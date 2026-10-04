@@ -363,10 +363,26 @@ def plan_add(a, root, cfg):
 
 # ----- build half: sub-tickets, results, merge (parts B, D, G; local stand-in) -------------------
 
+def _recorded_plan_run(root: Path, tid: str) -> str:
+    """The run named by the ticket's latest `plan.added` event, when that is a run of this store."""
+    source = None
+    for p in sorted((root / "log").glob("*.jsonl")):
+        for ln in p.read_text(encoding="utf-8").splitlines():
+            e = json.loads(ln)
+            if e.get("event") == "plan.added" and e.get("ticket") == tid:
+                source = e.get("source")
+    if not source or "/" in source or not (root / "runs" / source / "meta.yaml").exists():
+        raise Refused(f"no recorded planner run found for {tid} (latest plan.added source: {source or 'none'}); "
+                      "pass --run RUN or --file F")
+    return source
+
+
 def subticket_add(a, root, cfg):
     parent = store.load_ticket(root, a.id)
     if parent["spec"]["approved_version"] is None:
         raise Refused(f"{parent['id']} has no approved spec")
+    if not a.run and not a.file:
+        a.run = _recorded_plan_run(root, parent["id"])
     if a.run:
         d = _run_dir(root, a.run)
         meta = store.read_yaml(d / "meta.yaml")
@@ -417,7 +433,7 @@ def ticket_ready_implementers(a, root, cfg):
             s["history"].append({"ts": store.now(), "from": "waiting-dependencies", "to": "ready-for-implementer", "by": "ready-implementers"})
             store.save_ticket(root, s)
             store.log_event(root, "ticket.transition", ticket=s["id"], **{"from": "waiting-dependencies", "to": "ready-for-implementer", "by": "ready-implementers"})
-    out({"ok": True, "parent": a.id, "ready": ready,
+    out({"ok": True, "parent": a.id, "ready": ready, "subtickets": [s["id"] for s in subs],
          "remaining": [s["id"] for s in subs if s["status"] not in ("merged", "parked", "closed")],
          "in_flight": [s["id"] for s in subs if s["in_flight"] or s["status"] in subtickets.IN_FLIGHT_STATES],
          "parked": [s["id"] for s in subs if s["status"] == "parked"],
@@ -477,8 +493,10 @@ def results_record(a, root, cfg):
     stale = t.get("head") is not None and a.head != t.get("head")
     rows = [store.record_result(root, t["id"], a.head, a.role, st, a.run)]
     if a.role == "verifier" and not a.killed:
-        m = re.search(r"^Gate suite:\s*(PASS|FAIL)\b(.*)$", text, re.M)
-        ci = (m.group(1), m.group(2).strip() or None) if m else ("FAIL", "missing Gate suite line")
+        # Heading and emphasis marks may wrap the line (`## Gate suite: PASS`, `**Gate suite:** PASS`);
+        # other text before `Gate suite:` is prose, not a verdict.
+        m = re.search(r"^[ \t#*]*Gate suite:[ \t*]*(PASS|FAIL)\b(.*)$", text, re.M)
+        ci = (m.group(1), m.group(2).strip(" \t\r*") or None) if m else ("FAIL", "missing Gate suite line")
         rows.append(store.record_result(root, t["id"], a.head, "ci", ci[0], a.run, ci[1]))
     ev = "result.stale-discarded" if stale else "result.recorded"
     for r in rows:
@@ -1054,7 +1072,8 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--run", required=True)
     p.set_defaults(fn=spec_tasks)
     sb = sp.add_parser("subticket").add_subparsers(dest="sub", required=True)
-    p = sb.add_parser("add")
+    p = sb.add_parser("add", help="create the parent's sub-tickets from a plan; with neither --run nor --file, "
+                                  "from the planner run named by its latest plan.added event")
     p.add_argument("id")
     p.add_argument("--run")
     p.add_argument("--file")
