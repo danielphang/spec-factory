@@ -18,7 +18,7 @@ from pathlib import Path
 
 import yaml
 
-from factory import compose, gitops, instance, specstore, status, store, subtickets
+from factory import compose, gitops, instance, specstore, status, store, subtickets, tripwire
 from factory.store import Refused
 
 ROLES = ("triage", "spec_writer", "critic", "planner", "implementer", "reviewer", "verifier")
@@ -108,6 +108,7 @@ def _set_dotted(obj: dict, key: str, value) -> None:
 
 def ticket_set(a, root, cfg):
     t = store.load_ticket(root, a.id)
+    was_in_flight = list(t.get("in_flight") or [])
     changes = {}
     for kv in a.assignments:
         if "=" not in kv:
@@ -118,7 +119,13 @@ def ticket_set(a, root, cfg):
         changes[k] = val
     store.save_ticket(root, t)
     store.log_event(root, "ticket.set", ticket=t["id"], changes=changes)
-    out({"ok": True, "id": t["id"], "changes": changes})
+    res = {"ok": True, "id": t["id"], "changes": changes}
+    for rid in was_in_flight:  # a run dropped by hand is compared now, as run finish would
+        if rid not in (t.get("in_flight") or []):
+            tw = tripwire.compare(root, rid, t["id"])
+            if tw and tw["parked"]:
+                res["parked"] = tw["parked"]
+    out(res)
 
 
 def _apply_round(t: dict, op: str | None, cfg: dict) -> None:
@@ -175,13 +182,7 @@ def ticket_park(a, root, cfg):
     frm = t["status"]
     if frm in ("closed", "parked"):
         raise Refused(f"{t['id']} is {frm}; cannot park")
-    t["status"] = "parked"
-    t["parked"] = {"reason": a.reason, "since": store.now(), "from": frm,
-                   "outputs": [x for x in (a.outputs or "").split(",") if x], "question": a.question}
-    t["history"].append({"ts": store.now(), "from": frm, "to": "parked", "by": "park", "reason": a.reason})
-    store.save_ticket(root, t)
-    store.log_event(root, "ticket.parked", ticket=t["id"], **{"from": frm, "reason": a.reason})
-    store.log_event(root, "escalation.queued", ticket=t["id"], items=[a.reason])
+    store.park_ticket(root, t, a.reason, [x for x in (a.outputs or "").split(",") if x], a.question)
     out({"ok": True, "id": t["id"], "state": "parked", "reason": a.reason})
 
 
@@ -208,6 +209,7 @@ def run_start(a, root, cfg):
         raise Refused(f"{t['id']} already has a {a.role} run in flight")
     if a.role in ("triage", "spec_writer", "critic", "planner") and t["in_flight"]:
         raise Refused(f"{t['id']} already has run {t['in_flight'][0]} in flight")
+    baseline = tripwire.baseline(cfg)  # hashed before the run id is reserved: a refusal writes nothing
     rid = store.next_run_id(root, a.role)
     model = a.model or cfg["models"][a.role]
     d = root / "runs" / rid
@@ -217,6 +219,9 @@ def run_start(a, root, cfg):
     if a.role in BUILD_ROLES:
         _start_build_run(root, cfg, t, meta, d, parent_close)
     store.write_yaml(d / "meta.yaml", meta)
+    if baseline:
+        store.ensure_gitignore(root)
+        store.write_yaml(d / "tripwire.yaml", baseline)
     prompt_name = a.role
     preamble = instance.fill_preamble((PROMPTS / "preamble.md").read_text(encoding="utf-8"), cfg)
     role_prompt = instance.fill_standards((PROMPTS / f"{prompt_name}.md").read_text(encoding="utf-8"))
@@ -316,8 +321,14 @@ def run_finish(a, root, cfg):
     store.log_event(root, ev, ticket=t["id"], run=a.run, role=meta["role"], status=parsed["status"], wall_s=meta["wall_s"])
     if parsed.get("escalations"):
         store.log_event(root, "escalation.queued", ticket=t["id"], run=a.run, items=parsed["escalations"])
-    out({"ok": True, "run_id": a.run, "status": parsed["status"], "confidence": parsed.get("confidence"),
-         "escalations": parsed.get("escalations", [])})
+    res = {"ok": True, "run_id": a.run, "status": parsed["status"], "confidence": parsed.get("confidence"),
+           "escalations": parsed.get("escalations", [])}
+    tw = tripwire.compare(root, a.run, t["id"])
+    if tw:
+        res["tripwire"] = {"park": tw["park"], "escalate": tw["escalate"]}
+        if tw["parked"]:
+            res["parked"] = tw["parked"]
+    out(res)
 
 
 # ----- spec / plan ----------------------------------------------------------------

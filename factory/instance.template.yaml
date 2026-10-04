@@ -11,6 +11,11 @@ state_dir: .factory/state
 # Filled into the preamble's protected-path line at run start as `class (glob, glob), ...`.
 protected_paths:
   infra: [".factory/instance.yaml", ".factory/harness.lock", ".factory/context.md"]
+# Live files outside the repo that no role run should change, as absolute or `~/` paths (`~` is the
+# account's home, never $HOME). `run start` hashes each; the comparison runs when the run leaves the
+# in-flight list. A changed `park` file parks the ticket; a changed `escalate` file queues an
+# escalation and the run goes on. Contents are never printed. Files only: a directory is refused.
+# tripwire: {park: [], escalate: []}
 # Commands every implementer and verifier runs in the checkout under test, each exactly as written.
 # `{integration}` is replaced with the checkout that has the integration branch.
 gate_commands: []
