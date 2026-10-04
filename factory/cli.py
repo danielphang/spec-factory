@@ -211,6 +211,8 @@ def run_start(a, root, cfg):
         raise Refused(f"{t['id']} already has run {t['in_flight'][0]} in flight")
     if a.role == "implementer" and t.get("parent"):
         _check_sibling_tests(root, cfg, t)
+    if a.role in BUILD_ROLES:
+        compose.gate_entries(cfg)  # a malformed gate entry refuses here, before a run id is reserved
     baseline = tripwire.baseline(cfg)  # hashed before the run id is reserved: a refusal writes nothing
     rid = store.next_run_id(root, a.role)
     model = a.model or cfg["models"][a.role]
@@ -272,6 +274,7 @@ def _start_build_run(root: Path, cfg: dict, t: dict, meta: dict, d: Path, parent
     integ = gitops.integration_branch(cfg, repo)
     store.ensure_gitignore(root)
     meta["round"] = t["round"]["pr"]
+    meta["gate_skipped"] = []  # only a checker of a sub-ticket's diff skips a gate command
     if meta["role"] == "implementer":
         branch = t.get("branch") or gitops.branch_of(t["id"])
         wt = root / "worktrees" / t["id"]
@@ -286,6 +289,8 @@ def _start_build_run(root: Path, cfg: dict, t: dict, meta: dict, d: Path, parent
         base = (t.get("parent_base") or head) if parent_close else gitops.rev(repo, integ)
         if not head:
             raise Refused(f"{t['id']} has no head to check")
+        if not parent_close:
+            meta["gate_skipped"] = compose.gate_skips(cfg, repo, base, head)
         wt = d / "wt"
         gitops.add_detached_worktree(repo, wt, head)
         meta["environment_files"] = gitops.copy_environment_files(cfg, repo, wt)
@@ -441,15 +446,21 @@ def subticket_add(a, root, cfg):
         raise Refused("no sub-tickets found (a head line `<id> / Title`, id like T-0001-A, ST-1 or T-0001.1, "
                       "then `Depends on:` and `Parallel-safe:`)")
     ids = {s["id"] for s in subs}
-    made = []
     for sdef in subs:
         for dep in sdef["depends_on"]:
             if dep not in ids and not store.ticket_path(root, dep).exists():
                 raise Refused(f"{sdef['id']} ({sdef['label']}) depends on {dep}, which is neither in this plan nor a ticket in the store")
         if store.ticket_path(root, sdef["id"]).exists():
             raise Refused(f"{sdef['id']} already exists")
+    out({"ok": True, "parent": parent["id"], "subtickets": _create_subtickets(root, parent, subs, f"plan:{a.run or a.file}")})
+
+
+def _create_subtickets(root: Path, parent: dict, subs: list[dict], source: str) -> list[dict]:
+    """Write each checked sub-ticket definition as a ticket record under `parent`, with its text at
+    specs/<id>/subticket.md; returns them as `subticket add` prints them."""
+    made = []
     for sdef in subs:
-        st = store.new_ticket(root, sdef["id"], sdef["title"], parent["request"], f"plan:{a.run or a.file}")
+        st = store.new_ticket(root, sdef["id"], sdef["title"], parent["request"], source)
         st.update({"type": "sub-ticket", "parent": parent["id"], "label": sdef["label"], "depends_on": sdef["depends_on"],
                    "parallel_safe": sdef["parallel_safe"],
                    "status": "ready-for-implementer" if not sdef["depends_on"] else "waiting-dependencies"})
@@ -458,7 +469,70 @@ def subticket_add(a, root, cfg):
         store.save_ticket(root, st)
         store.log_event(root, "ticket.created", ticket=sdef["id"], parent=parent["id"], status=st["status"])
         made.append({"id": sdef["id"], "label": sdef["label"], "state": st["status"], "depends_on": sdef["depends_on"], "parallel_safe": sdef["parallel_safe"]})
-    out({"ok": True, "parent": parent["id"], "subtickets": made})
+    return made
+
+
+WHOLE_SPEC_REASON = "one sub-ticket: no NEEDS-SPLIT, no seam heading, no earlier planner run"
+SEAM_HEADING_RE = re.compile(r"^#{2,3}\s")
+
+
+def _planner_needed(root: Path, t: dict, spec_text: str) -> str | None:
+    """The first reason the parent needs a planner run, or None when the approved spec becomes one
+    sub-ticket as it stands (doc §Routing table, Human spec gate row)."""
+    subs = store.subtickets_of(root, t["id"])
+    if subs:
+        return f"it already has sub-tickets: {', '.join(s['id'] for s in subs)}"
+    planned = compose._runs_for(root, t["id"], "planner", "")
+    if planned:
+        return f"a planner already ran on it: {planned[-1]}"
+    writer = compose._last_run_meta(root, t["id"], "spec_writer", "")
+    if writer and writer.get("status") == "NEEDS-SPLIT":
+        return f"its spec writer marked it NEEDS-SPLIT ({writer['run_id']})"
+    for line, in_fence in specstore.lines_outside_fences(spec_text):
+        if (not in_fence and SEAM_HEADING_RE.match(line) and not line.startswith("### Requirement:")
+                and re.search(r"\bseams?\b", line, re.I)):
+            return f"its approved spec has a seam heading: {line.strip()}"
+    return None
+
+
+def plan_whole_spec(a, root, cfg):
+    """`plan whole-spec PARENT`: when the approved spec needs one sub-ticket, create it from the
+    whole spec in place of a planner run; otherwise report why the planner is needed, writing nothing."""
+    t = store.load_ticket(root, a.id)
+    if t["status"] != "ready-for-planner":
+        raise Refused(f"{t['id']} is {t['status']}, not ready-for-planner")
+    if t["in_flight"]:
+        raise Refused(f"{t['id']} already has run {t['in_flight'][0]} in flight")
+    av = t["spec"]["approved_version"]
+    spec = root / "specs" / t["id"] / f"v{av}.md"
+    if av is None or not spec.exists():
+        raise Refused(f"{t['id']} has no approved spec")
+    spec_text = spec.read_text(encoding="utf-8")
+    reason = _planner_needed(root, t, spec_text)
+    if reason:
+        out({"ok": True, "id": t["id"], "planner": "needed", "reason": reason})
+        return
+    if specstore.is_active(root) and not specstore.change_dir(root, t["id"]).exists():
+        raise Refused(f"{t['id']} has no change folder (no pinned version)")
+    sid = f"{t['id']}.1"
+    names = "".join(f"- {n}\n" for n in specstore.scenario_names(spec_text))
+    text = (f"{sid} / {t['title']}\nDepends on: none\nParallel-safe: yes\n\n"
+            f"Parent: {t['id']}, approved spec v{av}. This sub-ticket is the whole of it; read it in full. "
+            f"The planner was skipped: {WHOLE_SPEC_REASON}.\n\n"
+            "Scope: every lettered part of the parent's Proposed change.\n"
+            "Acceptance: every scenario of the parent spec, with the label its verification.md gives it:\n"
+            f"{names}Tests to change: the parent's list.\nProtected paths: the parent's Risk list.\n")
+    made = _create_subtickets(root, t, [{"id": sid, "title": t["title"], "label": "whole-spec", "depends_on": [],
+                                          "parallel_safe": True, "text": text}], "plan:whole-spec")
+    rel = f"plans/{t['id']}.md"
+    store.write_text(root / rel, text)
+    t["plan"] = rel
+    store.save_ticket(root, t)
+    if specstore.is_active(root):
+        store.write_text(specstore.change_dir(root, t["id"]) / "tasks.md", text)
+        store.log_event(root, "tasks.written", ticket=t["id"], source="plan:whole-spec")
+    store.log_event(root, "plan.skipped", ticket=t["id"], subticket=sid, reason=WHOLE_SPEC_REASON)
+    out({"ok": True, "id": t["id"], "planner": "skipped", "reason": WHOLE_SPEC_REASON, "subtickets": made})
 
 
 def ticket_ready_implementers(a, root, cfg):
@@ -539,7 +613,10 @@ def results_record(a, root, cfg):
         # other text before `Gate suite:` is prose, not a verdict.
         m = re.search(r"^[ \t#*]*Gate suite:[ \t*]*(PASS|FAIL)\b(.*)$", text, re.M)
         ci = (m.group(1), m.group(2).strip(" \t\r*") or None) if m else ("FAIL", "missing Gate suite line")
-        rows.append(store.record_result(root, t["id"], a.head, "ci", ci[0], a.run, ci[1]))
+        mp = root / "runs" / str(a.run) / "meta.yaml"
+        skipped = (store.read_yaml(mp) or {}).get("gate_skipped") if a.run and mp.exists() else None
+        rows.append(store.record_result(root, t["id"], a.head, "ci", ci[0], a.run, ci[1],
+                                        {"skipped": skipped} if skipped else None))
     ev = "result.stale-discarded" if stale else "result.recorded"
     for r in rows:
         store.log_event(root, ev, ticket=t["id"], head=a.head, role=r["role"], status=r["status"], run=a.run)
@@ -1379,6 +1456,10 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--from-run")
     p.add_argument("--file")
     p.set_defaults(fn=plan_add)
+    p = pl.add_parser("whole-spec", help="when the approved spec needs one sub-ticket, create it from the whole "
+                                         "spec and skip the planner; otherwise report why the planner is needed")
+    p.add_argument("id")
+    p.set_defaults(fn=plan_whole_spec)
 
     p = sc.add_parser("tasks")
     p.add_argument("id")

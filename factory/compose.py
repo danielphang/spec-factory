@@ -41,6 +41,35 @@ def _last_run_meta(root: Path, ticket: str, role: str, exclude: str) -> dict | N
     return store.read_yaml(root / "runs" / runs[-1] / "meta.yaml") if runs else None
 
 
+def gate_entries(cfg: dict) -> list[tuple[str, list[str] | None]]:
+    """Each `gate_commands` entry as (command as written, paths or None). An entry is a command
+    string, or a mapping of a non-empty string `command` and an optional non-empty list of git
+    pathspecs `paths`. Absent or null is empty. Anything else is refused, naming its index: a typo
+    such as `path:` read as unscoped would leave the operator believing a scope is in force."""
+    out: list[tuple[str, list[str] | None]] = []
+    for i, e in enumerate(cfg.get("gate_commands") or []):
+        def bad(why: str) -> store.Refused:
+            return store.Refused(f"gate_commands entry {i}: {why}; an entry is a command string or "
+                                 "{command: <string>, paths: [<git pathspec>, ...]}, and a command that "
+                                 "always runs omits paths")
+        if isinstance(e, str):
+            out.append((e, None))
+            continue
+        if not isinstance(e, dict):
+            raise bad(f"{e!r} is neither a string nor a mapping")
+        extra = [str(k) for k in e if k not in ("command", "paths")]
+        if extra:
+            raise bad(f"unknown key {', '.join(extra)}")
+        if not isinstance(e.get("command"), str) or not e["command"]:
+            raise bad("command must be a non-empty string")
+        paths = e.get("paths")
+        if "paths" in e and (not isinstance(paths, list) or not paths
+                             or not all(isinstance(p, str) and p for p in paths)):
+            raise bad("paths must be a non-empty list of non-empty strings")
+        out.append((e["command"], paths))
+    return out
+
+
 def gate_commands(cfg: dict) -> list[str]:
     """The gate commands with `{integration}` replaced by the checkout that has the integration
     branch: the gate script and its baseline come from the integration branch, never from the branch
@@ -48,7 +77,17 @@ def gate_commands(cfg: dict) -> list[str]:
     from factory import gitops  # local: compose is otherwise git-free
     repo = gitops.repo_root(cfg)
     co = gitops.checkout_of(repo, gitops.integration_branch(cfg, repo)) or repo
-    return [g.replace("{integration}", str(co)) for g in cfg.get("gate_commands", [])]
+    return [g.replace("{integration}", str(co)) for g, _ in gate_entries(cfg)]
+
+
+def gate_skips(cfg: dict, repo: Path, base: str, head: str) -> list[dict]:
+    """The gate commands a checker of the diff base...head skips: each one with `paths` that the
+    diff touches none of, by git's own pathspec matching. A git error is refused."""
+    from factory import gitops  # local: compose is otherwise git-free
+    return [{"command": cmd, "status": "SKIPPED",
+             "reason": f"the diff {base[:9]}...{head[:9]} touches none of its paths: {', '.join(paths)}"}
+            for cmd, paths in gate_entries(cfg)
+            if paths and not gitops.git(repo, "diff", "--name-only", f"{base}...{head}", "--", *paths)]
 
 
 _ENV_NAME = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
@@ -172,11 +211,19 @@ def compose(root: Path, cfg: dict, meta: dict, t: dict) -> tuple[str, list[str]]
         av = pt["spec"]["approved_version"]
         if av is None:
             raise store.Refused(f"{parent} has no approved spec version")
+        # A checker of a sub-ticket gets the commands its diff skips (meta `gate_skipped`, set at run
+        # start) apart from the ones to run; the implementer and the parent-close verifier have none.
+        skipped = meta.get("gate_skipped") or []
+        gone = {s["command"] for s in skipped}
+        run = [g for (raw, _), g in zip(gate_entries(cfg), gate_commands(cfg)) if raw not in gone]
         where = (f"\n## Where you work\nWorktree: `{meta.get('worktree')}` (branch `{meta.get('branch')}`, "
                  f"base `{meta.get('base')}`, head `{meta.get('head')}`). There is no remote: commit on the "
                  f"branch; the PR is the branch plus the description you return. Gate commands (run each from "
                  f"your worktree, exactly as written; each is already wrapped): "
-                 + "; ".join(f"`{wrap(g, env)}`" for g in gate_commands(cfg)) + "\n")
+                 + ("; ".join(f"`{wrap(g, env)}`" for g in run) if run or not skipped
+                    else "none (every gate command is skipped below)") + "\n"
+                 + "".join(f"SKIPPED by the harness for this diff, do not run: `{s['command']}`: {s['reason']}\n"
+                           for s in skipped))
         parts.append(where)
         if role == "implementer":
             if t.get("merge_refused"):
