@@ -8,6 +8,7 @@ import datetime as dt
 import hashlib
 import json
 import os
+import shutil
 from pathlib import Path
 
 import yaml
@@ -47,19 +48,26 @@ def now() -> str:
 
 
 STORE_GITIGNORE = ("# git worktrees the build half creates; they are checkouts, never store content\nworktrees/\nruns/*/wt/\n"
-                   "# tripwire baselines: digests of the operator's live files, never committed\nruns/*/tripwire.yaml\n")
+                   "# tripwire baselines: digests of the operator's live files, never committed\nruns/*/tripwire.yaml\n"
+                   "# each run's scratch directory: its own temporary files, cleared when the ticket moves on\n"
+                   "runs/*/scratch/\n")
 
 
 def ensure_gitignore(root: Path) -> None:
     """The store keeps implementer worktrees under worktrees/ and checker checkouts under runs/<id>/wt/.
     Both are nested git checkouts: a store committed by directory must not pick them up. Nor may it
-    pick up a run's tripwire baseline, runs/<id>/tripwire.yaml, which holds digests of live files."""
+    pick up a run's tripwire baseline, runs/<id>/tripwire.yaml, which holds digests of live files, or
+    a run's temporary files under runs/<id>/scratch/. An absent or empty file gets the commented block;
+    an existing one keeps its own lines and gains only the lines it lacks."""
     p = root / ".gitignore"
     have = p.read_text(encoding="utf-8") if p.exists() else ""
-    missing = [ln for ln in ("worktrees/", "runs/*/wt/", "runs/*/tripwire.yaml") if ln not in have.splitlines()]
+    if not have.strip():
+        write_text(p, STORE_GITIGNORE)
+        return
+    lines = have.splitlines()
+    missing = [ln for ln in STORE_GITIGNORE.splitlines() if not ln.startswith("#") and ln not in lines]
     if missing:
-        root.mkdir(parents=True, exist_ok=True)
-        p.write_text((have.rstrip() + "\n\n" if have.strip() else "") + STORE_GITIGNORE, encoding="utf-8")
+        write_text(p, have.rstrip("\n") + "\n" + "".join(ln + "\n" for ln in missing))
 
 
 def write_text(path: Path, text: str) -> None:
@@ -96,7 +104,29 @@ def load_ticket(root: Path, tid: str) -> dict:
 
 
 def save_ticket(root: Path, t: dict) -> None:
-    write_yaml(ticket_path(root, t["id"]), t)
+    """Write ticket `t`. When its stored status changes to anything but `parked`, the ticket has moved
+    on: clear its finished runs' scratch directories. A park keeps them for the human to inspect."""
+    p = ticket_path(root, t["id"])
+    before = read_yaml(p)["status"] if p.exists() else None
+    write_yaml(p, t)
+    if before is not None and t["status"] not in (before, "parked"):
+        clear_scratch(root, t["id"])
+
+
+def clear_scratch(root: Path, tid: str) -> None:
+    """Remove runs/<id>/scratch of each finished run of ticket `tid`; runs in flight, other tickets'
+    runs and every path outside runs/*/scratch are left alone."""
+    for d in (root / "runs").glob("*/scratch"):
+        meta = d.parent / "meta.yaml"
+        m = read_yaml(meta) if meta.exists() else None
+        if not m or m.get("ticket") != tid or not m.get("finished"):
+            continue
+        if d.is_symlink():
+            d.unlink()
+        else:
+            # factory: plain rmtree fails on a read-only directory inside scratch (a Go module cache,
+            # say); add a chmod-and-retry handler if a run ever leaves one
+            shutil.rmtree(d)
 
 
 def park_ticket(root: Path, t: dict, reason: str, outputs: list[str], question: str | None = None,

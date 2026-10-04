@@ -88,7 +88,10 @@ def compose(root: Path, cfg: dict, meta: dict, t: dict) -> tuple[str, list[str]]
              "temporary HOME so it cannot write the operator's real home directory: "
              f"`{wrap('<command>', env)}`. Put your command in place of <command>. This includes every test or "
              "check command the briefing above gives. A throwaway HOME does not stop a write to an absolute path: "
-             "never run anything that could write a protected path outside the repository.\n"]
+             "never run anything that could write a protected path outside the repository.\n",
+             "\n## Scratch directory\nPut every file you make for your own use in this run under "
+             f"`{root / 'runs' / run_id / 'scratch'}`: no other run uses it. The harness clears it when the "
+             "ticket moves on, and keeps it while the ticket is parked.\n"]
     sources: list[str] = []
 
     def add(rel: str, heading: str) -> None:

@@ -227,8 +227,8 @@ def test_no_tripwire_key_writes_and_prints_what_it_did_before(tmp_path):
     rid = f.start()
     fin = f.finish(rid)
     assert sorted(fin) == ["confidence", "escalations", "ok", "run_id", "status"]
-    assert sorted(p.name for p in (f.store / "runs" / rid).iterdir()) == ["meta.yaml", "output.md", "system-prompt.txt"]
-    assert not (f.store / ".gitignore").exists()
+    assert sorted(p.name for p in (f.store / "runs" / rid).iterdir()) == ["meta.yaml", "output.md", "scratch", "system-prompt.txt"]
+    assert "runs/*/scratch/" in (f.store / ".gitignore").read_text().splitlines()
 
 
 def test_empty_lists_are_off(tmp_path):
