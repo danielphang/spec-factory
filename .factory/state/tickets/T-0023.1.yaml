@@ -1,0 +1,47 @@
+id: T-0023.1
+type: sub-ticket
+title: The harness suite runs with an uncommitted harness edit (part G)
+request: requests/T-0023.md
+source: plan:run-0200-planner
+status: merged
+round:
+  spec: 0
+  pr: 1
+spec:
+  version: 2
+  approved_version: 2
+plan: null
+in_flight: []
+parked: null
+created: '2026-10-04T14:25:14+00:00'
+history:
+- ts: '2026-10-04T14:34:30+00:00'
+  from: ready-for-implementer
+  to: checks-in-flight
+  by: workflow
+  round:
+    spec: 0
+    pr: 1
+- ts: '2026-10-04T14:46:56+00:00'
+  from: checks-in-flight
+  to: ready-for-merge
+  by: workflow
+  round:
+    spec: 0
+    pr: 1
+- ts: '2026-10-04T14:47:03+00:00'
+  from: ready-for-merge
+  to: merged
+  by: merge
+  head: fa09a10f700a44ab7ce5881bf3daf5615ecbbb57
+parent: T-0023
+depends_on: []
+parallel_safe: false
+branch: factory/T-0023.1
+head: fa09a10f700a44ab7ce5881bf3daf5615ecbbb57
+merge:
+  base_before: 1ab9540c9f5f53b505d2d7d8d8942438a71bc5e9
+  main_after: 2e61b852d1da27a85208eb94c8d10b8a5557e2c7
+parent_base: null
+label: T-0023-S4
+merge_refused: null

@@ -1,0 +1,32 @@
+run_id: run-0206-reviewer
+role: reviewer
+ticket: T-0023.2
+model: fable
+round: 1
+spec_version: 2
+started: '2026-10-04T15:01:22+00:00'
+finished: '2026-10-04T15:11:57+00:00'
+wall_s: 635
+status: APPROVE
+input_sources:
+- specs/T-0023.2/subticket.md
+- specs/T-0023/v2.md
+- runs/run-0204-implementer/output.md
+- runs/run-0206-reviewer/diff.patch
+environment_files: []
+branch: factory/T-0023.2
+base: 2e61b852d1da27a85208eb94c8d10b8a5557e2c7
+head: a78de4b5a03a3c2f87e9976542035fb4a1ab0f07
+worktree: /Users/dphang/dev/spec-factory/.factory/state/runs/run-0206-reviewer/wt
+confidence: high. Every acceptance WHEN of the sub-ticket, both gates and the uncommitted-edit suite scenario
+  ran on the committed head with the outputs above; the diff is confined to the lettered parts and the
+  three declared harness files.
+escalations:
+- 'Protected paths touched, all declared on the sub-ticket''s "Protected paths" line and in the parent''s
+  Risk section: harness `factory/cli.py`, `factory/compose.py`, `factory/subtickets.py`. The merge gate
+  needs a human approval for these.'
+- 'The scenario "A re-plan is refused while a sub-ticket is not merged" prints `names=2` under zsh and
+  `names=1` under bash or sh, as the implementer reported and I reproduced. Decide: the verifier runs
+  this change''s scenarios in bash, or a later spec revision sends stderr to a file and greps that file.
+  No code change is needed.'
+escalations_note: null
