@@ -727,3 +727,25 @@
 {"ts": "2026-10-04T06:18:04+00:00", "event": "ticket.parked", "ticket": "T-0016", "from": "ready-for-parent-verify", "reason": "archive: "}
 {"ts": "2026-10-04T06:18:04+00:00", "event": "escalation.queued", "ticket": "T-0016", "items": ["archive: "]}
 {"ts": "2026-10-04T06:18:28+00:00", "event": "human.resolved", "ticket": "T-0016", "kind": "close", "by": "dphang", "from": "parked", "to": "closed"}
+{"ts": "2026-10-04T06:19:20+00:00", "event": "request.created", "ticket": "T-0017", "source": "/private/tmp/claude-501/-Users-dphang-dev-nanobot/c69bfd1d-97a6-43e3-9d5a-a517c28d382c/scratchpad/32_decisions.md"}
+{"ts": "2026-10-04T06:19:20+00:00", "event": "ticket.created", "ticket": "T-0017", "status": "ready-for-triage"}
+{"ts": "2026-10-04T06:19:46+00:00", "event": "run.started", "ticket": "T-0017", "run": "run-0143-triage", "role": "triage", "model": "opus"}
+{"ts": "2026-10-04T06:21:56+00:00", "event": "run.finished", "ticket": "T-0017", "run": "run-0143-triage", "role": "triage", "status": "ACCEPT", "wall_s": 130}
+{"ts": "2026-10-04T06:22:04+00:00", "event": "ticket.transition", "ticket": "T-0017", "from": "ready-for-triage", "to": "ready-for-spec-writer", "by": "workflow", "round": {"spec": 0, "pr": 0}}
+{"ts": "2026-10-04T06:22:12+00:00", "event": "run.started", "ticket": "T-0017", "run": "run-0144-spec_writer", "role": "spec_writer", "model": "opus"}
+{"ts": "2026-10-04T06:33:28+00:00", "event": "run.finished", "ticket": "T-0017", "run": "run-0144-spec_writer", "role": "spec_writer", "status": "READY-FOR-CRITIC", "wall_s": 676}
+{"ts": "2026-10-04T06:33:28+00:00", "event": "escalation.queued", "ticket": "T-0017", "run": "run-0144-spec_writer", "items": ["The page rules conflict on README updates. The briefing says a changed command updates `README.md` in the same ticket, and this spec follows that. The README's own \"Maintaining this page\" rule says a thing appears only after it has run on a real ticket. Decide which wins for new commands; this ticket follows the briefing."]}
+{"ts": "2026-10-04T06:33:38+00:00", "event": "spec.added", "ticket": "T-0017", "version": 1, "source": "run-0144-spec_writer"}
+{"ts": "2026-10-04T06:33:46+00:00", "event": "ticket.transition", "ticket": "T-0017", "from": "ready-for-spec-writer", "to": "ready-for-critic", "by": "workflow", "round": {"spec": 1, "pr": 0}}
+{"ts": "2026-10-04T06:33:54+00:00", "event": "run.started", "ticket": "T-0017", "run": "run-0145-critic", "role": "critic", "model": "fable"}
+{"ts": "2026-10-04T06:37:32+00:00", "event": "run.finished", "ticket": "T-0017", "run": "run-0145-critic", "role": "critic", "status": "REVISE", "wall_s": 218}
+{"ts": "2026-10-04T06:37:41+00:00", "event": "ticket.transition", "ticket": "T-0017", "from": "ready-for-critic", "to": "ready-for-spec-writer", "by": "workflow", "round": {"spec": 2, "pr": 0}}
+{"ts": "2026-10-04T06:37:50+00:00", "event": "run.started", "ticket": "T-0017", "run": "run-0146-spec_writer", "role": "spec_writer", "model": "opus"}
+{"ts": "2026-10-04T06:43:50+00:00", "event": "run.finished", "ticket": "T-0017", "run": "run-0146-spec_writer", "role": "spec_writer", "status": "READY-FOR-CRITIC", "wall_s": 360}
+{"ts": "2026-10-04T06:44:00+00:00", "event": "spec.added", "ticket": "T-0017", "version": 2, "source": "run-0146-spec_writer"}
+{"ts": "2026-10-04T06:44:07+00:00", "event": "ticket.transition", "ticket": "T-0017", "from": "ready-for-spec-writer", "to": "ready-for-critic", "by": "workflow", "round": {"spec": 2, "pr": 0}}
+{"ts": "2026-10-04T06:44:15+00:00", "event": "run.started", "ticket": "T-0017", "run": "run-0147-critic", "role": "critic", "model": "fable"}
+{"ts": "2026-10-04T06:45:51+00:00", "event": "run.finished", "ticket": "T-0017", "run": "run-0147-critic", "role": "critic", "status": "APPROVE", "wall_s": 96}
+{"ts": "2026-10-04T06:45:59+00:00", "event": "ticket.transition", "ticket": "T-0017", "from": "ready-for-critic", "to": "awaiting-spec-gate", "by": "workflow", "round": {"spec": 2, "pr": 0}}
+{"ts": "2026-10-04T06:46:29+00:00", "event": "approval.recorded", "ticket": "T-0017", "kind": "spec", "version": 2, "by": "dphang"}
+{"ts": "2026-10-04T06:46:29+00:00", "event": "ticket.transition", "ticket": "T-0017", "from": "awaiting-spec-gate", "to": "ready-for-planner", "by": "dphang"}
