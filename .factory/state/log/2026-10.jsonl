@@ -685,3 +685,5 @@
 {"ts": "2026-10-04T00:10:38+00:00", "event": "escalation.queued", "ticket": "T-0015", "items": ["archive: no spec store (factory init not run)"]}
 {"ts": "2026-10-04T00:11:03+00:00", "event": "human.resolved", "ticket": "T-0015", "kind": "close", "by": "dphang", "from": "parked", "to": "closed"}
 {"ts": "2026-10-04T00:25:12+00:00", "event": "harness.accepted", "instance": "/Users/dphang/dev/spec-factory/.factory", "old": "e703c1bfb1216079f802ba25e3d3a218246f385d", "new": "27d6d63fcb2f5c03d64696f6769abf871e4f2bc0"}
+{"ts": "2026-10-04T00:26:25+00:00", "event": "request.created", "ticket": "T-0016", "source": "/private/tmp/claude-501/-Users-dphang-dev-nanobot/c69bfd1d-97a6-43e3-9d5a-a517c28d382c/scratchpad/31_suite_runs.md"}
+{"ts": "2026-10-04T00:26:25+00:00", "event": "ticket.created", "ticket": "T-0016", "status": "ready-for-triage"}

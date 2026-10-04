@@ -35,6 +35,7 @@ A fix closes its issue through a reviewed change on `main`; the merge column is 
 | [28](https://github.com/danielphang/spec-factory/issues/28) | Every role agent receives the operator's latest chat message, labelled as overriding its task (Workflow tool relay; found by the v3.5 Driver) | not in intake | — | — |
 | [29](https://github.com/danielphang/spec-factory/issues/29) | Writing standard rule 11: a heading never claims more than the sentence under it (from #26's acceptance test) | not in intake | — | — |
 | [30](https://github.com/danielphang/spec-factory/issues/30) | init on a throwaway store writes a half instance; a later run crashes on the missing context.md (found by #20's acceptance test) | not in intake | — | — |
+| [31](https://github.com/danielphang/spec-factory/issues/31) | Build speed: run each test suite only where it can change the verdict (before the v3.5 port's builds) | T-0016 (intake 2026-10-04) | — | — |
 
 Issues 1–10 are applied and can be closed against their merge; 11 applied (`9168ce1`); 13 and 14 fold into #21 (checklists until it archives); 15 closed as superseded. #12 was a duplicate of #11.
 New findings go straight to GitHub issues; this file is the index.
