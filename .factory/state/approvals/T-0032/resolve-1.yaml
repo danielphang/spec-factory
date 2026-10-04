@@ -1,9 +1,0 @@
-by: dphang
-at: '2026-10-04T23:21:42+00:00'
-kind: answer
-from: parked
-to: ready-for-triage
-answer: 1
-decision: '2026-10-04 T-0032 Empty role output (#41, T-0032): labelled EMPTY-OUTPUT with the last message,
-  re-dispatched once automatically, parked on a second; the code reviewer judges the diff and leaves the
-  test suite and gates to the verifier.'

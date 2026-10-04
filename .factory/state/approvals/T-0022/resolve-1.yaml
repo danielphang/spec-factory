@@ -1,9 +1,0 @@
-by: dphang
-at: '2026-10-04T20:37:15+00:00'
-kind: answer
-from: parked
-to: ready-for-triage
-answer: 1
-decision: '2026-10-04 T-0022 Under a sub-ticket''s Tests to change, the planner may list tests an earlier
-  sibling of the same parent added, with a harness check that each first appeared in a sibling''s merge;
-  pre-existing tests still need the approved spec (operator, #40)'

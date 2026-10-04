@@ -1,7 +1,0 @@
-ticket: T-0012.6
-head: 302f70bb99f5c4518ddb94de12db22653aa57385
-role: ci
-status: FAIL
-run_id: run-0094-verifier
-at: '2026-10-03T16:00:24+00:00'
-detail: missing Gate suite line

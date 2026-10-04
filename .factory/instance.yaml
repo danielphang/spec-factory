@@ -9,7 +9,7 @@ repo_name: "spec-factory (the design repo at ~/dev/spec-factory, branch main)"
 harness: "/Users/dphang/dev/spec-factory-harness"
 # The live store, relative to the repo root (moved from intake/state by T-0012's post-close step).
 # FACTORY_STATE overrides it.
-state_dir: .factory/state
+state_dir: .factory/store
 # Filled into the preamble's protected-path line at run start as `class (glob, glob), ...`.
 protected_paths:
   infra: [".factory/**"]
