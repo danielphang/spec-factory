@@ -1,0 +1,35 @@
+id: T-0019
+type: bug
+title: Role test runs can write the operator's real home directory, and planner field lines written as
+  `- ` bullets lose their dependencies without a word
+request: requests/T-0019.md
+source: /private/tmp/claude-501/-Users-dphang-dev-nanobot/c69bfd1d-97a6-43e3-9d5a-a517c28d382c/scratchpad/36_safety.md
+status: ready-for-spec-writer
+round:
+  spec: 0
+  pr: 0
+spec:
+  version: 0
+  approved_version: null
+plan: null
+in_flight:
+- run-0161-spec_writer
+parked: null
+created: '2026-10-04T07:57:56+00:00'
+history:
+- ts: '2026-10-04T08:00:49+00:00'
+  from: ready-for-triage
+  to: ready-for-spec-writer
+  by: workflow
+  round:
+    spec: 0
+    pr: 0
+parent: null
+depends_on: []
+parallel_safe: true
+branch: null
+head: null
+merge:
+  base_before: null
+  main_after: null
+parent_base: null

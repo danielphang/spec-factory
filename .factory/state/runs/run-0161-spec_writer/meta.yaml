@@ -1,0 +1,13 @@
+run_id: run-0161-spec_writer
+role: spec_writer
+ticket: T-0019
+model: opus
+round: 0
+spec_version: 0
+started: '2026-10-04T08:00:56+00:00'
+finished: null
+wall_s: null
+status: running
+input_sources:
+- runs/run-0160-triage/output.md
+- requests/T-0019.md

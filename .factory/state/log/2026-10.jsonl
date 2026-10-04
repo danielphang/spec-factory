@@ -799,3 +799,31 @@
 {"ts": "2026-10-04T07:45:57+00:00", "event": "ticket.transition", "ticket": "T-0018", "from": "ready-for-critic", "to": "awaiting-spec-gate", "by": "workflow", "round": {"spec": 2, "pr": 0}}
 {"ts": "2026-10-04T07:46:13+00:00", "event": "approval.recorded", "ticket": "T-0018", "kind": "spec", "version": 2, "by": "dphang"}
 {"ts": "2026-10-04T07:46:13+00:00", "event": "ticket.transition", "ticket": "T-0018", "from": "awaiting-spec-gate", "to": "ready-for-planner", "by": "dphang"}
+{"ts": "2026-10-04T07:46:34+00:00", "event": "run.started", "ticket": "T-0018", "run": "run-0158-planner", "role": "planner", "model": "opus"}
+{"ts": "2026-10-04T07:51:36+00:00", "event": "run.finished", "ticket": "T-0018", "run": "run-0158-planner", "role": "planner", "status": "PLANNED", "wall_s": 302}
+{"ts": "2026-10-04T07:51:54+00:00", "event": "plan.added", "ticket": "T-0018", "source": "run-0158-planner"}
+{"ts": "2026-10-04T07:52:01+00:00", "event": "ticket.created", "ticket": "T-0018.1", "parent": "T-0018", "status": "ready-for-implementer"}
+{"ts": "2026-10-04T07:52:09+00:00", "event": "ticket.transition", "ticket": "T-0018", "from": "ready-for-planner", "to": "planned", "by": "workflow", "round": {"spec": 2, "pr": 0}}
+{"ts": "2026-10-04T07:52:36+00:00", "event": "run.started", "ticket": "T-0018.1", "run": "run-0159-implementer", "role": "implementer", "model": "opus"}
+{"ts": "2026-10-04T07:57:56+00:00", "event": "request.created", "ticket": "T-0019", "source": "/private/tmp/claude-501/-Users-dphang-dev-nanobot/c69bfd1d-97a6-43e3-9d5a-a517c28d382c/scratchpad/36_safety.md"}
+{"ts": "2026-10-04T07:57:56+00:00", "event": "ticket.created", "ticket": "T-0019", "status": "ready-for-triage"}
+{"ts": "2026-10-04T07:58:16+00:00", "event": "run.started", "ticket": "T-0019", "run": "run-0160-triage", "role": "triage", "model": "opus"}
+{"ts": "2026-10-04T08:00:38+00:00", "event": "run.finished", "ticket": "T-0019", "run": "run-0160-triage", "role": "triage", "status": "ACCEPT", "wall_s": 142}
+{"ts": "2026-10-04T08:00:49+00:00", "event": "ticket.transition", "ticket": "T-0019", "from": "ready-for-triage", "to": "ready-for-spec-writer", "by": "workflow", "round": {"spec": 0, "pr": 0}}
+{"ts": "2026-10-04T08:00:56+00:00", "event": "run.started", "ticket": "T-0019", "run": "run-0161-spec_writer", "role": "spec_writer", "model": "opus"}
+{"ts": "2026-10-04T08:01:54+00:00", "event": "run.finished", "ticket": "T-0018.1", "run": "run-0159-implementer", "role": "implementer", "status": "READY-FOR-REVIEW", "wall_s": 558}
+{"ts": "2026-10-04T08:02:10+00:00", "event": "ticket.transition", "ticket": "T-0018.1", "from": "ready-for-implementer", "to": "checks-in-flight", "by": "workflow", "round": {"spec": 0, "pr": 1}}
+{"ts": "2026-10-04T08:02:26+00:00", "event": "run.started", "ticket": "T-0018.1", "run": "run-0162-reviewer", "role": "reviewer", "model": "fable"}
+{"ts": "2026-10-04T08:02:26+00:00", "event": "run.started", "ticket": "T-0018.1", "run": "run-0163-verifier", "role": "verifier", "model": "opus"}
+{"ts": "2026-10-04T08:07:22+00:00", "event": "run.finished", "ticket": "T-0018.1", "run": "run-0163-verifier", "role": "verifier", "status": "VERIFIED", "wall_s": 296}
+{"ts": "2026-10-04T08:07:40+00:00", "event": "result.recorded", "ticket": "T-0018.1", "head": "7a4967a055bc40e3839c65fc00416299d90db350", "role": "verifier", "status": "VERIFIED", "run": "run-0163-verifier"}
+{"ts": "2026-10-04T08:07:40+00:00", "event": "result.recorded", "ticket": "T-0018.1", "head": "7a4967a055bc40e3839c65fc00416299d90db350", "role": "ci", "status": "PASS", "run": "run-0163-verifier"}
+{"ts": "2026-10-04T08:08:10+00:00", "event": "run.finished", "ticket": "T-0018.1", "run": "run-0162-reviewer", "role": "reviewer", "status": "APPROVE", "wall_s": 344}
+{"ts": "2026-10-04T08:08:10+00:00", "event": "escalation.queued", "ticket": "T-0018.1", "run": "run-0162-reviewer", "items": ["Protected paths touched, all declared in the parent's Risk section and the sub-ticket: harness `factory/workflows/intake.js`, `factory/workflows/build.js`, `factory/cli.py`, `factory/prompts/verifier.md` (also a guardrail path, an agent prompt; the parent asks for this exact two-line change); generated `docs/prompts/07-verifier.md` (re-copied from the changed `docs/design.md` block; the identity check prints `SAME`). The merge gate requires a human approval."]}
+{"ts": "2026-10-04T08:08:31+00:00", "event": "result.recorded", "ticket": "T-0018.1", "head": "7a4967a055bc40e3839c65fc00416299d90db350", "role": "reviewer", "status": "APPROVE", "run": "run-0162-reviewer"}
+{"ts": "2026-10-04T08:08:47+00:00", "event": "ticket.transition", "ticket": "T-0018.1", "from": "checks-in-flight", "to": "ready-for-merge", "by": "workflow", "round": {"spec": 0, "pr": 1}}
+{"ts": "2026-10-04T08:08:54+00:00", "event": "merge.done", "ticket": "T-0018.1", "head": "7a4967a055bc40e3839c65fc00416299d90db350", "base_before": "d0300d3127fdd257d725ecb996b4fe9df282cef9", "main_after": "9b73efec2ae757c33e2be02402fbbb2e8ae0a107"}
+{"ts": "2026-10-04T08:09:11+00:00", "event": "ticket.transition", "ticket": "T-0018", "from": "planned", "to": "ready-for-parent-verify", "by": "parent-check"}
+{"ts": "2026-10-04T08:09:36+00:00", "event": "ticket.parked", "ticket": "T-0018", "from": "ready-for-parent-verify", "reason": "archive: "}
+{"ts": "2026-10-04T08:09:36+00:00", "event": "escalation.queued", "ticket": "T-0018", "items": ["archive: "]}
+{"ts": "2026-10-04T08:09:57+00:00", "event": "human.resolved", "ticket": "T-0018", "kind": "close", "by": "dphang", "from": "parked", "to": "closed"}

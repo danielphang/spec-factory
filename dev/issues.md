@@ -37,9 +37,10 @@ A fix closes its issue through a reviewed change on `main`; the merge column is 
 | [30](https://github.com/danielphang/spec-factory/issues/30) | init on a throwaway store writes a half instance; a later run crashes on the missing context.md (found by #20's acceptance test) | not in intake | — | — |
 | [31](https://github.com/danielphang/spec-factory/issues/31) | Build speed: run each test suite only where it can change the verdict (before the v3.5 port's builds) | T-0016 (closed as applied 2026-10-04; live at runtime `61ccf8d`, measured on the next v3.5 build) | `3bf7642` | 45 |
 | [32](https://github.com/danielphang/spec-factory/issues/32) | Decisions outside archive are never recorded, and no role is given decisions.md (found by the v3.5 Driver) | T-0017 (closed as applied; live 2026-10-04, runtime `61ccf8d`) | `6cfd43c` | 46 |
-| [33](https://github.com/danielphang/spec-factory/issues/33) | Intake's Plan phase plans without sub-tickets; the build then exits silently (found by the v3.5 Driver) | not in intake | — | — |
+| [33](https://github.com/danielphang/spec-factory/issues/33) | Intake's Plan phase plans without sub-tickets; the build then exits silently (found by the v3.5 Driver) | T-0018 (closed as applied 2026-10-04; live at the next runtime move, with #36) | `9b73efe` | — |
 | [34](https://github.com/danielphang/spec-factory/issues/34) | Spec Gate Artifact: a review page for the spec gate and acceptance, batched, with inline comments (enhancement; to look at later) | not in intake | — | — |
 | [35](https://github.com/danielphang/spec-factory/issues/35) | Roles running in parallel share the session scratchpad and overwrite each other's files (found by the v3.5 Driver; with retro H8) | not in intake | — | — |
+| [36](https://github.com/danielphang/spec-factory/issues/36) | P0: role test runs can write live state outside the worktree; planner field bullets silently drop dependencies (prod incident 2026-10-04) | T-0019 (intake 2026-10-04) | — | — |
 
 Issues 1–10 are applied and can be closed against their merge; 11 applied (`9168ce1`); 13 and 14 fold into #21 (checklists until it archives); 15 closed as superseded. #12 was a duplicate of #11.
 New findings go straight to GitHub issues; this file is the index.

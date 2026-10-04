@@ -1,0 +1,25 @@
+run_id: run-0163-verifier
+role: verifier
+ticket: T-0018.1
+model: opus
+round: 1
+spec_version: 2
+started: '2026-10-04T08:02:26+00:00'
+finished: '2026-10-04T08:07:22+00:00'
+wall_s: 296
+status: VERIFIED
+input_sources:
+- specs/T-0018.1/subticket.md
+- specs/T-0018/v2.md
+- runs/run-0159-implementer/output.md
+- runs/run-0163-verifier/diff.patch
+environment_files: []
+branch: factory/T-0018.1
+base: d0300d3127fdd257d725ecb996b4fe9df282cef9
+head: 7a4967a055bc40e3839c65fc00416299d90db350
+worktree: /Users/dphang/dev/spec-factory/.factory/state/runs/run-0163-verifier/wt
+confidence: high. Every acceptance command ran as written on both trees, every NEW criterion failed on
+  base for its stated reason, both gates passed on the PR, and no probe found behaviour special-cased
+  to the tested inputs.
+escalations: []
+escalations_note: null
