@@ -41,6 +41,7 @@ A fix closes its issue through a reviewed change on `main`; the merge column is 
 | [34](https://github.com/danielphang/spec-factory/issues/34) | Spec Gate Artifact: a review page for the spec gate and acceptance, batched, with inline comments (enhancement; to look at later) | not in intake | — | — |
 | [35](https://github.com/danielphang/spec-factory/issues/35) | Roles running in parallel share the session scratchpad and overwrite each other's files (found by the v3.5 Driver; with retro H8) | not in intake | — | — |
 | [36](https://github.com/danielphang/spec-factory/issues/36) | P0: role test runs can write live state outside the worktree; planner field bullets silently drop dependencies (prod incident 2026-10-04) | T-0019 (intake 2026-10-04) | — | — |
+| [37](https://github.com/danielphang/spec-factory/issues/37) | Investigate: OS sandbox or a separate user for factory roles, so no role can write a target's live state (operator-requested investigation) | not in intake | — | — |
 
 Issues 1–10 are applied and can be closed against their merge; 11 applied (`9168ce1`); 13 and 14 fold into #21 (checklists until it archives); 15 closed as superseded. #12 was a duplicate of #11.
 New findings go straight to GitHub issues; this file is the index.
