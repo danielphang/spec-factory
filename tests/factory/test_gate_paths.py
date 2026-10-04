@@ -217,3 +217,10 @@ def test_a_null_absent_or_unscoped_mapping_gate_runs_as_a_string_list_does(tmp_p
     want = f"`(export HOME=\"$(cd \"$(mktemp -d)\" && pwd -P)\"; {UNSCOPED})`" if UNSCOPED in gate else ""
     assert _gate_line(text).endswith("each is already wrapped): " + want)
     assert _skipped_lines(text) == [] and meta["gate_skipped"] == []
+
+
+def test_an_unscoped_copy_of_a_skipped_command_still_runs(tmp_path):
+    t = Target(tmp_path, f'gate_commands:\n  - "{SCOPED}"\n  - {{command: "{SCOPED}", paths: ["src/"]}}\n')
+    _, text, meta = t.checker()
+    assert "exit 7" in _gate_line(text) and len(_skipped_lines(text)) == 1
+    assert [s["command"] for s in meta["gate_skipped"]] == [SCOPED]

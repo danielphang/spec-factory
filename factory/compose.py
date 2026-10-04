@@ -215,7 +215,7 @@ def compose(root: Path, cfg: dict, meta: dict, t: dict) -> tuple[str, list[str]]
         # start) apart from the ones to run; the implementer and the parent-close verifier have none.
         skipped = meta.get("gate_skipped") or []
         gone = {s["command"] for s in skipped}
-        run = [g for (raw, _), g in zip(gate_entries(cfg), gate_commands(cfg)) if raw not in gone]
+        run = [g for (raw, paths), g in zip(gate_entries(cfg), gate_commands(cfg)) if paths is None or raw not in gone]
         where = (f"\n## Where you work\nWorktree: `{meta.get('worktree')}` (branch `{meta.get('branch')}`, "
                  f"base `{meta.get('base')}`, head `{meta.get('head')}`). There is no remote: commit on the "
                  f"branch; the PR is the branch plus the description you return. Gate commands (run each from "
