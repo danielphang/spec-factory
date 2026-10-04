@@ -24,8 +24,8 @@ def _parent_verifier_runs(f, tid: str) -> list[str]:
             if yaml.safe_load(p.read_text())["ticket"] == tid]
 
 
-def _build(f, st: str):
-    f.dispatch("implementer", st, stub="accept-approve/implementer-1.md")
+def _build(f, st: str, file: str = "thing.txt"):
+    f.dispatch("implementer", st, stub="accept-approve/implementer-1.md", file=file)
     f.dispatch("reviewer", st, stub="accept-approve/reviewer-1.md")
     ver = f.dispatch("verifier", st, stub="accept-approve/verifier-1.md")
     assert f.state(st) == "merged"
@@ -66,8 +66,8 @@ def test_a_parent_close_run_is_still_required_when_main_moved_after_the_merge(tm
 
 def test_a_parent_close_run_is_still_required_with_two_sub_tickets(tmp_path):
     f, tid, (a, b) = built_to_implementer(tmp_path, TWO_COVERING)
-    _build(f, a)
-    _build(f, b)
+    _build(f, a, "a.txt")
+    _build(f, b, "b.txt")
     assert f.repo_rev("main") == f.ticket(b)["merge"]["main_after"]  # main has not moved since the last merge
     _assert_parent_close_still_required(f, tid)
 
