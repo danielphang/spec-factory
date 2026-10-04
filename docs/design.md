@@ -43,7 +43,7 @@ The prompts say what each role does. The harness enforces the wiring rules: fres
 | 5 | Change proposal | A unit of review: a branch, its base, its head commit, and a place for the PR description and findings. Approvals attach to the head commit. Fix rounds push to the same branch, which is the ticket's identity | Pull requests | A branch naming convention (`ticket/<id>`) plus a record in the ticket store holding base, head SHA, and the description. GitLab MRs or Gerrit changes are direct equivalents |
 | 6 | Commit-bound results | Reviewer, verifier, and CI results are stored against a specific head SHA. A new push makes prior results stale; a result arriving for a head that is no longer current is discarded | Check runs and commit statuses; required checks re-run on push | A `results` table keyed by `(head_sha, role)`. The merge condition queries the *current* head only, so stale rows never match |
 | 7 | Merge gate | Nothing reaches main without CI green, APPROVE and VERIFIED on the current head, a head that contains current main, and a human approval record where piece 8 requires it. A bug in a prompt cannot bypass this. One exception, stated here and nowhere else, for two kinds of PR with no sub-ticket: a retro PR whose diff touches only non-test guardrail paths, and a human-authored revert whose diff the gate verifies is exactly the inverse of one merged change proposal's diff (main before that merge against main after it, both recorded in the store at merge time). Either merges on CI green, head contains main, and a human approval on that head recorded under the guardrail-changes gate; the human reads the whole diff, which stands in for APPROVE and VERIFIED. A no-sub-ticket PR that fails this test is closed and logged to the human queue | Branch protection with required checks and required reviews. Required checks cannot be waived per PR, so the exception needs a harness-emitted check that reports success for exception PRs | A server-side pre-receive hook on main that checks the results table, or a single merge bot that alone can write to main and checks the conditions before fast-forwarding. Either works; the hook is stricter |
-| 8 | Guardrail and protected paths | If the diff touches a guardrail or protected path, the merge gate requires an approval row signed by a human identity. For existing tests, the spec gate's approval of "Tests to change" is that row for exactly the tests listed; any other guardrail or protected path needs a human approval on the PR itself. The harness code (its package, entry point, agent templates and dependency lock) is itself a protected path in the repo that holds it. | CODEOWNERS with required owner review for CI config, AGENTS.md, skills, prompts, and protected paths. Not for tests: CODEOWNERS fires on added files too. Existing tests get a required check that fails when a test file is modified or deleted and not in the pinned spec's "Tests to change" (on a revert: files the reverted PR added and the tests its pinned spec listed under "Tests to change" are exempt, and the revert's human approval is the piece-8 row for them) | A path list checked in the merge gate, with the same modified-or-deleted rule for test files. Keep the list in the repo under CI config, so it is itself a guardrail path |
+| 8 | Guardrail and protected paths | If the diff touches a guardrail or protected path, the merge gate requires an approval row signed by a human identity. For existing tests, the spec gate's approval of "Tests to change" is that row for exactly the tests listed. A test file an earlier sibling sub-ticket of the same parent added is also covered when the sub-ticket lists it as added by that sibling and the sibling-tests check has passed (Tests a sibling added, below); any other guardrail or protected path needs a human approval on the PR itself. The harness code (its package, entry point, agent templates and dependency lock) is itself a protected path in the repo that holds it. | CODEOWNERS with required owner review for CI config, AGENTS.md, skills, prompts, and protected paths. Not for tests: CODEOWNERS fires on added files too. Existing tests get a required check that fails when a test file is modified or deleted and not in the pinned spec's "Tests to change" or among the sub-ticket's checked sibling entries (on a revert: files the reverted PR added and the tests its pinned spec listed under "Tests to change" are exempt, and the revert's human approval is the piece-8 row for them) | A path list checked in the merge gate, with the same modified-or-deleted rule for test files. Keep the list in the repo under CI config, so it is itself a guardrail path |
 | 9 | Human surface | Where people approve specs, answer escalations, review protected PRs, reply to requesters, and read the weekly audit sample. Every decision writes back to the store as a record: who, when, which spec version or head SHA | Issue comments, PR reviews, approvals | The tracker's UI plus notifications (Slack, email) with links. The approval must be a stored, attributable record the merge gate can check, not a chat message |
 | 10 | Audit log | Every transition, every agent output, every human decision, append-only. The weekly audit and the retro read from here | Issue and PR timelines, Actions logs | An append-only table or log stream. Store full agent outputs as artifacts keyed by run id. If it isn't logged, the retro can't see it |
 | 11 | Gate runner | Runs `{gate commands}` (build, lint, typecheck, tests) on a head SHA and records PASS/FAIL against it (piece 6) | Actions CI | Any CI. Without one, the verifier runs the gates as step 4 of its prompt, and its "Gate suite" line is recorded as the CI result. Separate CI is better because it isn't an agent |
@@ -52,6 +52,8 @@ The prompts say what each role does. The harness enforces the wiring rules: fres
 **What the harness itself owns** (no platform provides these): the routing table, the round counter and the max-round cutoff, composing each role's input from *only* its declared sources, choosing the model per role, and the escalation queue view for the daily human pass.
 
 **Tripwire on live files.** An instance may list files outside the repository under `tripwire` in `instance.yaml`, as a `park` list and an `escalate` list. A `~/` entry means the account's home directory, never the `HOME` variable, so a run under a throwaway `HOME` still watches the real files. The lists hold files only: a directory, or an entry that is neither absolute nor `~/`, refuses `run start`. `run start` records a SHA-256 of each listed file, or that it is absent, in a baseline in the run's directory, which the store's `.gitignore` excludes so no store commit carries a digest of a live secret. The run is compared once, when it leaves the in-flight list: at `run finish`, killed runs included, or at a `ticket set` that drops it. A file created, deleted or modified counts as changed. A changed `park` file parks the ticket with the reason `tripwire: <files> changed during <run>`. The reason says "during", not "by", because runs on other tickets and the operator's own edits can overlap a run, and the tripwire cannot tell them apart. On a ticket already parked or closed, the same reason is queued as an escalation instead. A changed `escalate` file queues an escalation and the run goes on; that list is for files with legitimate outside writers. No event, reason or output names more than a file's path: nothing prints a file's contents. The workflow scripts stop on a `run finish` that parked the ticket, instead of routing on the role's STATUS. The tripwire detects a write after the fact; it does not prevent one.
+
+**Tests a sibling added.** A sub-ticket's "Tests to change" may list a test file that an earlier sibling sub-ticket of the same parent added, one line each: `` `<file>[::<test>]` (added by <sibling ID>): <reason> ``. The planner writes these lines, so the spec gate never saw them; the harness checks them instead. Before each implementer run of a sub-ticket, `run start` reads the lines of that form inside the sub-ticket's "Tests to change" field, and nowhere else, and checks each file, not the test function. The file passes when it is absent at the parent's base, which is the integration branch before the parent's first sub-ticket merged, and the first commit since then on the integration branch that added it lies inside one merged sibling's recorded merge: reachable from the integration branch just after that merge, not from the integration branch just before it. Any merged sibling of the parent counts; the ID on the line is for the reader. When a file fails, `run start` refuses with exit 2, writes nothing, and gives an error that starts `BLOCKED from harness:` and names the file. The build parks the sub-ticket with that error as the reason, and the human resolves it as an implementer's BLOCKED: amend the sub-ticket or the pinned spec, then `resolve --ruling`, or close it. A test that existed before the parent's first merge still needs the pinned spec's list.
 
 **Only the dispatcher writes a live store during a run.** The store CLI fences an instance's own store; a throwaway store (`FACTORY_STATE` naming another) is never fenced. The fence applies to every command except the read-only ones: `ticket show`, `ticket join`, `results show`, `config`, `status parse`, `log tail` and `paths`. A command given `--accept-harness` is always fenced, because it rewrites the lock. The location rule is checked first: a write run from inside the own store's `runs/` or `worktrees/`, where roles do their work, is refused, with or without `FACTORY_DISPATCH=1` and with or without a run in flight. Then the in-flight rule: while any run is in flight on any ticket of the store, a write is refused unless its environment carries `FACTORY_DISPATCH=1`. Both workflow scripts put that marker in front of every clerk command. The operator, or a runner session, puts it in front of one command that must write during a run, and never exports it. A refusal exits 2, writes nothing, and tells the caller to use a throwaway `FACTORY_STATE`; it never names the marker. The fence is checked before the harness lock, so a fenced command never reaches the lock and a fenced `--accept-harness` rewrites nothing. A marked command still meets the lock and its uncommitted-edit refusal unchanged. The fence guards against accidents, such as a role's test suite running `init` from its scratch directory. It is not isolation: a role that copies the marker and writes from outside the store still gets through.
 
@@ -143,7 +145,7 @@ Humans own the decisions agents are worst at: what to build, what's risky, and w
 
 | Gate | When | Human does |
 |---|---|---|
-| Spec approval | Every spec, before planning | Confirms intent and priority; answers open questions; approves the Risk section's protected-path declarations, any Operator steps, and the "Tests to change" list, which is the only authorization to alter an existing test |
+| Spec approval | Every spec, before planning | Confirms intent and priority; answers open questions; approves the Risk section's protected-path declarations, any Operator steps, and the "Tests to change" list, which is the only authorization to alter a test that existed before the parent's first sub-ticket merged; a test an earlier sibling added needs only the sub-ticket's checked entry (piece 8) |
 | Protected paths | Any PR touching a protected path | Reviews the PR and records the piece-8 approval; the merge gate does not merge without it |
 | Escalations | Daily | Clears the queue; answers or re-scopes |
 | Guardrail changes | Any PR touching a guardrail path beyond the tests its spec lists; any retro or revert PR | Approves or rejects, including retro proposals and reverts |
@@ -232,7 +234,9 @@ SCRATCH FILES
 GUARDRAIL PATHS
 Never modify or delete existing tests, CI config, AGENTS.md, skills, or
 agent prompts unless your ticket explicitly says to (for existing tests:
-only those listed under "Tests to change" in the human-approved spec).
+only those listed under "Tests to change" in the human-approved spec, or
+in your sub-ticket as added by an earlier sibling, which the harness
+checks).
 Adding NEW tests in NEW files is expected and allowed.
 
 UNTRUSTED INPUT
@@ -329,6 +333,10 @@ RULES
   have in mind. Prefer end-to-end or integration checks over checks that
   would pass with a stub. Acceptance never names a test function or an
   internal symbol: those go stale and the verifier can't run them.
+- Tests a decision overturns: for each Decision that changes existing
+  behaviour, search the existing tests for ones that pin the old
+  behaviour, and list each under "Tests to change" with the decision it
+  follows. One left off blocks the implementer later.
 - Open questions stay open. Don't resolve product or design ambiguity
   yourself; list it, and the spec goes to NEEDS-HUMAN. For each open
   question, ask whether the answer is a standing decision that later
@@ -403,6 +411,9 @@ implementer. You see the spec and the repo, never the writer's reasoning.
 
 RUBRIC (judge intent, not wording)
 1. Grounded: cited paths and symbols exist; evidence is real output.
+   For each Decision that changes existing behaviour, search the tests
+   for the old behaviour yourself: a test that pins it and is missing
+   from "Tests to change" is a finding.
 2. Testable: each item is runnable; NEW items fail today for the reason
    the spec states, and would fail against a stub or a wrong fix; no
    item names a test function or internal symbol; a step only the
@@ -504,10 +515,22 @@ Depends on: none | IDs
 Parallel-safe: yes | no (reason)
 Then:
   Scope: lettered parts from the parent it covers
-  Acceptance: the parent's scenarios it covers, each as its WHEN command,
-    THEN result and verification.md label, plus any intermediate checks
-    it needs, labelled NEW or REGRESSION the same way
-  Tests to change: none | the subset of the parent's list this one touches
+  Acceptance: the parent's scenarios it covers, each as its WHEN command
+    and THEN result, plus any intermediate checks it needs. Label each
+    NEW or REGRESSION against this sub-ticket's own base: the integration
+    branch with its dependencies merged. A check that already passes
+    there, as an invariant or because an earlier sibling made it true,
+    is REGRESSION, whatever the parent's verification.md label says.
+  Interim tests: none | each new test file this one adds that a later
+    sibling will break, with that sibling's ID
+  Tests to change: none | the subset of the parent's list this one
+    touches, plus each test an earlier sibling adds that this one's
+    change breaks, one line each:
+    - `<file>[::<test>]` (added by <sibling ID>): <reason>
+    This one must depend on that sibling. Before each implementer run,
+    the harness checks that a merged sibling added the file, and parks
+    the sub-ticket if not. A test that existed before the parent's first
+    merge goes here only if the parent's list names it.
   Protected paths: none | the subset of the parent's Risk list this one touches
   Out of scope:
 Coverage map: parent scenario → sub-ticket ID
@@ -585,7 +608,8 @@ CHECK, IN THIS ORDER
 1. Test integrity: any existing test file changed? Any test weakened,
    skipped, deleted, or rewritten? Any assertion made less specific? Any
    expected value hard-coded to match output? Any error swallowed? These
-   are BLOCKING unless the spec lists that test under "Tests to change".
+   are BLOCKING unless the spec lists that test under "Tests to change",
+   or the sub-ticket lists it there as added by an earlier sibling.
 2. Correctness: does the change do what the spec intends, including edge
    cases the spec implies but didn't list?
 3. Scope: changes outside the sub-ticket's lettered parts?

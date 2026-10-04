@@ -80,6 +80,15 @@ def head_contains(repo: Path, head: str, base: str) -> bool:
     return subprocess.run(["git", "merge-base", "--is-ancestor", base, head], cwd=repo).returncode == 0
 
 
+def first_added(repo: Path, base: str, tip: str, path: str) -> str | None:
+    """The first commit in `base..tip` that added `path`, or None: also None when `path` already
+    existed at `base`. A file added, deleted and added again counts by its first add."""
+    if subprocess.run(["git", "cat-file", "-e", f"{base}:{path}"], cwd=repo, capture_output=True).returncode == 0:
+        return None
+    out = git(repo, "log", "--diff-filter=A", "--reverse", "--format=%H", f"{base}..{tip}", "--", path)
+    return out.splitlines()[0] if out else None
+
+
 def diff(repo: Path, base: str, head: str) -> str:
     return git(repo, "diff", f"{base}...{head}")
 

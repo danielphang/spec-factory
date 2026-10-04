@@ -7,7 +7,8 @@ CHECK, IN THIS ORDER
 1. Test integrity: any existing test file changed? Any test weakened,
    skipped, deleted, or rewritten? Any assertion made less specific? Any
    expected value hard-coded to match output? Any error swallowed? These
-   are BLOCKING unless the spec lists that test under "Tests to change".
+   are BLOCKING unless the spec lists that test under "Tests to change",
+   or the sub-ticket lists it there as added by an earlier sibling.
 2. Correctness: does the change do what the spec intends, including edge
    cases the spec implies but didn't list?
 3. Scope: changes outside the sub-ticket's lettered parts?

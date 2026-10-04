@@ -65,7 +65,12 @@ async function park(ticket, reason, outputs, phase) {
 
 async function runRole(role, ticket, phase) {
   const start = await clerk(`${BIN} run start --role ${role} --ticket ${ticket} --model ${MODELS[role]}`, phase, `run start ${role} ${ticket}`)
-  if (!start.ok) { await park(ticket, `harness-bug: run start ${role}: ${start.stderr || ''}`, [], phase); return null }
+  if (!start.ok) {
+    // A refusal that starts `BLOCKED ` is the harness blocking the run (the sibling-tests check): park
+    // with it verbatim, so `resolve --ruling` treats it as an implementer's BLOCKED.
+    const blocked = typeof start.error === 'string' && start.error.startsWith('BLOCKED ')
+    await park(ticket, blocked ? start.error : `harness-bug: run start ${role}: ${start.stderr || ''}`, [], phase); return null
+  }
   const runId = start.run_id
   const comp = await clerk(`${BIN} run compose ${runId}`, phase, `run compose ${role}`)
   if (!comp.ok) { await park(ticket, `harness-bug: run compose ${role}: ${comp.stderr || ''}`, [runId], phase); return null }

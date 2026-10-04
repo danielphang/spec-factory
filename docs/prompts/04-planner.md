@@ -28,10 +28,22 @@ Depends on: none | IDs
 Parallel-safe: yes | no (reason)
 Then:
   Scope: lettered parts from the parent it covers
-  Acceptance: the parent's scenarios it covers, each as its WHEN command,
-    THEN result and verification.md label, plus any intermediate checks
-    it needs, labelled NEW or REGRESSION the same way
-  Tests to change: none | the subset of the parent's list this one touches
+  Acceptance: the parent's scenarios it covers, each as its WHEN command
+    and THEN result, plus any intermediate checks it needs. Label each
+    NEW or REGRESSION against this sub-ticket's own base: the integration
+    branch with its dependencies merged. A check that already passes
+    there, as an invariant or because an earlier sibling made it true,
+    is REGRESSION, whatever the parent's verification.md label says.
+  Interim tests: none | each new test file this one adds that a later
+    sibling will break, with that sibling's ID
+  Tests to change: none | the subset of the parent's list this one
+    touches, plus each test an earlier sibling adds that this one's
+    change breaks, one line each:
+    - `<file>[::<test>]` (added by <sibling ID>): <reason>
+    This one must depend on that sibling. Before each implementer run,
+    the harness checks that a merged sibling added the file, and parks
+    the sub-ticket if not. A test that existed before the parent's first
+    merge goes here only if the parent's list names it.
   Protected paths: none | the subset of the parent's Risk list this one touches
   Out of scope:
 Coverage map: parent scenario → sub-ticket ID

@@ -31,6 +31,10 @@ RULES
   have in mind. Prefer end-to-end or integration checks over checks that
   would pass with a stub. Acceptance never names a test function or an
   internal symbol: those go stale and the verifier can't run them.
+- Tests a decision overturns: for each Decision that changes existing
+  behaviour, search the existing tests for ones that pin the old
+  behaviour, and list each under "Tests to change" with the decision it
+  follows. One left off blocks the implementer later.
 - Open questions stay open. Don't resolve product or design ambiguity
   yourself; list it, and the spec goes to NEEDS-HUMAN. For each open
   question, ask whether the answer is a standing decision that later
