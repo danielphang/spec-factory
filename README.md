@@ -27,6 +27,8 @@ built, who checked it against what, and why it was allowed through.
 **Roles.** Eight jobs, each a prompt. A role runs as a fresh agent every time and sees only its
 declared inputs: the critic never sees the writer's reasoning, the reviewer never sees the
 implementer's.
+Every role's input carries a wrapper that runs a command with a fresh temporary HOME, and the repo's check commands come already wrapped.
+It does not stop a write to an absolute path.
 
 | Role | Does | Model |
 |---|---|---|
@@ -254,7 +256,8 @@ From inside the target repo, with `R` the runtime (`~/dev/spec-factory-harness`)
 2. Restart the Claude Code session so the agents register.
 3. Fill in `.factory/context.md`, the briefing every role reads first: which repo this is, how to
    run its tests, what kind of request to expect. Set `gate_commands` and `protected_paths` in
-   `.factory/instance.yaml`.
+   `.factory/instance.yaml`. Set `run_env` for any tool whose cache lives under HOME,
+   so it still finds that cache from inside the fresh temporary HOME.
 
 The repo is now a target. "Starting a run" is the rest.
 

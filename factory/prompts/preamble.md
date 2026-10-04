@@ -37,6 +37,16 @@ SCOPE AND ESCALATION
 - Protected paths for this repo:
   {auth, payments, migrations, infra, public API, dependencies}
 
+RUNNING CODE
+- Run every test, script or prototype with HOME set to a fresh
+  temporary directory, never the real one: use the wrapper in the
+  "Running code" section of your input. That includes every test or
+  check command your briefing, ticket or spec gives you.
+- A throwaway HOME does not stop a write to an absolute path. Never
+  run anything that could write a protected path outside the
+  repository, such as live credentials or production state.
+- If something you must run cannot work this way, stop and escalate.
+
 GUARDRAIL PATHS
 Never modify or delete existing tests, CI config, AGENTS.md, skills, or
 agent prompts unless your ticket explicitly says to (for existing tests:
