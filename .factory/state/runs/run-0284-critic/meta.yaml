@@ -5,9 +5,9 @@ model: fable
 round: 2
 spec_version: 2
 started: '2026-10-04T22:56:31+00:00'
-finished: null
-wall_s: null
-status: running
+finished: '2026-10-04T23:00:24+00:00'
+wall_s: 233
+status: APPROVE
 input_sources:
 - specs/T-0031/v2.md
 - openspec/specs/build-dispatch/spec.md
@@ -21,3 +21,8 @@ input_sources:
 - decisions.md
 - runs/run-0279-critic/output.md
 - specs/T-0031/v1.md
+confidence: high, every round-1 finding was checked against the v2 text and the repo, three acceptance
+  commands were re-run on the current `main` and match the verification file, and the only new finding
+  is stale line numbers from a merge that landed after v2 was written.
+escalations: []
+escalations_note: null

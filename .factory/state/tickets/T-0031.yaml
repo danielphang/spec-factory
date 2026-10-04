@@ -3,16 +3,15 @@ type: chore
 title: Role commands drop an inherited VIRTUAL_ENV, and build checkouts start with a synced environment
 request: requests/T-0031.md
 source: /private/tmp/claude-501/-Users-dphang-dev-nanobot/c69bfd1d-97a6-43e3-9d5a-a517c28d382c/scratchpad/req_51.md
-status: ready-for-critic
+status: ready-for-planner
 round:
   spec: 2
   pr: 0
 spec:
   version: 2
-  approved_version: null
+  approved_version: 2
 plan: null
-in_flight:
-- run-0284-critic
+in_flight: []
 parked: null
 created: '2026-10-04T22:16:24+00:00'
 history:
@@ -44,6 +43,18 @@ history:
   round:
     spec: 2
     pr: 0
+- ts: '2026-10-04T23:00:34+00:00'
+  from: ready-for-critic
+  to: awaiting-spec-gate
+  by: workflow
+  round:
+    spec: 2
+    pr: 0
+- ts: '2026-10-04T23:00:48+00:00'
+  from: awaiting-spec-gate
+  to: ready-for-planner
+  by: dphang
+  approved_version: 2
 parent: null
 depends_on: []
 parallel_safe: true

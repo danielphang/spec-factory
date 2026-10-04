@@ -1,0 +1,73 @@
+id: T-0029.1
+type: sub-ticket
+title: Declared protected paths leave the implementer and verifier ESCALATIONS lists
+request: requests/T-0029.md
+source: plan:run-0285-planner
+status: merged
+round:
+  spec: 0
+  pr: 1
+spec:
+  version: 2
+  approved_version: 2
+plan: null
+in_flight: []
+parked: null
+created: '2026-10-04T22:59:52+00:00'
+history:
+- ts: '2026-10-04T23:09:27+00:00'
+  from: ready-for-implementer
+  to: checks-in-flight
+  by: workflow
+  round:
+    spec: 0
+    pr: 1
+- ts: '2026-10-04T23:16:57+00:00'
+  from: checks-in-flight
+  to: parked
+  by: park
+  reason: 'budget kill: reviewer'
+- ts: '2026-10-04T23:17:55+00:00'
+  from: parked
+  to: checks-in-flight
+  by: dphang
+  resolve: redispatch
+  head: 090939d6428bff085890aa5d1b9d384bb8915c78
+  superseded:
+  - reviewer
+- ts: '2026-10-04T23:21:27+00:00'
+  from: checks-in-flight
+  to: parked
+  by: park
+  reason: 'budget kill: reviewer'
+- ts: '2026-10-04T23:30:40+00:00'
+  from: parked
+  to: checks-in-flight
+  by: dphang
+  resolve: redispatch
+  head: 090939d6428bff085890aa5d1b9d384bb8915c78
+  superseded:
+  - reviewer
+- ts: '2026-10-04T23:34:34+00:00'
+  from: checks-in-flight
+  to: ready-for-merge
+  by: workflow
+  round:
+    spec: 0
+    pr: 1
+- ts: '2026-10-04T23:34:42+00:00'
+  from: ready-for-merge
+  to: merged
+  by: merge
+  head: 090939d6428bff085890aa5d1b9d384bb8915c78
+parent: T-0029
+depends_on: []
+parallel_safe: true
+branch: factory/T-0029.1
+head: 090939d6428bff085890aa5d1b9d384bb8915c78
+merge:
+  base_before: 7d57998169bf08563fe33fcd098729fae200c4b9
+  main_after: f9e6e92e29ea66d9efc9872591ba14d06a43442a
+parent_base: null
+label: ST-1
+merge_refused: null

@@ -75,3 +75,7 @@ Evidence: `sed -n '116p;118p' .factory/answers/retro-trial-2026-10-04/retro_with
 Suggested fix: Change "line 116" to "line 118" in Evidence (the Responses section is history and can stay).
 
 No other findings. The changed text introduces no new term of art without a gloss, no new decision, and no new path; Design A and B, the acceptance scenarios and Tests to change are unchanged from v1, where they were checked and fail today for the stated reason. Scope still fits one PR. Every protected and guardrail path the change touches is declared under Risk.
+
+## Verifier results
+
+090939d6428bff085890aa5d1b9d384bb8915c78 · T-0029.1 · VERIFIED · run-0287-verifier
