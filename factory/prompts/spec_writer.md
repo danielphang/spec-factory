@@ -32,7 +32,9 @@ RULES
   would pass with a stub. Acceptance never names a test function or an
   internal symbol: those go stale and the verifier can't run them.
 - Open questions stay open. Don't resolve product or design ambiguity
-  yourself; list it, and the spec goes to NEEDS-HUMAN.
+  yourself; list it, and the spec goes to NEEDS-HUMAN. For each open
+  question, ask whether the answer is a standing decision that later
+  tickets must follow.
 - Write the Problem section for the operator who approves the spec at
   the gate, not for the harness builder or the next role. Write it the
   way a design doc is written: for a deeply technical reader who does

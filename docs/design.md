@@ -79,7 +79,7 @@ The prompts say what each role does. The harness enforces the wiring rules: fres
 | `tasks.md` | The sub-tickets and coverage map | Planner |
 | `verification.md` (the artifact the fork adds) | The NEW or REGRESSION label of each scenario and the writer's Responses; every critic round's output; at archive, every verifier result recorded per head for the parent and its sub-tickets | Spec writer (labels, Responses), critic, verifier |
 
-`decisions.md`, one per repo beside `openspec/`, is the decision log: one line per decision, with its ticket id. Roles return text and never write the tree; the harness writes it. The spec writer returns one document in parts (§2 FORMAT), and the store keeps every version. The human spec gate pins one version: it refuses a delta that does not apply to current truth, and writes the pinned version as the change folder, so the planner, implementer and verifier work from the delta the human approved. Labels and round-to-round churn stay in `verification.md`, out of the delta. **Archive** is the parent-close step. After the parent-close run returns VERIFIED, or a sub-ticket's VERIFIED run stands in for it (routing table, Merge gate row), the harness applies each delta to current truth (ADDED appends the requirement, MODIFIED replaces the requirement of that name whole, REMOVED deletes it), moves the folder to `openspec/changes/archive/<YYYY-MM-DD>-<ticket id>/`, and appends each line of the proposal's Decisions to `decisions.md` with the date and ticket id; then the parent closes. An archive refusal writes nothing and parks the parent. There are three: a delta that no longer applies (an ADDED name already in current truth, a MODIFIED or REMOVED name missing); no change folder, because the spec was pinned before the repo had an `openspec/` tree; and no spec store at all (no `openspec/` tree). Only the archive step writes current truth and `decisions.md`. The spec writer and the critic receive every current-truth spec with their input (routing table).
+`decisions.md`, one per repo beside `openspec/`, is the decision log: one line per decision, with its ticket id. Roles return text and never write the tree; the harness writes it. The spec writer returns one document in parts (§2 FORMAT), and the store keeps every version. The human spec gate pins one version: it refuses a delta that does not apply to current truth, and writes the pinned version as the change folder, so the planner, implementer and verifier work from the delta the human approved. Labels and round-to-round churn stay in `verification.md`, out of the delta. **Archive** is the parent-close step. After the parent-close run returns VERIFIED, or a sub-ticket's VERIFIED run stands in for it (routing table, Merge gate row), the harness applies each delta to current truth (ADDED appends the requirement, MODIFIED replaces the requirement of that name whole, REMOVED deletes it), moves the folder to `openspec/changes/archive/<YYYY-MM-DD>-<ticket id>/`, and appends each line of the proposal's Decisions to `decisions.md` with the date and ticket id; then the parent closes. An archive refusal writes nothing and parks the parent. There are three: a delta that no longer applies (an ADDED name already in current truth, a MODIFIED or REMOVED name missing); no change folder, because the spec was pinned before the repo had an `openspec/` tree; and no spec store at all (no `openspec/` tree). Only the archive step writes current truth. `decisions.md` has three writers: archive; `factory decision add <ticket id> "<line>"`, which a human runs at any ticket state, closed included; and `resolve --answer` or `resolve --close` with `--decision "<line>"`. Each appends `<YYYY-MM-DD> <ticket id> <line>`, with the UTC date. The spec writer and the critic receive every current-truth spec with their input (routing table). They and the planner also receive `decisions.md` when it holds any text.
 
 **Routing table.** The dispatcher (piece 2) is this table and nothing else. Each row: a STATUS a role emits, what runs next, and what it receives. "Receives" adds to the INPUT the role prompt already declares. Both follow the role-context block (above).
 
@@ -90,28 +90,28 @@ Rules the table relies on:
 - The dispatcher reads a role's trailer by its labels, not by line position. The last `STATUS:` line wins; CONFIDENCE is the next line labelled `CONFIDENCE:` after it, and ESCALATIONS the next line labelled `ESCALATIONS:` after that. Lines between labelled lines are continuation (a wrapped reason, a remark), so a verbose but well-formed verdict routes on its STATUS. A trailer with no CONFIDENCE or no ESCALATIONS line after its last STATUS is a parse failure, which routes as a STATUS not in this table.
 - A non-empty ESCALATIONS line is copied to the human queue without blocking the STATUS route. An ESCALATIONS line that starts with the word `none` followed by end of line or punctuation (so not `None of …`), with prose after it on that line and nothing below it, is empty for routing, and the prose is kept with the run for audit. A `none` line with further lines below it is a real list, copied verbatim from that line on. Only NEEDS-HUMAN, CLARIFY, BLOCKED, ESCALATE, SPEC-DEFECT, a max-round cutoff, a budget kill (piece 3), a parent-close FAILED, and an archive refusal (Spec store: a delta that does not apply, no change folder, or no spec store) park the ticket. A parking STATUS from one checker wins over the other's REQUEST-CHANGES or FAILED; both outputs go to the queue.
 - When a human resolves a parked ticket:
-  - A question returns to the role that asked, with the answer and that role's previous output (the output that asked it); a requester's CLARIFY answer returns to Triage the same way.
+  - A question returns to the role that asked, with the answer and that role's previous output (the output that asked it); a requester's CLARIFY answer returns to Triage the same way. When the answer is a standing decision, the human passes `--decision "<line>"` with the answer, or with the close, so that it lands in `decisions.md`.
   - BLOCKED, a critic ESCALATE, and a planner ESCALATE return to the role that emitted them with the ruling, same round, or the human re-scopes (spec gate or writer round reset) or closes.
   - A spec loop at max rounds goes to the spec gate.
   - A parent-close FAILED or SPEC-DEFECT, an archive that does not apply, or a sub-ticket closed by the human, parks the parent: the human amends the spec and re-plans (new sub-tickets under the same parent) or closes the parent.
-  - An archive refused for no change folder or no spec store parks the parent the same way, but its spec never entered the spec store: the human closes the parent as applied. Current truth and `decisions.md` are not updated; if current truth should carry the spec, it is re-intaken as a new ticket.
+  - An archive refused for no change folder or no spec store parks the parent the same way, but its spec never entered the spec store: the human closes the parent as applied. Current truth is not updated, and archive appends nothing to `decisions.md`; the human logs any decision with `factory decision add`. If current truth should carry the spec, it is re-intaken as a new ticket.
   - A PR loop at max rounds, a SPEC-DEFECT, or a reviewer ESCALATE returns to the implementer with the round reset and the human's ruling as findings, or the ticket closes. The human may amend the sub-ticket or the pinned spec first; the amended version is what the implementer and checkers receive. There is no merge-gate override. A budget-killed run re-dispatches the same role on the same inputs, same round (the human may raise that run's budget or amend the sub-ticket first), or the ticket closes. In-flight siblings keep the spec version they received; the human decides whether to re-plan.
 
 | From | STATUS | Next | Receives |
 |---|---|---|---|
 | New request | — | Triage | The request, ticket search |
-| Triage | ACCEPT | Spec writer | The ticket; current truth (Spec store), read-only |
+| Triage | ACCEPT | Spec writer | The ticket; current truth (Spec store) and the decision log, read-only |
 | Triage | NEEDS-HUMAN | Human queue | The question |
 | Triage | CLARIFY | Requester, via piece 9; ticket parks until answered | The missing-info list |
 | Triage | REJECT | Closed | — |
-| Spec writer | READY-FOR-CRITIC / NEEDS-SPLIT | Critic | Spec, repo and current truth read-only; round 2+: prior findings, the writer's responses, previous spec version |
+| Spec writer | READY-FOR-CRITIC / NEEDS-SPLIT | Critic | Spec, repo, current truth and the decision log read-only; round 2+: prior findings, the writer's responses, previous spec version |
 | Spec writer | NEEDS-HUMAN | Human queue | Open questions |
 | Critic | APPROVE | Human spec gate | Spec + critic output |
 | Critic | REVISE | Spec writer (round +1) if round < {2}, else Human queue | Findings, the spec version they apply to |
 | Critic | ESCALATE | Human queue | Findings |
 | Human queue, or requester (CLARIFY) | Answered (Triage asked) | Triage | The request with the answer, Triage's previous output (the question or missing-info list the answer is for) |
 | Human queue | Answered (Spec writer asked) | Spec writer | The ticket, the answer, the writer's previous output (the spec whose open questions the answer is for) |
-| Human spec gate | Approved | Planner | Approved spec, version pinned |
+| Human spec gate | Approved | Planner | Approved spec, version pinned; the decision log |
 | Human spec gate | Changes requested | Spec writer (round reset) | Human's notes |
 | Planner | PLANNED | Implementer, one run per sub-ticket. Each branches from main at dispatch; a sub-ticket dispatches only after its dependencies merge; parallel-safe ones run concurrently; one marked not parallel-safe dispatches only when no sibling of the same parent is in flight, and no sibling dispatches while it is in flight | Sub-ticket, parent spec, AGENTS.md; push to its own branch only |
 | Planner | ESCALATE | Human queue | Planner output |
@@ -241,7 +241,8 @@ FOR EACH REQUEST
 3. Decide:
    - ACCEPT: the intent is clear and no product decision is needed.
    - NEEDS-HUMAN: it needs a product, priority, or design call. Write the
-     decision as one question with 2-3 concrete options.
+     decision as one question with 2-3 concrete options, and ask whether
+     the answer is a standing decision that later tickets must follow.
    - CLARIFY: key facts are missing. List exactly what's missing.
    - REJECT: duplicate, out of scope, or not actionable. One-line reason.
 4. For ACCEPT: write a title and a 2-5 sentence summary of what the
@@ -303,7 +304,9 @@ RULES
   would pass with a stub. Acceptance never names a test function or an
   internal symbol: those go stale and the verifier can't run them.
 - Open questions stay open. Don't resolve product or design ambiguity
-  yourself; list it, and the spec goes to NEEDS-HUMAN.
+  yourself; list it, and the spec goes to NEEDS-HUMAN. For each open
+  question, ask whether the answer is a standing decision that later
+  tickets must follow.
 - Write the Problem section for the operator who approves the spec at
   the gate, not for the harness builder or the next role. Write it the
   way a design doc is written: for a deeply technical reader who does

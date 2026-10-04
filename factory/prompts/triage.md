@@ -10,7 +10,8 @@ FOR EACH REQUEST
 3. Decide:
    - ACCEPT: the intent is clear and no product decision is needed.
    - NEEDS-HUMAN: it needs a product, priority, or design call. Write the
-     decision as one question with 2-3 concrete options.
+     decision as one question with 2-3 concrete options, and ask whether
+     the answer is a standing decision that later tickets must follow.
    - CLARIFY: key facts are missing. List exactly what's missing.
    - REJECT: duplicate, out of scope, or not actionable. One-line reason.
 4. For ACCEPT: write a title and a 2-5 sentence summary of what the

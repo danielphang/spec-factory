@@ -68,6 +68,12 @@ def compose(root: Path, cfg: dict, meta: dict, t: dict) -> tuple[str, list[str]]
     def add_truth() -> None:
         for p in current_truth(root):
             add(str(p.relative_to(root)), f"Current truth: {p.parent.name}")
+
+    def add_decisions() -> None:
+        # an empty log (the one `factory init` creates) carries nothing, so it is no input
+        p = root / "decisions.md"
+        if p.exists() and p.read_text(encoding="utf-8").strip():
+            add("decisions.md", "Decision log (decisions.md): standing decisions, read-only")
     if role == "triage":
         add(t["request"], "Request (raw, with any answers appended)")
         prior = _runs_for(root, tid, "triage", run_id)
@@ -79,6 +85,7 @@ def compose(root: Path, cfg: dict, meta: dict, t: dict) -> tuple[str, list[str]]
             add(f"runs/{tri[-1]}/output.md", "Ticket (Triage output)")
         add(t["request"], "Request (raw)")
         add_truth()
+        add_decisions()
         if rnd >= 1 and version >= 1:
             crit = _runs_for(root, tid, "critic", run_id)
             if crit:
@@ -96,6 +103,7 @@ def compose(root: Path, cfg: dict, meta: dict, t: dict) -> tuple[str, list[str]]
     elif role == "critic":
         add(f"specs/{tid}/v{version}.md", f"Spec under review (v{version})")
         add_truth()
+        add_decisions()
         if rnd >= 2 and version >= 2:
             crit = _runs_for(root, tid, "critic", run_id)
             if crit:
@@ -108,6 +116,7 @@ def compose(root: Path, cfg: dict, meta: dict, t: dict) -> tuple[str, list[str]]
         if av is None:
             raise store.Refused(f"{tid} has no approved spec version")
         add(f"specs/{tid}/v{av}.md", f"Approved spec (v{av}, pinned)")
+        add_decisions()
         for p in _approvals(root, tid, "ruling"):
             add(str(p.relative_to(root)), "Human ruling")
     elif role in ("implementer", "reviewer", "verifier"):
