@@ -1,0 +1,19 @@
+run_id: run-0166-critic
+role: critic
+ticket: T-0019
+model: fable
+round: 2
+spec_version: 2
+started: '2026-10-04T08:33:02+00:00'
+finished: '2026-10-04T08:35:38+00:00'
+wall_s: 156
+status: APPROVE
+input_sources:
+- specs/T-0019/v2.md
+- runs/run-0164-critic/output.md
+- specs/T-0019/v1.md
+confidence: high; every round-1 finding is resolved in the text as claimed, the new Evidence and Operator
+  step 3 check out against this machine, and the one open discrepancy in the verification note is explained
+  by the two checkouts and changes no criterion.
+escalations: []
+escalations_note: null

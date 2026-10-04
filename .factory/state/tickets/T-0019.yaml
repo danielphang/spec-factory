@@ -4,16 +4,15 @@ title: Role test runs can write the operator's real home directory, and planner 
   `- ` bullets lose their dependencies without a word
 request: requests/T-0019.md
 source: /private/tmp/claude-501/-Users-dphang-dev-nanobot/c69bfd1d-97a6-43e3-9d5a-a517c28d382c/scratchpad/36_safety.md
-status: ready-for-spec-writer
+status: ready-for-planner
 round:
-  spec: 0
+  spec: 2
   pr: 0
 spec:
-  version: 0
-  approved_version: null
+  version: 2
+  approved_version: 2
 plan: null
-in_flight:
-- run-0161-spec_writer
+in_flight: []
 parked: null
 created: '2026-10-04T07:57:56+00:00'
 history:
@@ -24,6 +23,39 @@ history:
   round:
     spec: 0
     pr: 0
+- ts: '2026-10-04T08:19:47+00:00'
+  from: ready-for-spec-writer
+  to: ready-for-critic
+  by: workflow
+  round:
+    spec: 1
+    pr: 0
+- ts: '2026-10-04T08:25:23+00:00'
+  from: ready-for-critic
+  to: ready-for-spec-writer
+  by: workflow
+  round:
+    spec: 2
+    pr: 0
+- ts: '2026-10-04T08:32:55+00:00'
+  from: ready-for-spec-writer
+  to: ready-for-critic
+  by: workflow
+  round:
+    spec: 2
+    pr: 0
+- ts: '2026-10-04T08:35:47+00:00'
+  from: ready-for-critic
+  to: awaiting-spec-gate
+  by: workflow
+  round:
+    spec: 2
+    pr: 0
+- ts: '2026-10-04T08:36:10+00:00'
+  from: awaiting-spec-gate
+  to: ready-for-planner
+  by: dphang
+  approved_version: 2
 parent: null
 depends_on: []
 parallel_safe: true
