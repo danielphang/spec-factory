@@ -1160,3 +1160,4 @@
 {"ts": "2026-10-04T18:51:20+00:00", "event": "run.started", "ticket": "T-0024", "run": "run-0229-critic", "role": "critic", "model": "fable"}
 {"ts": "2026-10-04T18:53:50+00:00", "event": "run.finished", "ticket": "T-0024", "run": "run-0229-critic", "role": "critic", "status": "APPROVE", "wall_s": 150}
 {"ts": "2026-10-04T18:54:02+00:00", "event": "ticket.transition", "ticket": "T-0024", "from": "ready-for-critic", "to": "awaiting-spec-gate", "by": "workflow", "round": {"spec": 2, "pr": 0}}
+{"ts": "2026-10-04T18:54:18+00:00", "event": "harness.accepted", "instance": "/Users/dphang/dev/spec-factory/.factory", "old": "82d516be16b1e7590150012e0299669604b4e9a7", "new": "3bf45779ddee6e0874ba3b1eda5170235ededfc1"}
