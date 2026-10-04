@@ -4,9 +4,9 @@ title: Role runs can write the live instance store; a spec writer's test run ini
   own store
 request: requests/T-0024.md
 source: /private/tmp/claude-501/-Users-dphang-dev-nanobot/c69bfd1d-97a6-43e3-9d5a-a517c28d382c/scratchpad/req_45.md
-status: awaiting-spec-gate
+status: ready-for-spec-writer
 round:
-  spec: 2
+  spec: 0
   pr: 0
 spec:
   version: 3
@@ -64,6 +64,11 @@ history:
   round:
     spec: 2
     pr: 0
+- ts: '2026-10-04T19:09:26+00:00'
+  from: awaiting-spec-gate
+  to: ready-for-spec-writer
+  by: dphang
+  notes: approvals/T-0024/changes-1.md
 parent: null
 depends_on: []
 parallel_safe: true
