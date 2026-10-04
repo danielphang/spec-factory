@@ -82,7 +82,11 @@ def compose(root: Path, cfg: dict, meta: dict, t: dict) -> tuple[str, list[str]]
     role, run_id, tid = meta["role"], meta["run_id"], t["id"]
     out_path = root / "runs" / run_id / "output.md"
     env = run_env(cfg)
-    parts = [(instance.require() / "context.md").read_text(encoding="utf-8").rstrip(),
+    briefing = instance.require() / "context.md"
+    if not briefing.is_file():
+        raise store.Refused(f"{briefing} is missing: it is the role-context block every role reads first; "
+                            "run factory init with FACTORY_STATE unset to create it from the template")
+    parts = [briefing.read_text(encoding="utf-8").rstrip(),
              f"\n## Output file\n`{out_path}`\n",
              "\n## Running code\nRun every test, script or prototype through this wrapper, which gives it a fresh "
              "temporary HOME so it cannot write the operator's real home directory: "
