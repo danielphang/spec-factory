@@ -3,13 +3,13 @@ type: feature
 title: 'Build speed: run each check and the test suite only where its result can change the verdict'
 request: requests/T-0016.md
 source: /private/tmp/claude-501/-Users-dphang-dev-nanobot/c69bfd1d-97a6-43e3-9d5a-a517c28d382c/scratchpad/31_suite_runs.md
-status: awaiting-spec-gate
+status: ready-for-planner
 round:
   spec: 1
   pr: 0
 spec:
   version: 1
-  approved_version: null
+  approved_version: 1
 plan: null
 in_flight: []
 parked: null
@@ -36,6 +36,11 @@ history:
   round:
     spec: 1
     pr: 0
+- ts: '2026-10-04T05:40:59+00:00'
+  from: awaiting-spec-gate
+  to: ready-for-planner
+  by: dphang
+  approved_version: 1
 parent: null
 depends_on: []
 parallel_safe: true
