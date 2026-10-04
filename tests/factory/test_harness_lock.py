@@ -5,9 +5,11 @@ when `<instance>/harness.lock` does not name the running harness revision (C.2),
 harness checkout has uncommitted changes to its own code (C.4). `--accept-harness SHA` (C.3) rewrites
 the lock and logs it only when SHA is the running revision, and never overrides C.4.
 
-Cases that run this checkout's own `bin/factory` against an instance's own store need this checkout
-to be clean under the harness paths (C.4, by design). Cases that need a modified or newly committed
-harness run a local clone of this checkout instead, so this checkout is never edited.
+Cases that run this checkout against an instance's own store are not about C.4, so `cli` runs every
+command but `init` and `paths` through `clean_harness_cli.py`, a test-only launcher that stubs only
+the C.4 refusal; the lock comparison (C.2, C.3) still runs, and the suite passes in a checkout with
+an uncommitted edit. Cases that need a modified or newly committed harness, the C.4 refusal tests
+among them, run a local clone's real `bin/factory`, so this checkout is never edited.
 
 Each case strips the conftest's FACTORY_INSTANCE / FACTORY_REPO and any FACTORY_STATE, so the
 harness resolves the instance from the working directory, as it does for an operator.
@@ -23,15 +25,31 @@ from pathlib import Path
 import pytest
 
 REPO = Path(__file__).resolve().parents[2]
+CLEAN_CLI = Path(__file__).resolve().parent / "clean_harness_cli.py"
 STRIP = ("FACTORY_INSTANCE", "FACTORY_REPO", "FACTORY_STATE", "FACTORY_INTEGRATION_BRANCH", "FACTORY_CWD")
 HARNESS_PATHS = ("factory", "bin/factory", "agents", "pyproject.toml", "uv.lock")
 ZERO = "0" * 40
 
 
+def subcommand(argv: tuple[str, ...]) -> str | None:
+    """The first argument that is not `--accept-harness` or its value."""
+    args = iter(argv)
+    for arg in args:
+        if arg == "--accept-harness":
+            next(args, None)
+            continue
+        return arg
+    return None
+
+
 def cli(harness: Path, cwd: Path, *argv: str, **extra: str) -> subprocess.CompletedProcess:
     env = {k: v for k, v in os.environ.items() if k not in STRIP}
     env.update({"PYTHONDONTWRITEBYTECODE": "1", **extra})
-    return subprocess.run([str(harness / "bin" / "factory"), *argv], capture_output=True, text=True, env=env, cwd=cwd)
+    if harness == REPO and subcommand(argv) not in ("init", "paths"):
+        cmd = [sys.executable, str(CLEAN_CLI), *argv]
+    else:
+        cmd = [str(harness / "bin" / "factory"), *argv]
+    return subprocess.run(cmd, capture_output=True, text=True, env=env, cwd=cwd)
 
 
 def git(path: Path, *argv: str) -> str:
