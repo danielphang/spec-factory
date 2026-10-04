@@ -1,0 +1,19 @@
+run_id: run-0186-triage
+role: triage
+ticket: T-0022
+model: opus
+round: 0
+spec_version: 0
+started: '2026-10-04T12:01:00+00:00'
+finished: '2026-10-04T12:03:20+00:00'
+wall_s: 140
+status: NEEDS-HUMAN
+input_sources:
+- requests/T-0022.md
+confidence: high. Every prompt line and park cited above was read in the files. The only open point is
+  the authority question in B, which the queue policy does not cover.
+escalations:
+- Part B would move authority over existing-test edits from the spec gate to the planner, which runs after
+  the gate. The queue policy pre-approves part A only. B needs the operator's ruling (question above)
+  before it is specced as pre-approved.
+escalations_note: null

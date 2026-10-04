@@ -1,0 +1,18 @@
+run_id: run-0190-critic
+role: critic
+ticket: T-0021
+model: fable
+round: 2
+spec_version: 2
+started: '2026-10-04T12:37:20+00:00'
+finished: '2026-10-04T12:39:01+00:00'
+wall_s: 101
+status: APPROVE
+input_sources:
+- specs/T-0021/v2.md
+- runs/run-0188-critic/output.md
+- specs/T-0021/v1.md
+confidence: high. All three round-1 findings are fixed as described; I re-ran the revised acceptance command
+  and confirmed the policy citation and the reflowed preamble text myself.
+escalations: []
+escalations_note: null

@@ -1,0 +1,38 @@
+id: T-0022
+type: null
+title: 'Planner and spec writer: per-sub-ticket labels, sibling tests a sub-ticket invalidates, tests
+  a decision overturns'
+request: requests/T-0022.md
+source: /private/tmp/claude-501/-Users-dphang-dev-nanobot/c69bfd1d-97a6-43e3-9d5a-a517c28d382c/scratchpad/req_40.md
+status: parked
+round:
+  spec: 0
+  pr: 0
+spec:
+  version: 0
+  approved_version: null
+plan: null
+in_flight: []
+parked:
+  reason: NEEDS-HUMAN from triage
+  since: '2026-10-04T12:03:30+00:00'
+  from: ready-for-triage
+  outputs:
+  - run-0186-triage
+  question: null
+created: '2026-10-04T12:00:34+00:00'
+history:
+- ts: '2026-10-04T12:03:30+00:00'
+  from: ready-for-triage
+  to: parked
+  by: park
+  reason: NEEDS-HUMAN from triage
+parent: null
+depends_on: []
+parallel_safe: true
+branch: null
+head: null
+merge:
+  base_before: null
+  main_after: null
+parent_base: null
