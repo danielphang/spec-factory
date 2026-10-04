@@ -1,0 +1,33 @@
+diff --git a/factory/cli.py b/factory/cli.py
+index 702329b..6c7b84d 100644
+--- a/factory/cli.py
++++ b/factory/cli.py
+@@ -41,6 +41,18 @@ def ticket_new(a, root, cfg):
+     if not src.exists():
+         raise Refused(f"no such file {src}")
+     text = src.read_text(encoding="utf-8")
++    lines, fm = text.splitlines(), {}
++    if lines and lines[0] == "---":
++        end = next((i for i in range(1, len(lines)) if lines[i] == "---"), None)
++        if end is None:
++            raise Refused(f"{src}: frontmatter has no closing --- line")
++        try:
++            fm = yaml.safe_load("\n".join(lines[1:end]))
++        except yaml.YAMLError as e:
++            raise Refused(f"{src}: frontmatter is not valid YAML (quote a value containing ': '): {e}") from None
++        if not isinstance(fm, dict):
++            raise Refused(f"{src}: frontmatter is not a key/value mapping")
++        lines = lines[end + 1:]  # the heading fallback reads the body only, not header comments
+     h = store.content_hash(text)
+     idx = store.load_index(root)
+     for tid, rec in idx.items():
+@@ -49,7 +61,8 @@ def ticket_new(a, root, cfg):
+     tid = store.next_ticket_id(root)
+     rel = f"requests/{tid}.md"
+     store.write_text(root / rel, text)
+-    title = next((ln.lstrip("# ").strip() for ln in text.splitlines() if ln.startswith("#")), src.stem)
++    title = (str(fm["title"]).strip() if fm.get("title") else
++             next((ln.lstrip("# ").strip() for ln in lines if ln.startswith("#")), src.stem))
+     t = store.new_ticket(root, tid, title, rel, str(src))
+     store.save_ticket(root, t)
+     idx[tid] = {"source": str(src), "hash": h, "imported": store.now()}
