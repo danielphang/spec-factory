@@ -4,14 +4,14 @@ title: Role runs can write the live instance store; a spec writer's test run ini
   own store
 request: requests/T-0024.md
 source: /private/tmp/claude-501/-Users-dphang-dev-nanobot/c69bfd1d-97a6-43e3-9d5a-a517c28d382c/scratchpad/req_45.md
-status: ready-for-planner
+status: closed
 round:
   spec: 1
   pr: 0
 spec:
   version: 5
   approved_version: 5
-plan: null
+plan: plans/T-0024.md
 in_flight: []
 parked: null
 created: '2026-10-04T17:43:37+00:00'
@@ -88,6 +88,25 @@ history:
   to: ready-for-planner
   by: dphang
   approved_version: 5
+- ts: '2026-10-04T19:44:37+00:00'
+  from: ready-for-planner
+  to: planned
+  by: workflow
+  round:
+    spec: 1
+    pr: 0
+- ts: '2026-10-04T20:13:05+00:00'
+  from: planned
+  to: ready-for-parent-verify
+  by: parent-check
+- ts: '2026-10-04T20:13:31+00:00'
+  from: ready-for-parent-verify
+  to: closed
+  by: workflow
+  round:
+    spec: 1
+    pr: 0
+  verified_by: run-0238-verifier
 parent: null
 depends_on: []
 parallel_safe: true
@@ -96,4 +115,4 @@ head: null
 merge:
   base_before: null
   main_after: null
-parent_base: null
+parent_base: d2a51436922119790099d7c6ea6cb8f59bb87b9f

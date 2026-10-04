@@ -142,3 +142,7 @@ Prior findings (round 1 and 2 critics, carried in v3 and unchanged here): RESOLV
 
 ## Out-of-scope observations
 - The e2e scenario's stub agent runs each clerk command with `sh -c` from the checkout under test, which for instance B is the live repository root. `FACTORY_INSTANCE` is passed explicitly, so it never touches the live instance; worth remembering if the scenario is ever copied without that argument.
+
+## Verifier results
+
+74bc15d3dfae4cb43242ab567558b4a728e779f4 · T-0024.1 · VERIFIED · run-0238-verifier
