@@ -23,7 +23,7 @@ const TICKET = args.ticket
 const REPO = args.repo
 const INSTANCE = args.instance
 let STATE = args.state || null  // set from `factory config` below when not given
-const ENV = [INSTANCE ? `FACTORY_INSTANCE=${INSTANCE}` : '', STATE ? `FACTORY_STATE=${STATE}` : ''].filter(Boolean).join(' ')
+const ENV = ['FACTORY_DISPATCH=1', INSTANCE ? `FACTORY_INSTANCE=${INSTANCE}` : '', STATE ? `FACTORY_STATE=${STATE}` : ''].filter(Boolean).join(' ')
 const BIN = `${ENV ? ENV + ' ' : ''}${REPO}/bin/factory`
 const PREFIX = args.agentPrefix || 'factory-'
 // inlineRoles: the .claude/agents/factory-* definitions are not registered in this session (the

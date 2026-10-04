@@ -18,7 +18,8 @@ import yaml
 REPO = Path(__file__).resolve().parents[2]
 BIN = REPO / "bin" / "factory"
 CLEAN_CLI = Path(__file__).resolve().parent / "clean_harness_cli.py"
-STRIP = ("FACTORY_INSTANCE", "FACTORY_REPO", "FACTORY_STATE", "FACTORY_INTEGRATION_BRANCH", "FACTORY_CWD")
+STRIP = ("FACTORY_INSTANCE", "FACTORY_REPO", "FACTORY_STATE", "FACTORY_INTEGRATION_BRANCH", "FACTORY_CWD",
+         "FACTORY_DISPATCH")
 NOT_FOUND = "no .factory/instance.yaml found from {cwd}; run factory init --repo-name NAME, or set FACTORY_INSTANCE"
 
 
@@ -271,7 +272,7 @@ def _start_triage(target: Path, request_file: Path) -> Path:
 def test_composed_input_opens_with_the_instance_context(target, request_file):
     (target / ".factory" / "context.md").write_text("CTX-MARKER for demo\nsecond line\n")
     run = _start_triage(target, request_file)
-    cp = cli(target, "run", "compose", run.name)
+    cp = cli(target, "run", "compose", run.name, FACTORY_DISPATCH="1")
     assert cp.returncode == 0, cp.stderr
     text = (run / "input.md").read_text()
     assert text.startswith("CTX-MARKER for demo\nsecond line\n## Output file\n")

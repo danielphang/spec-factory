@@ -99,8 +99,8 @@ the integration branch has not moved since it merged: the sub-ticket's verifier 
 the same code against the same starting point. On success the harness folds the spec into current truth and closes the
 ticket. If the target has no spec store yet (no `openspec/` tree), the fold is refused and the
 ticket parks; the human then closes it as applied with `resolve --close`, and current truth is
-not updated. While that final run is in progress the ticket's record does not list it as in flight, so
-a ticket at this step can look idle for a few minutes.
+not updated. While that final run is in progress, the ticket's record lists it as in flight, like
+any other run.
 
 At any step a role can say it needs a human: a question, an escalation, a blocked build. The
 harness parks the ticket. So does running out of rounds, or a run exceeding its budget. A human
@@ -312,6 +312,30 @@ runs from the same runtime. Each target's runner then accepts the new revision b
 
 ## Where a human decides
 
+**While a run is in flight, put `FACTORY_DISPATCH=1` in front of every store write you make.**
+A run is in flight from `run start` until `run finish` records its result. While any run on a
+target is in flight, the harness refuses every write to that target's store that lacks this
+marker. A write is any command except `ticket show`, `ticket join`, `results show`, `config`,
+`status parse`, `log tail` and `paths`; a command given `--accept-harness` is always a write. The
+workflow scripts already put the marker on their own commands. Put it in front of one command at
+a time:
+
+```
+FACTORY_DISPATCH=1 $RUNTIME/bin/factory decision add T-n "<line>"
+```
+
+Without the marker the write is refused with exit 2, and nothing is written. The refusal text
+deliberately does not name the marker, so that a role reading it is not told how to get past it.
+Its advice to "use a throwaway FACTORY_STATE" is meant for roles, not for you. Never export the
+marker: every role run started from that shell would inherit it. Run store writes from the
+repository root. From inside the store's `runs/` or `worktrees/`, where roles do their work, every
+write is refused, and the marker does not help. A run left in flight by a workflow that stopped
+keeps the refusal in place; clear it with:
+
+```
+FACTORY_DISPATCH=1 $RUNTIME/bin/factory run finish <run> --status-override KILLED
+```
+
 | | Command | What you decide |
 |---|---|---|
 | **File** | `factory ticket new --file <abs path>` | that this request is worth a ticket |
@@ -350,6 +374,12 @@ next, how many rounds, what the checkers receive, when a merge is allowed, when 
   killed runs included. A changed `park` file parks the ticket; a changed `escalate` file is queued
   for the operator and the run goes on. Neither prints a file's contents. It is tested, and has not
   yet fired on a real ticket.
+- **Live-store fence.** While a run is in flight on a target, a write to its store without the
+  `FACTORY_DISPATCH=1` marker is refused. The workflow scripts mark their own commands, and the
+  operator marks one command at a time ("Where a human decides"). A write run from inside the
+  store's `runs/` or `worktrees/` is refused even with the marker. The fence stops a role's tools,
+  such as its test suite, from changing the live records by accident; it is not isolation. It is
+  tested, and has not yet fired on a real ticket.
 
 **Not built**
 
@@ -363,9 +393,9 @@ next, how many rounds, what the checkers receive, when a merge is allowed, when 
 - **Per-role effort settings.** Each role has a model; none has an effort level.
 - **A status page.** `factory report TICKET` would render where a ticket is from the store alone.
   Today you read the store's YAML or ask the session running it.
-- **Current truth for the factory itself.** The spec store exists, but the factory's own
-  capabilities were built before it and never entered it. This page is the hand-written stand-in
-  until they are written from the tests.
+- **Current truth for the factory itself.** The spec store holds only the capabilities that
+  tickets have changed since it was created, not the whole factory. This page is the hand-written
+  stand-in for the rest until they are written from the tests.
 
 ## Where this can go
 

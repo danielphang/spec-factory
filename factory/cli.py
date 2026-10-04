@@ -9,6 +9,7 @@ import argparse
 import datetime as dt
 import getpass
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -868,6 +869,7 @@ def init_cmd(a):
         created.append(str(cfg_path))
     cfg = instance.load_config(inst)
     root = instance.state_root(inst, cfg)
+    fence(inst, cfg, root)
     agents: list[str] = []
     if instance.is_own_store(inst, cfg, root):
         ctx = inst / "context.md"
@@ -1190,6 +1192,36 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 
+# ----- live-store fence: only the dispatcher writes a live store during a run ------------------
+
+READ_ONLY = {("ticket", "show"), ("ticket", "join"), ("results", "show"), ("config", None),
+             ("status", "parse"), ("log", "tail"), ("paths", None)}
+
+
+def _in_flight(root: Path) -> list[str]:
+    """Every run in flight on the store: the union of its tickets' in_flight lists."""
+    return [rid for p in sorted((root / "tickets").glob("*.yaml"))
+            for rid in store.read_yaml(p).get("in_flight") or []]
+
+
+def fence(inst: Path, cfg: dict, root: Path) -> None:
+    """Refuse a write to the instance's own store from inside its runs/ or worktrees/ (marker or
+    not), or while a run is in flight there unless FACTORY_DISPATCH=1. Accidents, not isolation."""
+    if not instance.is_own_store(inst, cfg, root):
+        return
+    own, cwd = instance.own_state_root(inst, cfg), instance.caller_cwd()
+    for sub in ("runs", "worktrees"):
+        if cwd.is_relative_to(own / sub):
+            raise Refused(f"role runs may not write the live store ({own}; called from inside its {sub}/); "
+                          "use a throwaway FACTORY_STATE")
+    if os.environ.get("FACTORY_DISPATCH") == "1":
+        return
+    runs = _in_flight(root)
+    if runs:
+        raise Refused(f"role runs may not write the live store ({root}; in flight: {', '.join(runs)}); "
+                      "use a throwaway FACTORY_STATE")
+
+
 def main(argv: list[str] | None = None) -> int:
     a = build_parser().parse_args(argv)
     try:
@@ -1199,6 +1231,8 @@ def main(argv: list[str] | None = None) -> int:
         inst = instance.require()  # refused when no instance is found: nothing is written
         cfg = instance.load_config(inst)
         root = store.state_root(cfg)
+        if (a.cmd, getattr(a, "sub", None)) not in READ_ONLY or a.accept_harness:
+            fence(inst, cfg, root)  # before the lock, so a fenced --accept-harness rewrites nothing
         instance.guard(inst, cfg, root, a.accept_harness)  # the harness lock (design C.2-C.4)
         a.fn(a, root, cfg)
         return 0
