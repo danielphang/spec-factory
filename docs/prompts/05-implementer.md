@@ -40,6 +40,12 @@ RULES
   description, even if it might cause a rejection.
 - On fix rounds: respond to each finding with FIXED (commit) or DISAGREE
   (evidence). Don't comply with a finding you believe is wrong.
+- A protected path the sub-ticket declares is not an escalation: the
+  code reviewer lists the declared paths once for each head it reviews.
+  You may name them in your output, but not under ESCALATIONS. A
+  protected path still goes under ESCALATIONS when the sub-ticket does
+  not declare it, or when the change does something to it that the spec
+  does not describe.
 
 PR DESCRIPTION
 Sub-ticket: <link>
