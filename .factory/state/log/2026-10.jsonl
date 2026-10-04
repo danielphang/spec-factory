@@ -932,3 +932,4 @@
 {"ts": "2026-10-04T09:54:39+00:00", "event": "ticket.parked", "ticket": "T-0020", "from": "ready-for-parent-verify", "reason": "archive: "}
 {"ts": "2026-10-04T09:54:39+00:00", "event": "escalation.queued", "ticket": "T-0020", "items": ["archive: "]}
 {"ts": "2026-10-04T09:54:57+00:00", "event": "human.resolved", "ticket": "T-0020", "kind": "close", "by": "dphang", "from": "parked", "to": "closed"}
+{"ts": "2026-10-04T09:54:57+00:00", "event": "harness.accepted", "instance": "/Users/dphang/dev/spec-factory/.factory", "old": "6db43bf1ea50df49b0e56476f66a4ff7be6b69fc", "new": "b45462df5b0c9570634b4d6d2074b3054ac296b6"}
