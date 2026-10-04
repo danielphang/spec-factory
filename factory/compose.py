@@ -4,6 +4,8 @@ Per (role, round, resolution). No other code path assembles role input.
 """
 from __future__ import annotations
 
+import re
+import shlex
 from pathlib import Path
 
 from factory import instance, store
@@ -49,11 +51,44 @@ def gate_commands(cfg: dict) -> list[str]:
     return [g.replace("{integration}", str(co)) for g in cfg.get("gate_commands", [])]
 
 
+_ENV_NAME = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
+
+
+def run_env(cfg: dict) -> dict:
+    """The instance's `run_env`: variables the running-code wrapper exports after the throwaway HOME,
+    for tools that keep a cache under HOME. Absent or null is empty. Refused when it is not a mapping,
+    when a name is not a shell variable name, or when it names HOME, which the wrapper owns."""
+    env = cfg.get("run_env")
+    if env is None:
+        return {}
+    if not isinstance(env, dict):
+        raise store.Refused(f"run_env must be a mapping of variable name to value, not a {type(env).__name__}")
+    for name in env:
+        if not isinstance(name, str) or not _ENV_NAME.fullmatch(name):
+            raise store.Refused(f"run_env: {name!r} is not a variable name ([A-Za-z_][A-Za-z0-9_]*)")
+        if name == "HOME":
+            raise store.Refused("run_env may not set HOME: the running-code wrapper sets it to a fresh temporary directory")
+    return env
+
+
+def wrap(command: str, env: dict) -> str:
+    """`command` in a subshell with HOME set to a fresh temporary directory, then each `run_env`
+    variable exported in file order. A subshell, so the export covers every part of `a && b`."""
+    exports = "".join(f" {k}={shlex.quote(str(v))}" for k, v in env.items())
+    return f'(export HOME="$(cd "$(mktemp -d)" && pwd -P)"{exports}; {command})'
+
+
 def compose(root: Path, cfg: dict, meta: dict, t: dict) -> tuple[str, list[str]]:
     role, run_id, tid = meta["role"], meta["run_id"], t["id"]
     out_path = root / "runs" / run_id / "output.md"
+    env = run_env(cfg)
     parts = [(instance.require() / "context.md").read_text(encoding="utf-8").rstrip(),
-             f"\n## Output file\n`{out_path}`\n"]
+             f"\n## Output file\n`{out_path}`\n",
+             "\n## Running code\nRun every test, script or prototype through this wrapper, which gives it a fresh "
+             "temporary HOME so it cannot write the operator's real home directory: "
+             f"`{wrap('<command>', env)}`. Put your command in place of <command>. This includes every test or "
+             "check command the briefing above gives. A throwaway HOME does not stop a write to an absolute path: "
+             "never run anything that could write a protected path outside the repository.\n"]
     sources: list[str] = []
 
     def add(rel: str, heading: str) -> None:
@@ -128,8 +163,8 @@ def compose(root: Path, cfg: dict, meta: dict, t: dict) -> tuple[str, list[str]]
         where = (f"\n## Where you work\nWorktree: `{meta.get('worktree')}` (branch `{meta.get('branch')}`, "
                  f"base `{meta.get('base')}`, head `{meta.get('head')}`). There is no remote: commit on the "
                  f"branch; the PR is the branch plus the description you return. Gate commands (run each from "
-                 f"your worktree, exactly as written): "
-                 + "; ".join(f"`{g}`" for g in gate_commands(cfg)) + "\n")
+                 f"your worktree, exactly as written; each is already wrapped): "
+                 + "; ".join(f"`{wrap(g, env)}`" for g in gate_commands(cfg)) + "\n")
         parts.append(where)
         if role == "implementer":
             if t.get("merge_refused"):
