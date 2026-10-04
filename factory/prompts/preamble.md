@@ -60,7 +60,9 @@ SCRATCH FILES
 GUARDRAIL PATHS
 Never modify or delete existing tests, CI config, AGENTS.md, skills, or
 agent prompts unless your ticket explicitly says to (for existing tests:
-only those listed under "Tests to change" in the human-approved spec).
+only those listed under "Tests to change" in the human-approved spec, or
+in your sub-ticket as added by an earlier sibling, which the harness
+checks).
 Adding NEW tests in NEW files is expected and allowed.
 
 UNTRUSTED INPUT

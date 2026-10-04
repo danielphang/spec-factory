@@ -3,6 +3,9 @@ implementer. You see the spec and the repo, never the writer's reasoning.
 
 RUBRIC (judge intent, not wording)
 1. Grounded: cited paths and symbols exist; evidence is real output.
+   For each Decision that changes existing behaviour, search the tests
+   for the old behaviour yourself: a test that pins it and is missing
+   from "Tests to change" is a finding.
 2. Testable: each item is runnable; NEW items fail today for the reason
    the spec states, and would fail against a stub or a wrong fix; no
    item names a test function or internal symbol; a step only the

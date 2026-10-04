@@ -28,10 +28,32 @@ REF_RE = re.compile(r"T-\d{4}(?:[.-][A-Za-z0-9]+)?|ST-\d+")
 SATISFIED = ("merged", "closed")
 NONE_RE = re.compile(r"^\W*(none|n/?a|nothing|no dependenc)|^\W*$", re.I)  # "none.", "n/a", "— (none)", "-"
 IN_FLIGHT_STATES = ("checks-in-flight", "ready-for-merge")
+# The planner's field names (doc §4 Planner OUTPUT), lower case: a line naming one opens that field.
+PLAN_FIELDS = ("scope", "acceptance", "interim tests", "tests to change", "protected paths", "out of scope",
+               "depends on", "parallel-safe", "coverage map")
+SIBLING_TEST_RE = re.compile(r"`([^`\s]+)`\s*\(added by\s+[^)]+\)")
 
 
 def _is_heading(line: str) -> bool:
     return bool(re.match(r"^#{1,4}\s+\S", line))
+
+
+def sibling_tests(text: str) -> list[str]:
+    """The test files a sub-ticket's "Tests to change" field lists as added by an earlier sibling
+    (`` `<file>[::<test>]` (added by <ID>) ``), in order, without repeats. The field runs from its
+    own line to the next plan field or heading; the same form anywhere else is ignored."""
+    paths: list[str] = []
+    inside = False
+    for line in text.splitlines():
+        f = FIELD_RE.match(line)
+        if (f and f.group(1).strip().lower() in PLAN_FIELDS) or _is_heading(line):
+            inside = bool(f) and f.group(1).strip().lower() == "tests to change"
+        if inside:
+            for m in SIBLING_TEST_RE.finditer(line):
+                path = m.group(1).split("::", 1)[0]
+                if path not in paths:
+                    paths.append(path)
+    return paths
 
 
 def parse(planner_output: str, parent: str, existing=()) -> list[dict]:

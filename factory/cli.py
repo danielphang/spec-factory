@@ -209,6 +209,8 @@ def run_start(a, root, cfg):
         raise Refused(f"{t['id']} already has a {a.role} run in flight")
     if a.role in ("triage", "spec_writer", "critic", "planner") and t["in_flight"]:
         raise Refused(f"{t['id']} already has run {t['in_flight'][0]} in flight")
+    if a.role == "implementer" and t.get("parent"):
+        _check_sibling_tests(root, cfg, t)
     baseline = tripwire.baseline(cfg)  # hashed before the run id is reserved: a refusal writes nothing
     rid = store.next_run_id(root, a.role)
     model = a.model or cfg["models"][a.role]
@@ -233,6 +235,33 @@ def run_start(a, root, cfg):
     store.save_ticket(root, t)
     store.log_event(root, "run.started", ticket=t["id"], run=rid, role=a.role, model=model)
     out({"ok": True, "run_id": rid, "role": a.role, "model": model, "worktree": meta.get("worktree"), "head": meta.get("head")})
+
+
+def _check_sibling_tests(root: Path, cfg: dict, t: dict) -> None:
+    """Doc §Harness, "Tests a sibling added": each file the sub-ticket's "Tests to change" lists as
+    added by a sibling must be absent at the parent's base, and first added on the integration
+    branch by a commit inside one merged sibling's recorded merge (reachable from its main_after,
+    not from its base_before). Else refused, so the build parks the sub-ticket as BLOCKED."""
+    sub = root / "specs" / t["id"] / "subticket.md"
+    paths = subtickets.sibling_tests(sub.read_text(encoding="utf-8")) if sub.exists() else []
+    if not paths:
+        return
+    parent = store.load_ticket(root, t["parent"])
+    base = parent.get("parent_base")
+    repo = gitops.repo_root(cfg)
+    tip = gitops.rev(repo, gitops.integration_branch(cfg, repo))
+    merges = [s["merge"] for s in store.subtickets_of(root, parent["id"])
+              if s["id"] != t["id"] and s["status"] == "merged"
+              and (s.get("merge") or {}).get("main_after") and s["merge"].get("base_before")]
+    for path in paths:
+        added = gitops.first_added(repo, base, tip, path) if base else None
+        if added and any(gitops.head_contains(repo, m["main_after"], added)
+                         and not gitops.head_contains(repo, m["base_before"], added) for m in merges):
+            continue
+        since = f"since {base[:9]}" if base else "(no sibling has merged)"
+        raise Refused(f"BLOCKED from harness: Tests to change lists {path} as added by a sibling, but no merged "
+                      f"sibling of {parent['id']} added it {since}; list it in the parent spec's Tests to change, "
+                      f"or remove it")
 
 
 def _start_build_run(root: Path, cfg: dict, t: dict, meta: dict, d: Path, parent_close: bool) -> None:
