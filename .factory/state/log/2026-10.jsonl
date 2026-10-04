@@ -775,3 +775,27 @@
 {"ts": "2026-10-04T07:13:42+00:00", "event": "escalation.queued", "ticket": "T-0017", "items": ["archive: no spec store (factory init not run)\n{'ok': false, 'error': 'no spec store (factory init not run)'}"]}
 {"ts": "2026-10-04T07:14:02+00:00", "event": "human.resolved", "ticket": "T-0017", "kind": "close", "by": "dphang", "from": "parked", "to": "closed"}
 {"ts": "2026-10-04T07:14:02+00:00", "event": "harness.accepted", "instance": "/Users/dphang/dev/spec-factory/.factory", "old": "27d6d63fcb2f5c03d64696f6769abf871e4f2bc0", "new": "6db43bf1ea50df49b0e56476f66a4ff7be6b69fc"}
+{"ts": "2026-10-04T07:14:47+00:00", "event": "request.created", "ticket": "T-0018", "source": "/private/tmp/claude-501/-Users-dphang-dev-nanobot/c69bfd1d-97a6-43e3-9d5a-a517c28d382c/scratchpad/33_intake_plan.md"}
+{"ts": "2026-10-04T07:14:47+00:00", "event": "ticket.created", "ticket": "T-0018", "status": "ready-for-triage"}
+{"ts": "2026-10-04T07:15:09+00:00", "event": "run.started", "ticket": "T-0018", "run": "run-0153-triage", "role": "triage", "model": "opus"}
+{"ts": "2026-10-04T07:17:25+00:00", "event": "run.finished", "ticket": "T-0018", "run": "run-0153-triage", "role": "triage", "status": "ACCEPT", "wall_s": 136}
+{"ts": "2026-10-04T07:17:25+00:00", "event": "escalation.queued", "ticket": "T-0018", "run": "run-0153-triage", "items": ["Protected paths: part D(b) changes a prompt. That touches the design doc's verifier block and the generated copy `docs/prompts/07-verifier.md`, plus the guardrail path `factory/prompts/verifier.md`. The spec's Risk section must declare these paths. Under the pre-approval policy, the operator's acceptance test of the prompt change is still needed before the runtime moves."]}
+{"ts": "2026-10-04T07:17:37+00:00", "event": "ticket.transition", "ticket": "T-0018", "from": "ready-for-triage", "to": "ready-for-spec-writer", "by": "workflow", "round": {"spec": 0, "pr": 0}}
+{"ts": "2026-10-04T07:17:45+00:00", "event": "run.started", "ticket": "T-0018", "run": "run-0154-spec_writer", "role": "spec_writer", "model": "opus"}
+{"ts": "2026-10-04T07:33:43+00:00", "event": "run.finished", "ticket": "T-0018", "run": "run-0154-spec_writer", "role": "spec_writer", "status": "READY-FOR-CRITIC", "wall_s": 958}
+{"ts": "2026-10-04T07:33:43+00:00", "event": "escalation.queued", "ticket": "T-0018", "run": "run-0154-spec_writer", "items": ["This change edits protected and guardrail paths: the harness code under `factory/**`, including the verifier's role prompt, and the generated prompt copy `docs/prompts/07-verifier.md`. The Risk section declares all of them, and the spec gate is pre-approved for #33. Under the same pre-approval policy, the prompt change still needs the operator's acceptance test before the runtime moves. That test is listed under Operator steps, step 1."]}
+{"ts": "2026-10-04T07:33:55+00:00", "event": "spec.added", "ticket": "T-0018", "version": 1, "source": "run-0154-spec_writer"}
+{"ts": "2026-10-04T07:34:04+00:00", "event": "ticket.transition", "ticket": "T-0018", "from": "ready-for-spec-writer", "to": "ready-for-critic", "by": "workflow", "round": {"spec": 1, "pr": 0}}
+{"ts": "2026-10-04T07:34:11+00:00", "event": "run.started", "ticket": "T-0018", "run": "run-0155-critic", "role": "critic", "model": "fable"}
+{"ts": "2026-10-04T07:39:28+00:00", "event": "run.finished", "ticket": "T-0018", "run": "run-0155-critic", "role": "critic", "status": "REVISE", "wall_s": 317}
+{"ts": "2026-10-04T07:39:36+00:00", "event": "ticket.transition", "ticket": "T-0018", "from": "ready-for-critic", "to": "ready-for-spec-writer", "by": "workflow", "round": {"spec": 2, "pr": 0}}
+{"ts": "2026-10-04T07:39:43+00:00", "event": "run.started", "ticket": "T-0018", "run": "run-0156-spec_writer", "role": "spec_writer", "model": "opus"}
+{"ts": "2026-10-04T07:43:53+00:00", "event": "run.finished", "ticket": "T-0018", "run": "run-0156-spec_writer", "role": "spec_writer", "status": "READY-FOR-CRITIC", "wall_s": 250}
+{"ts": "2026-10-04T07:43:53+00:00", "event": "escalation.queued", "ticket": "T-0018", "run": "run-0156-spec_writer", "items": ["Protected paths: part D2 changes the verifier prompt in `docs/design.md`, its generated copy `docs/prompts/07-verifier.md` and the guardrail path `factory/prompts/verifier.md`. All three are declared in Risk. Under the pre-approval policy, the operator still has to run the acceptance test of the prompt change (Operator steps, step 1) before the runtime moves."]}
+{"ts": "2026-10-04T07:44:03+00:00", "event": "spec.added", "ticket": "T-0018", "version": 2, "source": "run-0156-spec_writer"}
+{"ts": "2026-10-04T07:44:12+00:00", "event": "ticket.transition", "ticket": "T-0018", "from": "ready-for-spec-writer", "to": "ready-for-critic", "by": "workflow", "round": {"spec": 2, "pr": 0}}
+{"ts": "2026-10-04T07:44:20+00:00", "event": "run.started", "ticket": "T-0018", "run": "run-0157-critic", "role": "critic", "model": "fable"}
+{"ts": "2026-10-04T07:45:49+00:00", "event": "run.finished", "ticket": "T-0018", "run": "run-0157-critic", "role": "critic", "status": "APPROVE", "wall_s": 89}
+{"ts": "2026-10-04T07:45:57+00:00", "event": "ticket.transition", "ticket": "T-0018", "from": "ready-for-critic", "to": "awaiting-spec-gate", "by": "workflow", "round": {"spec": 2, "pr": 0}}
+{"ts": "2026-10-04T07:46:13+00:00", "event": "approval.recorded", "ticket": "T-0018", "kind": "spec", "version": 2, "by": "dphang"}
+{"ts": "2026-10-04T07:46:13+00:00", "event": "ticket.transition", "ticket": "T-0018", "from": "awaiting-spec-gate", "to": "ready-for-planner", "by": "dphang"}

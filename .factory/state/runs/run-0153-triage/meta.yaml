@@ -1,0 +1,21 @@
+run_id: run-0153-triage
+role: triage
+ticket: T-0018
+model: opus
+round: 0
+spec_version: 0
+started: '2026-10-04T07:15:09+00:00'
+finished: '2026-10-04T07:17:25+00:00'
+wall_s: 136
+status: ACCEPT
+input_sources:
+- requests/T-0018.md
+confidence: high. All four symptoms are confirmed in code or store records, and the scope and gate approval
+  come from the operator. The one open fact is how `agent()` reports a failure, and that only shapes how
+  the fix is built.
+escalations:
+- 'Protected paths: part D(b) changes a prompt. That touches the design doc''s verifier block and the
+  generated copy `docs/prompts/07-verifier.md`, plus the guardrail path `factory/prompts/verifier.md`.
+  The spec''s Risk section must declare these paths. Under the pre-approval policy, the operator''s acceptance
+  test of the prompt change is still needed before the runtime moves.'
+escalations_note: null
