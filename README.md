@@ -80,9 +80,8 @@ state "ready for triage". The intake workflow runs triage. On accept, the spec w
 the repo and writes the spec. The critic judges it and approves, asks for a revision (at most
 twice), or escalates. On approve, the ticket waits at the **spec gate**. A human reads the spec,
 edits it if needed, and approves it (pinning that version) or sends it back with notes. Nothing
-downstream runs until this happens. The intake script also contains a planning step, but it only
-runs when a ticket is already past the gate at launch; in practice the build script runs the
-planner.
+downstream runs until this happens.
+The intake script stops at the spec gate; the build script runs the planner.
 
 The build workflow runs the planner, which splits the spec into sub-tickets with dependencies.
 When a sub-ticket's dependencies are merged, an implementer builds it on a branch in its own
@@ -273,7 +272,7 @@ It then calls the Workflow tool with `scriptPath` set to the intake script and a
 script. Add `inlineRoles: true` on every target for now: `agents/` ships agent definitions only for
 the intake roles, so a build without it fails at the first implementer call (#24). With it, roles
 read their prompt from the run's `system-prompt.txt`, and run without per-role tool limits. Start the
-build script after the spec gate, never the intake script (#33).
+build script after the spec gate; the intake script has nothing to do past it.
 
 ### Running many tickets: runner and operator sessions
 

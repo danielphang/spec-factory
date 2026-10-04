@@ -69,26 +69,35 @@ async function runRole(role, ticket, phase) {
   if (!comp.ok) { await park(ticket, `harness-bug: run compose ${role}: ${comp.stderr || ''}`, [runId], phase); return null }
   const outputPath = `${STATE}/runs/${runId}/output.md`
   let out
-  if (args.stubs) {
-    stubCount[role] = (stubCount[role] || 0) + 1
-    out = await agent(
-      `Stub file: ${args.stubs}/${role}-${stubCount[role]}.md\nOutput file: ${outputPath}\n` +
-      `If the stub file exists, write its content verbatim to the output file and return that content. ` +
-      `If it does not exist, write nothing and return an empty message.` +
-      (INLINE ? ' You are a test stub: do exactly this and nothing else; run no other command.' : ''),
-      { agentType: INLINE ? 'general-purpose' : `${PREFIX}stub`, model: 'haiku', effort: 'low', phase, label: `${role} (stub) ${ticket}` })
-    // Stub seam for the build half: `<role>-<n>.sh` beside the stub, run in the run's worktree, lets a stub
-    // implementer make its commit (or merge the integration branch on a conflict run).
-    if (role === 'implementer' && start.worktree) {
-      const sh = `${args.stubs}/${role}-${stubCount[role]}.sh`
-      await clerk(`if [ -f ${sh} ]; then (cd ${start.worktree} && sh ${sh}) >/dev/null 2>&1; fi; echo '{"ok": true}'`, phase, `stub script ${role}-${stubCount[role]}`)
+  try {
+    if (args.stubs) {
+      stubCount[role] = (stubCount[role] || 0) + 1
+      out = await agent(
+        `Stub file: ${args.stubs}/${role}-${stubCount[role]}.md\nOutput file: ${outputPath}\n` +
+        `If the stub file exists, write its content verbatim to the output file and return that content. ` +
+        `If it does not exist, write nothing and return an empty message.` +
+        (INLINE ? ' You are a test stub: do exactly this and nothing else; run no other command.' : ''),
+        { agentType: INLINE ? 'general-purpose' : `${PREFIX}stub`, model: 'haiku', effort: 'low', phase, label: `${role} (stub) ${ticket}` })
+    } else {
+      out = await agent(
+        (INLINE ? `First read ${STATE}/runs/${runId}/system-prompt.txt: it is your role and your rules for this run; follow it exactly, including the preamble at its top. ` : '') +
+        `Your entire input is the file ${STATE}/runs/${runId}/input.md; read it first and follow it. ` +
+        `Write your complete output to ${outputPath} and return the same text.`,
+        { agentType: INLINE ? 'general-purpose' : `${PREFIX}${AGENT_NAME[role]}`, model: MODELS[role], phase, label: `${role} ${ticket}` })
     }
-  } else {
-    out = await agent(
-      (INLINE ? `First read ${STATE}/runs/${runId}/system-prompt.txt: it is your role and your rules for this run; follow it exactly, including the preamble at its top. ` : '') +
-      `Your entire input is the file ${STATE}/runs/${runId}/input.md; read it first and follow it. ` +
-      `Write your complete output to ${outputPath} and return the same text.`,
-      { agentType: INLINE ? 'general-purpose' : `${PREFIX}${AGENT_NAME[role]}`, model: MODELS[role], phase, label: `${role} ${ticket}` })
+  } catch (e) {
+    // A thrown call (e.g. an agent type that is not installed) gives no result: record the run as
+    // killed and park with the error, so no run is left in flight. parallel() would otherwise absorb it.
+    await clerk(`${BIN} run finish ${runId} --status-override KILLED`, phase, `run finish ${role} (agent call failed)`)
+    if (role === 'reviewer' || role === 'verifier') await clerk(`${BIN} run cleanup ${runId}`, phase, `run cleanup ${role}`)
+    await park(ticket, `agent call failed: ${role}: ${e && e.message ? e.message : e}`, [runId], phase)
+    return null
+  }
+  // Stub seam for the build half: `<role>-<n>.sh` beside the stub, run in the run's worktree, lets a stub
+  // implementer make its commit (or merge the integration branch on a conflict run).
+  if (args.stubs && role === 'implementer' && start.worktree) {
+    const sh = `${args.stubs}/${role}-${stubCount[role]}.sh`
+    await clerk(`if [ -f ${sh} ]; then (cd ${start.worktree} && sh ${sh}) >/dev/null 2>&1; fi; echo '{"ok": true}'`, phase, `stub script ${role}-${stubCount[role]}`)
   }
   const killed = out === null || (typeof out === 'string' && out.trim() === '')
   const fin = killed
@@ -196,9 +205,20 @@ if (state === 'ready-for-planner') {
 // --- phase 2: Build (while any sub-ticket is not merged|parked|closed)
 if (state === 'planned') {
   phase('Build')
+  let first = true
   while (true) {
     const ready = await clerk(`${BIN} ticket ready-implementers ${TICKET}`, 'Build', 'ready-implementers')
     if (!ready.ok) { await park(TICKET, `harness-bug: ready-implementers: ${ready.stderr || ''}`, [], 'Build'); return { ticket: TICKET, state: 'parked' } }
+    // A parent planned with no sub-tickets (e.g. by an older intake): create them once from the planner
+    // run its recorded plan names, or park the parent saying why.
+    if (first && ready.subtickets && ready.subtickets.length === 0) {
+      first = false
+      const made = await clerk(`${BIN} subticket add ${TICKET}`, 'Build', 'subticket add (recorded plan)')
+      if (!made.ok) { await park(TICKET, `no sub-tickets, and none could be created from the recorded plan: ${made.stderr || ''}`, [], 'Build'); return { ticket: TICKET, state: 'parked' } }
+      log(`${TICKET}: created ${(made.subtickets || []).length} sub-ticket(s) from the recorded plan`)
+      continue
+    }
+    first = false
     // A sub-ticket the human closed parks the parent: amend the spec and re-plan, or close (doc §Routing rules).
     if (ready.closed && ready.closed.length) { await park(TICKET, `sub-ticket closed by a human: ${ready.closed.join(', ')}`, [], 'Build'); return { ticket: TICKET, state: 'parked' } }
     const todo = ready.ready.concat(ready.resumable || [])
@@ -210,7 +230,8 @@ if (state === 'planned') {
     await parallel(todo.map(st => () => buildOne(st)))
   }
   const pc = await clerk(`${BIN} ticket parent-check ${TICKET}`, 'Build', 'parent-check')
-  if (!pc.ok || pc.state !== 'ready-for-parent-verify') return { ticket: TICKET, state: pc.state || 'planned' }
+  if (!pc.ok) { await park(TICKET, `parent-check refused: ${pc.stderr || ''}`, [], 'Build'); return { ticket: TICKET, state: 'parked' } }
+  if (pc.state !== 'ready-for-parent-verify') return { ticket: TICKET, state: pc.state || 'planned' }
   state = 'ready-for-parent-verify'
 }
 

@@ -1,10 +1,9 @@
 export const meta = {
   name: 'factory-intake',
-  description: 'Spec factory intake: Triage -> Spec writer <-> Spec critic (max 2 rounds) -> human gate -> Planner, for one ticket',
+  description: 'Spec factory intake: Triage -> Spec writer <-> Spec critic (max 2 rounds) -> human gate, for one ticket',
   phases: [
     { title: 'Triage', detail: 'classify the request; ACCEPT routes to the spec writer' },
     { title: 'Spec', detail: 'writer and critic alternate, fresh context each, until APPROVE or the round cutoff' },
-    { title: 'Plan', detail: 'after the human gate: planner decomposes the approved spec' },
   ],
 }
 // args: { ticket, repo, instance?, state?, stubs?, agentPrefix? }
@@ -32,7 +31,7 @@ const PREFIX = args.agentPrefix || 'factory-'
 // role prompt from runs/<id>/system-prompt.txt. Model per role is unchanged; tool fences are not.
 const INLINE = !!args.inlineRoles
 const CLERK_RULES = 'You are the store clerk of the spec factory: run the one command you are given, once, unchanged, from the repository root; run nothing else, edit nothing, interpret nothing. '
-const AGENT_NAME = { triage: 'triage', spec_writer: 'spec-writer', critic: 'spec-critic', planner: 'planner' }
+const AGENT_NAME = { triage: 'triage', spec_writer: 'spec-writer', critic: 'spec-critic' }
 
 const CLERK_SCHEMA = {
   type: 'object',
@@ -79,20 +78,28 @@ async function runRole(role, phase) {
   if (!comp.ok) { await park(`harness-bug: run compose ${role}: ${comp.stderr || ''}`, [runId], phase); return null }
   const outputPath = `${STATE}/runs/${runId}/output.md`
   let out
-  if (args.stubs) {
-    stubCount[role] = (stubCount[role] || 0) + 1
-    out = await agent(
-      `Stub file: ${args.stubs}/${role}-${stubCount[role]}.md\nOutput file: ${outputPath}\n` +
-      `If the stub file exists, write its content verbatim to the output file and return that content. ` +
-      `If it does not exist, write nothing and return an empty message.` +
-      (INLINE ? ' You are a test stub: do exactly this and nothing else; run no other command.' : ''),
-      { agentType: INLINE ? 'general-purpose' : `${PREFIX}stub`, model: 'haiku', effort: 'low', phase, label: `${role} (stub) ${TICKET}` })
-  } else {
-    out = await agent(
-      (INLINE ? `First read ${STATE}/runs/${runId}/system-prompt.txt: it is your role and your rules for this run; follow it exactly, including the preamble at its top. ` : '') +
-      `Your entire input is the file ${STATE}/runs/${runId}/input.md; read it first and follow it. ` +
-      `Write your complete output to ${outputPath} and return the same text.`,
-      { agentType: INLINE ? 'general-purpose' : `${PREFIX}${AGENT_NAME[role]}`, model: MODELS[role], phase, label: `${role} ${TICKET}` })
+  try {
+    if (args.stubs) {
+      stubCount[role] = (stubCount[role] || 0) + 1
+      out = await agent(
+        `Stub file: ${args.stubs}/${role}-${stubCount[role]}.md\nOutput file: ${outputPath}\n` +
+        `If the stub file exists, write its content verbatim to the output file and return that content. ` +
+        `If it does not exist, write nothing and return an empty message.` +
+        (INLINE ? ' You are a test stub: do exactly this and nothing else; run no other command.' : ''),
+        { agentType: INLINE ? 'general-purpose' : `${PREFIX}stub`, model: 'haiku', effort: 'low', phase, label: `${role} (stub) ${TICKET}` })
+    } else {
+      out = await agent(
+        (INLINE ? `First read ${STATE}/runs/${runId}/system-prompt.txt: it is your role and your rules for this run; follow it exactly, including the preamble at its top. ` : '') +
+        `Your entire input is the file ${STATE}/runs/${runId}/input.md; read it first and follow it. ` +
+        `Write your complete output to ${outputPath} and return the same text.`,
+        { agentType: INLINE ? 'general-purpose' : `${PREFIX}${AGENT_NAME[role]}`, model: MODELS[role], phase, label: `${role} ${TICKET}` })
+    }
+  } catch (e) {
+    // A thrown call (e.g. an agent type that is not installed) gives no result: record the run as
+    // killed and park with the error, so no run is left in flight.
+    await clerk(`${BIN} run finish ${runId} --status-override KILLED`, phase, `run finish ${role} (agent call failed)`)
+    await park(`agent call failed: ${role}: ${e && e.message ? e.message : e}`, [runId], phase)
+    return null
   }
   const killed = out === null || (typeof out === 'string' && out.trim() === '')
   const fin = killed
@@ -167,25 +174,6 @@ if (state === 'ready-for-spec-writer' || state === 'ready-for-critic') {
     await park('max rounds', [c.runId], 'Spec')
     return { ticket: TICKET, state: 'parked', rounds: round, reason: 'max rounds' }
   }
-}
-
-// --- phase 3: Plan (only after the human gate moved the ticket to ready-for-planner)
-if (state === 'ready-for-planner') {
-  phase('Plan')
-  const p = await runRole('planner', 'Plan')
-  if (!p) return { ticket: TICKET, state: 'parked' }
-  if (p.status === 'PLANNED') {
-    // Spec store (build spec H, K): the plan is the change's tasks.md; a store without `factory init` reports skipped.
-    const tasks = await clerk(`${BIN} spec tasks ${TICKET} --run ${p.runId}`, 'Plan', 'spec tasks')
-    if (!tasks.ok) { await park(`harness-bug: spec tasks: ${tasks.stderr || ''}`, [p.runId], 'Plan'); return { ticket: TICKET, state: 'parked' } }
-    const added = await clerk(`${BIN} plan add ${TICKET} --from-run ${p.runId}`, 'Plan', 'plan add')
-    if (!added.ok) { await park(`harness-bug: plan add: ${added.stderr || ''}`, [p.runId], 'Plan'); return { ticket: TICKET, state: 'parked' } }
-    await transition('planned', null, 'Plan')
-    return { ticket: TICKET, state: 'planned' }
-  }
-  if (p.status === 'ESCALATE') { await park('ESCALATE from planner', [p.runId], 'Plan'); return { ticket: TICKET, state: 'parked' } }
-  await park(`harness-bug: unknown STATUS ${p.status} from planner`, [p.runId], 'Plan')
-  return { ticket: TICKET, state: 'parked' }
 }
 
 return { ticket: TICKET, state, note: 'nothing to dispatch from this state' }
