@@ -79,7 +79,7 @@ The prompts say what each role does. The harness enforces the wiring rules: fres
 | `tasks.md` | The sub-tickets and coverage map | Planner |
 | `verification.md` (the artifact the fork adds) | The NEW or REGRESSION label of each scenario and the writer's Responses; every critic round's output; at archive, every verifier result recorded per head for the parent and its sub-tickets | Spec writer (labels, Responses), critic, verifier |
 
-`decisions.md`, one per repo beside `openspec/`, is the decision log: one line per decision, with its ticket id. Roles return text and never write the tree; the harness writes it. The spec writer returns one document in parts (§2 FORMAT), and the store keeps every version. The human spec gate pins one version: it refuses a delta that does not apply to current truth, and writes the pinned version as the change folder, so the planner, implementer and verifier work from the delta the human approved. Labels and round-to-round churn stay in `verification.md`, out of the delta. **Archive** is the parent-close step. After the parent-close run returns VERIFIED, the harness applies each delta to current truth (ADDED appends the requirement, MODIFIED replaces the requirement of that name whole, REMOVED deletes it), moves the folder to `openspec/changes/archive/<YYYY-MM-DD>-<ticket id>/`, and appends each line of the proposal's Decisions to `decisions.md` with the date and ticket id; then the parent closes. An archive refusal writes nothing and parks the parent. There are three: a delta that no longer applies (an ADDED name already in current truth, a MODIFIED or REMOVED name missing); no change folder, because the spec was pinned before the repo had an `openspec/` tree; and no spec store at all (no `openspec/` tree). Only the archive step writes current truth and `decisions.md`. The spec writer and the critic receive every current-truth spec with their input (routing table).
+`decisions.md`, one per repo beside `openspec/`, is the decision log: one line per decision, with its ticket id. Roles return text and never write the tree; the harness writes it. The spec writer returns one document in parts (§2 FORMAT), and the store keeps every version. The human spec gate pins one version: it refuses a delta that does not apply to current truth, and writes the pinned version as the change folder, so the planner, implementer and verifier work from the delta the human approved. Labels and round-to-round churn stay in `verification.md`, out of the delta. **Archive** is the parent-close step. After the parent-close run returns VERIFIED, or a sub-ticket's VERIFIED run stands in for it (routing table, Merge gate row), the harness applies each delta to current truth (ADDED appends the requirement, MODIFIED replaces the requirement of that name whole, REMOVED deletes it), moves the folder to `openspec/changes/archive/<YYYY-MM-DD>-<ticket id>/`, and appends each line of the proposal's Decisions to `decisions.md` with the date and ticket id; then the parent closes. An archive refusal writes nothing and parks the parent. There are three: a delta that no longer applies (an ADDED name already in current truth, a MODIFIED or REMOVED name missing); no change folder, because the spec was pinned before the repo had an `openspec/` tree; and no spec store at all (no `openspec/` tree). Only the archive step writes current truth and `decisions.md`. The spec writer and the critic receive every current-truth spec with their input (routing table).
 
 **Routing table.** The dispatcher (piece 2) is this table and nothing else. Each row: a STATUS a role emits, what runs next, and what it receives. "Receives" adds to the INPUT the role prompt already declares. Both follow the role-context block (above).
 
@@ -123,7 +123,7 @@ Rules the table relies on:
 | Reviewer | ESCALATE | Human queue | Output |
 | Verifier | SPEC-DEFECT | Human queue | Verifier output |
 | Merge gate | Head does not contain current main | Implementer (same round, conflict run): merge main into the branch, or rebase where {force-push allowed} | Conflict output; the new head re-runs CI and both checkers |
-| Merge gate | CI green + APPROVE + VERIFIED on current head + head contains main + piece-8 approvals | Merge; then dispatch sub-tickets that depended on this one. When all sub-tickets have merged, one verifier run on main against the parent's full Acceptance list (every scenario of its pinned delta, with its `verification.md` label): VERIFIED archives the change (Spec store), then closes the parent; FAILED, SPEC-DEFECT or an archive refusal (Spec store: a delta that does not apply, no change folder, or no spec store) parks the parent in the human queue | Parent-close run: pinned parent spec; head = current main; base = the main SHA recorded before the parent's first sub-ticket merged; `{gate commands}` |
+| Merge gate | CI green + APPROVE + VERIFIED on current head + head contains main + piece-8 approvals | Merge; then dispatch sub-tickets that depended on this one. When all sub-tickets have merged, one verifier run on main against the parent's full Acceptance list (every scenario of its pinned delta, with its `verification.md` label). When the parent has one sub-ticket, `main` has not moved since that sub-ticket merged, the sub-ticket's text names every scenario of the parent's pinned delta, and its VERIFIED run checked the merged head against the parent's recorded base, that run stands for the parent-close run and no new run starts. VERIFIED archives the change (Spec store), then closes the parent; FAILED, SPEC-DEFECT or an archive refusal (Spec store: a delta that does not apply, no change folder, or no spec store) parks the parent in the human queue | Parent-close run: pinned parent spec; head = current main; base = the main SHA recorded before the parent's first sub-ticket merged; `{gate commands}` |
 | Weekly audit done, or on demand | — | Retro | Full outputs behind every outcome signal since the last retro (piece 10), current instruction files, every proposal still under evaluation with its metric, and per-role run and outcome counts, broken down by model, for the period and for each prior proposal's window, and the marker ledger: one row per `factory:` comment in the code on the integration branch, with file:line, limit and upgrade trigger, flagged `no-trigger` where it names none, composed by the harness when the retro runs |
 | Retro | PROPOSED | Guardrail-changes gate (human); on approval, the no-sub-ticket merge row | PR |
 | Retro | NO-CHANGES | Log only | — |
@@ -489,14 +489,20 @@ ROLE: Implementer. You complete exactly one sub-ticket and open a PR.
 
 PROCESS
 1. Read the sub-ticket, its parent, and AGENTS.md.
-2. Run the acceptance commands first. NEW criteria should fail as
-   described; REGRESSION criteria should pass. If any behaves otherwise,
-   stop and escalate: the spec doesn't match reality.
+2. Run the NEW acceptance commands first. They should fail as
+   described. If one behaves otherwise, stop and escalate: the spec
+   doesn't match reality. REGRESSION commands passed on main when the
+   spec was written, so they run once, after your change (step 5).
 3. Write or extend tests that capture the intended behavior. Watch them
    fail.
 4. Make the smallest change that makes them pass for the right reason.
    Follow the coding standard at {coding standard}.
-5. Run the full local gates: {gate commands}.
+5. Run every acceptance command, then the full local gates:
+   {gate commands}. A command that already ran a gate command exactly
+   as written on this commit is that gate's run; don't repeat it. A
+   REGRESSION command that fails here: run it on the base you branched
+   from. If it fails there too, the spec doesn't match reality; stop
+   and escalate.
 6. Open a PR using the format below. On a fix round: check out the
    existing branch, push fix commits to it, and replace the PR
    description, including Responses to findings. On a conflict run:
@@ -525,7 +531,7 @@ RULES
 PR DESCRIPTION
 Sub-ticket: <link>
 What changed: per lettered part
-Acceptance results: each command + actual output (before and after)
+Acceptance results: each command + actual output (NEW: before and after; REGRESSION: after, and base if it failed)
 Tests added/changed: list, and why each change was needed
 Known gaps and uncertainties:
 Out-of-scope observations:
@@ -604,13 +610,16 @@ PROCESS
    branch, or main for a parent-close run.
 2. Run every acceptance command from the sub-ticket exactly as written.
    Record the actual output.
-3. Run the same commands on the base you were given (the base branch,
-   or for a parent close the main SHA before the parent's first merge). NEW criteria should fail
-   there and pass on the PR; REGRESSION criteria pass on both. A NEW
-   criterion that passes on both, or fails on base for a different
-   reason than the spec states (e.g. its test doesn't exist yet), is a
-   SPEC-DEFECT, not a pass or a fail.
+3. Run the NEW commands on the base you were given (the base branch,
+   or for a parent close the main SHA before the parent's first merge).
+   NEW criteria should fail there and pass on the PR. A NEW criterion
+   that passes on both, or fails on base for a different reason than
+   the spec states (e.g. its test doesn't exist yet), is a SPEC-DEFECT,
+   not a pass or a fail. Run a REGRESSION command on base only when it
+   fails on the PR, and report both results.
 4. Run the full gate suite: {gate commands}. A gate failure is FAILED.
+   A step 2 command that ran a gate command exactly as written on the
+   PR is that gate's run; don't repeat it.
 5. Probe: try 2-3 inputs near the tested ones (boundaries, empty, large,
    malformed). You're checking whether it works, or only works for the
    tested cases.
@@ -628,7 +637,7 @@ RULES
 
 OUTPUT
 Commit: <head SHA you verified>
-Per criterion: NEW/REGRESSION | command | base | PR | PASS/FAIL
+Per criterion: NEW/REGRESSION | command | base | PR | PASS/FAIL (base: not run, for a REGRESSION that passed on the PR)
 Gate suite: PASS/FAIL, with failing output
 Probes: input → result → OK / CONCERN
 STATUS: VERIFIED | FAILED | SPEC-DEFECT (precedence: SPEC-DEFECT > FAILED)

@@ -217,11 +217,20 @@ if (state === 'planned') {
 // --- phase 3: Close (one verifier run on the integration branch against the parent spec)
 if (state === 'ready-for-parent-verify') {
   phase('Close')
-  const v = await runRole('verifier', TICKET, 'Close')
-  if (!v) return { ticket: TICKET, state: 'parked' }
-  if (v.status !== 'VERIFIED') { await park(TICKET, `${v.status} from parent-close verifier`, [v.runId], 'Close'); return { ticket: TICKET, state: 'parked' } }
+  // Asked again here: a resumed build may arrive already in ready-for-parent-verify. `reuse` names a
+  // single sub-ticket's VERIFIED run that stands for the parent-close run (doc routing table, Merge gate row).
+  const pc = await clerk(`${BIN} ticket parent-check ${TICKET}`, 'Close', 'parent-check')
+  let runId = pc.ok && pc.reuse ? pc.reuse : null
+  if (runId) {
+    log(`${TICKET}: sub-ticket verifier run ${runId} stands for the parent-close run; no new verifier run`)
+  } else {
+    const v = await runRole('verifier', TICKET, 'Close')
+    if (!v) return { ticket: TICKET, state: 'parked' }
+    if (v.status !== 'VERIFIED') { await park(TICKET, `${v.status} from parent-close verifier`, [v.runId], 'Close'); return { ticket: TICKET, state: 'parked' } }
+    runId = v.runId
+  }
   const arch = await clerk(`${BIN} archive ${TICKET}`, 'Close', 'archive')
-  if (!arch.ok) { await park(TICKET, `archive: ${arch.stderr || ''}`, [v.runId], 'Close'); return { ticket: TICKET, state: 'parked' } }
+  if (!arch.ok) { await park(TICKET, `archive: ${arch.stderr || ''}`, [runId], 'Close'); return { ticket: TICKET, state: 'parked' } }
   await transition(TICKET, 'closed', null, 'Close')
   return { ticket: TICKET, state: 'closed', archived_to: arch.archived_to }
 }

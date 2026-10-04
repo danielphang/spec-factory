@@ -221,6 +221,7 @@ def test_the_planned_ticket_is_built_checked_merged_and_archived(tmp_path):
     assert (f.repo / "thing.txt").read_text() == "the thing\n"  # main is checked out here, so the merge lands in the working tree
     assert f.git("show", "main:thing.txt").strip() == "the thing"
     assert f.ticket(tid)["parent_base"] == f.ticket(st)["merge"]["base_before"]
+    f.git("commit", "-q", "--allow-empty", "-m", "another change on main")
 
     # | When all sub-tickets have merged | one verifier run on main against the parent's full Acceptance list |
     assert f.parent_check(tid) == "ready-for-parent-verify"
@@ -483,6 +484,7 @@ def test_a_parent_does_not_close_by_a_plain_transition_before_its_parent_close_r
     f.dispatch("implementer", st)
     f.dispatch("reviewer", st)
     f.dispatch("verifier", st)
+    f.git("commit", "-q", "--allow-empty", "-m", "another change on main")
     assert f.parent_check(tid) == "ready-for-parent-verify"
     cp = f.cli("ticket", "transition", tid, "--to", "closed", "--by", "workflow")
     assert cp.returncode == 2 and f.state(tid) == "ready-for-parent-verify"
