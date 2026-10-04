@@ -86,13 +86,13 @@ edits it if needed, and approves it (pinning that version) or sends it back with
 downstream runs until this happens.
 The intake script stops at the spec gate; the build script plans the work.
 
-The build workflow first asks the harness whether the spec needs splitting (`factory plan
-whole-spec`). When it needs only one sub-ticket, the harness creates that sub-ticket from the whole
-spec, naming every scenario in it, and no planner runs. A spec needs only one when the spec writer
-did not mark it too large for one merge (`NEEDS-SPLIT`), no heading in it names seams (the places
-the writer says the work splits), and no planner has run on it before. Otherwise the planner runs,
-splitting the spec into sub-tickets with dependencies. The one-sub-ticket path is tested, and has
-not yet run on a real ticket.
+The build workflow first asks the harness whether the spec needs splitting, with
+`factory plan whole-spec`. When it needs only one sub-ticket, the harness creates that sub-ticket
+from the whole spec, naming every scenario in it, and no planner runs. A spec needs only one when
+the spec writer did not mark it too large for one merge (`NEEDS-SPLIT`), no heading in it names
+seams (the places the writer says the work splits), and no planner has run on it before. Otherwise
+the planner runs, splitting the spec into sub-tickets with dependencies. The one-sub-ticket path is
+tested, and has not yet run on a real ticket.
 When a sub-ticket's dependencies are merged, an implementer builds it on a branch in its own
 working copy. The reviewer and the verifier then judge the same commit, independently. The harness
 makes one decision from their verdicts: merge; send back for a revision (at most twice); send back
