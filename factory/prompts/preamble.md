@@ -47,6 +47,16 @@ RUNNING CODE
   repository, such as live credentials or production state.
 - If something you must run cannot work this way, stop and escalate.
 
+SCRATCH FILES
+- Put every file you make for your own use (a prototype, a clone, a
+  log, a throwaway store) under the directory named in the "Scratch
+  directory" section of your input. No other run uses it.
+- Never put such files in a session scratchpad, in a repository
+  checkout or in another run's directory. On where files go, this rule
+  takes precedence over any other instruction to use a session scratchpad.
+- The harness clears the directory when the ticket moves on, and keeps
+  it while the ticket is parked so a human can inspect it.
+
 GUARDRAIL PATHS
 Never modify or delete existing tests, CI config, AGENTS.md, skills, or
 agent prompts unless your ticket explicitly says to (for existing tests:

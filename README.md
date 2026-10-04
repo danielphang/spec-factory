@@ -295,9 +295,9 @@ reports harness problems to the session that owns this repo, which fixes them th
 **Parallel intake works today.** Start one intake per ticket from a runner. Tickets share only the
 store, and every store write goes through `bin/factory`, which allocates run ids atomically. On
 2026-10-04 the two stores had 41 and 11 overlapping runs of different tickets (triage, spec writers,
-critics, planners). One caveat until #35 lands: agents of parallel runs share the launching session's
-scratchpad and can overwrite each other's files, so don't run parallel intakes on tickets whose roles
-may prototype in the same part of the code.
+critics, planners). Each run has its own scratch directory in the store for its temporary files,
+cleared when its ticket moves on and kept while it is parked; this is tested but has not yet run on a
+real ticket.
 
 **Parallel builds across tickets have not been tried.** Each sub-ticket builds in its own worktree,
 merges into the integration branch one at a time under a lock, and gets a catch-up run if the branch
@@ -413,9 +413,9 @@ A). Instance A still runs its in-tree copy of the harness; its cutover to the sh
 planned, not done. Open work named above: `factory report`
 (#17); current-truth seeding and the README overview this page stands in for (#21); per-role
 effort (#22); prompt changes borrowed from the ponytail project (#20); the documentation standard
-this page was rewritten to (#23). The design document is `docs/design.md`, its changelog
-`docs/changelog.md`; the working documents from building the harness are under `dev/`; the issue
-index is `dev/issues.md`. The store holds 18 tickets at `.factory/state/`; the runtime is at
+this page was rewritten to (#23). Each run's own scratch directory came from #35. The design
+document is `docs/design.md`, its changelog `docs/changelog.md`; the working documents from
+building the harness are under `dev/`; the issue index is `dev/issues.md`. The store holds 18 tickets at `.factory/state/`; the runtime is at
 `~/dev/spec-factory-harness`, revision `010d1b0`, equal to this repo's `harness.lock`.
 
 ## Maintaining this page

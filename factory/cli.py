@@ -219,8 +219,9 @@ def run_start(a, root, cfg):
     if a.role in BUILD_ROLES:
         _start_build_run(root, cfg, t, meta, d, parent_close)
     store.write_yaml(d / "meta.yaml", meta)
+    store.ensure_gitignore(root)
+    (d / "scratch").mkdir(exist_ok=True)
     if baseline:
-        store.ensure_gitignore(root)
         store.write_yaml(d / "tripwire.yaml", baseline)
     prompt_name = a.role
     preamble = instance.fill_preamble((PROMPTS / "preamble.md").read_text(encoding="utf-8"), cfg)
