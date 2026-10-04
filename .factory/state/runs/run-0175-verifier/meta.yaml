@@ -1,0 +1,25 @@
+run_id: run-0175-verifier
+role: verifier
+ticket: T-0019.2
+model: opus
+round: 1
+spec_version: 2
+started: '2026-10-04T09:00:47+00:00'
+finished: '2026-10-04T09:09:28+00:00'
+wall_s: 521
+status: VERIFIED
+input_sources:
+- specs/T-0019.2/subticket.md
+- specs/T-0019/v2.md
+- runs/run-0174-implementer/output.md
+- runs/run-0175-verifier/diff.patch
+environment_files: []
+branch: factory/T-0019.2
+base: 9853737e24b2acdc001546b399d2a5a8c3dd6d85
+head: 381f4c63f8877458600f60f5c92ca06ef274b128
+worktree: /Users/dphang/dev/spec-factory/.factory/state/runs/run-0175-verifier/wt
+confidence: high. I ran every acceptance command verbatim on the head and every NEW command on base; both
+  gates passed exactly as written; and the probes show the parser change is general and fails loudly on
+  the forms it does not accept.
+escalations: []
+escalations_note: null

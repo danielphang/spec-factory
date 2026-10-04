@@ -1,0 +1,17 @@
+run_id: run-0168-triage
+role: triage
+ticket: T-0020
+model: opus
+round: 0
+spec_version: 0
+started: '2026-10-04T08:36:47+00:00'
+finished: '2026-10-04T08:38:21+00:00'
+wall_s: 94
+status: ACCEPT
+input_sources:
+- requests/T-0020.md
+confidence: 'high. The incident and its cause are confirmed in the Nanobot implementer''s run output.
+  The split from #36 is confirmed in its spec and commit. The hooks the change needs exist at the cited
+  lines.'
+escalations: []
+escalations_note: null
