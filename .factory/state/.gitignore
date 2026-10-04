@@ -7,3 +7,4 @@ worktrees/
 runs/*/wt/
 # tripwire baselines: digests of the operator's live files, never committed
 runs/*/tripwire.yaml
+runs/*/scratch/

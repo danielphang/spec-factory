@@ -1,21 +1,62 @@
 id: T-0023
-type: null
-title: 'Harness hygiene batch: ruling on BLOCKED, park reasons, run-record whitespace, redispatch rows,
-  marker ledger, init half instance, relative paths, clean-checkout tests'
+type: bug
+title: 'Harness hygiene batch: ruling on a BLOCKED park, park reasons with the error, run-record whitespace,
+  redispatch keeps valid rows, marker ledger, init half instance, relative env paths, clean-checkout tests,
+  re-plan after a parent-close FAILED'
 request: requests/T-0023.md
 source: /private/tmp/claude-501/-Users-dphang-dev-nanobot/c69bfd1d-97a6-43e3-9d5a-a517c28d382c/scratchpad/req_39.md
-status: ready-for-triage
+status: ready-for-planner
 round:
-  spec: 0
+  spec: 2
   pr: 0
 spec:
-  version: 0
-  approved_version: null
+  version: 2
+  approved_version: 2
 plan: null
 in_flight: []
 parked: null
 created: '2026-10-04T13:04:55+00:00'
-history: []
+history:
+- ts: '2026-10-04T13:16:01+00:00'
+  from: ready-for-triage
+  to: ready-for-spec-writer
+  by: workflow
+  round:
+    spec: 0
+    pr: 0
+- ts: '2026-10-04T13:48:14+00:00'
+  from: ready-for-spec-writer
+  to: ready-for-critic
+  by: workflow
+  round:
+    spec: 1
+    pr: 0
+- ts: '2026-10-04T13:56:22+00:00'
+  from: ready-for-critic
+  to: ready-for-spec-writer
+  by: workflow
+  round:
+    spec: 2
+    pr: 0
+- ts: '2026-10-04T14:10:51+00:00'
+  from: ready-for-spec-writer
+  to: ready-for-critic
+  by: workflow
+  round:
+    spec: 2
+    pr: 0
+- ts: '2026-10-04T14:17:46+00:00'
+  from: ready-for-critic
+  to: awaiting-spec-gate
+  by: workflow
+  round:
+    spec: 2
+    pr: 0
+- ts: '2026-10-04T14:18:10+00:00'
+  from: awaiting-spec-gate
+  to: ready-for-planner
+  by: dphang
+  approved_version: 2
 parent: null
 depends_on: []
 parallel_safe: true

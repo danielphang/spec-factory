@@ -1,0 +1,23 @@
+run_id: run-0199-critic
+role: critic
+ticket: T-0023
+model: fable
+round: 2
+spec_version: 2
+started: '2026-10-04T14:11:00+00:00'
+finished: '2026-10-04T14:17:33+00:00'
+wall_s: 393
+status: APPROVE
+input_sources:
+- specs/T-0023/v2.md
+- runs/run-0197-critic/output.md
+- specs/T-0023/v1.md
+confidence: high — every prior finding is fixed in the text, every new cited line matches, and six acceptance
+  commands, including the two the round-1 escalation turned on, reproduce the spec's "today" results from
+  inside the repository's work tree.
+escalations:
+- 'Round 1 asked a human whether a role may write under the system temp directory for the suite scenario.
+  The writer chose yes and wrote it into the command and a Decision; no human ruling is in my input. Approving
+  this spec at the gate is that ruling: the verifier will create and remove one `/tmp/t0023-suite.*` directory,
+  outside its scratch directory.'
+escalations_note: null
