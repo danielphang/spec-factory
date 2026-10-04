@@ -44,6 +44,7 @@ A fix closes its issue through a reviewed change on `main`; the merge column is 
 | [37](https://github.com/danielphang/spec-factory/issues/37) | Investigate: OS sandbox or a separate user for factory roles, so no role can write a target's live state (operator-requested investigation) | not in intake | — | — |
 | [38](https://github.com/danielphang/spec-factory/issues/38) | Tripwire on a target's live files during role runs; coding rule against import-time fixture escape (split from #36) | T-0020 (closed as applied; live 2026-10-04, runtime `948aa1f`) | `24d1996` | 49 |
 | [39](https://github.com/danielphang/spec-factory/issues/39) | Harness hygiene batch: ruling on BLOCKED, park reasons, run-record whitespace, redispatch rows, marker ledger, init half instance (#30), relative paths, clean-checkout tests | not in intake | — | — |
+| [40](https://github.com/danielphang/spec-factory/issues/40) | Planner and spec writer: per-sub-ticket labels, sibling tests a sub-ticket invalidates, tests a decision overturns (retro P1 + v3.5 Driver) | not in intake | — | — |
 
 Issues 1–10 are applied and can be closed against their merge; 11 applied (`9168ce1`); 13 and 14 fold into #21 (checklists until it archives); 15 closed as superseded. #12 was a duplicate of #11.
 New findings go straight to GitHub issues; this file is the index.
