@@ -4,14 +4,14 @@ title: 'Planner and spec writer: label checks per sub-ticket, and list the tests
   overturns, with a harness check on sibling tests'
 request: requests/T-0022.md
 source: /private/tmp/claude-501/-Users-dphang-dev-nanobot/c69bfd1d-97a6-43e3-9d5a-a517c28d382c/scratchpad/req_40.md
-status: ready-for-planner
+status: closed
 round:
   spec: 1
   pr: 0
 spec:
   version: 1
   approved_version: 1
-plan: null
+plan: plans/T-0022.md
 in_flight: []
 parked: null
 created: '2026-10-04T12:00:34+00:00'
@@ -56,6 +56,25 @@ history:
   to: ready-for-planner
   by: dphang
   approved_version: 1
+- ts: '2026-10-04T22:20:32+00:00'
+  from: ready-for-planner
+  to: planned
+  by: workflow
+  round:
+    spec: 1
+    pr: 0
+- ts: '2026-10-04T22:57:00+00:00'
+  from: planned
+  to: ready-for-parent-verify
+  by: parent-check
+- ts: '2026-10-04T22:57:25+00:00'
+  from: ready-for-parent-verify
+  to: closed
+  by: workflow
+  round:
+    spec: 1
+    pr: 0
+  verified_by: run-0280-verifier
 parent: null
 depends_on: []
 parallel_safe: true
@@ -64,4 +83,4 @@ head: null
 merge:
   base_before: null
   main_after: null
-parent_base: null
+parent_base: c2750bf9c18ca6e37e4cfec439a0a9ef42f318d6

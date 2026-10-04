@@ -67,3 +67,7 @@ No BLOCKING or SHOULD-FIX findings. The spec is grounded, every NEW scenario fai
 
 - `docs/prompts/02-spec-writer.md`, `03-spec-critic.md` and `06-code-reviewer.md` already differ from their `factory/prompts/` counterparts (`{400}` / `{2}` placeholders, and an extra acceptance-items bullet in `factory/prompts/spec_writer.md`). The spec's parts C and D add identical lines to each copy, which is correct; the pre-existing drift is not this ticket's.
 - Part A's prompt says a sub-ticket with an `(added by …)` line "must depend on that sibling", while the harness accepts any merged sibling (Decision 2 says why). The prompt rule is unenforced; that is consistent with the Out of scope list and needs no change here.
+
+## Verifier results
+
+771ee0ec14ec755265f969c709ee3a4099d5160d · T-0022.1 · VERIFIED · run-0280-verifier

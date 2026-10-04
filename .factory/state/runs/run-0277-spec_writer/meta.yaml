@@ -1,0 +1,34 @@
+run_id: run-0277-spec_writer
+role: spec_writer
+ticket: T-0030
+model: opus
+round: 0
+spec_version: 0
+started: '2026-10-04T22:19:19+00:00'
+finished: '2026-10-04T22:48:29+00:00'
+wall_s: 1750
+status: NEEDS-SPLIT
+input_sources:
+- runs/run-0273-triage/output.md
+- requests/T-0030.md
+- openspec/specs/build-dispatch/spec.md
+- openspec/specs/harness-docs/spec.md
+- openspec/specs/harness-suite/spec.md
+- openspec/specs/human-resolution/spec.md
+- openspec/specs/live-store-guard/spec.md
+- openspec/specs/merge-gate/spec.md
+- openspec/specs/store-setup/spec.md
+- openspec/specs/sub-ticket-planning/spec.md
+- decisions.md
+confidence: 'medium. Every NEW command was run on `c2750bf` and fails as stated. The prototype of the
+  fence hook passed the fence scenario. Still unverified: whether workflow `agent()` calls apply frontmatter
+  hooks, which Operator step 3 probes.'
+escalations:
+- Part A replaces the bodies of the four existing role definitions, `agents/factory-{triage,spec-writer,spec-critic,planner}.md`.
+  These are agent prompts, a guardrail path. The ticket asks for a definition for every role, not explicitly
+  for edits to the existing four. Once roles run registered, their stale prompt copies would reach the
+  live agents (Evidence). Decide at the gate whether that approval covers the edit.
+- The checker fence depends on Claude Code applying an agent definition's hooks to a Workflow-tool agent
+  call. The documentation does not say whether it does. The spec claims only what the hook does when it
+  runs. Operator step 3 checks it live.
+escalations_note: null

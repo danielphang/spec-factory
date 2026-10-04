@@ -1,0 +1,28 @@
+run_id: run-0276-spec_writer
+role: spec_writer
+ticket: T-0031
+model: opus
+round: 0
+spec_version: 0
+started: '2026-10-04T22:19:04+00:00'
+finished: '2026-10-04T22:43:33+00:00'
+wall_s: 1469
+status: READY-FOR-CRITIC
+input_sources:
+- runs/run-0274-triage/output.md
+- requests/T-0031.md
+- openspec/specs/build-dispatch/spec.md
+- openspec/specs/harness-docs/spec.md
+- openspec/specs/harness-suite/spec.md
+- openspec/specs/human-resolution/spec.md
+- openspec/specs/live-store-guard/spec.md
+- openspec/specs/merge-gate/spec.md
+- openspec/specs/store-setup/spec.md
+- openspec/specs/sub-ticket-planning/spec.md
+- decisions.md
+confidence: high. Every NEW command was run on `c2750bf` and fails as stated, under bash and zsh. A scratch
+  prototype of parts A to D makes every THEN print exactly, and the suite then passes 300 of 300 with
+  only the declared `WRAP` constant changed. The one call beyond the requester's text, removing the environment's
+  `bin/` from `PATH`, rests on this session's own `PATH` (Evidence) and is open to the critic.
+escalations: []
+escalations_note: null

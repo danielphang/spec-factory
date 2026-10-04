@@ -1,21 +1,49 @@
 id: T-0031
-type: null
-title: Build worktrees start with no synced environment and an inherited VIRTUAL_ENV; sync once at setup,
-  unset VIRTUAL_ENV in run_env
+type: chore
+title: Role commands drop an inherited VIRTUAL_ENV, and build checkouts start with a synced environment
 request: requests/T-0031.md
 source: /private/tmp/claude-501/-Users-dphang-dev-nanobot/c69bfd1d-97a6-43e3-9d5a-a517c28d382c/scratchpad/req_51.md
-status: ready-for-triage
+status: ready-for-critic
 round:
-  spec: 0
+  spec: 2
   pr: 0
 spec:
-  version: 0
+  version: 2
   approved_version: null
 plan: null
-in_flight: []
+in_flight:
+- run-0284-critic
 parked: null
 created: '2026-10-04T22:16:24+00:00'
-history: []
+history:
+- ts: '2026-10-04T22:18:57+00:00'
+  from: ready-for-triage
+  to: ready-for-spec-writer
+  by: workflow
+  round:
+    spec: 0
+    pr: 0
+- ts: '2026-10-04T22:43:51+00:00'
+  from: ready-for-spec-writer
+  to: ready-for-critic
+  by: workflow
+  round:
+    spec: 1
+    pr: 0
+- ts: '2026-10-04T22:49:41+00:00'
+  from: ready-for-critic
+  to: ready-for-spec-writer
+  by: workflow
+  round:
+    spec: 2
+    pr: 0
+- ts: '2026-10-04T22:56:23+00:00'
+  from: ready-for-spec-writer
+  to: ready-for-critic
+  by: workflow
+  round:
+    spec: 2
+    pr: 0
 parent: null
 depends_on: []
 parallel_safe: true
