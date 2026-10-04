@@ -7,53 +7,30 @@ T-0001 has passed the spec gate, as the spec's t0019-parent.sh fixture leaves it
 """
 from __future__ import annotations
 
-import json
-import os
 import subprocess
-from pathlib import Path
 
 import pytest
 
-REPO = Path(__file__).resolve().parents[2]
-BIN = REPO / "bin" / "factory"
+from .test_build_startup import approved_parent, ticket_files
+from .test_subtickets import js, run
 
 
 @pytest.fixture
 def store(tmp_path):
     root = tmp_path / "state"
-    env = {**os.environ, "FACTORY_STATE": str(root), "PYTHONDONTWRITEBYTECODE": "1"}
-
-    def cli(*argv: str) -> subprocess.CompletedProcess:
-        return subprocess.run([str(BIN), *argv], capture_output=True, text=True, env=env, cwd=REPO)
-
-    def ok(*argv: str) -> dict:
-        cp = cli(*argv)
-        assert cp.returncode == 0, cp.stderr
-        return json.loads(cp.stdout.strip().splitlines()[-1])
-
-    req, spec = tmp_path / "req.md", tmp_path / "spec.md"
-    req.write_text("# Fixture\n\nThe bot should do the thing.\n")
-    spec.write_text("## Problem\nx\n")
-    ok("ticket", "new", "--file", str(req))
-    ok("ticket", "transition", "T-0001", "--to", "ready-for-spec-writer", "--by", "t")
-    ok("spec", "add", "T-0001", "--file", str(spec))
-    ok("ticket", "transition", "T-0001", "--to", "ready-for-critic", "--by", "t", "--round", "spec:init")
-    ok("ticket", "transition", "T-0001", "--to", "awaiting-spec-gate", "--by", "t")
-    ok("approve-spec", "T-0001")
+    tid = approved_parent(root, tmp_path)
 
     def add(plan: str) -> subprocess.CompletedProcess:
         f = tmp_path / "plan.md"
         f.write_text(plan)
-        return cli("subticket", "add", "T-0001", "--file", str(f))
+        return run(root, "subticket", "add", tid, "--file", str(f))
 
     add.root = root
     return add
 
 
 def subtickets(cp: subprocess.CompletedProcess) -> list[tuple]:
-    assert cp.returncode == 0, cp.stderr
-    subs = json.loads(cp.stdout.strip().splitlines()[-1])["subtickets"]
-    return [(s["label"], s["state"], s["depends_on"], s["parallel_safe"]) for s in subs]
+    return [(s["label"], s["state"], s["depends_on"], s["parallel_safe"]) for s in js(cp)["subtickets"]]
 
 
 @pytest.mark.parametrize("bullet", ["- ", "* "])
@@ -91,4 +68,4 @@ def test_a_sub_ticket_with_no_depends_on_line_is_refused_by_name(store, missing)
     cp = store(blocks["ST-1"] + "\n" + blocks["ST-2"])
     assert cp.returncode == 2
     assert missing in cp.stderr and 'Depends on:' in cp.stderr
-    assert sorted(p.name for p in (store.root / "tickets").iterdir()) == ["T-0001.yaml"]
+    assert ticket_files(store.root) == ["T-0001.yaml"]
