@@ -14,9 +14,9 @@ design and the harness that runs it:
   `tests/factory/` (its suite). Install with `uv sync --frozen`; test with
   `uv run --frozen pytest -q -p no:cacheprovider tests/factory`;
 - `.factory/`, this repo's own instance of the factory: `instance.yaml`, this briefing,
-  `harness.lock`, closed records (`answers/`, `green-pilot/`) and the live store, `state/`.
-  The store is tracked on `main` and the operator commits it between steps, so `main` moves even
-  when no ticket merges.
+  `harness.lock`, closed records (`answers/`, `green-pilot/`) and the live store, `store/`.
+  The store is a checkout of its own branch, `factory-store`; the operator commits it there, so a
+  store commit never moves `main`.
 
 Two checkouts. Tickets are built and merged in the dev checkout, `~/dev/spec-factory` on `main`.
 The factory runs from the runtime checkout, `~/dev/spec-factory-harness`, a detached worktree of
