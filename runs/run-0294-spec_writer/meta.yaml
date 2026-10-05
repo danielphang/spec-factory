@@ -1,0 +1,28 @@
+run_id: run-0294-spec_writer
+role: spec_writer
+ticket: T-0032
+model: opus
+round: 0
+spec_version: 0
+started: '2026-10-04T23:37:49+00:00'
+finished: '2026-10-04T23:56:57+00:00'
+wall_s: 1148
+status: READY-FOR-CRITIC
+input_sources:
+- runs/run-0291-triage/output.md
+- requests/T-0032.md
+- openspec/specs/build-dispatch/spec.md
+- openspec/specs/harness-docs/spec.md
+- openspec/specs/harness-suite/spec.md
+- openspec/specs/human-resolution/spec.md
+- openspec/specs/live-store-guard/spec.md
+- openspec/specs/merge-gate/spec.md
+- openspec/specs/role-escalations/spec.md
+- openspec/specs/store-setup/spec.md
+- openspec/specs/sub-ticket-planning/spec.md
+- decisions.md
+confidence: high. All nine code and prompt scenarios fail on `a69aaf4` and pass on a working prototype,
+  and the full suite passed on that prototype (310). The four document scenarios fail today; the prototype
+  does not include those edits.
+escalations: []
+escalations_note: null

@@ -1,0 +1,35 @@
+run_id: run-0298-reviewer
+role: reviewer
+ticket: T-0028.1
+model: fable
+round: 1
+spec_version: 1
+started: '2026-10-05T00:04:26+00:00'
+finished: '2026-10-05T00:15:34+00:00'
+wall_s: 668
+status: ESCALATE
+input_sources:
+- specs/T-0028.1/subticket.md
+- specs/T-0028/v1.md
+- runs/run-0296-implementer/output.md
+- runs/run-0298-reviewer/diff.patch
+environment_files: []
+branch: factory/T-0028.1
+base: a69aaf48bd386e9c4d04acf3c1b4e9e0b2e79883
+head: a074e95923a5d59d40dd408fad22b302b37783df
+worktree: /Users/dphang/dev/spec-factory/.factory/store/runs/run-0298-reviewer/wt
+confidence: high, every acceptance command I re-ran prints its expected text on `a074e95`, the full suite
+  passes apart from four environment-caused `test_instance.py` failures that pass with the default temp
+  directory, and the only open point is a protected-path declaration, not a defect.
+escalations:
+- '`factory/store.py` (protected, class harness) is changed on this branch: `record_result` gains the
+  optional `extra` parameter (`factory/store.py:244-249`, 3 lines). The parent spec''s design part A.5
+  asks for exactly this change in words, but neither the parent''s Risk list nor the sub-ticket''s "Protected
+  paths" list names the file, so under check 6 the sub-ticket does not declare it. The implementer flagged
+  the same gap. The operator decides at the gate: accept the change as part of A.5 (the merge gate then
+  needs the human approval row for the declared harness paths anyway), or ask for `skipped:` to be written
+  another way. The code is otherwise ready to merge.'
+- 'Declared protected paths touched, class harness, for the merge gate''s record: `factory/compose.py`,
+  `factory/cli.py`, `factory/workflows/build.js`, `factory/instance.template.yaml` (comments only; value
+  unchanged). New files under `tests/factory/` as the Risk list says.'
+escalations_note: null

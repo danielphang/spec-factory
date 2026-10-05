@@ -1,0 +1,329 @@
+=== proposal.md
+## Problem
+
+A finished change can be parked for a human because its code reviewer stopped early, and the record wrongly says the reviewer ran out of budget. The operator is the one affected: each time, they have to re-run a review by hand on a commit that the other checker has already passed.
+
+Some background. The factory runs each role as an AI agent in a workflow script. A role here is one step of the pipeline: triage, spec writer, implementer, code reviewer, verifier and so on. The harness is the code that starts the runs and routes their results. A role's final message ends its run. The harness then reads the output file the role was told to write. The code reviewer judges a change's diff. The verifier, which runs at the same time on the same commit, runs the acceptance checks and the gate, meaning the test suite and the other checks a change must pass before it merges.
+
+Three times on 2026-10-04, a code reviewer started the full test suite in the background and then ended its turn, saying it would write the review when the suite finished. Ending the turn ended the run, so no review was ever written. The harness has one rule for a run that leaves no output: it records the run as `KILLED` and parks the ticket as a "budget kill", a run stopped for going over its time or token budget. Parking stops the ticket until a human acts. That label is false. The harness enforces no budget, and the agent call does not report why a run stopped. Each time, the verifier had already passed the same commit.
+
+The operator chose a three-part fix and made it standing policy:
+- every role is told to run its commands in the foreground and never to end its turn while one is still running;
+- the code reviewer reads the diff and leaves the suite and the gate to the verifier;
+- a run that leaves no output is recorded as `EMPTY-OUTPUT`, together with the agent's last message, and never as a budget kill. The same role runs once more on its own; a second empty output in a row parks the ticket as before.
+
+## Evidence
+
+**The incidents.** The table lists every reviewer run in this repo's store that left no output file. The last message is what the workflow's agent call returned, as kept in the workflow journals under `~/.claude/projects/-Users-dphang-dev-nanobot/c69bfd1d-97a6-43e3-9d5a-a517c28d382c/subagents/workflows/`.
+
+| Run | Sub-ticket | Wall time | Last message returned | Verifier on the same commit |
+|---|---|---|---|---|
+| run-0209-reviewer | T-0023.3 | 288 s | "Both suite runs are still in progress; I'll write the review once the monitor reports their final lines." (`wf_f15c105e-ca0/journal.jsonl:146`) | VERIFIED |
+| run-0288-reviewer | T-0029.1 | 122 s | "Nothing else is outstanding; waiting on the gate result before writing the review." (`wf_06e3790e-c18/journal.jsonl:50`) | run-0287, VERIFIED |
+| run-0290-reviewer | T-0029.1 (the hand re-dispatch of run-0288) | 119 s | "The suite run takes about six minutes. While it finishes, the only remaining input is its result; everything else for the review is in hand." (`wf_686fdf22-2f3/journal.jsonl`) | run-0287, VERIFIED |
+| run-0074-reviewer, run-0076-reviewer | T-0012.5, T-0012.4 (2026-10-03) | 116 s, 19 s | none kept: the workflow took its empty-return path (clerk label `run finish reviewer (killed)` in `wf_528ea336-e9a/journal.jsonl`) | not checked |
+
+Each run's `meta.yaml` says `status: KILLED`, and each has no `output.md`. The store log records `run.killed`, then `result.recorded … "status": "KILLED"` (for example `log/2026-10.jsonl:1059-1060` for run-0209). What the third row shows: run-0290 was a hand re-dispatch of run-0288 on the same inputs, and it ended the same way. A retry alone would not have saved that ticket. The two prompt changes address the cause.
+
+**Which code path labelled them.** The triage pointed at `factory/workflows/build.js:109`. That line marks a run killed only when the agent call returns nothing. The three 2026-10-04 runs returned text, so the workflow called a plain `run finish` (journal label `clerk: run finish reviewer`, with no "(killed)"). Then `factory/cli.py:329-330` turned the missing `output.md` into `KILLED`. `build.js:169` recorded a `KILLED` result row, and `factory/cli.py:634-636` parked the sub-ticket as `budget kill: reviewer`. The two 2026-10-03 runs went through `build.js:109-111` instead. Both paths produce the same label. `build.js:137` parks an implementer `KILLED` as `budget kill: implementer`. In `factory/workflows/intake.js:106-109`, a `KILLED` triage, spec writer or critic run falls through to `harness-bug: unknown STATUS KILLED`.
+
+**What the agent call can report.** Per the Workflow script reference (the `workflow-authoring` skill), `agent()` returns the agent's final text. It returns `null` when the user skips the agent or the agent dies on a terminal API error. It throws once the turn's token ceiling is spent. Nothing else says why a run stopped. A thrown call already parks the ticket as `agent call failed: <role>: <error>` (`build.js:95-102`). The harness enforces no time or token budget of its own: `grep -rn "time_budget\|budget_usd" factory/*.py` prints nothing. So every empty output that reaches `run finish` gets the `EMPTY-OUTPUT` label, as the operator's answer requires for this case.
+
+**Today's behaviour, reproduced.** The fixture in the first scenario of this change runs `build.js` on a scratch store, with real store commands. The reviewer returns run-0209's last message and writes no file, and the verifier writes VERIFIED. On this checkout it prints:
+```
+park T-0001.1: budget kill: reviewer
+reviewer: KILLED
+verifier: VERIFIED
+kept=0 "rows": {"ci": "PASS", "verifier": "VERIFIED", "reviewer": "KILLED"}
+```
+This is the incident: one reviewer run, a `KILLED` row beside the verifier's passing rows, a budget-kill park, and no last message kept (`kept=0`). An implementer whose agent call returns empty text parks as `budget kill: implementer` after one run (the third scenario prints `implementer: KILLED`).
+
+**The reviewer is told to run the gate.** `factory/compose.py:175-179` gives the implementer, the reviewer and the verifier the same "Where you work" paragraph: "Gate commands (run each from your worktree, exactly as written; each is already wrapped): …". The design's routing table gives `{gate commands}` to the verifier only (`docs/design.md:126`, Implementer READY-FOR-REVIEW row). The reviewer prompt says nothing about what to run. Of the 38 reviewer outputs in this store, 36 mention `pytest` or `tests/factory`. (`ls -d .factory/store/runs/*-reviewer` lists 43 runs, and 5 have no output.)
+
+**What the design says now.** `docs/design.md:99` lists "a budget kill (piece 3)" among the reasons a ticket parks. `docs/design.md:106` says "A budget-killed run re-dispatches the same role on the same inputs, same round … or the ticket closes". The routing table has no row for an empty output.
+
+**A prototype of this change works.** A prototype in this run's scratch directory (`scratch/proto`, branch `proto`: 9 files, 91 lines added and 13 removed, before the document edits) passes every NEW scenario below and fails none of the existing ones. The full harness suite passed on it: `310 passed in 153.04s`. These existing current-truth scenarios also still print what they say on it: "A redispatched sub-ticket runs only the checker whose row was set aside", "The build parks the blocked sub-ticket with the harness's reason, and a ruling sends it back", and "All three run prompts keep the undeclared-path rule and the reviewer keeps check 6".
+
+## Root cause
+
+- `factory/cli.py:329-330` (`run_finish`): a run with no output, or an empty one, and no `--status-override` is given status `KILLED`.
+- `factory/workflows/build.js:109-111` and `factory/workflows/intake.js:106-109` (`runRole`): an agent call that returns `null` or blank text is finished with `--status-override KILLED`.
+- `factory/cli.py:634-636` (`ticket_join`): any `KILLED` checker row parks the sub-ticket as `budget kill: <role>`. `build.js:137` does the same for an implementer.
+- The `runRole` function in both workflows has no retry. Neither workflow keeps the agent's last message anywhere.
+- `factory/prompts/preamble.md` (the shared rules every role reads first) says nothing about background commands or ending the turn.
+- `factory/compose.py:175-179` gives the reviewer the gate commands. `factory/prompts/reviewer.md` does not say that the verifier runs them.
+
+## Out of scope
+
+- The join's `budget kill: <role>` reason for a `KILLED` row, and `results record --killed`. They stay for a row a human records by hand. After this change the workflows no longer write one.
+- `run finish --status-override KILLED` stays unchanged. README tells the operator to use it to clear a run left in flight.
+- A thrown agent call keeps its `KILLED` record and its `agent call failed: <role>: <error>` park, with no re-dispatch.
+- Treating the agent's returned text as the output when the role wrote no output file.
+- A `resolve` verb for an `EMPTY-OUTPUT` park outside the checks: the implementer, triage, spec writer, critic, planner and parent-close verifier. Each is recovered by hand, as its `KILLED` park is today.
+- Enforcing a time or token budget.
+- The verifier prompt and the verifier's gate step stay unchanged. So do the implementer's gate commands.
+- `agents/` templates. There is no reviewer template, and the preamble is not copied into any template (`grep -c "RUNNING CODE" agents/*.md` prints 0 for each).
+- Observed, not changed:
+  - The suite's Python stand-in for the build loop (`tests/factory/test_shepherd.py`, which `tests/factory/test_killed_checker.py` uses) still models the old killed path. Those tests still pass, because the CLI behaviour they drive is unchanged.
+  - The comment in the current-truth fixture `t0022-build.mjs` (capability build-dispatch) says an empty role output "the workflow records as a killed run". After this change, that run is recorded as `EMPTY-OUTPUT`.
+
+## Open questions
+
+none
+
+## Decisions
+
+- An empty output is `EMPTY-OUTPUT`, never a budget kill. That covers a missing or empty output file, an agent call that returns blank text, and one that returns `null` (a user skip or a terminal API error). Rejected: keeping a budget-kill path for some of these. The harness enforces no budget, and the agent call reports no reason (Evidence).
+- Standing, from the operator's answer, already in `decisions.md` as the 2026-10-04 T-0032 line, for both parts: the empty-output route, and the reviewer leaving the suite and the gate to the verifier. Later changes follow both.
+- `EMPTY-OUTPUT` is decided in one place, `run finish`. The workflows no longer send `--status-override KILLED` for an empty return, so `run finish` reads the output file for every run. Rejected: a second override value in the scripts. It would label a run empty even when its output file was written.
+- The retry is counted inside one workflow run: one re-dispatch, then a park. Rejected: a counter in the store. It would add a ticket field for a case that a human already watches, because a workflow that stops is restarted by hand.
+- A thrown agent call is not re-dispatched. It carries its own error text, including the error thrown when the turn's token ceiling is spent, so it is the one stop the harness can name.
+- The last message is kept by a new command, `factory run last-message RUN --text=…`, called only after `run finish` has returned `EMPTY-OUTPUT`. The text is the last 4000 characters, as one shell single-quoted word. Rejected: passing it on every `run finish`, which would put each role's whole output through every clerk command.
+- A second empty output parks as `EMPTY-OUTPUT from <role>`, in the same form as the other role parks, and lists both runs. The last messages stay in the run directories, not in the reason.
+- A checker's second empty output parks before any result row is recorded for it. `resolve --redispatch` then re-runs only that checker, because the other checker's passing rows stand. Rejected: an `EMPTY-OUTPUT` result row and a join rule for it, a new row status for the same outcome.
+- The reviewer's input no longer lists the gate commands. It says that the verifier runs them, as the design's routing table already declares (`docs/design.md:126`).
+- The `budget kill` join reason is kept for hand-recorded `KILLED` rows. Rejected: renaming it, which would change three existing tests for a case no one reported.
+- `build.js:137` (the implementer's `budget kill` park) is removed. `run finish` can no longer return `KILLED` to the workflow, so the line would never run.
+
+## Risk
+
+The change touches every role run, in three ways. Every system prompt gains one preamble bullet. Every run that leaves no output takes a new route in both workflows. The reviewer's prompt and input change. A wrong retry could run a role twice when once was meant, or park a run that did produce output. The scenarios check both cases. Nothing changes in a running instance until its operator upgrades the runtime and accepts the new harness revision.
+
+Protected paths this change touches:
+- harness: `factory/cli.py`, `factory/compose.py`, `factory/workflows/build.js`, `factory/workflows/intake.js`, `factory/prompts/preamble.md`, `factory/prompts/reviewer.md`;
+- generated: `docs/prompts/00-preamble.md` and `docs/prompts/06-code-reviewer.md`, each re-copied from its `docs/design.md` block.
+
+New test file: `tests/factory/test_empty_output.py`. It is not a protected path.
+
+Overlap: T-0030 (approved, waiting for its planner) changes per-role agent definitions and role inputs, the reviewer's included. Both changes may edit `factory/prompts/reviewer.md`, the `docs/design.md` §6 block and `factory/compose.py`. The planner should order the two or note the overlap.
+
+## Operator steps
+
+- After merge, upgrade the runtime and accept the new harness revision in each instance. On the next build, check that the reviewer runs no full suite, and that any empty output appears as `EMPTY-OUTPUT` with a `last-message.md` in its run directory.
+
+=== design.md
+## Proposed change
+
+**A. Preamble: wait for your own commands.** Insert this bullet in the RUNNING CODE section, right after the bullet that ends "check command your briefing, ticket or spec gives you.". Make the same edit in all three copies: the `docs/design.md` §Shared preamble block (line 218), `docs/prompts/00-preamble.md` (line 44) and `factory/prompts/preamble.md` (line 44). All three stay byte-identical.
+```
+- Run every command in the foreground and wait for it to finish.
+  Never end your turn while a command you started is still running:
+  your final message ends your run, and an output you have not yet
+  written is lost.
+```
+
+**B. Code reviewer: judge the diff.**
+1. Insert this section between "beyond the PR description." and "CHECK, IN THIS ORDER", with one blank line before and after. Make the edit in the `docs/design.md` §6 block (line 611), `docs/prompts/06-code-reviewer.md` (line 4) and `factory/prompts/reviewer.md` (line 4). Change no existing line. The run copy keeps its one fill, "After round 2".
+```
+WHAT YOU RUN
+- Judge the diff by reading it. Do not run the test suite or the gate
+  commands: the verifier runs them on the same head.
+- You may run a narrow command to confirm a specific finding, such as
+  one test or a grep, and cite its output with that finding.
+```
+2. In `factory/compose.py` (`compose`, the "Where you work" paragraph, lines 175-179), the reviewer's paragraph keeps the worktree, branch, base and head sentence and the no-remote sentence. Its gate-commands sentence is replaced with `The verifier runs the gate commands on this head; you do not run them.` The implementer's and the verifier's paragraphs stay unchanged.
+
+**C. Harness: empty output.**
+1. `factory/cli.py` `run_finish`: a run with no `output.md`, or a blank one, and no `--status-override` gets status `EMPTY-OUTPUT` (today `KILLED`), with the error "empty output". It is logged as `run.finished`. An override is unchanged: `--status-override KILLED` still records `KILLED` and logs `run.killed`.
+2. New command `factory run last-message RUN --text=TEXT`. When the run's `meta.yaml` status is `EMPTY-OUTPUT`, it writes `runs/<RUN>/last-message.md` (TEXT plus one newline) and prints `{"ok": true, "run_id": …, "last_message": "runs/<RUN>/last-message.md"}`. Otherwise it refuses with exit 2 and writes nothing. It is not on the read-only list, so the live-store guard treats it as a write.
+3. Make the same change to `runRole` in `factory/workflows/build.js` and in `factory/workflows/intake.js`:
+   - Rename today's body to `runOnce`, with the same arguments and the same returns.
+   - In `runOnce`, delete the `killed` condition and always call `run finish <run>` with no override. Keep `run cleanup` for a reviewer or verifier.
+   - When `run finish` succeeds with status `EMPTY-OUTPUT` and the agent returned non-blank text, the clerk runs `run last-message <run> '--text=<text>'`. The text is the last 4000 characters of the trimmed returned text. It is shell single-quoted, with each `'` written as `'\''`. A failure of this call is ignored: it never parks and never changes the route.
+   - The new `runRole` calls `runOnce`. If the result is `EMPTY-OUTPUT`, it logs the fact and calls `runOnce` once more, on the same role and ticket. If that result is also `EMPTY-OUTPUT`, it parks the ticket with the reason `EMPTY-OUTPUT from <role>` and both run ids as outputs, and returns `null`. Every other result is returned as today.
+   - The thrown-call path (`catch`) stays as it is.
+   - In `build.js`, delete line 137, the `budget kill: implementer` park.
+4. New suite test file `tests/factory/test_empty_output.py`. It checks the CLI half on a throwaway store:
+   - `run finish` with no output gives `EMPTY-OUTPUT` in its JSON and in `meta.yaml`;
+   - `--status-override KILLED` still gives `KILLED`;
+   - `run last-message` writes the file for an `EMPTY-OUTPUT` run;
+   - `run last-message` refuses with exit 2, and writes nothing, for a run that finished with an output.
+
+   The workflow halves are checked by the node scenarios, as decided for T-0023: the suite does not need node.
+
+**D. Documents.**
+1. `docs/design.md`, §Routing table, "Rules the table relies on":
+   - In the bullet that starts "A non-empty ESCALATIONS line" (line 99), add "a second EMPTY-OUTPUT in a row" after "a budget kill (piece 3)" in the list of park reasons.
+   - Add a new bullet right after that one: `- A role run that ends without writing its output is EMPTY-OUTPUT, whatever stopped it. The agent call reports no reason, so an empty output is never recorded as a budget kill; the harness keeps the agent's last message with the run. The same role is re-dispatched once, on the same inputs and in the same round. A second EMPTY-OUTPUT in a row parks the ticket with both runs.`
+   - In the resolution bullet at line 106, change "A budget-killed run re-dispatches" to "A budget-killed run, or a ticket parked on a second EMPTY-OUTPUT, re-dispatches".
+   - Add two table rows after the `| Verifier | SPEC-DEFECT |` row (line 132): `| Any role | EMPTY-OUTPUT, the first in a row | The same role again, same round | The same inputs |` and `| Any role | EMPTY-OUTPUT, the second in a row | Human queue | Both runs' last messages |`.
+
+   The preamble (A) and reviewer (B.1) blocks change as given above.
+2. `dev/build-harness.spec.md`:
+   - In "Common step `runRole`" (line 275), replace the KILLED condition with: one `run finish RUN`; `EMPTY-OUTPUT` → `run last-message` with the returned text, then one re-dispatch; a second `EMPTY-OUTPUT` → park `EMPTY-OUTPUT from <role>`. Change "the KILLED seam" to "the EMPTY-OUTPUT seam".
+   - Rewrite I.5 (line 300) to say the same, and to say that no budget is enforced or reported, so no empty output is a budget kill.
+   - Rewrite item 49 (line 410) as the case where the reviewer is empty twice → `EMPTY-OUTPUT from reviewer`, followed by `--redispatch`.
+   - Add `factory run last-message RUN --text=T` beside `run finish` (line 205), and say that an empty or missing output is `EMPTY-OUTPUT` there.
+   - After this, no line may contain "KILLED condition" or "KILLED seam".
+3. `README.md`:
+   - Line 107: replace "or a run exceeding its budget" with "or a role that ended without output twice in a row (the first time, the harness runs it once more on the same inputs and keeps its last message)".
+   - Line 149, the diagram edge label: change "over budget" to "no output twice".
+   - Unstick row (line 437): extend the `--redispatch` gloss to "re-run the checks on the same commit after an outside fix, or after a checker ended without output twice".
+   - Add a Built bullet after "Sibling tests check" (line 477). It starts `- **Empty output.**` and says three things in plain words: a run that ends without its output file is re-run once and then parks; the reviewer leaves the suite to the verifier; every role is told to wait for its commands. It ends "It is tested, and has not yet fired on a real ticket."
+   - Bump the status date.
+4. `docs/changelog.md`: one new last entry, numbered without a gap, starting `After issue #41 (2026-10-04),`. It names `EMPTY-OUTPUT`, the foreground rule, the kept last message, "re-dispatched once", and the reviewer leaving the gate commands to the verifier.
+
+Size: the prototype's code and prompt edits are 104 changed lines. With D and the new test file, the total is about 200.
+
+## Tests to change
+
+none. The full suite passed on the prototype (`310 passed`). The existing tests that pin `KILLED` either use `--status-override KILLED` or record a `KILLED` row by hand, and both stay unchanged.
+
+=== specs/build-dispatch/spec.md
+## ADDED Requirements
+
+### Requirement: A role run that leaves no output is re-dispatched once, then parks as EMPTY-OUTPUT
+When a role run ends without an output file, or with a blank one, whatever the agent call returned, `run finish` MUST record it as `EMPTY-OUTPUT` and never as `KILLED`. The workflow MUST keep the agent's non-blank last message as that run's `last-message.md` and re-dispatch the same role once. A second `EMPTY-OUTPUT` in a row SHALL park the ticket as `EMPTY-OUTPUT from <role>`, with no result row for that run.
+
+#### Scenario: A reviewer that ends its turn waiting on its own commands is re-dispatched once, then parks as EMPTY-OUTPUT beside the verifier's passing rows
+Run every command in this change from the repository root of the checkout under test, after `uv sync --frozen`, with `git` and `node` on `PATH`. Each WHEN runs in a subshell. This scenario needs the GIVEN block of "A ruling on a BLOCKED park returns the sub-ticket to its implementer with the ruling" run once.
+- GIVEN the two fixture files written by the block below, run once at column 0 as shown (every later scenario of this change that names them reuses them)
+
+```sh
+cat > ${TMPDIR:-/tmp}/t0032-checks.sh <<'EOF'
+# Sourced from the repo root after t0023-parent.sh: T-0001 is planned as one sub-ticket, T-0001.1,
+# whose branch factory/T-0001.1 holds one commit; T-0001.1 is at checks-in-flight on that head $H,
+# with no result rows, so the build runs both checkers on it.
+printf 'ST-1 / Do it\nDepends on: none\nParallel-safe: yes\n' > $T23/plan.md
+bin/factory subticket add T-0001 --file $T23/plan.md >/dev/null
+bin/factory ticket transition T-0001 --to planned --by t >/dev/null
+git -C $T23/t checkout -qb factory/T-0001.1 && echo x > $T23/t/x.txt && git -C $T23/t add x.txt
+git -C $T23/t -c user.email=f@x -c user.name=f commit -qm work && git -C $T23/t checkout -q main
+H=$(git -C $T23/t rev-parse factory/T-0001.1)
+bin/factory ticket set T-0001.1 status=checks-in-flight branch=factory/T-0001.1 head=$H >/dev/null
+EOF
+cat > ${TMPDIR:-/tmp}/t0032-build.mjs <<'EOF'
+// node t0032-build.mjs '<plays JSON>', from the checkout under test after sourcing t0023-parent.sh
+// and t0032-checks.sh: runs factory/workflows/build.js on parent T-0001 of the store $FACTORY_STATE.
+// Each clerk command runs for real (sh -c, from this checkout, environment unchanged). Each role
+// run plays the next entry of its role's list in <plays> (the last one repeats):
+//   {"say": "<text>"}     returns <text> (or null) as its final message and writes no output file;
+//   {"write": "<STATUS>"} writes an output with the run's head as its Commit: line (and, for the
+//                         verifier, "Gate suite: PASS") and that STATUS, and returns the same text.
+// Prints each park, as `park <id>: <reason>`.
+import { readFileSync, writeFileSync } from 'node:fs'
+import { spawnSync } from 'node:child_process'
+const plays = JSON.parse(process.argv[2]), n = {}
+const src = readFileSync('factory/workflows/build.js', 'utf8').replace(/^export const meta/m, 'const meta')
+const agent = async (prompt) => {
+  const m = prompt.match(/and nothing else:\n\n([\s\S]*?)\n\nReport/)
+  if (m) {
+    const cp = spawnSync('sh', ['-c', m[1]], { cwd: process.cwd(), encoding: 'utf8' })
+    return { stdout: cp.stdout, exit: cp.status, stderr: cp.stderr }
+  }
+  const r = prompt.match(/(\S+\/runs\/run-\d+-([a-z_]+))\/input\.md/)
+  const list = plays[r[2]] || [{ say: '' }]
+  n[r[2]] = (n[r[2]] || 0) + 1
+  const p = list[Math.min(n[r[2]], list.length) - 1]
+  if ('say' in p) return p.say
+  const head = (readFileSync(`${r[1]}/meta.yaml`, 'utf8').match(/^head: '?([0-9a-f]{40})/m) || [])[1]
+  const text = `Commit: ${head}\n` + (r[2] === 'verifier' ? 'Gate suite: PASS\n' : '') + `STATUS: ${p.write}\nCONFIDENCE: high, stub\nESCALATIONS: none\n`
+  writeFileSync(`${r[1]}/output.md`, text)
+  return text
+}
+const log = (s) => { const q = String(s).match(/^(\S+) parked: (.*)$/s); if (q) console.log(`park ${q[1]}: ${q[2]}`) }
+const fn = new (async () => {}).constructor('args', 'agent', 'log', 'phase', 'parallel', src)
+await fn({ ticket: 'T-0001', repo: process.cwd(), state: process.env.FACTORY_STATE, target: process.env.FACTORY_REPO,
+  integration: 'main', inlineRoles: true }, agent, log, () => {}, async (fs) => Promise.all(fs.map(f => f())))
+EOF
+```
+
+- WHEN `(M="Both suite runs are still in progress; I'll write the review once the monitor reports their final lines."; . ${TMPDIR:-/tmp}/t0023-parent.sh && . ${TMPDIR:-/tmp}/t0032-checks.sh && node ${TMPDIR:-/tmp}/t0032-build.mjs "{\"reviewer\": [{\"say\": \"$M\"}], \"verifier\": [{\"write\": \"VERIFIED\"}]}"; for r in reviewer verifier; do echo "$r: $(for d in $(ls -d $FACTORY_STATE/runs/*-$r); do sed -n 's/^status: //p' $d/meta.yaml; done | tr '\n' ' ')"; done; echo "kept=$(find $FACTORY_STATE/runs -path '*-reviewer/last-message.md' -exec grep -lxF "$M" {} + | grep -c .) $(bin/factory results show T-0001.1 | tail -1 | grep -o '"rows": {[^}]*}')")`
+- THEN it prints exactly `park T-0001.1: EMPTY-OUTPUT from reviewer`, then `reviewer: EMPTY-OUTPUT EMPTY-OUTPUT ` (two reviewer runs, both empty), then `verifier: VERIFIED `, then `kept=2 "rows": {"ci": "PASS", "verifier": "VERIFIED"}` (both last messages kept verbatim, apostrophe included; no reviewer row, so a `--redispatch` re-runs only the reviewer)
+
+#### Scenario: One empty reviewer run followed by a real one routes on the real one
+Needs the GIVEN blocks of "A ruling on a BLOCKED park returns the sub-ticket to its implementer with the ruling" and "A reviewer that ends its turn waiting on its own commands is re-dispatched once, then parks as EMPTY-OUTPUT beside the verifier's passing rows" run once. The first reviewer call returns `null`; the verifier's SPEC-DEFECT gives the join a fixed stop.
+- WHEN `(. ${TMPDIR:-/tmp}/t0023-parent.sh && . ${TMPDIR:-/tmp}/t0032-checks.sh && node ${TMPDIR:-/tmp}/t0032-build.mjs '{"reviewer": [{"say": null}, {"write": "APPROVE"}], "verifier": [{"write": "SPEC-DEFECT"}]}'; echo "reviewer: $(for d in $(ls -d $FACTORY_STATE/runs/*-reviewer); do sed -n 's/^status: //p' $d/meta.yaml; done | tr '\n' ' ')")`
+- THEN it prints exactly `park T-0001.1: SPEC-DEFECT from verifier`, then `reviewer: EMPTY-OUTPUT APPROVE `
+
+#### Scenario: An implementer that returns nothing twice parks as EMPTY-OUTPUT
+Needs the GIVEN block of "A test file a merged sibling added may be listed, and a mention outside Tests to change is ignored" run once. In that fixture every role run returns an empty string.
+- WHEN `(E=tests/test_interim.py; . ${TMPDIR:-/tmp}/t0022-sib.sh && node ${TMPDIR:-/tmp}/t0022-build.mjs; echo "implementer: $(for d in $(ls -d $FACTORY_STATE/runs/*-implementer); do sed -n 's/^status: //p' $d/meta.yaml; done | tr '\n' ' ')")`
+- THEN it prints exactly `park T-0001.2: EMPTY-OUTPUT from implementer`, then `implementer: EMPTY-OUTPUT EMPTY-OUTPUT `
+
+#### Scenario: An intake role's second empty output in a row parks as EMPTY-OUTPUT
+Needs the GIVEN block of "A ruling on a BLOCKED park returns the sub-ticket to its implementer with the ruling" run once. The stub store answers every `run finish` with `EMPTY-OUTPUT`.
+- WHEN `(node ${TMPDIR:-/tmp}/t0023-wf.mjs factory/workflows/intake.js '{"ticket show": {"out": {"ok": true, "state": "ready-for-triage", "round": {"spec": 0}}}, "run finish": {"out": {"ok": true, "run_id": "run-0009-x", "status": "EMPTY-OUTPUT", "escalations": []}}}')`
+- THEN it prints exactly `start: triage`, then `start: triage`, then `park: EMPTY-OUTPUT from triage`
+
+### Requirement: A role run that writes its output runs once and routes on its STATUS
+A role run whose output file holds a STATUS MUST NOT be re-dispatched, and the build SHALL route on that STATUS as before.
+
+#### Scenario: A reviewer that writes its output runs once
+Needs the GIVEN blocks of "A ruling on a BLOCKED park returns the sub-ticket to its implementer with the ruling" and "A reviewer that ends its turn waiting on its own commands is re-dispatched once, then parks as EMPTY-OUTPUT beside the verifier's passing rows" run once.
+- WHEN `(. ${TMPDIR:-/tmp}/t0023-parent.sh && . ${TMPDIR:-/tmp}/t0032-checks.sh && node ${TMPDIR:-/tmp}/t0032-build.mjs '{"reviewer": [{"write": "APPROVE"}], "verifier": [{"write": "SPEC-DEFECT"}]}'; echo "reviewer: $(for d in $(ls -d $FACTORY_STATE/runs/*-reviewer); do sed -n 's/^status: //p' $d/meta.yaml; done | tr '\n' ' ')")`
+- THEN it prints exactly `park T-0001.1: SPEC-DEFECT from verifier`, then `reviewer: APPROVE `
+
+=== specs/harness-docs/spec.md
+## ADDED Requirements
+
+### Requirement: Every role is told to wait for its own commands
+Every copy of the shared preamble SHALL carry the bullet that starts `- Run every command in the foreground and wait for it to finish.` and says `Never end your turn while a command you started is still running`. The design block and both files MUST stay byte-identical, and every role run's system prompt SHALL carry the bullet.
+
+#### Scenario: Every preamble copy carries the wait rule and the copies stay identical
+- WHEN `(F=$(printf '\140\140\140'); X=${TMPDIR:-/tmp}/t0032-pre.txt; sed -n '/^## Shared preamble/,/^## [0-9]/p' docs/design.md | sed -n "/^${F}text\$/,/^${F}\$/p" | sed '1d;$d' > $X; for f in $X docs/prompts/00-preamble.md factory/prompts/preamble.md; do echo "fg=$(grep -c '^- Run every command in the foreground and wait for it to finish\.$' $f) end=$(tr '\n' ' ' < $f | tr -s ' ' | grep -c 'Never end your turn while a command you started is still running')"; done; cmp -s $X docs/prompts/00-preamble.md && cmp -s docs/prompts/00-preamble.md factory/prompts/preamble.md && echo verbatim || echo differs)`
+- THEN it prints three lines, each exactly `fg=1 end=1`, then `verbatim`
+
+#### Scenario: Implementer, reviewer and verifier run prompts carry the wait rule, and only the reviewer's carries the judge-the-diff rule
+Needs the GIVEN block of "Implementer and verifier run prompts carry the declared-path rule" run once.
+- WHEN `(. ${TMPDIR:-/tmp}/t0029-prompt.sh && for r in implementer reviewer verifier; do P=$(prompt $r); echo "$r fg=$(echo "$P" | grep -c 'Never end your turn while a command you started is still running') judge=$(echo "$P" | grep -c 'Do not run the test suite or the gate commands')"; done)`
+- THEN it prints exactly `implementer fg=1 judge=0`, `reviewer fg=1 judge=1`, `verifier fg=1 judge=0`, one per line
+
+### Requirement: The code reviewer judges the diff and leaves the suite and the gate to the verifier
+Every copy of the code reviewer prompt SHALL say `Do not run the test suite or the gate commands: the verifier runs them on the same head`, and SHALL allow a narrow command that confirms a specific finding. No existing line of that prompt MAY be removed, and the verifier prompt MUST NOT change. The reviewer's composed input MUST NOT list the gate commands, while the implementer's and the verifier's inputs still SHALL.
+
+#### Scenario: Every reviewer copy carries the rule, keeps every existing line, and the verifier prompt is unchanged
+- WHEN `(F=$(printf '\140\140\140'); X=${TMPDIR:-/tmp}/t0032-rev.txt; T=$(mktemp -d); sed -n '/^## 6\. Code reviewer/,/^## 7\. /p' docs/design.md | sed -n "/^${F}text\$/,/^${F}\$/p" | sed '1d;$d' > $X; for f in $X docs/prompts/06-code-reviewer.md factory/prompts/reviewer.md; do J=$(tr '\n' ' ' < $f | tr -s ' '); echo "judge=$(echo "$J" | grep -c 'Do not run the test suite or the gate commands: the verifier runs them on the same head') narrow=$(echo "$J" | grep -c 'You may run a narrow command to confirm a specific finding')"; done; git show main:factory/prompts/reviewer.md > $T/a; git show main:docs/prompts/06-code-reviewer.md > $T/b; echo "copy=$(cmp -s $X docs/prompts/06-code-reviewer.md && echo SAME || echo DIFF) fill=$([ "$(diff factory/prompts/reviewer.md docs/prompts/06-code-reviewer.md | grep '^[<>]')" = "$(diff $T/a $T/b | grep '^[<>]')" ] && echo unchanged || echo changed) removed=$(git diff main...HEAD -- docs/prompts/06-code-reviewer.md factory/prompts/reviewer.md | grep -v '^---' | grep -c '^-') verifier_changed=$(git diff --name-only main...HEAD -- docs/prompts/07-verifier.md factory/prompts/verifier.md | grep -c .)")`
+- THEN it prints three lines, each exactly `judge=1 narrow=1`, then `copy=SAME fill=unchanged removed=0 verifier_changed=0`
+
+#### Scenario: The reviewer's input no longer hands it the gate commands, and the implementer's and verifier's still do
+Needs the GIVEN blocks of "A ruling on a BLOCKED park returns the sub-ticket to its implementer with the ruling" and "A reviewer that ends its turn waiting on its own commands is re-dispatched once, then parks as EMPTY-OUTPUT beside the verifier's passing rows" run once.
+- WHEN `(. ${TMPDIR:-/tmp}/t0023-parent.sh && . ${TMPDIR:-/tmp}/t0032-checks.sh && for r in reviewer verifier implementer; do [ $r = implementer ] && bin/factory ticket set T-0001.1 status=ready-for-implementer 'in_flight=[]' >/dev/null; R=$(bin/factory run start --role $r --ticket T-0001.1 2>/dev/null | tail -1 | sed -n 's/.*"run_id": "\([^"]*\)".*/\1/p'); bin/factory run compose ${R:-none} >/dev/null 2>&1; I=$FACTORY_STATE/runs/${R:-none}/input.md; echo "$r gates=$(grep -c 'Gate commands (run each from your worktree' $I 2>/dev/null) told=$(grep -c 'The verifier runs the gate commands on this head; you do not run them' $I 2>/dev/null)"; done)`
+- THEN it prints exactly `reviewer gates=0 told=1`, `verifier gates=1 told=0`, `implementer gates=1 told=0`, one per line
+
+### Requirement: The documents record the empty-output route
+`docs/design.md` SHALL state the EMPTY-OUTPUT rule and its two routing-table rows, and SHALL list a second EMPTY-OUTPUT among the park reasons. `dev/build-harness.spec.md` SHALL describe EMPTY-OUTPUT and `run last-message`, and SHALL no longer describe a KILLED condition or seam. `README.md` SHALL no longer say that a run is parked for exceeding a budget, and SHALL describe the empty-output retry. `docs/changelog.md` SHALL gain an entry for issue #41, numbered without a gap. The change MUST add no whitespace errors.
+
+#### Scenario: The design doc states the EMPTY-OUTPUT rule, its rows and its park
+- WHEN `(echo "rule=$(grep -c '^- A role run that ends without writing its output is EMPTY-OUTPUT' docs/design.md) rows=$(grep -c '^| Any role | EMPTY-OUTPUT' docs/design.md) parks=$(grep '^- A non-empty ESCALATIONS line' docs/design.md | grep -c 'a second EMPTY-OUTPUT in a row') kill=$(grep -c 'never recorded as a budget kill' docs/design.md)")`
+- THEN it prints exactly `rule=1 rows=2 parks=1 kill=1`
+
+#### Scenario: The build spec describes EMPTY-OUTPUT and no longer a KILLED condition
+- WHEN `(echo "stale=$(grep -c 'KILLED condition\|KILLED seam' dev/build-harness.spec.md) empty=$(grep -c 'EMPTY-OUTPUT' dev/build-harness.spec.md | awk '{print ($1 > 0)}') note=$(grep -c 'run last-message' dev/build-harness.spec.md | awk '{print ($1 > 0)}')")`
+- THEN it prints exactly `stale=0 empty=1 note=1`
+
+#### Scenario: README drops the budget park and describes the empty-output retry
+- WHEN `(echo "budget=$(grep -c 'exceeding its budget\|over budget' README.md) built=$(grep -c '^- \*\*Empty output\.\*\*' README.md) unstick=$(grep '^| \*\*Unstick\*\*' README.md | grep -c 'ended without output twice')")`
+- THEN it prints exactly `budget=0 built=1 unstick=1`
+
+#### Scenario: The changelog records issue 41 without a numbering gap
+- WHEN `(awk '/^[0-9]+\. /{n++; if (index($0, n ". ") != 1) bad=1} END{print (bad ? "GAPPED" : "CONTIGUOUS")}' docs/changelog.md; grep '^[0-9]*\. After issue #41 ' docs/changelog.md | grep -oF -e EMPTY-OUTPUT -e foreground -e 'last message' -e 're-dispatched once' -e 'gate commands' | sort -u | grep -c .)`
+- THEN it prints `CONTIGUOUS`, then `5`
+
+#### Scenario: The empty-output change adds no whitespace errors
+- WHEN `(git diff --check main...HEAD; echo "exit=$?")`
+- THEN it prints only `exit=0`
+
+=== verification.md
+## Acceptance
+
+Every scenario below was run on this checkout (`a69aaf4`) and on the scratch prototype, with a throwaway HOME and `TMPDIR` set to this run's scratch directory. The "fails today" text is the actual output on `a69aaf4`.
+
+- A reviewer that ends its turn waiting on its own commands is re-dispatched once, then parks as EMPTY-OUTPUT beside the verifier's passing rows → NEW. It fails today with `park T-0001.1: budget kill: reviewer`, `reviewer: KILLED `, `verifier: VERIFIED `, `kept=0 "rows": {"ci": "PASS", "verifier": "VERIFIED", "reviewer": "KILLED"}`: one reviewer run, labelled a budget kill, with no last message kept. This is the incident.
+- One empty reviewer run followed by a real one routes on the real one → NEW. It fails today with `park T-0001.1: budget kill: reviewer`, `reviewer: KILLED `: the `null` return is never retried.
+- An implementer that returns nothing twice parks as EMPTY-OUTPUT → NEW. It fails today with `park T-0001.2: budget kill: implementer`, `implementer: KILLED `.
+- An intake role's second empty output in a row parks as EMPTY-OUTPUT → NEW. It fails today with `start: triage`, `park: harness-bug: unknown STATUS EMPTY-OUTPUT from triage`: no retry, and the status is unknown to the intake script.
+- A reviewer that writes its output runs once → REGRESSION. It prints `park T-0001.1: SPEC-DEFECT from verifier`, `reviewer: APPROVE ` both today and on the prototype.
+- Every preamble copy carries the wait rule and the copies stay identical → NEW. It fails today with three lines `fg=0 end=0`, then `verbatim`.
+- Implementer, reviewer and verifier run prompts carry the wait rule, and only the reviewer's carries the judge-the-diff rule → NEW. It fails today with `implementer fg=0 judge=0`, `reviewer fg=0 judge=0`, `verifier fg=0 judge=0`.
+- Every reviewer copy carries the rule, keeps every existing line, and the verifier prompt is unchanged → NEW. It fails today with three lines `judge=0 narrow=0`; its last line already prints `copy=SAME fill=unchanged removed=0 verifier_changed=0`.
+- The reviewer's input no longer hands it the gate commands, and the implementer's and verifier's still do → NEW. It fails today with `reviewer gates=1 told=0`; the verifier and implementer lines already print as expected.
+- The design doc states the EMPTY-OUTPUT rule, its rows and its park → NEW. It fails today with `rule=0 rows=0 parks=0 kill=0`.
+- The build spec describes EMPTY-OUTPUT and no longer a KILLED condition → NEW. It fails today with `stale=3 empty=0 note=0`.
+- README drops the budget park and describes the empty-output retry → NEW. It fails today with `budget=2 built=0 unstick=0`.
+- The changelog records issue 41 without a numbering gap → NEW. It fails today with `CONTIGUOUS`, then `0`.
+- The empty-output change adds no whitespace errors → REGRESSION.
+
+STATUS: READY-FOR-CRITIC
+CONFIDENCE: high. All nine code and prompt scenarios fail on `a69aaf4` and pass on a working prototype, and the full suite passed on that prototype (310). The four document scenarios fail today; the prototype does not include those edits.
+ESCALATIONS: none

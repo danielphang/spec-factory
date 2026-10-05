@@ -4,12 +4,12 @@ title: A role that ends its turn while its own background commands are still run
   and the harness records it as a budget kill and parks the ticket
 request: requests/T-0032.md
 source: /private/tmp/claude-501/-Users-dphang-dev-nanobot/c69bfd1d-97a6-43e3-9d5a-a517c28d382c/scratchpad/req_41.md
-status: ready-for-spec-writer
+status: awaiting-spec-gate
 round:
-  spec: 0
+  spec: 1
   pr: 0
 spec:
-  version: 0
+  version: 1
   approved_version: null
 plan: null
 in_flight: []
@@ -36,6 +36,20 @@ history:
   by: workflow
   round:
     spec: 0
+    pr: 0
+- ts: '2026-10-04T23:57:14+00:00'
+  from: ready-for-spec-writer
+  to: ready-for-critic
+  by: workflow
+  round:
+    spec: 1
+    pr: 0
+- ts: '2026-10-05T00:06:24+00:00'
+  from: ready-for-critic
+  to: awaiting-spec-gate
+  by: workflow
+  round:
+    spec: 1
     pr: 0
 parent: null
 depends_on: []

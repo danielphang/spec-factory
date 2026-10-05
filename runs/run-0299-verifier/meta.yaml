@@ -1,0 +1,38 @@
+run_id: run-0299-verifier
+role: verifier
+ticket: T-0028.1
+model: opus
+round: 1
+spec_version: 1
+started: '2026-10-05T00:04:26+00:00'
+finished: '2026-10-05T00:12:56+00:00'
+wall_s: 510
+status: VERIFIED
+input_sources:
+- specs/T-0028.1/subticket.md
+- specs/T-0028/v1.md
+- runs/run-0296-implementer/output.md
+- runs/run-0299-verifier/diff.patch
+environment_files: []
+branch: factory/T-0028.1
+base: a69aaf48bd386e9c4d04acf3c1b4e9e0b2e79883
+head: a074e95923a5d59d40dd408fad22b302b37783df
+worktree: /Users/dphang/dev/spec-factory/.factory/store/runs/run-0299-verifier/wt
+confidence: high. All 14 scenario commands and both intermediate checks ran verbatim. Each NEW scenario
+  failed on base, as recorded, and passed on the PR. Both gates passed (354 tests).
+escalations:
+- 'Duplicate scoped gate commands. When two `gate_commands` entries share one command text with different
+  `paths`, a diff that skips one entry also drops the other from the run list, even when the diff touches
+  the other''s paths. Reproduced: entries `src/` and `docs/` of `echo X`, docs-only diff, and the verifier
+  input lists no command to run. The standing decision requires every refusal to keep firing, so the operator
+  should decide whether this needs per-entry matching before any instance scopes a command. Today no instance
+  uses `paths`, so nothing is affected yet.'
+- '`factory/store.py` is a protected path (class harness) and is changed: `record_result` gains `extra`.
+  The spec''s Risk list does not name it, but design part A.5 requires the change, so the Risk list is
+  incomplete. The implementer raised the same point. It needs the operator''s approval at the PR gate.'
+- Crash window between `plan whole-spec` and `transition planned` in `factory/workflows/build.js`. If
+  a build run stops after the whole-spec step creates `<parent>.1` but before the parent moves to `planned`,
+  a re-run finds the parent still at `ready-for-planner`. `plan whole-spec` then reports `needed` (it
+  already has sub-tickets), and the planner runs on a parent that already has its sub-ticket. This follows
+  B.1 as written. It is outside this sub-ticket's criteria and is noted for the operator.
+escalations_note: null

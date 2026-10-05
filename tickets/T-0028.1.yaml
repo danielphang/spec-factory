@@ -1,0 +1,46 @@
+id: T-0028.1
+type: sub-ticket
+title: 'Small-change lane: gate commands may declare paths, and a one-sub-ticket spec skips the planner'
+request: requests/T-0028.md
+source: plan:run-0295-planner
+status: parked
+round:
+  spec: 0
+  pr: 1
+spec:
+  version: 1
+  approved_version: 1
+plan: null
+in_flight: []
+parked:
+  reason: ESCALATE from reviewer
+  since: '2026-10-05T00:16:15+00:00'
+  from: checks-in-flight
+  outputs:
+  - run-0298-reviewer
+  - run-0299-verifier
+  question: null
+created: '2026-10-04T23:40:29+00:00'
+history:
+- ts: '2026-10-05T00:04:09+00:00'
+  from: ready-for-implementer
+  to: checks-in-flight
+  by: workflow
+  round:
+    spec: 0
+    pr: 1
+- ts: '2026-10-05T00:16:15+00:00'
+  from: checks-in-flight
+  to: parked
+  by: park
+  reason: ESCALATE from reviewer
+parent: T-0028
+depends_on: []
+parallel_safe: true
+branch: factory/T-0028.1
+head: a074e95923a5d59d40dd408fad22b302b37783df
+merge:
+  base_before: null
+  main_after: null
+parent_base: null
+label: ST-1

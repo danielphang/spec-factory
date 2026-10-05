@@ -1,0 +1,43 @@
+Commit: a074e95923a5d59d40dd408fad22b302b37783df
+
+How this ran. PR head: worktree `wt` at `a074e95`. Base: a detached worktree at `a69aaf4` under `scratch/base`, which was removed afterwards. In both, `uv sync --frozen` ran first. Each WHEN was extracted verbatim from `.factory/store/openspec/changes/T-0028/specs/*/spec.md` with `sed 's/^- WHEN `\(.*\)`$/\1/'` into `scratch/acc/NN.sh`. `gate-commands/spec.md` is byte-identical to the pinned v1 part (`diff` printed nothing). Each command ran under bash, from the checkout root, through the fresh-HOME wrapper with `TMPDIR=scratch`. The fixtures were written by running their verbatim `cat > … EOF` blocks: the two T-0028 blocks, and the T-0023 v2 block that starts at line 228.
+
+Per criterion:
+- NEW | gate-commands: a scoped command is skipped for a diff that touches none of its paths | base `compose=1 run=0 skipped=0 meta=0` | PR `compose=0 run=1 skipped=1 meta=1` | PASS
+- NEW | gate-commands: a diff that touches a scoped command's paths runs it | base `compose=1 run=0 skipped=` | PR `compose=0 run=1 skipped=0` | PASS
+- REGRESSION | gate-commands: a command with no paths runs on every diff | base: not run | PR `compose=0 run=1 skipped=0` | PASS
+- NEW | gate-commands: a skipped command is recorded on the gate result, and the merge still needs a passing gate | base `FAIL: merge=2 recorded=no` / `PASS: merge=0 recorded=no` | PR `FAIL: merge=2 recorded=yes` / `PASS: merge=0 recorded=yes` | PASS
+- NEW | gate-commands: the implementer still gets every gate command | base `compose=1 both=0 skipped=` | PR `compose=0 both=1 skipped=0` | PASS
+- NEW | gate-commands: a malformed gate entry refuses a checker's run start and creates no run | base `exit=0 new_runs=1 named=0` x2 | PR `exit=2 new_runs=0 named=1` x2 | PASS
+- NEW | sub-ticket-planning: a spec that needs one sub-ticket becomes that sub-ticket with no planner run | base `exit=2 planner= subs=T-0001.yaml ` / `state= "ready": [] names= logged=0` | PR `exit=0 planner=skipped subs=T-0001.1.yaml T-0001.yaml ` / `state=ready-for-implementer "ready": ["T-0001.1"] names=2 logged=1` | PASS
+- NEW | sub-ticket-planning: a split spec, a seam heading, or an earlier planner run still goes to the planner and writes nothing | base `exit=2 planner= subs=T-0001.yaml logged=0` x3 | PR `exit=0 planner=needed subs=T-0001.yaml logged=0` x3 | PASS
+- NEW | sub-ticket-planning: the whole-spec step refuses a parent that is not ready for its planner | base `exit=2 named=0 subs=T-0001.yaml ` | PR `exit=2 named=1 subs=T-0001.yaml ` | PASS
+- NEW | build-dispatch: a qualifying spec reaches its implementer with no planner run, and a refusal parks with its error | base `start: planner` / `park: harness-bug: unknown STATUS READY-FOR-REVIEW from planner` / `start: planner` / `park: harness-bug: unknown STATUS undefined from planner` | PR `start: implementer` / `start: reviewer` / `start: verifier` / `park: stub stop` / `park: harness-bug: plan whole-spec: T-0001 has no approved spec` | PASS
+- REGRESSION | build-dispatch: a spec that needs the planner still gets a planner run | base: not run | PR `start: planner` / `park: harness-bug: subticket add: stub stop` | PASS
+- NEW | harness-docs: the changelog records the small-change lane as its last entry | base `CONTIGUOUS` / `1` | PR `CONTIGUOUS` / `5` | PASS. The spec's verification.md records the base output as `0`. That was true at `0b1abad`, when entry 52 was last. On `a69aaf4` the last entry is 55, which contains the word `paths`. The check still fails on base for the reason the spec gives: the last entry is not this change's. So this is drift from `main` moving, not a SPEC-DEFECT.
+- NEW | harness-docs: the design doc, build spec and README describe both skips, and no prompt copy changes | base `design=0 gate=0 build=0 readme=0 skipped=0 stale=1 prompts=0` | PR `design=1 gate=1 build=1 readme=1 skipped=1 stale=0 prompts=0` | PASS
+- REGRESSION | harness-docs: no whitespace errors, `(git diff --check main...HEAD; echo "exit=$?")` | base: not run | PR `exit=0` | PASS
+- REGRESSION (intermediate check) | `(git diff --name-only main...HEAD -- .factory | grep -c .)` | base: not run | PR `0` | PASS
+- REGRESSION (intermediate check) | `uv run --frozen pytest -q -p no:cacheprovider tests/factory` | base: not run | PR `354 passed in 319.01s (0:05:19)` | PASS. This is the gate run below. `git diff --name-status main...HEAD -- tests/` lists only `A tests/factory/test_gate_paths.py` and `A tests/factory/test_whole_spec_plan.py`. So `test_run_isolation.py` and `test_instance.py` passed unedited.
+
+Every NEW output on base matches the spec's verification.md, apart from the changelog drift noted above.
+
+Gate suite: PASS
+- `(export HOME="$(cd "$(mktemp -d)" && pwd -P)"; git diff --check main...HEAD)` from `wt`: no output, exit 0 (`main` = `a69aaf4`, the merge base).
+- `(export HOME="$(cd "$(mktemp -d)" && pwd -P)"; uv run --frozen pytest -q -p no:cacheprovider tests/factory)` from `wt`: `354 passed in 319.01s (0:05:19)`, exit 0.
+
+Probes. Gate probes built the `t0028-sub.sh plain` fixture, replaced `gate_commands`, started a reviewer run on T-0001.1 and composed it. Planning probes passed a second argument to `t0028-plan.sh READY-FOR-CRITIC`.
+- An exclude-only pathspec `[":(exclude)docs/"]` with a docs-only diff → the sentence ends `none (every gate command is skipped below)`, followed by one `SKIPPED … :(exclude)docs/` line → OK.
+- The same entry with a `src/a.txt` diff → the command is listed to run, with no SKIPPED line → OK.
+- Glob pathspecs: `src/*.txt` with a docs diff → skipped, and an unscoped `echo Y` still runs. `docs/*.md` with a docs diff → runs → OK.
+- Malformed entries `paths: []`, `paths: [""]`, `command: ""`, `[5]` and `[null]` → each gives `run start` exit 2, `gate_commands entry 0: …` → OK. `gate_commands: null` and an unscoped mapping `{command: "echo X"}` start and compose normally → OK.
+- Two scoped entries with the same command text, `{command: "echo X", paths: ["src/"]}` and `{command: "echo X", paths: ["docs/"]}`, with a docs-only diff → the sentence ends `none (every gate command is skipped below)`. The `docs/` entry's paths are touched, yet the checkers are told to run nothing → CONCERN. Compose matches skips by command text (`raw not in gone`, `factory/compose.py` in `compose()`). The implementer lists this as a known gap. It is not special-casing, and no scenario covers it, so it is not a FAIL. But a real check is dropped without notice in this configuration. See ESCALATIONS.
+- Seam detection: `## Seams` and `## Where it SEAMS apart` → `needed`. `#### Size and seams`, `### Requirement: seams`, `### Seamless rollout`, `##Seams` and an unclosed code fence → `skipped`. All match the B.1 rule → OK.
+- `plan whole-spec` run twice on the same parent → the first returns `skipped` and writes `T-0001.1`, `plans/T-0001.md` and the scenario lines. The second returns `needed`, `it already has sub-tickets: T-0001.1`, as B.1 step 2 specifies → OK against the spec. A side effect is noted under ESCALATIONS.
+
+STATUS: VERIFIED
+CONFIDENCE: high. All 14 scenario commands and both intermediate checks ran verbatim. Each NEW scenario failed on base, as recorded, and passed on the PR. Both gates passed (354 tests).
+ESCALATIONS:
+- Duplicate scoped gate commands. When two `gate_commands` entries share one command text with different `paths`, a diff that skips one entry also drops the other from the run list, even when the diff touches the other's paths. Reproduced: entries `src/` and `docs/` of `echo X`, docs-only diff, and the verifier input lists no command to run. The standing decision requires every refusal to keep firing, so the operator should decide whether this needs per-entry matching before any instance scopes a command. Today no instance uses `paths`, so nothing is affected yet.
+- `factory/store.py` is a protected path (class harness) and is changed: `record_result` gains `extra`. The spec's Risk list does not name it, but design part A.5 requires the change, so the Risk list is incomplete. The implementer raised the same point. It needs the operator's approval at the PR gate.
+- Crash window between `plan whole-spec` and `transition planned` in `factory/workflows/build.js`. If a build run stops after the whole-spec step creates `<parent>.1` but before the parent moves to `planned`, a re-run finds the parent still at `ready-for-planner`. `plan whole-spec` then reports `needed` (it already has sub-tickets), and the planner runs on a parent that already has its sub-ticket. This follows B.1 as written. It is outside this sub-ticket's criteria and is noted for the operator.

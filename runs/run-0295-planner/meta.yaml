@@ -1,0 +1,18 @@
+run_id: run-0295-planner
+role: planner
+ticket: T-0028
+model: opus
+round: 1
+spec_version: 1
+started: '2026-10-04T23:37:57+00:00'
+finished: '2026-10-04T23:40:06+00:00'
+wall_s: 129
+status: PLANNED
+input_sources:
+- specs/T-0028/v1.md
+- decisions.md
+confidence: high. The spec sizes itself as one merge, and its one changelog entry must name both parts.
+  I checked every function and file it names on `main` at `a69aaf4`. I ran none of the acceptance commands;
+  that is the verifier's job.
+escalations: []
+escalations_note: null
