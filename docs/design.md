@@ -30,6 +30,8 @@ Three wiring rules matter more than any wording:
 
 This document's changelog is `docs/changelog.md`, and `docs/prompts/` holds a verbatim copy of each prompt block in it, changed only by re-copying that block.
 
+This document is the intended design. How the system runs today is in `README.md`: the store and target layout, what each role reads and writes, both workflows step by step, and how the harness uses git.
+
 ## Harness: functional pieces
 
 The prompts say what each role does. The harness enforces the wiring rules: fresh context per checker, checkers without write access, approvals bound to a commit, round limits, and routing by STATUS. Prompt text cannot enforce any of that. The table lists the pieces any harness needs, what GitHub provides for each, and the minimum a portable substitute must do. Build against the "What it must do" column, not GitHub's shape.
@@ -781,6 +783,28 @@ Prior proposals: per rule, metric before -> after, KEEP | REVERT |
 STATUS: PROPOSED | NO-CHANGES
 CONFIDENCE / ESCALATIONS
 ```
+
+## Running on another agent host
+
+Intended, not built. The factory should run on any agent host that can start a role agent with a given prompt, model and working directory, and return its final answer in a fixed shape. Today it runs only on Claude Code.
+
+Most of the factory is already host-neutral: the store CLI and its guards (a Python program run from a shell), the role prompts (plain text), the spec format, and the store's files (YAML, Markdown, JSONL on a git branch). The pieces written for Claude Code are the two workflow scripts, which use its Workflow tool, and the role agent definitions in `.claude/agents/`; the model names and the token-cost report also assume it (README, "What depends on Claude Code").
+
+A port replaces those two pieces with one adapter whose only primitive is "run role R in directory D, with model M and reply schema S, and return the reply". The workflow logic moves into an ordinary script, in Node or Python, that calls that primitive and calls `bin/factory` directly. The clerk role then goes away: it exists only because a Workflow script cannot run a command itself. Each host's role files are generated from the one prompt source, as `docs/prompts/` will be by `factory render`.
+
+| Need | Claude Code (today) | OpenAI Codex | Google Antigravity |
+|---|---|---|---|
+| Orchestrator | Workflow tool script: `agent()`, `parallel()`, `phase()` | an external script on the Codex SDK (`thread.run(prompt, {outputSchema})`), or `codex exec` per role | an external script calling `agy -p` per role, or the Python SDK |
+| Reply in a fixed shape (the clerk's, today; a port can use it for every role) | `agent(..., {schema})` | `--output-schema` / `outputSchema` | `--json-schema` / `response_schema` |
+| Role definition | `.claude/agents/<role>.md`, or the prompt passed inline | `.codex/agents/<role>.toml` (`developer_instructions`, `model`, `sandbox_mode`) | `.agents/agents/<role>.md` (body is the prompt; `model`, `tools`) |
+| Model per role | any Claude model | any OpenAI model, plus a reasoning effort | Gemini tiers (`flash`, `pro`, `inherit`) |
+| Tool limits for checkers | agent `tools:` list | sandbox mode and MCP servers; no per-tool allowlist found | a `tools` allowlist and `permissions.allow` rules |
+| Working directory | the agent's shell `cd`s into the worktree | `-C <dir>` / `workingDirectory` | run `agy` from inside the worktree |
+| Project instructions | `CLAUDE.md`, and `AGENTS.md` where the repo imports it | `AGENTS.md`; other names by config | `AGENTS.md`, `GEMINI.md` |
+
+Two cautions a port must handle. On Antigravity a tool call that needs approval is refused quietly and the run still exits 0, so the orchestrator must treat a missing reply as a failure, never as success. On both hosts the orchestrator, not the agent host, should create and remove worktrees, as the store CLI already does.
+
+Source: each host's own documentation, read on 2026-10-04 (Codex: `codex exec`, subagents, `AGENTS.md`, Codex SDK; Antigravity: headless CLI, subagents, rules, SDK). None of this has been tried.
 
 ## Appendix: reviewer prompt
 

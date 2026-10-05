@@ -15,8 +15,8 @@ build half against this repo. The harness that runs it is the code in this repo 
 | `answers/` | Operator answers and gate edits, as written at the time (closed records) |
 | `green-pilot/` | The closed store of the first end-to-end pilot (below) |
 
-The live store is still `intake/state/` (tickets, requests, runs, specs, log). A post-close operator
-step moves it to `.factory/state/`. Records here and in the store are kept as written: old paths
+The live store is `.factory/store/` (tickets, requests, runs, specs, log), a checkout of branch
+`factory-store`; it moved there from `.factory/state/` on 2026-10-04. Records here and in the store are kept as written: old paths
 quoted inside them are history, not instructions.
 
 Ticket ids are local to this store: T-0001 here is issue 01, not green's SPEC-21 ticket.
