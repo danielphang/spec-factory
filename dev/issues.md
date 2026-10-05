@@ -59,6 +59,7 @@ A fix closes its issue through a reviewed change on `main`; the merge column is 
 | [52](https://github.com/danielphang/spec-factory/issues/52) | Spec store splits parts on '=== ' lines inside fenced code blocks | not in intake | — | — |
 | [53](https://github.com/danielphang/spec-factory/issues/53) | A stopped workflow leaves its run 'in flight' forever: record the stop, record each run's owner, say so in the fence's refusal | not in intake (after #41, #24, #51) | — | — |
 | [54](https://github.com/danielphang/spec-factory/issues/54) | Reusable specs across re-ports: product vs implementation decisions, observable-surface scenarios, port export | not in intake (not urgent) | — | — |
+| [55](https://github.com/danielphang/spec-factory/issues/55) | README: what the factory keeps in a target (artifact, branch, committed by, restore) and what each gate reviews | not in intake (docs only, pre-approved; after #41) | — | — |
 
 Issues 1–10 are applied and can be closed against their merge; 11 applied (`9168ce1`); 13 and 14 fold into #21 (checklists until it archives); 15 closed as superseded. #12 was a duplicate of #11.
 New findings go straight to GitHub issues; this file is the index.
