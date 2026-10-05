@@ -68,6 +68,7 @@ A fix closes its issue through a reviewed change on `main`; the merge column is 
 | [61](https://github.com/danielphang/spec-factory/issues/61) | factory/cost.py double-counts tokens: each streamed content block repeats the call's usage | not in intake (fold into #43 or #56 H, or alone; small) | — | — |
 | [62](https://github.com/danielphang/spec-factory/issues/62) | Option (off by default): parallel read-only explorers before the spec writer | not in intake (p2; filed by the Reviewer session on the operator's say-so) | — | — |
 | [63](https://github.com/danielphang/spec-factory/issues/63) | Reviewer: BLOCKING requires evidence; confidence recorded but never routed on | not in intake (p2; filed by the Reviewer session on the operator's say-so) | — | — |
+| [64](https://github.com/danielphang/spec-factory/issues/64) | Intake sized to the change: triage sets the path (bounded or architectural), bounded tickets get a short spec, the path only escalates | not in intake (p1; needs the spec gate, not pre-approved; queue after #59, which also edits the critic rubric) | — | — |
 
 Issues 1–10 are applied and can be closed against their merge; 11 applied (`9168ce1`); 13 and 14 fold into #21 (checklists until it archives); 15 closed as superseded. #12 was a duplicate of #11.
 New findings go straight to GitHub issues; this file is the index.
