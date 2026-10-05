@@ -1,0 +1,34 @@
+run_id: run-0301-implementer
+role: implementer
+ticket: T-0028.1
+model: opus
+round: 1
+spec_version: 1
+started: '2026-10-05T14:53:54+00:00'
+finished: '2026-10-05T15:00:19+00:00'
+wall_s: 385
+status: READY-FOR-REVIEW
+input_sources:
+- specs/T-0028.1/subticket.md
+- specs/T-0028/v1.md
+- runs/run-0300-reviewer/output.md
+- runs/run-0299-verifier/output.md
+- approvals/T-0028.1/ruling-1.md
+branch: factory/T-0028.1
+base: d3973c12128a9c1b4a7069c97939d5da5b34742c
+head: a074e95923a5d59d40dd408fad22b302b37783df
+worktree: /Users/dphang/dev/spec-factory/.factory/store/worktrees/T-0028.1
+resolution: conflict
+environment_files: []
+confidence: high. The merge was clean, the branch's own changed lines are unchanged, and both gates and
+  the docs scenarios pass on `0521bb9` (354 tests).
+escalations:
+- The README is stale after the merge. Lines from `main`'s new overview (`README.md:236`, `:310`, and
+  the diagrams at `:197` and `:331`) still say the build always starts with the planner, and the status
+  date is 2026-10-04. A catch-up run may change nothing else, so I left them. Decide whether a fix round
+  on this branch updates them, or whether a follow-up does.
+- 'Declared protected paths touched, class harness, for the merge gate''s record: `factory/compose.py`,
+  `factory/cli.py`, `factory/workflows/build.js` and `factory/instance.template.yaml` (comments only).
+  `factory/store.py` (`record_result` gains `extra`) was accepted by the operator''s ruling of 2026-10-05
+  as part of design part A.5. The merge gate still needs the human approval row for these paths.'
+escalations_note: null

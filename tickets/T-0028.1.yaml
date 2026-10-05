@@ -3,7 +3,7 @@ type: sub-ticket
 title: 'Small-change lane: gate commands may declare paths, and a one-sub-ticket spec skips the planner'
 request: requests/T-0028.md
 source: plan:run-0295-planner
-status: parked
+status: merged
 round:
   spec: 0
   pr: 1
@@ -12,14 +12,7 @@ spec:
   approved_version: 1
 plan: null
 in_flight: []
-parked:
-  reason: ESCALATE from reviewer
-  since: '2026-10-05T00:16:15+00:00'
-  from: checks-in-flight
-  outputs:
-  - run-0298-reviewer
-  - run-0299-verifier
-  question: null
+parked: null
 created: '2026-10-04T23:40:29+00:00'
 history:
 - ts: '2026-10-05T00:04:09+00:00'
@@ -34,13 +27,56 @@ history:
   to: parked
   by: park
   reason: ESCALATE from reviewer
+- ts: '2026-10-05T14:47:51+00:00'
+  from: parked
+  to: checks-in-flight
+  by: dphang
+  resolve: redispatch
+  head: a074e95923a5d59d40dd408fad22b302b37783df
+  superseded:
+  - reviewer
+- ts: '2026-10-05T14:53:02+00:00'
+  from: checks-in-flight
+  to: ready-for-merge
+  by: workflow
+  round:
+    spec: 0
+    pr: 1
+- ts: '2026-10-05T14:53:34+00:00'
+  from: ready-for-merge
+  to: ready-for-implementer
+  by: workflow
+  round:
+    spec: 0
+    pr: 1
+- ts: '2026-10-05T15:00:44+00:00'
+  from: ready-for-implementer
+  to: checks-in-flight
+  by: workflow
+  round:
+    spec: 0
+    pr: 1
+- ts: '2026-10-05T15:09:00+00:00'
+  from: checks-in-flight
+  to: ready-for-merge
+  by: workflow
+  round:
+    spec: 0
+    pr: 1
+- ts: '2026-10-05T15:09:14+00:00'
+  from: ready-for-merge
+  to: merged
+  by: merge
+  head: 0521bb9338c9b4642d22878dbd8b659adbc5ea0a
 parent: T-0028
 depends_on: []
 parallel_safe: true
 branch: factory/T-0028.1
-head: a074e95923a5d59d40dd408fad22b302b37783df
+head: 0521bb9338c9b4642d22878dbd8b659adbc5ea0a
 merge:
-  base_before: null
-  main_after: null
+  base_before: d3973c12128a9c1b4a7069c97939d5da5b34742c
+  main_after: 64776c5eec6f8a2984760419cbfd108c0b3e5a36
 parent_base: null
 label: ST-1
+merge_refused: null
+conflict_runs: 0

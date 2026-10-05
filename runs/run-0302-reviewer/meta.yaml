@@ -1,0 +1,35 @@
+run_id: run-0302-reviewer
+role: reviewer
+ticket: T-0028.1
+model: fable
+round: 1
+spec_version: 1
+started: '2026-10-05T15:01:05+00:00'
+finished: '2026-10-05T15:08:13+00:00'
+wall_s: 428
+status: APPROVE
+input_sources:
+- specs/T-0028.1/subticket.md
+- specs/T-0028/v1.md
+- runs/run-0301-implementer/output.md
+- runs/run-0302-reviewer/diff.patch
+- approvals/T-0028.1/ruling-1.md
+environment_files: []
+branch: factory/T-0028.1
+base: d3973c12128a9c1b4a7069c97939d5da5b34742c
+head: 0521bb9338c9b4642d22878dbd8b659adbc5ea0a
+worktree: /Users/dphang/dev/spec-factory/.factory/store/runs/run-0302-reviewer/wt
+confidence: high, the only new commit since the prior review is a merge that left every branch line byte-identical,
+  the one open point from round 1 is settled by the operator's ruling, and the single SHOULD-FIX is stale
+  README prose from `main` that the spec's own checks do not cover, not a code defect.
+escalations:
+- 'Declared protected paths touched, class harness, for the merge gate''s record: `factory/compose.py`,
+  `factory/cli.py`, `factory/workflows/build.js`, `factory/instance.template.yaml` (comments only; value
+  unchanged), and `factory/store.py` (`record_result` gains `extra`, 4 lines), the last accepted by the
+  operator''s ruling of 2026-10-05 as design part A.5. The merge gate still needs the human approval row
+  for these paths.'
+- 'The README contradicts itself after the catch-up merge: four places from `main`''s new overview (`README.md:236`,
+  `:310`, the diagrams at `:197` and `:331`) still say the build always starts with the planner, and the
+  status date is a day old. Decide whether a fix round on this branch updates them before merge, or a
+  follow-up ticket does. The code is ready either way.'
+escalations_note: null

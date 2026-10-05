@@ -62,3 +62,8 @@ Suggested fix: "the spec writer, the agent that drafts the spec before the gate"
 - `_reused_subticket_run` compares the verifier's `base` with `parent_base`, which is set at the first merge (`factory/cli.py:560-561`). If the integration branch moves between the whole-spec sub-ticket's verifier start and its merge, the parent close runs its own verifier. Existing behaviour, and T-0025 is removing the store commits that move it.
 
 Prior findings: none (round 1).
+
+## Verifier results
+
+0521bb9338c9b4642d22878dbd8b659adbc5ea0a · T-0028.1 · VERIFIED · run-0303-verifier
+a074e95923a5d59d40dd408fad22b302b37783df · T-0028.1 · VERIFIED · run-0299-verifier

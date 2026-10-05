@@ -1,0 +1,31 @@
+run_id: run-0300-reviewer
+role: reviewer
+ticket: T-0028.1
+model: fable
+round: 1
+spec_version: 1
+started: '2026-10-05T14:49:08+00:00'
+finished: '2026-10-05T14:52:15+00:00'
+wall_s: 187
+status: APPROVE
+input_sources:
+- specs/T-0028.1/subticket.md
+- specs/T-0028/v1.md
+- runs/run-0296-implementer/output.md
+- runs/run-0300-reviewer/diff.patch
+- approvals/T-0028.1/ruling-1.md
+environment_files: []
+branch: factory/T-0028.1
+base: d3973c12128a9c1b4a7069c97939d5da5b34742c
+head: a074e95923a5d59d40dd408fad22b302b37783df
+worktree: /Users/dphang/dev/spec-factory/.factory/store/runs/run-0300-reviewer/wt
+confidence: high, the head is the one round 1 read line by line, the one open point was a protected-path
+  declaration and the operator has ruled on it, and the verifier passed every gate and acceptance command
+  on this head.
+escalations:
+- 'Declared protected paths touched, class harness, for the merge gate''s record: `factory/compose.py`,
+  `factory/cli.py`, `factory/workflows/build.js`, `factory/instance.template.yaml` (comments only; value
+  unchanged). `factory/store.py` (3 lines, `record_result` gains `extra`) is undeclared but accepted by
+  the operator''s ruling of 2026-10-05 as part of design part A.5. The merge gate still needs the human
+  approval row for these paths.'
+escalations_note: null

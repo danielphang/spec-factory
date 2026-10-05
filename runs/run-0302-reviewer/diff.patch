@@ -1,0 +1,887 @@
+diff --git a/README.md b/README.md
+index b0a46cd..5c46c54 100644
+--- a/README.md
++++ b/README.md
+@@ -144,9 +144,15 @@ state "ready for triage". The intake workflow runs triage. On accept, the spec w
+ the repo and writes the spec. The critic judges it and approves, asks for one revision, or escalates. On approve, the ticket waits at the **spec gate**. A human reads the spec,
+ edits it if needed, and approves it (pinning that version) or sends it back with notes. Nothing
+ downstream runs until this happens.
+-The intake script stops at the spec gate; the build script runs the planner.
+-
+-The build workflow runs the planner, which splits the spec into sub-tickets with dependencies.
++The intake script stops at the spec gate; the build script plans the work.
++
++The build workflow first asks the harness whether the spec needs splitting, with
++`factory plan whole-spec`. When it needs only one sub-ticket, the harness creates that sub-ticket
++from the whole spec, naming every scenario in it, and no planner runs. A spec needs only one when
++the spec writer did not mark it too large for one merge (`NEEDS-SPLIT`), no heading in it names
++seams (the places the writer says the work splits), and no planner has run on it before. Otherwise
++the planner runs, splitting the spec into sub-tickets with dependencies. The one-sub-ticket path is
++tested, and has not yet run on a real ticket.
+ When a sub-ticket's dependencies are merged, an implementer builds it on a branch in its own
+ working copy. The reviewer and the verifier then judge the same commit, independently. The harness
+ makes one decision from their verdicts: merge; send back for one revision; send back
+@@ -570,7 +576,10 @@ From inside the target repo, with `R` the runtime (`~/dev/spec-factory-harness`)
+ 2. Restart the Claude Code session so the agents register.
+ 3. Fill in `.factory/context.md`, the briefing every role reads first: which repo this is, how to
+    run its tests, what kind of request to expect. Set `gate_commands` and `protected_paths` in
+-   `.factory/instance.yaml`. Set `run_env` for any tool whose cache lives under HOME,
++   `.factory/instance.yaml`. A `gate_commands` entry may declare `paths`, the git pathspecs the
++   command covers: `{command: "<command>", paths: [":(exclude)dev/"]}`. A sub-ticket whose changes
++   touch none of them skips that command. Prefer exclude pathspecs, so a new file still runs the
++   command. Set `run_env` for any tool whose cache lives under HOME,
+    so it still finds that cache from inside the fresh temporary HOME.
+ 
+ The repo is now a target. "Starting a run" is the rest.
+@@ -815,7 +824,10 @@ path above is relative to the store.
+   result where a CI result would go. The reviewer and verifier judge the same commit. A sub-ticket
+   that passes is merged into the local integration branch, one merge at a time. If `main` moved
+   during the build, the implementer merges it in before the checks re-run; two catch-up runs that
+-  fail to merge it in park the sub-ticket.
++  fail to merge it in park the sub-ticket. A check command that declares the paths it covers is
++  skipped for a sub-ticket whose changes touch none of them: the reviewer and verifier are told it
++  is SKIPPED, with the reason, and the skip is recorded with the check result. The implementer
++  still gets every command. The skip is tested, and no repo's configuration uses it yet.
+ - **Spec store.** Specs live in an OpenSpec tree, a folder-per-change layout borrowed from the
+   OpenSpec project. A ticket's spec is a set of deltas against current truth. When a ticket closes,
+   `archive` applies the deltas, so the description of the system is kept current by the pipeline.
+diff --git a/dev/build-harness.spec.md b/dev/build-harness.spec.md
+index f7a97bb..1991982 100644
+--- a/dev/build-harness.spec.md
++++ b/dev/build-harness.spec.md
+@@ -203,7 +203,7 @@ CLI (the **store CLI** of doc §Harness table piece 1 — read, transition, reco
+ - `factory run start --role R --ticket ID|none --head SHA|none [--model M]` → prints `run_id`, writes `runs/<run_id>/{meta.yaml,system-prompt.txt}` and creates the empty `runs/<run_id>/scratch/` for the run's temporary files, which the store's `.gitignore` excludes (`model: M`, default `config.yaml` `models[R]`; `budget_usd` copied from the ticket), appends the id to `in_flight`. **Guards:** exit 2, nothing written, when the ticket is not in R's ready state (`T-0001 is ready-for-triage, not ready-for-critic`; ready states: triage `ready-for-triage`, spec_writer `ready-for-spec-writer`, critic `ready-for-critic`, planner `ready-for-planner`, implementer `ready-for-implementer`, reviewer/verifier `checks-in-flight` or `ready-for-checks`, verifier also `ready-for-parent-verify`; retro runs with `--ticket none`), or when the ticket's branch already has a run in `in_flight` (implementer, retro: any run; reviewer, verifier: a run of the same role) — `ticket/T-0001 already has run <id> in flight`; or, for an implementer run of a sub-ticket, when a `` `<file>` (added by <ID>) `` line in its "Tests to change" field names a file that existed at the parent's `parent_base` or whose first adding commit on the integration branch since then lies inside no merged sibling's recorded `merge` (doc §Harness, "Tests a sibling added") — `BLOCKED from harness: Tests to change lists <file> as added by a sibling, but no merged sibling of <parent> added it since <base>; …`. **Run id reservation:** after the guards pass and before anything else is written, `run start` reserves the run's directory by creating `runs/<run_id>/` create-exclusive (an mkdir that fails when the path already exists); on a collision it takes the next id and tries again. Two starts on one store at the same moment, whatever their tickets or roles, therefore never share a run directory, and the id is final before its `meta.yaml` is written. A refused start reserves nothing (item 70).
+ - `factory run compose RUN` (**the one input mechanism**, critic S2) → writes `runs/<run_id>/input.md` from exactly the sources `factory/compose.py` declares for `(role, round, resolution)` — the "with input =" lists in H, read from the store and `~/factory/clone` — and records their paths as `input_sources:` and the pinned spec version it used as `spec_version:` in `meta.yaml` (a run keeps that version even if the spec is re-pinned while it is in flight, K). The file opens with the repo's role-context block (doc §Harness), ahead of those sources; it is not a store path, so it is not one of the `input_sources:` (its text is in `input.md`). The text `agent()` receives is only `Your entire input is ~/factory/state/runs/<run_id>/input.md; read it first.` No input text is composed anywhere else.
+ - `factory run finish RUN --output-file F [--status-override KILLED]` → writes `output.md`, parses STATUS (H), removes the id from `in_flight`, prints `STATUS CONFIDENCE ESCALATIONS` as JSON, logs `escalation.queued` when the list is non-empty (H).
+-- `factory spec add ID --file F` → `spec.version += 1`, `specs/ID/v<N>.md`; `factory spec tasks PARENT --run RUN` → writes that planner run's `output.md`, trailer removed as for spec text (above), to `openspec/changes/<PARENT>/tasks.md` (exit 2 unless RUN is a `PLANNED` planner run of PARENT); `factory subticket add PARENT --file F --depends-on IDS --parallel-safe yes|no` → sub-ticket in `ready-for-implementer` or `waiting-dependencies`.
++- `factory spec add ID --file F` → `spec.version += 1`, `specs/ID/v<N>.md`; `factory spec tasks PARENT --run RUN` → writes that planner run's `output.md`, trailer removed as for spec text (above), to `openspec/changes/<PARENT>/tasks.md` (exit 2 unless RUN is a `PLANNED` planner run of PARENT); `factory subticket add PARENT --file F --depends-on IDS --parallel-safe yes|no` → sub-ticket in `ready-for-implementer` or `waiting-dependencies`; `factory plan whole-spec PARENT` → when the approved spec needs one sub-ticket (the parent has no sub-ticket and no earlier planner run, its latest spec-writer run did not end `NEEDS-SPLIT`, and the approved spec has no `##` or `###` heading, other than a `### Requirement:` line, naming seams), creates `<PARENT>.1` from the whole spec in `ready-for-implementer`, its text naming every scenario, writes the same text to `plans/<PARENT>.md` and, with a spec store, `openspec/changes/<PARENT>/tasks.md`, logs `plan.skipped`, and prints `"planner": "skipped"`; otherwise prints `"planner": "needed"` with the reason and writes nothing (exit 2 when PARENT is not `ready-for-planner`, has a run in flight, has no approved spec, or has no change folder under an active spec store).
+ - **Operator commands** (`approve-spec`, `approve-pr`, `approve-guardrail`, `request-changes`, `resolve`, `queue apply`, `merge`, `ticket new`, `results record`) refuse with exit 2, stderr `set FACTORY_KEY`, nothing written or logged, when `FACTORY_KEY` is unset (item 78); reads (`ticket show`, `results show`, `queue`, `log tail`) never need it. `gate-run` always uses the harness key.
+ 
+ ### C. Audit log and run artifacts (piece 10)
+@@ -281,7 +281,7 @@ Common step `runRole(role, ticket, head)` in both scripts: clerk `factory run st
+ 4. A re-run of `intake.js` starts from the state the store holds: `ready-for-triage` → phase 1; `ready-for-spec-writer` → phase 2 at the writer; `ready-for-critic` (a human `--ruling` on a critic ESCALATE, K) → phase 2 at the critic, same round, the ruling in its input.
+ 
+ `build.js` (`args: {ticket}`), run after `factory approve-spec`:
+-1. `phase('Plan')` (only when the parent is `ready-for-planner`; a re-run starts from the stored state, so a `--ruling` on a planner ESCALATE re-runs the planner with the ruling in its input): `runRole('planner')` with the pinned spec; `PLANNED` → clerk `factory spec tasks PARENT --run RUN` (B), then `subticket add` per sub-ticket (`depends_on`, `parallel_safe`); `ESCALATE` → park, return.
++1. `phase('Plan')` (only when the parent is `ready-for-planner`; a re-run starts from the stored state, so a `--ruling` on a planner ESCALATE re-runs the planner with the ruling in its input): first clerk `factory plan whole-spec PARENT` (B), with three outcomes: a refusal → park the parent `harness-bug: plan whole-spec: <stderr>`, return; `"planner": "skipped"` → no planner run, `transition --to planned`; any other success → the planner as follows. `runRole('planner')` with the pinned spec; `PLANNED` → clerk `factory spec tasks PARENT --run RUN` (B), then `subticket add` per sub-ticket (`depends_on`, `parallel_safe`); `ESCALATE` → park, return.
+ 2. `phase('Build')`: `while` any sub-ticket is not `merged|parked|closed`: `ready = ` clerk `factory ticket ready-implementers PARENT` (JSON: sub-tickets in `ready-for-implementer` whose deps are merged, minus any with a run in flight on its branch; a `parallel_safe: false` sub-ticket runs alone: it is listed only when no sibling of the same parent is in flight — any role: `in_flight` non-empty or `checks-in-flight` — and nothing else is listed with it, and while it is in flight no sibling is listed; doc §Routing table, Planner row; item 79; its `subtickets` lists every sub-ticket id of the parent in id order); when the first `ready` of a build run has an empty `subtickets` (a parent planned with none), clerk `factory subticket add PARENT` with no `--run`, once per build run: it takes the planner run named by the parent's latest `plan.added` event; on its refusal park the parent `no sub-tickets, and none could be created from the recorded plan: <stderr>` and return, on success continue the loop; `await parallel(ready.map(st => () => buildOne(st)))`; if `ready` is empty and nothing is in flight, return (the rest is parked or waiting on a human). When nothing is left to build, clerk `factory ticket parent-check PARENT`; a refusal parks the parent `parent-check refused: <stderr>` and returns. When the parent reaches `ready-for-parent-verify` (G), or a re-run finds it there: clerk `factory ticket parent-check PARENT` first. Its `reuse` field names a run when the parent has exactly one sub-ticket and it is merged, `main` is still at that sub-ticket's merge commit, the results row for the merged head is VERIFIED from a run whose base is the parent's `parent_base`, and the sub-ticket's text names every scenario of the pinned spec; that run stands for the parent-close run: no verifier run starts, the build goes to `factory archive PARENT` with that run id as the park outputs, and the close records it as `verified_by` (`null` → as follows). Otherwise `runRole('verifier', PARENT, <main SHA>)` — the parent-close run, whose inputs doc §Routing table (merge-gate row) declares: the pinned parent spec (every delta scenario with its `## Acceptance` label), head = current `main`, base = the parent's `parent_base`, `{gate commands}`; `run compose` supplies exactly these four (no sub-ticket text), the clerk makes the checkout of that head, and the verifier definition (rendered verbatim from the doc) checks out the head it was given and runs the base it was given; `VERIFIED` → clerk `factory archive PARENT` (K), then `closed`, or on its exit 2 `park --reason 'archive: <stderr>'`; `FAILED`/`SPEC-DEFECT` → `park --reason 'parent verify: <STATUS>'` with the output (human queue); then return.
+ 3. `buildOne(st)`: loop:
+    - `runRole('implementer', st, …, {isolation: 'worktree'})`; the implementer's worktree is created on current `main` at dispatch (doc §Routing table, Planner row), input = sub-ticket, pinned parent spec, AGENTS.md (+ round ≥ 2: both checker outputs, CI result, or the human ruling); `BLOCKED` → park, return; `READY-FOR-REVIEW` → clerk `factory ticket head ST` (from `git ls-remote`), `transition --to checks-in-flight --round pr:init`.
+@@ -317,7 +317,7 @@ No API key in any run: the CLI authenticates from the owner's login. Keys only i
+ 
+ ### L. Verifier as gate runner (piece 11)
+ 
+-No separate CI service. For sub-ticket PRs, `results record --role verifier` writes `results/<head>/ci.yaml` from the first `Gate suite: PASS|FAIL` line, which may carry leading heading or emphasis marks (`## Gate suite: PASS`, `**Gate suite:** PASS`; `*` around the verdict and the detail is stripped) but no other text before `Gate suite:`; missing → `FAIL`, `detail: missing Gate suite line`. For no-sub-ticket PRs (retro, revert), which have no verifier, `factory gate-run ID --head H` is the gate runner: a clean checkout of `H` in `~/factory/runs/gate-<n>/wt`, `{gate commands}` run there, `results/H/ci.yaml` `PASS`/`FAIL` (the failing output as `detail`) written under the harness identity, checkout removed. The routing dispatches it, not the operator: `ticket new --type retro|revert` runs it on the branch head (B), and `factory merge` on a retro/revert ticket whose current head has no ci row runs it before judging (G); the explicit command remains for a re-run.
++No separate CI service. For sub-ticket PRs, `results record --role verifier` writes `results/<head>/ci.yaml` from the first `Gate suite: PASS|FAIL` line, which may carry leading heading or emphasis marks (`## Gate suite: PASS`, `**Gate suite:** PASS`; `*` around the verdict and the detail is stripped) but no other text before `Gate suite:`; missing → `FAIL`, `detail: missing Gate suite line`. When that verifier run skipped gate commands, the row also holds `skipped:`, the run's `meta.yaml` `gate_skipped` list: per command, `command`, `status: SKIPPED` and `reason`. `run start` writes that list for a reviewer or verifier run on a sub-ticket: each `gate_commands` entry `{command, paths}` whose git pathspecs the diff `base...head` touches none of; `run compose` lists those commands as `SKIPPED` lines apart from the commands to run. The implementer and the parent-close verifier get every command. For no-sub-ticket PRs (retro, revert), which have no verifier, `factory gate-run ID --head H` is the gate runner: a clean checkout of `H` in `~/factory/runs/gate-<n>/wt`, `{gate commands}` run there, `results/H/ci.yaml` `PASS`/`FAIL` (the failing output as `detail`) written under the harness identity, checkout removed. The routing dispatches it, not the operator: `ticket new --type retro|revert` runs it on the branch head (B), and `factory merge` on a retro/revert ticket whose current head has no ci row runs it before judging (G); the explicit command remains for a re-run.
+ 
+ ### M. Audit sample and retro entry
+ 
+diff --git a/docs/changelog.md b/docs/changelog.md
+index 922bd88..2635d2e 100644
+--- a/docs/changelog.md
++++ b/docs/changelog.md
+@@ -57,5 +57,6 @@ Six review rounds ran on this doc, using the reviewer prompt in the appendix. Ro
+ 53. After issue #46 (2026-10-04), where each store commit on the integration branch sent every sub-ticket waiting to merge back for a catch-up merge and a second round of checks that could not change the verdict: the store moves to its own branch, `factory-store`, checked out as a git worktree at the store's path and never merged into the integration branch, so a store commit no longer moves that branch; the merge gate is unchanged. A store path must be one the integration branch has never tracked, because at a once-tracked path a checkout of an older commit overwrites live records and a checkout back deletes them. `init` creates a missing own store as a worktree of an unborn `factory-store` branch, which needs no commit, or checks out the branch where it exists locally or on exactly one remote, which restores the store on a clone, and adds the store to the repo's git exclude file. It refuses when more than one remote carries the branch, naming each, and at a once-tracked path. With `FACTORY_INSTANCE` unset it refuses from inside the store checkout, on its branch or on a detached HEAD, so it can no longer build a phantom instance inside the live store; a separate repository under a run's scratch directory still gets its own instance. Every refusal comes before the first write. An existing store that is a plain directory is left alone, and `init` reports `store_branch` in its JSON. A new command, `factory store migrate --to PATH`, moves such a store: it refuses, writing nothing, unless the store in use is the instance's own and not yet on its branch, no `factory-store` branch exists, the integration branch is checked out, no run is in flight, no git worktree lies under the store, every store file is committed, PATH does not exist, lies outside the old store and was never tracked, and `instance.yaml` has a `state_dir:` line; it then starts `factory-store` at one commit whose tree is the store as last committed and whose message names that commit, checks it out at PATH, copies the files git ignores there and verifies them byte for byte, undoing its own worktree and branch and exiting 1 on a mismatch, and only then untracks and deletes the old directory, adds PATH to the exclude file and rewrites only the value of `state_dir`; it commits and pushes nothing.
+ 54. After issue #40 (2026-10-04), where sub-tickets parked for three causes that were visible when the work was planned or specified: a NEW check copied from the whole spec already passed at the sub-ticket's own start; an implementer could not change a test an earlier sibling sub-ticket had added to pin its interim behaviour, because only the spec gate's "Tests to change" list authorized a test edit and that test did not exist at the gate; and a spec's Decision overturned an existing test that nobody listed. The planner labels each check NEW or REGRESSION against the sub-ticket's own base, the integration branch with its dependencies merged, not by the parent's label. An earlier sibling names the new test files a later sibling will break under "Interim tests", which the harness does not read. A sub-ticket's "Tests to change" may list a test file an earlier sibling added, as `` `<file>[::<test>]` (added by <sibling ID>): <reason> ``. Before each implementer run, `run start` checks in git that the file was absent at the parent's base and was first added inside a merged sibling's recorded merge; otherwise it refuses with exit 2, writing nothing, with an error that starts `BLOCKED from harness:`, and the build parks the sub-ticket with that error so `resolve --ruling` returns it to its implementer. The preamble and the code reviewer accept such a checked entry. The spec writer lists the tests each behaviour-changing Decision overturns, and critic rubric 1 makes a missing one a finding. A test that existed before the parent's first merge still needs the pinned spec's list. Rejected: letting the implementer edit a test on its own judgement.
+ 55. After issue #49 (2026-10-04), where the implementer and verifier queued the same declared-path list as the code reviewer: in the store's log, 10 implementer and verifier runs did this, and their lists made up 30 of the 205 items queued so far. The implementer and verifier prompts gain one RULES bullet: a protected path the sub-ticket declares is not an escalation. The code reviewer lists declared paths once for each head it reviews, through its check 6, unchanged. The other two roles may name them in their output, but not under ESCALATIONS. An undeclared protected path, or a change to a declared one that the spec does not describe, still goes under ESCALATIONS from every role. Rejected: the retro's figure of 26 of 139 items, which its own table contradicts with 38.
++56. After issue #48 (2026-10-04), where every approved spec paid for a planner run and every sub-ticket for every gate command, though nine of the thirteen specs planned so far got exactly one sub-ticket, each after a 72 to 302 second planner run that restated it: the small-change lane. A spec that needs one sub-ticket skips the planner. At `ready-for-planner` the build first runs `factory plan whole-spec`, which creates `<parent>.1` from the whole spec, ready for its implementer, naming every scenario of the spec, and logs `plan.skipped`, when the parent has no sub-ticket and no earlier planner run, its latest spec-writer run did not end NEEDS-SPLIT, and its approved spec has no `##` or `###` heading, other than a `### Requirement:` line, that names seams. Otherwise it reports that the planner is needed, writes nothing, and the planner runs as before; it refuses a parent that is not ready for its planner, has a run in flight or has no approved spec, and the build parks that refusal as a harness bug. To force the planner on such a spec, the operator adds a `### Size and seams` heading at the gate. A gate command may also declare `paths`, as git pathspecs. When a reviewer or verifier run starts on a sub-ticket, the harness marks SKIPPED, with the reason, each command whose paths the sub-ticket's diff touches none of, lists it apart from the commands to run, and records it in the run's `meta.yaml` and on the `ci` row, whose PASS or FAIL still comes from the commands that ran. The implementer and the parent-close verifier still get every command, and a malformed entry refuses every build role's run start. This overturns the cut of the path-scoped skip in T-0016's spec; no repository's gate configuration changes. Rejected: the request's trigger of exactly one lettered part, which would have skipped none of the nine.
+ 
+ Declined: a dedicated merge agent (merging is gate config plus human gates, not a judgment call).
+diff --git a/docs/design.md b/docs/design.md
+index df61ad6..7375500 100644
+--- a/docs/design.md
++++ b/docs/design.md
+@@ -48,7 +48,7 @@ The prompts say what each role does. The harness enforces the wiring rules: fres
+ | 8 | Guardrail and protected paths | If the diff touches a guardrail or protected path, the merge gate requires an approval row signed by a human identity. For existing tests, the spec gate's approval of "Tests to change" is that row for exactly the tests listed. A test file an earlier sibling sub-ticket of the same parent added is also covered when the sub-ticket lists it as added by that sibling and the sibling-tests check has passed (Tests a sibling added, below); any other guardrail or protected path needs a human approval on the PR itself. The harness code (its package, entry point, agent templates and dependency lock) is itself a protected path in the repo that holds it. | CODEOWNERS with required owner review for CI config, AGENTS.md, skills, prompts, and protected paths. Not for tests: CODEOWNERS fires on added files too. Existing tests get a required check that fails when a test file is modified or deleted and not in the pinned spec's "Tests to change" or among the sub-ticket's checked sibling entries (on a revert: files the reverted PR added and the tests its pinned spec listed under "Tests to change" are exempt, and the revert's human approval is the piece-8 row for them) | A path list checked in the merge gate, with the same modified-or-deleted rule for test files. Keep the list in the repo under CI config, so it is itself a guardrail path |
+ | 9 | Human surface | Where people approve specs, answer escalations, review protected PRs, reply to requesters, and read the weekly audit sample. Every decision writes back to the store as a record: who, when, which spec version or head SHA | Issue comments, PR reviews, approvals | The tracker's UI plus notifications (Slack, email) with links. The approval must be a stored, attributable record the merge gate can check, not a chat message |
+ | 10 | Audit log | Every transition, every agent output, every human decision, append-only. The weekly audit and the retro read from here | Issue and PR timelines, Actions logs | An append-only table or log stream. Store full agent outputs as artifacts keyed by run id. If it isn't logged, the retro can't see it |
+-| 11 | Gate runner | Runs `{gate commands}` (build, lint, typecheck, tests) on a head SHA and records PASS/FAIL against it (piece 6) | Actions CI | Any CI. Without one, the verifier runs the gates as step 4 of its prompt, and its "Gate suite" line is recorded as the CI result. Separate CI is better because it isn't an agent |
++| 11 | Gate runner | Runs `{gate commands}` (build, lint, typecheck, tests) on a head SHA and records PASS/FAIL against it (piece 6) | Actions CI | Any CI. Without one, the verifier runs the gates as step 4 of its prompt, and its "Gate suite" line is recorded as the CI result. Separate CI is better because it isn't an agent. A gate command may name the paths it covers, as git pathspecs. For a sub-ticket whose diff touches none of them, the harness marks the command SKIPPED for the reviewer and verifier, with the reason, and records it on the `ci` row; the row's PASS or FAIL still comes from the commands that ran. A command without paths always runs |
+ | 12 | Secrets | Model API keys and git credentials, available to a run that needs them but never in the repo, the prompt, or the log | Actions secrets | Vault, cloud secret manager, or env injection at container start. Redact from logs |
+ 
+ **What the harness itself owns** (no platform provides these): the routing table, the round counter and the max-round cutoff, composing each role's input from *only* its declared sources, choosing the model per role, and the escalation queue view for the daily human pass.
+@@ -86,7 +86,7 @@ The prompts say what each role does. The harness enforces the wiring rules: fres
+ | `proposal.md` | Problem, Evidence, Root cause, Out of scope, Open questions, Decisions, Risk, Operator steps | Spec writer |
+ | `design.md` | Proposed change, Tests to change | Spec writer |
+ | `specs/<capability>/spec.md` (delta) | Requirements under `## ADDED Requirements`, `## MODIFIED Requirements` or `## REMOVED Requirements`; its scenarios are the Acceptance items | Spec writer; the critic reviews it |
+-| `tasks.md` | The sub-tickets and coverage map | Planner |
++| `tasks.md` | The sub-tickets and coverage map | Planner, or the harness when it skips the planner |
+ | `verification.md` (the artifact the fork adds) | The NEW or REGRESSION label of each scenario and the writer's Responses; every critic round's output; at archive, every verifier result recorded per head for the parent and its sub-tickets | Spec writer (labels, Responses), critic, verifier |
+ 
+ `decisions.md`, one per repo beside `openspec/`, is the decision log: one line per decision, with its ticket id. Roles return text and never write the tree; the harness writes it. The spec writer returns one document in parts (§2 FORMAT), and the store keeps every version. The human spec gate pins one version: it refuses a delta that does not apply to current truth, and writes the pinned version as the change folder, so the planner, implementer and verifier work from the delta the human approved. Labels and round-to-round churn stay in `verification.md`, out of the delta. **Archive** is the parent-close step. After the parent-close run returns VERIFIED, or a sub-ticket's VERIFIED run stands in for it (routing table, Merge gate row), the harness applies each delta to current truth (ADDED appends the requirement, MODIFIED replaces the requirement of that name whole, REMOVED deletes it), moves the folder to `openspec/changes/archive/<YYYY-MM-DD>-<ticket id>/`, and appends each line of the proposal's Decisions to `decisions.md` with the date and ticket id; then the parent closes. An archive refusal writes nothing and parks the parent. There are three: a delta that no longer applies (an ADDED name already in current truth, a MODIFIED or REMOVED name missing); no change folder, because the spec was pinned before the repo had an `openspec/` tree; and no spec store at all (no `openspec/` tree). Only the archive step writes current truth. `decisions.md` has three writers: archive; `factory decision add <ticket id> "<line>"`, which a human runs at any ticket state, closed included; and `resolve --answer` or `resolve --close` with `--decision "<line>"`. Each appends `<YYYY-MM-DD> <ticket id> <line>`, with the UTC date. The spec writer and the critic receive every current-truth spec with their input (routing table). They and the planner also receive `decisions.md` when it holds any text.
+@@ -121,7 +121,7 @@ Rules the table relies on:
+ | Critic | ESCALATE | Human queue | Findings |
+ | Human queue, or requester (CLARIFY) | Answered (Triage asked) | Triage | The request with the answer, Triage's previous output (the question or missing-info list the answer is for) |
+ | Human queue | Answered (Spec writer asked) | Spec writer | The ticket, the answer, the writer's previous output (the spec whose open questions the answer is for) |
+-| Human spec gate | Approved | Planner | Approved spec, version pinned; the decision log |
++| Human spec gate | Approved | Planner. When the spec needs one sub-ticket, the harness creates it from the whole spec and the build goes to that sub-ticket's Implementer, with no planner run, logging `plan.skipped`. `factory plan whole-spec` decides: the spec needs one sub-ticket when the parent has no sub-ticket and no earlier planner run, its latest spec-writer run did not end NEEDS-SPLIT, and its approved spec has no `##` or `###` heading, other than a `### Requirement:` line, that names seams. The sub-ticket names every scenario of the spec | Approved spec, version pinned; the decision log |
+ | Human spec gate | Changes requested | Spec writer (round reset) | Human's notes |
+ | Planner | PLANNED | Implementer, one run per sub-ticket. Each branches from main at dispatch; a sub-ticket dispatches only after its dependencies merge; parallel-safe ones run concurrently; one marked not parallel-safe dispatches only when no sibling of the same parent is in flight, and no sibling dispatches while it is in flight | Sub-ticket, parent spec, AGENTS.md; push to its own branch only |
+ | Planner | ESCALATE | Human queue | Planner output |
+diff --git a/factory/cli.py b/factory/cli.py
+index 803f0e3..6535ee6 100644
+--- a/factory/cli.py
++++ b/factory/cli.py
+@@ -211,6 +211,8 @@ def run_start(a, root, cfg):
+         raise Refused(f"{t['id']} already has run {t['in_flight'][0]} in flight")
+     if a.role == "implementer" and t.get("parent"):
+         _check_sibling_tests(root, cfg, t)
++    if a.role in BUILD_ROLES:
++        compose.gate_entries(cfg)  # a malformed gate entry refuses here, before a run id is reserved
+     baseline = tripwire.baseline(cfg)  # hashed before the run id is reserved: a refusal writes nothing
+     rid = store.next_run_id(root, a.role)
+     model = a.model or cfg["models"][a.role]
+@@ -272,6 +274,7 @@ def _start_build_run(root: Path, cfg: dict, t: dict, meta: dict, d: Path, parent
+     integ = gitops.integration_branch(cfg, repo)
+     store.ensure_gitignore(root)
+     meta["round"] = t["round"]["pr"]
++    meta["gate_skipped"] = []  # only a checker of a sub-ticket's diff skips a gate command
+     if meta["role"] == "implementer":
+         branch = t.get("branch") or gitops.branch_of(t["id"])
+         wt = root / "worktrees" / t["id"]
+@@ -286,6 +289,8 @@ def _start_build_run(root: Path, cfg: dict, t: dict, meta: dict, d: Path, parent
+         base = (t.get("parent_base") or head) if parent_close else gitops.rev(repo, integ)
+         if not head:
+             raise Refused(f"{t['id']} has no head to check")
++        if not parent_close:
++            meta["gate_skipped"] = compose.gate_skips(cfg, repo, base, head)
+         wt = d / "wt"
+         gitops.add_detached_worktree(repo, wt, head)
+         meta["environment_files"] = gitops.copy_environment_files(cfg, repo, wt)
+@@ -441,15 +446,21 @@ def subticket_add(a, root, cfg):
+         raise Refused("no sub-tickets found (a head line `<id> / Title`, id like T-0001-A, ST-1 or T-0001.1, "
+                       "then `Depends on:` and `Parallel-safe:`)")
+     ids = {s["id"] for s in subs}
+-    made = []
+     for sdef in subs:
+         for dep in sdef["depends_on"]:
+             if dep not in ids and not store.ticket_path(root, dep).exists():
+                 raise Refused(f"{sdef['id']} ({sdef['label']}) depends on {dep}, which is neither in this plan nor a ticket in the store")
+         if store.ticket_path(root, sdef["id"]).exists():
+             raise Refused(f"{sdef['id']} already exists")
++    out({"ok": True, "parent": parent["id"], "subtickets": _create_subtickets(root, parent, subs, f"plan:{a.run or a.file}")})
++
++
++def _create_subtickets(root: Path, parent: dict, subs: list[dict], source: str) -> list[dict]:
++    """Write each checked sub-ticket definition as a ticket record under `parent`, with its text at
++    specs/<id>/subticket.md; returns them as `subticket add` prints them."""
++    made = []
+     for sdef in subs:
+-        st = store.new_ticket(root, sdef["id"], sdef["title"], parent["request"], f"plan:{a.run or a.file}")
++        st = store.new_ticket(root, sdef["id"], sdef["title"], parent["request"], source)
+         st.update({"type": "sub-ticket", "parent": parent["id"], "label": sdef["label"], "depends_on": sdef["depends_on"],
+                    "parallel_safe": sdef["parallel_safe"],
+                    "status": "ready-for-implementer" if not sdef["depends_on"] else "waiting-dependencies"})
+@@ -458,7 +469,70 @@ def subticket_add(a, root, cfg):
+         store.save_ticket(root, st)
+         store.log_event(root, "ticket.created", ticket=sdef["id"], parent=parent["id"], status=st["status"])
+         made.append({"id": sdef["id"], "label": sdef["label"], "state": st["status"], "depends_on": sdef["depends_on"], "parallel_safe": sdef["parallel_safe"]})
+-    out({"ok": True, "parent": parent["id"], "subtickets": made})
++    return made
++
++
++WHOLE_SPEC_REASON = "one sub-ticket: no NEEDS-SPLIT, no seam heading, no earlier planner run"
++SEAM_HEADING_RE = re.compile(r"^#{2,3}\s")
++
++
++def _planner_needed(root: Path, t: dict, spec_text: str) -> str | None:
++    """The first reason the parent needs a planner run, or None when the approved spec becomes one
++    sub-ticket as it stands (doc §Routing table, Human spec gate row)."""
++    subs = store.subtickets_of(root, t["id"])
++    if subs:
++        return f"it already has sub-tickets: {', '.join(s['id'] for s in subs)}"
++    planned = compose._runs_for(root, t["id"], "planner", "")
++    if planned:
++        return f"a planner already ran on it: {planned[-1]}"
++    writer = compose._last_run_meta(root, t["id"], "spec_writer", "")
++    if writer and writer.get("status") == "NEEDS-SPLIT":
++        return f"its spec writer marked it NEEDS-SPLIT ({writer['run_id']})"
++    for line, in_fence in specstore.lines_outside_fences(spec_text):
++        if (not in_fence and SEAM_HEADING_RE.match(line) and not line.startswith("### Requirement:")
++                and re.search(r"\bseams?\b", line, re.I)):
++            return f"its approved spec has a seam heading: {line.strip()}"
++    return None
++
++
++def plan_whole_spec(a, root, cfg):
++    """`plan whole-spec PARENT`: when the approved spec needs one sub-ticket, create it from the
++    whole spec in place of a planner run; otherwise report why the planner is needed, writing nothing."""
++    t = store.load_ticket(root, a.id)
++    if t["status"] != "ready-for-planner":
++        raise Refused(f"{t['id']} is {t['status']}, not ready-for-planner")
++    if t["in_flight"]:
++        raise Refused(f"{t['id']} already has run {t['in_flight'][0]} in flight")
++    av = t["spec"]["approved_version"]
++    spec = root / "specs" / t["id"] / f"v{av}.md"
++    if av is None or not spec.exists():
++        raise Refused(f"{t['id']} has no approved spec")
++    spec_text = spec.read_text(encoding="utf-8")
++    reason = _planner_needed(root, t, spec_text)
++    if reason:
++        out({"ok": True, "id": t["id"], "planner": "needed", "reason": reason})
++        return
++    if specstore.is_active(root) and not specstore.change_dir(root, t["id"]).exists():
++        raise Refused(f"{t['id']} has no change folder (no pinned version)")
++    sid = f"{t['id']}.1"
++    names = "".join(f"- {n}\n" for n in specstore.scenario_names(spec_text))
++    text = (f"{sid} / {t['title']}\nDepends on: none\nParallel-safe: yes\n\n"
++            f"Parent: {t['id']}, approved spec v{av}. This sub-ticket is the whole of it; read it in full. "
++            f"The planner was skipped: {WHOLE_SPEC_REASON}.\n\n"
++            "Scope: every lettered part of the parent's Proposed change.\n"
++            "Acceptance: every scenario of the parent spec, with the label its verification.md gives it:\n"
++            f"{names}Tests to change: the parent's list.\nProtected paths: the parent's Risk list.\n")
++    made = _create_subtickets(root, t, [{"id": sid, "title": t["title"], "label": "whole-spec", "depends_on": [],
++                                          "parallel_safe": True, "text": text}], "plan:whole-spec")
++    rel = f"plans/{t['id']}.md"
++    store.write_text(root / rel, text)
++    t["plan"] = rel
++    store.save_ticket(root, t)
++    if specstore.is_active(root):
++        store.write_text(specstore.change_dir(root, t["id"]) / "tasks.md", text)
++        store.log_event(root, "tasks.written", ticket=t["id"], source="plan:whole-spec")
++    store.log_event(root, "plan.skipped", ticket=t["id"], subticket=sid, reason=WHOLE_SPEC_REASON)
++    out({"ok": True, "id": t["id"], "planner": "skipped", "reason": WHOLE_SPEC_REASON, "subtickets": made})
+ 
+ 
+ def ticket_ready_implementers(a, root, cfg):
+@@ -539,7 +613,10 @@ def results_record(a, root, cfg):
+         # other text before `Gate suite:` is prose, not a verdict.
+         m = re.search(r"^[ \t#*]*Gate suite:[ \t*]*(PASS|FAIL)\b(.*)$", text, re.M)
+         ci = (m.group(1), m.group(2).strip(" \t\r*") or None) if m else ("FAIL", "missing Gate suite line")
+-        rows.append(store.record_result(root, t["id"], a.head, "ci", ci[0], a.run, ci[1]))
++        mp = root / "runs" / str(a.run) / "meta.yaml"
++        skipped = (store.read_yaml(mp) or {}).get("gate_skipped") if a.run and mp.exists() else None
++        rows.append(store.record_result(root, t["id"], a.head, "ci", ci[0], a.run, ci[1],
++                                        {"skipped": skipped} if skipped else None))
+     ev = "result.stale-discarded" if stale else "result.recorded"
+     for r in rows:
+         store.log_event(root, ev, ticket=t["id"], head=a.head, role=r["role"], status=r["status"], run=a.run)
+@@ -1379,6 +1456,10 @@ def build_parser() -> argparse.ArgumentParser:
+     p.add_argument("--from-run")
+     p.add_argument("--file")
+     p.set_defaults(fn=plan_add)
++    p = pl.add_parser("whole-spec", help="when the approved spec needs one sub-ticket, create it from the whole "
++                                         "spec and skip the planner; otherwise report why the planner is needed")
++    p.add_argument("id")
++    p.set_defaults(fn=plan_whole_spec)
+ 
+     p = sc.add_parser("tasks")
+     p.add_argument("id")
+diff --git a/factory/compose.py b/factory/compose.py
+index 9659671..d85ee69 100644
+--- a/factory/compose.py
++++ b/factory/compose.py
+@@ -41,6 +41,35 @@ def _last_run_meta(root: Path, ticket: str, role: str, exclude: str) -> dict | N
+     return store.read_yaml(root / "runs" / runs[-1] / "meta.yaml") if runs else None
+ 
+ 
++def gate_entries(cfg: dict) -> list[tuple[str, list[str] | None]]:
++    """Each `gate_commands` entry as (command as written, paths or None). An entry is a command
++    string, or a mapping of a non-empty string `command` and an optional non-empty list of git
++    pathspecs `paths`. Absent or null is empty. Anything else is refused, naming its index: a typo
++    such as `path:` read as unscoped would leave the operator believing a scope is in force."""
++    out: list[tuple[str, list[str] | None]] = []
++    for i, e in enumerate(cfg.get("gate_commands") or []):
++        def bad(why: str) -> store.Refused:
++            return store.Refused(f"gate_commands entry {i}: {why}; an entry is a command string or "
++                                 "{command: <string>, paths: [<git pathspec>, ...]}, and a command that "
++                                 "always runs omits paths")
++        if isinstance(e, str):
++            out.append((e, None))
++            continue
++        if not isinstance(e, dict):
++            raise bad(f"{e!r} is neither a string nor a mapping")
++        extra = [str(k) for k in e if k not in ("command", "paths")]
++        if extra:
++            raise bad(f"unknown key {', '.join(extra)}")
++        if not isinstance(e.get("command"), str) or not e["command"]:
++            raise bad("command must be a non-empty string")
++        paths = e.get("paths")
++        if "paths" in e and (not isinstance(paths, list) or not paths
++                             or not all(isinstance(p, str) and p for p in paths)):
++            raise bad("paths must be a non-empty list of non-empty strings")
++        out.append((e["command"], paths))
++    return out
++
++
+ def gate_commands(cfg: dict) -> list[str]:
+     """The gate commands with `{integration}` replaced by the checkout that has the integration
+     branch: the gate script and its baseline come from the integration branch, never from the branch
+@@ -48,7 +77,17 @@ def gate_commands(cfg: dict) -> list[str]:
+     from factory import gitops  # local: compose is otherwise git-free
+     repo = gitops.repo_root(cfg)
+     co = gitops.checkout_of(repo, gitops.integration_branch(cfg, repo)) or repo
+-    return [g.replace("{integration}", str(co)) for g in cfg.get("gate_commands", [])]
++    return [g.replace("{integration}", str(co)) for g, _ in gate_entries(cfg)]
++
++
++def gate_skips(cfg: dict, repo: Path, base: str, head: str) -> list[dict]:
++    """The gate commands a checker of the diff base...head skips: each one with `paths` that the
++    diff touches none of, by git's own pathspec matching. A git error is refused."""
++    from factory import gitops  # local: compose is otherwise git-free
++    return [{"command": cmd, "status": "SKIPPED",
++             "reason": f"the diff {base[:9]}...{head[:9]} touches none of its paths: {', '.join(paths)}"}
++            for cmd, paths in gate_entries(cfg)
++            if paths and not gitops.git(repo, "diff", "--name-only", f"{base}...{head}", "--", *paths)]
+ 
+ 
+ _ENV_NAME = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
+@@ -172,11 +211,19 @@ def compose(root: Path, cfg: dict, meta: dict, t: dict) -> tuple[str, list[str]]
+         av = pt["spec"]["approved_version"]
+         if av is None:
+             raise store.Refused(f"{parent} has no approved spec version")
++        # A checker of a sub-ticket gets the commands its diff skips (meta `gate_skipped`, set at run
++        # start) apart from the ones to run; the implementer and the parent-close verifier have none.
++        skipped = meta.get("gate_skipped") or []
++        gone = {s["command"] for s in skipped}
++        run = [g for (raw, paths), g in zip(gate_entries(cfg), gate_commands(cfg)) if paths is None or raw not in gone]
+         where = (f"\n## Where you work\nWorktree: `{meta.get('worktree')}` (branch `{meta.get('branch')}`, "
+                  f"base `{meta.get('base')}`, head `{meta.get('head')}`). There is no remote: commit on the "
+                  f"branch; the PR is the branch plus the description you return. Gate commands (run each from "
+                  f"your worktree, exactly as written; each is already wrapped): "
+-                 + "; ".join(f"`{wrap(g, env)}`" for g in gate_commands(cfg)) + "\n")
++                 + ("; ".join(f"`{wrap(g, env)}`" for g in run) if run or not skipped
++                    else "none (every gate command is skipped below)") + "\n"
++                 + "".join(f"SKIPPED by the harness for this diff, do not run: `{s['command']}`: {s['reason']}\n"
++                           for s in skipped))
+         parts.append(where)
+         if role == "implementer":
+             if t.get("merge_refused"):
+diff --git a/factory/instance.template.yaml b/factory/instance.template.yaml
+index ccabbdb..e55c29e 100644
+--- a/factory/instance.template.yaml
++++ b/factory/instance.template.yaml
+@@ -18,6 +18,11 @@ protected_paths:
+ # tripwire: {park: [], escalate: []}
+ # Commands every implementer and verifier runs in the checkout under test, each exactly as written.
+ # `{integration}` is replaced with the checkout that has the integration branch.
++# An entry is a command string, or `{command: "<command>", paths: ["src/", ":(exclude)dev/"]}`.
++# `paths` are git pathspecs. A sub-ticket's reviewer and verifier skip a command when the
++# sub-ticket's diff touches none of its paths, and the ci row records it as SKIPPED. Omit `paths`
++# for a command that always runs. Prefer the exclude form (`:(exclude)dev/`): a new file outside
++# every excluded path still runs the command.
+ gate_commands: []
+ placeholders: {rounds: 2, spec_lines: 400, audit_n: 5, retro_min: 3}
+ max_rounds: {spec: 2, pr: 2}
+diff --git a/factory/store.py b/factory/store.py
+index ae4ab8b..de22021 100644
+--- a/factory/store.py
++++ b/factory/store.py
+@@ -241,10 +241,12 @@ def result_path(root: Path, head: str, role: str) -> Path:
+     return root / "results" / head / f"{role}.yaml"
+ 
+ 
+-def record_result(root: Path, tid: str, head: str, role: str, status: str, run_id: str | None, detail: str | None = None) -> dict:
++def record_result(root: Path, tid: str, head: str, role: str, status: str, run_id: str | None, detail: str | None = None,
++                  extra: dict | None = None) -> dict:
+     row = {"ticket": tid, "head": head, "role": role, "status": status, "run_id": run_id, "at": now()}
+     if detail:
+         row["detail"] = detail
++    row.update(extra or {})
+     write_yaml(result_path(root, head, role), row)
+     return row
+ 
+diff --git a/factory/workflows/build.js b/factory/workflows/build.js
+index 24ebe7a..1b87d18 100644
+--- a/factory/workflows/build.js
++++ b/factory/workflows/build.js
+@@ -207,16 +207,23 @@ let state = show.state
+ // --- phase 1: Plan (only when the parent is ready-for-planner)
+ if (state === 'ready-for-planner') {
+   phase('Plan')
+-  const p = await runRole('planner', TICKET, 'Plan')
+-  if (!p) return { ticket: TICKET, state: 'parked' }
+-  if (p.status === 'ESCALATE') { await park(TICKET, 'ESCALATE from planner', [p.runId], 'Plan'); return { ticket: TICKET, state: 'parked' } }
+-  if (p.status !== 'PLANNED') { await park(TICKET, `harness-bug: unknown STATUS ${p.status} from planner`, [p.runId], 'Plan'); return { ticket: TICKET, state: 'parked' } }
+-  const tasks = await clerk(`${BIN} spec tasks ${TICKET} --run ${p.runId}`, 'Plan', 'spec tasks')
+-  if (!tasks.ok) { await park(TICKET, `harness-bug: spec tasks: ${tasks.stderr || ''}`, [p.runId], 'Plan'); return { ticket: TICKET, state: 'parked' } }
+-  const added = await clerk(`${BIN} plan add ${TICKET} --from-run ${p.runId}`, 'Plan', 'plan add')
+-  if (!added.ok) { await park(TICKET, `harness-bug: plan add: ${added.stderr || ''}`, [p.runId], 'Plan'); return { ticket: TICKET, state: 'parked' } }
+-  const subs = await clerk(`${BIN} subticket add ${TICKET} --run ${p.runId}`, 'Plan', 'subticket add')
+-  if (!subs.ok) { await park(TICKET, `harness-bug: subticket add: ${subs.stderr || ''}`, [p.runId], 'Plan'); return { ticket: TICKET, state: 'parked' } }
++  // A spec that needs one sub-ticket becomes it without a planner run; the harness decides which.
++  const whole = await clerk(`${BIN} plan whole-spec ${TICKET}`, 'Plan', 'plan whole-spec')
++  if (!whole.ok) { await park(TICKET, `harness-bug: plan whole-spec: ${whole.stderr || ''}`, [], 'Plan'); return { ticket: TICKET, state: 'parked' } }
++  if (whole.planner === 'skipped') {
++    log(`${TICKET}: planner skipped (${whole.reason}); one sub-ticket from the whole spec`)
++  } else {
++    const p = await runRole('planner', TICKET, 'Plan')
++    if (!p) return { ticket: TICKET, state: 'parked' }
++    if (p.status === 'ESCALATE') { await park(TICKET, 'ESCALATE from planner', [p.runId], 'Plan'); return { ticket: TICKET, state: 'parked' } }
++    if (p.status !== 'PLANNED') { await park(TICKET, `harness-bug: unknown STATUS ${p.status} from planner`, [p.runId], 'Plan'); return { ticket: TICKET, state: 'parked' } }
++    const tasks = await clerk(`${BIN} spec tasks ${TICKET} --run ${p.runId}`, 'Plan', 'spec tasks')
++    if (!tasks.ok) { await park(TICKET, `harness-bug: spec tasks: ${tasks.stderr || ''}`, [p.runId], 'Plan'); return { ticket: TICKET, state: 'parked' } }
++    const added = await clerk(`${BIN} plan add ${TICKET} --from-run ${p.runId}`, 'Plan', 'plan add')
++    if (!added.ok) { await park(TICKET, `harness-bug: plan add: ${added.stderr || ''}`, [p.runId], 'Plan'); return { ticket: TICKET, state: 'parked' } }
++    const subs = await clerk(`${BIN} subticket add ${TICKET} --run ${p.runId}`, 'Plan', 'subticket add')
++    if (!subs.ok) { await park(TICKET, `harness-bug: subticket add: ${subs.stderr || ''}`, [p.runId], 'Plan'); return { ticket: TICKET, state: 'parked' } }
++  }
+   await transition(TICKET, 'planned', null, 'Plan')
+   state = 'planned'
+ }
+diff --git a/tests/factory/test_gate_paths.py b/tests/factory/test_gate_paths.py
+new file mode 100644
+index 0000000..8cd4236
+--- /dev/null
++++ b/tests/factory/test_gate_paths.py
+@@ -0,0 +1,226 @@
++"""A gate command may declare the git pathspecs it covers (T-0028 part A).
++
++A reviewer or verifier run on a sub-ticket whose diff touches none of a command's paths is told the
++command is SKIPPED, with the reason, instead of being asked to run it; the run's meta.yaml and the
++`ci` result row record the skip. The implementer still gets every command. A malformed entry refuses
++every build role's run start before a run is created.
++
++Black-box through `bin/factory`, on a throwaway store, a copy of the suite's fixture instance with
++its own `gate_commands`, and a scratch target repo, as the spec's t0028-sub.sh fixture builds them.
++"""
++from __future__ import annotations
++
++import json
++import os
++import shutil
++import subprocess
++from pathlib import Path
++
++import pytest
++import yaml
++
++REPO = Path(__file__).resolve().parents[2]
++BIN = REPO / "bin" / "factory"
++FIXTURE_INSTANCE = Path(__file__).resolve().parent / "fixtures" / "instance"
++UNSCOPED = "git diff --check main...HEAD"
++SCOPED = "sh -c 'exit 7'"
++
++
++class Target:
++    """T-0001.1 at checks-in-flight, its one commit changing `changed`; I is its implementer run."""
++
++    def __init__(self, tmp_path: Path, gate: str, changed: str = "docs/b.md"):
++        self.tmp = tmp_path
++        self.root = tmp_path / "store"
++        self.inst = tmp_path / "inst"
++        self.repo = tmp_path / "t"
++        shutil.copytree(FIXTURE_INSTANCE, self.inst)
++        self.set_gate(gate)
++        self.env = {**os.environ, "FACTORY_INSTANCE": str(self.inst), "FACTORY_STATE": str(self.root),
++                    "FACTORY_REPO": str(self.repo), "FACTORY_INTEGRATION_BRANCH": "main",
++                    "PYTHONDONTWRITEBYTECODE": "1"}
++        self.repo.mkdir()
++        self.git("init", "-q", "-b", "main")
++        self.git("config", "user.email", "f@x")
++        self.git("config", "user.name", "f")
++        for rel, body in (("src/a.txt", "a\n"), ("docs/b.md", "b\n")):
++            (self.repo / rel).parent.mkdir(exist_ok=True)
++            (self.repo / rel).write_text(body)
++        self.git("add", "-A")
++        self.git("commit", "-q", "-m", "init")
++        (tmp_path / "req.md").write_text("# F\n\nDo x.\n")
++        (tmp_path / "spec.md").write_text("## Problem\nx\n")
++        (tmp_path / "plan.md").write_text("ST-1 / Do it\nDepends on: none\nParallel-safe: yes\n")
++        self.ok("ticket", "new", "--file", str(tmp_path / "req.md"))
++        self.ok("ticket", "transition", "T-0001", "--to", "ready-for-spec-writer", "--by", "t")
++        self.ok("spec", "add", "T-0001", "--file", str(tmp_path / "spec.md"))
++        self.ok("ticket", "transition", "T-0001", "--to", "ready-for-critic", "--by", "t", "--round", "spec:init")
++        self.ok("ticket", "transition", "T-0001", "--to", "awaiting-spec-gate", "--by", "t")
++        self.ok("approve-spec", "T-0001")
++        self.ok("subticket", "add", "T-0001", "--file", str(tmp_path / "plan.md"))
++        self.implementer = self.ok("run", "start", "--role", "implementer", "--ticket", "T-0001.1")["run_id"]
++        wt = self.root / "worktrees" / "T-0001.1"
++        with (wt / changed).open("a") as f:
++            f.write("more\n")
++        self.git("commit", "-q", "-am", "change", cwd=wt)
++        self.ok("run", "finish", self.implementer, "--status-override", "READY-FOR-REVIEW")
++        self.head = self.ok("ticket", "head", "T-0001.1")["head"]
++        self.ok("ticket", "transition", "T-0001.1", "--to", "checks-in-flight", "--by", "t", "--round", "pr:init")
++
++    def set_gate(self, gate: str) -> None:
++        """The fixture instance's config with its one-line `gate_commands` replaced by `gate`."""
++        lines = (FIXTURE_INSTANCE / "instance.yaml").read_text().splitlines(keepends=True)
++        (self.inst / "instance.yaml").write_text("".join(ln for ln in lines if not ln.startswith("gate_commands:")) + gate)
++
++    def git(self, *argv: str, cwd: Path | None = None) -> str:
++        cp = subprocess.run(["git", *argv], cwd=cwd or self.repo, capture_output=True, text=True)
++        assert cp.returncode == 0, cp.stderr
++        return cp.stdout.strip()
++
++    def cli(self, *argv: str) -> subprocess.CompletedProcess:
++        return subprocess.run([str(BIN), *argv], capture_output=True, text=True, env=self.env, cwd=REPO)
++
++    def ok(self, *argv: str) -> dict:
++        cp = self.cli(*argv)
++        assert cp.returncode == 0, f"{' '.join(argv)}: {cp.stderr}"
++        return json.loads(cp.stdout.strip().splitlines()[-1])
++
++    def composed(self, rid: str) -> tuple[str, dict]:
++        self.ok("run", "compose", rid)
++        d = self.root / "runs" / rid
++        return (d / "input.md").read_text(), yaml.safe_load((d / "meta.yaml").read_text())
++
++    def checker(self, role: str = "verifier") -> tuple[str, str, dict]:
++        rid = self.ok("run", "start", "--role", role, "--ticket", "T-0001.1")["run_id"]
++        text, meta = self.composed(rid)
++        return rid, text, meta
++
++
++SCOPED_GATE = f'gate_commands:\n  - "{UNSCOPED}"\n  - {{command: "{SCOPED}", paths: ["src/"]}}\n'
++
++
++def _gate_line(text: str) -> str:
++    return next(ln for ln in text.splitlines() if ln.startswith("Worktree:"))
++
++
++def _skipped_lines(text: str) -> list[str]:
++    return [ln for ln in text.splitlines() if ln.startswith("SKIPPED")]
++
++
++def test_a_scoped_command_is_skipped_for_a_diff_that_touches_none_of_its_paths(tmp_path):
++    t = Target(tmp_path, SCOPED_GATE)
++    rid, text, meta = t.checker()
++    line = _gate_line(text)
++    assert UNSCOPED in line and "exit 7" not in line
++    base = meta["base"]
++    reason = f"the diff {base[:9]}...{t.head[:9]} touches none of its paths: src/"
++    assert _skipped_lines(text) == [f"SKIPPED by the harness for this diff, do not run: `{SCOPED}`: {reason}"]
++    assert meta["gate_skipped"] == [{"command": SCOPED, "status": "SKIPPED", "reason": reason}]
++
++
++def test_a_diff_that_touches_a_scoped_command_s_paths_runs_it(tmp_path):
++    t = Target(tmp_path, SCOPED_GATE, changed="src/a.txt")
++    _, text, meta = t.checker("reviewer")
++    line = _gate_line(text)
++    assert UNSCOPED in line and "exit 7" in line
++    assert _skipped_lines(text) == [] and meta["gate_skipped"] == []
++
++
++def test_an_exclude_pathspec_skips_only_a_diff_inside_the_excluded_paths(tmp_path):
++    """The Decisions' exclude form: a change outside every excluded path still runs the command."""
++    gate = f'gate_commands: [{{command: "{SCOPED}", paths: [":(exclude)docs/"]}}]\n'
++    inside = Target(tmp_path / "docs", gate)
++    _, text, _ = inside.checker()
++    assert "none (every gate command is skipped below)" in _gate_line(text)
++    assert len(_skipped_lines(text)) == 1
++    outside = Target(tmp_path / "src", gate, changed="src/a.txt")
++    _, text, _ = outside.checker()
++    assert "exit 7" in _gate_line(text) and _skipped_lines(text) == []
++
++
++def test_the_implementer_gets_every_command_and_no_skipped_line(tmp_path):
++    t = Target(tmp_path, SCOPED_GATE)
++    text, meta = t.composed(t.implementer)
++    line = _gate_line(text)
++    assert UNSCOPED in line and "exit 7" in line
++    assert _skipped_lines(text) == [] and meta["gate_skipped"] == []
++
++
++@pytest.mark.parametrize("gate", ["PASS", "FAIL"])
++def test_the_ci_row_records_the_skip_and_its_status_still_comes_from_the_gate_suite_line(tmp_path, gate):
++    t = Target(tmp_path, SCOPED_GATE)
++    rid, _, meta = t.checker()
++    out = tmp_path / "v.md"
++    out.write_text(f"Commit: {t.head}\nGate suite: {gate}\nSTATUS: VERIFIED\nCONFIDENCE: high, fixture\nESCALATIONS: none\n")
++    t.ok("results", "record", "T-0001.1", "--head", t.head, "--role", "verifier", "--output", str(out), "--run", rid)
++    ci = yaml.safe_load((t.root / "results" / t.head / "ci.yaml").read_text())
++    assert ci["status"] == gate and ci["skipped"] == meta["gate_skipped"]
++    assert "skipped" not in yaml.safe_load((t.root / "results" / t.head / "verifier.yaml").read_text())
++
++
++def test_a_ci_row_without_a_skip_has_no_skipped_key(tmp_path):
++    t = Target(tmp_path, SCOPED_GATE, changed="src/a.txt")
++    rid, _, _ = t.checker()
++    out = tmp_path / "v.md"
++    out.write_text(f"Commit: {t.head}\nGate suite: PASS\nSTATUS: VERIFIED\nCONFIDENCE: high, fixture\nESCALATIONS: none\n")
++    t.ok("results", "record", "T-0001.1", "--head", t.head, "--role", "verifier", "--output", str(out), "--run", rid)
++    assert "skipped" not in yaml.safe_load((t.root / "results" / t.head / "ci.yaml").read_text())
++
++
++@pytest.mark.parametrize("role", ["implementer", "reviewer", "verifier"])
++def test_a_malformed_entry_refuses_every_build_role_s_run_start_and_creates_no_run(tmp_path, role):
++    t = Target(tmp_path, SCOPED_GATE)
++    if role == "implementer":  # back to the implementer's ready state
++        t.ok("ticket", "transition", "T-0001.1", "--to", "ready-for-implementer", "--by", "t")
++    t.set_gate('gate_commands: [{command: "true", path: ["src/"]}]\n')
++    before = sorted(p.name for p in (t.root / "runs").iterdir())
++    cp = t.cli("run", "start", "--role", role, "--ticket", "T-0001.1")
++    assert cp.returncode == 2 and "gate_commands entry 0" in cp.stderr and "path" in cp.stderr
++    assert sorted(p.name for p in (t.root / "runs").iterdir()) == before
++
++
++@pytest.fixture(scope="module")
++def checks_in_flight(tmp_path_factory):
++    """One sub-ticket at checks-in-flight, shared: each refusal below leaves the store unchanged."""
++    return Target(tmp_path_factory.mktemp("gate"), SCOPED_GATE)
++
++
++@pytest.mark.parametrize(("entries", "named"), [
++    ("[7]", "entry 0: 7 is neither a string nor a mapping"),
++    ("[[a]]", "entry 0: ['a'] is neither a string nor a mapping"),
++    ('[{command: "true", path: ["src/"]}]', "entry 0: unknown key path"),
++    ('[{paths: ["src/"]}]', "entry 0: command must be a non-empty string"),
++    ('[{command: ""}]', "entry 0: command must be a non-empty string"),
++    ("[{command: 3}]", "entry 0: command must be a non-empty string"),
++    ('[{command: "true", paths: "src/"}]', "entry 0: paths must be a non-empty list"),
++    ('[{command: "true", paths: []}]', "entry 0: paths must be a non-empty list"),
++    ('[{command: "true", paths: null}]', "entry 0: paths must be a non-empty list"),
++    ('[{command: "true", paths: ["src/", ""]}]', "entry 0: paths must be a non-empty list"),
++    ('[{command: "true", paths: ["src/", 3]}]', "entry 0: paths must be a non-empty list"),
++    ('["ok", {command: "true", paths: []}]', "entry 1: paths must be a non-empty list"),
++])
++def test_each_malformed_entry_is_refused_by_its_index(checks_in_flight, entries, named):
++    t = checks_in_flight
++    t.set_gate(f"gate_commands: {entries}\n")
++    before = sorted(p.name for p in (t.root / "runs").iterdir())
++    cp = t.cli("run", "start", "--role", "reviewer", "--ticket", "T-0001.1")
++    assert cp.returncode == 2 and f"gate_commands {named}" in cp.stderr, cp.stderr
++    assert "a command that always runs omits paths" in cp.stderr
++    assert sorted(p.name for p in (t.root / "runs").iterdir()) == before
++
++
++@pytest.mark.parametrize("gate", ["gate_commands:\n", "", f'gate_commands: [{{command: "{UNSCOPED}"}}]\n'])
++def test_a_null_absent_or_unscoped_mapping_gate_runs_as_a_string_list_does(tmp_path, gate):
++    t = Target(tmp_path, SCOPED_GATE)
++    t.set_gate(gate)
++    _, text, meta = t.checker()
++    want = f"`(export HOME=\"$(cd \"$(mktemp -d)\" && pwd -P)\"; {UNSCOPED})`" if UNSCOPED in gate else ""
++    assert _gate_line(text).endswith("each is already wrapped): " + want)
++    assert _skipped_lines(text) == [] and meta["gate_skipped"] == []
++
++
++def test_an_unscoped_copy_of_a_skipped_command_still_runs(tmp_path):
++    t = Target(tmp_path, f'gate_commands:\n  - "{SCOPED}"\n  - {{command: "{SCOPED}", paths: ["src/"]}}\n')
++    _, text, meta = t.checker()
++    assert "exit 7" in _gate_line(text) and len(_skipped_lines(text)) == 1
++    assert [s["command"] for s in meta["gate_skipped"]] == [SCOPED]
+diff --git a/tests/factory/test_whole_spec_plan.py b/tests/factory/test_whole_spec_plan.py
+new file mode 100644
+index 0000000..7f0939e
+--- /dev/null
++++ b/tests/factory/test_whole_spec_plan.py
+@@ -0,0 +1,228 @@
++"""A spec that needs one sub-ticket becomes that sub-ticket without a planner run (T-0028 part B).
++
++`factory plan whole-spec PARENT`, on a parent at ready-for-planner with an approved spec, creates
++`<parent>.1` from the whole spec when the parent has no sub-ticket and no earlier planner run, its
++latest spec-writer run did not end NEEDS-SPLIT, and its approved spec has no `##` or `###` heading
++naming seams. Otherwise it reports `"planner": "needed"` and writes nothing. It refuses where a
++planner run would. The one sub-ticket names every scenario, so the parent closes on its VERIFIED run.
++
++Black-box through `bin/factory` on a throwaway store, as the spec's t0028-plan.sh fixture builds it;
++the parent-close case uses the Shepherd fixture of test_parent_close_reuse.py.
++"""
++from __future__ import annotations
++
++import json
++import os
++import shutil
++import subprocess
++from pathlib import Path
++
++import pytest
++import yaml
++
++from .test_parent_close_reuse import _build, _parent_verifier_runs
++from .test_shepherd import Shepherd
++
++REPO = Path(__file__).resolve().parents[2]
++BIN = REPO / "bin" / "factory"
++REASON = "one sub-ticket: no NEEDS-SPLIT, no seam heading, no earlier planner run"
++SPEC_WRITER_OUTPUT = """=== proposal.md
++## Problem
++x
++=== design.md
++## Proposed change
++A. Do x.
++{extra}
++=== specs/demo/spec.md
++## ADDED Requirements
++### Requirement: X
++It SHALL do x.
++#### Scenario: First check
++- WHEN `true`
++- THEN it exits 0
++#### Scenario: Second check
++- WHEN `true`
++- THEN it exits 0
++=== verification.md
++## Acceptance
++- First check → NEW; fails today
++- Second check → REGRESSION
++STATUS: {status}
++CONFIDENCE: high, fixture
++ESCALATIONS: none
++"""
++
++
++class Parent:
++    """T-0001 at ready-for-planner: one spec-writer run ending `status`, its output approved as v1."""
++
++    def __init__(self, tmp_path: Path, status: str = "READY-FOR-CRITIC", extra: str = "", spec_store: bool = False):
++        self.tmp = tmp_path
++        self.root = tmp_path / "store"
++        repo = tmp_path / "t"
++        self.env = {**os.environ, "FACTORY_STATE": str(self.root), "FACTORY_REPO": str(repo),
++                    "FACTORY_INTEGRATION_BRANCH": "main", "PYTHONDONTWRITEBYTECODE": "1"}
++        subprocess.run(["git", "init", "-q", "-b", "main", str(repo)], check=True)
++        subprocess.run(["git", "-C", str(repo), "-c", "user.email=f@x", "-c", "user.name=f", "commit", "-q",
++                        "--allow-empty", "-m", "init"], check=True)
++        if spec_store:
++            self.ok("init")
++        (tmp_path / "req.md").write_text("# F\n\nDo x.\n")
++        self.ok("ticket", "new", "--file", str(tmp_path / "req.md"))
++        self.ok("ticket", "transition", "T-0001", "--to", "ready-for-spec-writer", "--by", "t")
++        w = self.ok("run", "start", "--role", "spec_writer", "--ticket", "T-0001")["run_id"]
++        (self.root / "runs" / w / "output.md").write_text(SPEC_WRITER_OUTPUT.format(status=status, extra=extra))
++        self.ok("run", "finish", w)
++        self.ok("spec", "add", "T-0001", "--from-run", w)
++        self.ok("ticket", "transition", "T-0001", "--to", "ready-for-critic", "--by", "t", "--round", "spec:init")
++        self.ok("ticket", "transition", "T-0001", "--to", "awaiting-spec-gate", "--by", "t")
++        self.ok("approve-spec", "T-0001")
++
++    def cli(self, *argv: str) -> subprocess.CompletedProcess:
++        return subprocess.run([str(BIN), *argv], capture_output=True, text=True, env=self.env, cwd=REPO)
++
++    def ok(self, *argv: str) -> dict:
++        cp = self.cli(*argv)
++        assert cp.returncode == 0, f"{' '.join(argv)}: {cp.stderr}"
++        return json.loads(cp.stdout.strip().splitlines()[-1])
++
++    def tickets(self) -> list[str]:
++        return sorted(p.name for p in (self.root / "tickets").iterdir())
++
++    def events(self, name: str) -> list[dict]:
++        return [e for p in sorted((self.root / "log").glob("*.jsonl")) for ln in p.read_text().splitlines()
++                if (e := json.loads(ln))["event"] == name]
++
++    def snapshot(self) -> dict[str, bytes]:
++        return {str(p.relative_to(self.root)): p.read_bytes() for p in sorted(self.root.rglob("*")) if p.is_file()}
++
++
++def test_a_qualifying_spec_becomes_one_ready_sub_ticket_naming_every_scenario(tmp_path):
++    t = Parent(tmp_path)
++    r = t.ok("plan", "whole-spec", "T-0001")
++    assert r["planner"] == "skipped" and r["reason"] == REASON
++    assert r["subtickets"] == [{"id": "T-0001.1", "label": "whole-spec", "state": "ready-for-implementer",
++                                "depends_on": [], "parallel_safe": True}]
++    assert t.tickets() == ["T-0001.1.yaml", "T-0001.yaml"]
++    sub = yaml.safe_load((t.root / "tickets" / "T-0001.1.yaml").read_text())
++    assert sub["type"] == "sub-ticket" and sub["parent"] == "T-0001" and sub["source"] == "plan:whole-spec"
++    assert sub["spec"] == {"version": 1, "approved_version": 1}
++    text = (t.root / "specs" / "T-0001.1" / "subticket.md").read_text()
++    assert text.startswith("T-0001.1 / F\nDepends on: none\nParallel-safe: yes\n\n")
++    assert "\n- First check\n- Second check\n" in text and REASON in text
++    parent = yaml.safe_load((t.root / "tickets" / "T-0001.yaml").read_text())
++    assert parent["plan"] == "plans/T-0001.md" and (t.root / "plans" / "T-0001.md").read_text() == text
++    assert parent["status"] == "ready-for-planner", "the build moves the parent to planned, not this command"
++    assert t.ok("ticket", "ready-implementers", "T-0001")["ready"] == ["T-0001.1"]
++    (skip,) = t.events("plan.skipped")
++    assert skip["ticket"] == "T-0001" and skip["subticket"] == "T-0001.1" and skip["reason"] == REASON
++    assert not (t.root / "openspec").exists() and t.events("tasks.written") == []
++
++
++def test_with_a_spec_store_the_text_is_also_the_change_folder_s_tasks(tmp_path):
++    t = Parent(tmp_path, spec_store=True)
++    t.ok("plan", "whole-spec", "T-0001")
++    tasks = t.root / "openspec" / "changes" / "T-0001" / "tasks.md"
++    assert tasks.read_text() == (t.root / "specs" / "T-0001.1" / "subticket.md").read_text()
++    assert [e["ticket"] for e in t.events("tasks.written")] == ["T-0001"]
++
++
++def test_a_missing_change_folder_under_a_spec_store_is_refused_as_spec_tasks_words_it(tmp_path):
++    t = Parent(tmp_path, spec_store=True)
++    shutil.rmtree(t.root / "openspec" / "changes" / "T-0001")
++    before = t.snapshot()
++    cp = t.cli("plan", "whole-spec", "T-0001")
++    assert cp.returncode == 2 and "T-0001 has no change folder (no pinned version)" in cp.stderr
++    assert t.snapshot() == before
++
++
++@pytest.mark.parametrize(("status", "extra", "reason"), [
++    ("NEEDS-SPLIT", "", "its spec writer marked it NEEDS-SPLIT"),
++    ("READY-FOR-CRITIC", "### Size and seams", "its approved spec has a seam heading: ### Size and seams"),
++    ("READY-FOR-CRITIC", "## Seam: the store", "its approved spec has a seam heading: ## Seam: the store"),
++    ("READY-FOR-CRITIC", "## The SEAMS here", "its approved spec has a seam heading"),
++])
++def test_a_split_spec_needs_the_planner_and_nothing_is_written(tmp_path, status, extra, reason):
++    t = Parent(tmp_path, status, extra)
++    before = t.snapshot()
++    r = t.ok("plan", "whole-spec", "T-0001")
++    assert r["planner"] == "needed" and r["reason"].startswith(reason)
++    assert t.snapshot() == before
++
++
++@pytest.mark.parametrize("extra", ["#### Seams in a scenario-level heading", "```\n## Size and seams\n```",
++                                   "## Seamstress", "Seams named in prose"])
++def test_a_seam_word_that_is_no_seam_heading_still_skips_the_planner(tmp_path, extra):
++    t = Parent(tmp_path, extra=extra)
++    assert t.ok("plan", "whole-spec", "T-0001")["planner"] == "skipped"
++
++
++def test_a_requirement_line_naming_seams_is_no_seam_heading(tmp_path):
++    t = Parent(tmp_path)
++    spec = t.root / "specs" / "T-0001" / "v1.md"
++    spec.write_text(spec.read_text().replace("### Requirement: X", "### Requirement: X keeps its seams"))
++    assert t.ok("plan", "whole-spec", "T-0001")["planner"] == "skipped"
++
++
++def test_a_parent_a_planner_already_ran_on_needs_the_planner(tmp_path):
++    t = Parent(tmp_path)
++    p = t.ok("run", "start", "--role", "planner", "--ticket", "T-0001")["run_id"]
++    t.ok("run", "finish", p, "--status-override", "ESCALATE")
++    before = t.snapshot()
++    r = t.ok("plan", "whole-spec", "T-0001")
++    assert r == {"ok": True, "id": "T-0001", "planner": "needed", "reason": f"a planner already ran on it: {p}"}
++    assert t.snapshot() == before
++
++
++def test_a_parent_with_a_sub_ticket_needs_the_planner(tmp_path):
++    t = Parent(tmp_path)
++    (tmp_path / "plan.md").write_text("ST-1 / Do it\nDepends on: none\nParallel-safe: yes\n")
++    t.ok("subticket", "add", "T-0001", "--file", str(tmp_path / "plan.md"))
++    r = t.ok("plan", "whole-spec", "T-0001")
++    assert r["planner"] == "needed" and r["reason"] == "it already has sub-tickets: T-0001.1"
++    assert t.tickets() == ["T-0001.1.yaml", "T-0001.yaml"]
++
++
++def test_a_parent_not_ready_for_its_planner_is_refused(tmp_path):
++    t = Parent(tmp_path)
++    t.ok("ticket", "transition", "T-0001", "--to", "planned", "--by", "t")
++    before = t.snapshot()
++    cp = t.cli("plan", "whole-spec", "T-0001")
++    assert cp.returncode == 2 and "T-0001 is planned, not ready-for-planner" in cp.stderr
++    assert t.snapshot() == before
++
++
++def test_a_parent_with_a_run_in_flight_is_refused(tmp_path):
++    t = Parent(tmp_path)
++    p = t.ok("run", "start", "--role", "planner", "--ticket", "T-0001")["run_id"]
++    before = t.snapshot()
++    cp = t.cli("plan", "whole-spec", "T-0001")
++    assert cp.returncode == 2 and f"T-0001 already has run {p} in flight" in cp.stderr
++    assert t.snapshot() == before
++
++
++def test_a_parent_with_no_approved_spec_is_refused(tmp_path):
++    t = Parent(tmp_path)
++    t.ok("ticket", "set", "T-0001", "spec.approved_version=")
++    before = t.snapshot()
++    cp = t.cli("plan", "whole-spec", "T-0001")
++    assert cp.returncode == 2 and "T-0001 has no approved spec" in cp.stderr
++    assert t.snapshot() == before
++
++
++def test_the_whole_spec_sub_ticket_s_verified_run_closes_the_parent(tmp_path):
++    """Part C's rule, reached without a planner: one sub-ticket naming every scenario, merged with a
++    VERIFIED run on the parent's base, stands for the parent-close run."""
++    f = Shepherd(tmp_path, case="accept-approve", with_repo=True)
++    f.human_runs("init")
++    tid = f.request("# SPEC-99: Fixture\n\nThe bot should do the thing.\n")
++    for role in ("triage", "spec_writer", "critic"):
++        f.dispatch(role, tid)
++    f.human_approves(tid)
++    (st,) = [s["id"] for s in f.ok("plan", "whole-spec", tid)["subtickets"]]
++    f.ok("ticket", "transition", tid, "--to", "planned", "--by", "workflow")
++    assert not list((f.store / "runs").glob("*-planner"))
++    ver = _build(f, st)
++    pc = f.ok("ticket", "parent-check", tid)
++    assert pc["state"] == "ready-for-parent-verify" and pc["reuse"] == ver.run_id
++    assert _parent_verifier_runs(f, tid) == []

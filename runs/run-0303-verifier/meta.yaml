@@ -1,0 +1,43 @@
+run_id: run-0303-verifier
+role: verifier
+ticket: T-0028.1
+model: opus
+round: 1
+spec_version: 1
+started: '2026-10-05T15:01:05+00:00'
+finished: '2026-10-05T15:07:12+00:00'
+wall_s: 367
+status: VERIFIED
+input_sources:
+- specs/T-0028.1/subticket.md
+- specs/T-0028/v1.md
+- runs/run-0301-implementer/output.md
+- runs/run-0303-verifier/diff.patch
+- approvals/T-0028.1/ruling-1.md
+environment_files: []
+branch: factory/T-0028.1
+base: d3973c12128a9c1b4a7069c97939d5da5b34742c
+head: 0521bb9338c9b4642d22878dbd8b659adbc5ea0a
+worktree: /Users/dphang/dev/spec-factory/.factory/store/runs/run-0303-verifier/wt
+confidence: high. Every acceptance command ran verbatim on both the base and the PR head, and both gates
+  passed on `0521bb9`. The probes found one edge case outside the criteria.
+escalations:
+- 'A config with the same command written twice can silently drop a check. The case is two scoped `gate_commands`
+  entries with identical command text but different `paths`. When a diff touches only the second entry''s
+  paths, the checker is told to run neither, and only the first entry is marked SKIPPED. The cause is
+  `factory/compose.py` in `compose()`, which matches a skip by command text (`raw not in gone`), not by
+  entry. No repository''s config has scoped entries today, so no check that runs today is lost. Decide:
+  accept this as a known limit, or file a follow-up that matches skips by entry index. A third option
+  is to refuse duplicate command text in `gate_entries`.'
+- 'The README contradicts this change, and its status date was not bumped. The catch-up merge brought
+  in lines from `main` that still say the build always starts with the planner: `README.md:236`, which
+  reads "the build starts with the planner", and `README.md:310`, which reads "The planner splits it into
+  sub-tickets". C.4 also asks for the status date at `README.md:9` to be bumped, and it still reads 2026-10-04.
+  No acceptance scenario checks these lines; the `stale=0` check covers only the one sentence C.4 names.
+  Decide: a fix round on this branch, or a follow-up.'
+- Protected paths changed in this diff, for the merge gate's human approval row. The declared ones, all
+  in the harness class, are `factory/compose.py`, `factory/cli.py`, `factory/workflows/build.js` and `factory/instance.template.yaml`;
+  the template change is comments only. The undeclared one is `factory/store.py`, where `record_result`
+  gains `extra`. The operator's ruling of 2026-10-05 (`approvals/T-0028.1/ruling-1.md`) accepted it as
+  part of design part A.5.
+escalations_note: null
