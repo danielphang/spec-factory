@@ -65,6 +65,9 @@ A fix closes its issue through a reviewed change on `main`; the merge column is 
 | [58](https://github.com/danielphang/spec-factory/issues/58) | A stale MODIFIED requirement can overwrite another ticket's change at archive: pin a content hash per requirement | not in intake (second; Nanobot audit first) | — | — |
 | [59](https://github.com/danielphang/spec-factory/issues/59) | The spec critic never sees the original request: add it, plus intent coverage and a wrong-implementation check | not in intake (after #24 A+C and #51) | — | — |
 | [60](https://github.com/danielphang/spec-factory/issues/60) | Store integrity: lost ticket updates between parallel checkers; checker results not bound to their ticket | not in intake (with #53) | — | — |
+| [61](https://github.com/danielphang/spec-factory/issues/61) | factory/cost.py double-counts tokens: each streamed content block repeats the call's usage | not in intake (fold into #43 or #56 H, or alone; small) | — | — |
+| [62](https://github.com/danielphang/spec-factory/issues/62) | Option (off by default): parallel read-only explorers before the spec writer | not in intake (p2; filed by the Reviewer session on the operator's say-so) | — | — |
+| [63](https://github.com/danielphang/spec-factory/issues/63) | Reviewer: BLOCKING requires evidence; confidence recorded but never routed on | not in intake (p2; filed by the Reviewer session on the operator's say-so) | — | — |
 
 Issues 1–10 are applied and can be closed against their merge; 11 applied (`9168ce1`); 13 and 14 fold into #21 (checklists until it archives); 15 closed as superseded. #12 was a duplicate of #11.
 New findings go straight to GitHub issues; this file is the index.
