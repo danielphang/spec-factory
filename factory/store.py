@@ -241,10 +241,12 @@ def result_path(root: Path, head: str, role: str) -> Path:
     return root / "results" / head / f"{role}.yaml"
 
 
-def record_result(root: Path, tid: str, head: str, role: str, status: str, run_id: str | None, detail: str | None = None) -> dict:
+def record_result(root: Path, tid: str, head: str, role: str, status: str, run_id: str | None, detail: str | None = None,
+                  extra: dict | None = None) -> dict:
     row = {"ticket": tid, "head": head, "role": role, "status": status, "run_id": run_id, "at": now()}
     if detail:
         row["detail"] = detail
+    row.update(extra or {})
     write_yaml(result_path(root, head, role), row)
     return row
 

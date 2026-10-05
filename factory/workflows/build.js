@@ -207,16 +207,23 @@ let state = show.state
 // --- phase 1: Plan (only when the parent is ready-for-planner)
 if (state === 'ready-for-planner') {
   phase('Plan')
-  const p = await runRole('planner', TICKET, 'Plan')
-  if (!p) return { ticket: TICKET, state: 'parked' }
-  if (p.status === 'ESCALATE') { await park(TICKET, 'ESCALATE from planner', [p.runId], 'Plan'); return { ticket: TICKET, state: 'parked' } }
-  if (p.status !== 'PLANNED') { await park(TICKET, `harness-bug: unknown STATUS ${p.status} from planner`, [p.runId], 'Plan'); return { ticket: TICKET, state: 'parked' } }
-  const tasks = await clerk(`${BIN} spec tasks ${TICKET} --run ${p.runId}`, 'Plan', 'spec tasks')
-  if (!tasks.ok) { await park(TICKET, `harness-bug: spec tasks: ${tasks.stderr || ''}`, [p.runId], 'Plan'); return { ticket: TICKET, state: 'parked' } }
-  const added = await clerk(`${BIN} plan add ${TICKET} --from-run ${p.runId}`, 'Plan', 'plan add')
-  if (!added.ok) { await park(TICKET, `harness-bug: plan add: ${added.stderr || ''}`, [p.runId], 'Plan'); return { ticket: TICKET, state: 'parked' } }
-  const subs = await clerk(`${BIN} subticket add ${TICKET} --run ${p.runId}`, 'Plan', 'subticket add')
-  if (!subs.ok) { await park(TICKET, `harness-bug: subticket add: ${subs.stderr || ''}`, [p.runId], 'Plan'); return { ticket: TICKET, state: 'parked' } }
+  // A spec that needs one sub-ticket becomes it without a planner run; the harness decides which.
+  const whole = await clerk(`${BIN} plan whole-spec ${TICKET}`, 'Plan', 'plan whole-spec')
+  if (!whole.ok) { await park(TICKET, `harness-bug: plan whole-spec: ${whole.stderr || ''}`, [], 'Plan'); return { ticket: TICKET, state: 'parked' } }
+  if (whole.planner === 'skipped') {
+    log(`${TICKET}: planner skipped (${whole.reason}); one sub-ticket from the whole spec`)
+  } else {
+    const p = await runRole('planner', TICKET, 'Plan')
+    if (!p) return { ticket: TICKET, state: 'parked' }
+    if (p.status === 'ESCALATE') { await park(TICKET, 'ESCALATE from planner', [p.runId], 'Plan'); return { ticket: TICKET, state: 'parked' } }
+    if (p.status !== 'PLANNED') { await park(TICKET, `harness-bug: unknown STATUS ${p.status} from planner`, [p.runId], 'Plan'); return { ticket: TICKET, state: 'parked' } }
+    const tasks = await clerk(`${BIN} spec tasks ${TICKET} --run ${p.runId}`, 'Plan', 'spec tasks')
+    if (!tasks.ok) { await park(TICKET, `harness-bug: spec tasks: ${tasks.stderr || ''}`, [p.runId], 'Plan'); return { ticket: TICKET, state: 'parked' } }
+    const added = await clerk(`${BIN} plan add ${TICKET} --from-run ${p.runId}`, 'Plan', 'plan add')
+    if (!added.ok) { await park(TICKET, `harness-bug: plan add: ${added.stderr || ''}`, [p.runId], 'Plan'); return { ticket: TICKET, state: 'parked' } }
+    const subs = await clerk(`${BIN} subticket add ${TICKET} --run ${p.runId}`, 'Plan', 'subticket add')
+    if (!subs.ok) { await park(TICKET, `harness-bug: subticket add: ${subs.stderr || ''}`, [p.runId], 'Plan'); return { ticket: TICKET, state: 'parked' } }
+  }
   await transition(TICKET, 'planned', null, 'Plan')
   state = 'planned'
 }

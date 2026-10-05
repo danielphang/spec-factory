@@ -144,9 +144,15 @@ state "ready for triage". The intake workflow runs triage. On accept, the spec w
 the repo and writes the spec. The critic judges it and approves, asks for one revision, or escalates. On approve, the ticket waits at the **spec gate**. A human reads the spec,
 edits it if needed, and approves it (pinning that version) or sends it back with notes. Nothing
 downstream runs until this happens.
-The intake script stops at the spec gate; the build script runs the planner.
+The intake script stops at the spec gate; the build script plans the work.
 
-The build workflow runs the planner, which splits the spec into sub-tickets with dependencies.
+The build workflow first asks the harness whether the spec needs splitting, with
+`factory plan whole-spec`. When it needs only one sub-ticket, the harness creates that sub-ticket
+from the whole spec, naming every scenario in it, and no planner runs. A spec needs only one when
+the spec writer did not mark it too large for one merge (`NEEDS-SPLIT`), no heading in it names
+seams (the places the writer says the work splits), and no planner has run on it before. Otherwise
+the planner runs, splitting the spec into sub-tickets with dependencies. The one-sub-ticket path is
+tested, and has not yet run on a real ticket.
 When a sub-ticket's dependencies are merged, an implementer builds it on a branch in its own
 working copy. The reviewer and the verifier then judge the same commit, independently. The harness
 makes one decision from their verdicts: merge; send back for one revision; send back
@@ -570,7 +576,10 @@ From inside the target repo, with `R` the runtime (`~/dev/spec-factory-harness`)
 2. Restart the Claude Code session so the agents register.
 3. Fill in `.factory/context.md`, the briefing every role reads first: which repo this is, how to
    run its tests, what kind of request to expect. Set `gate_commands` and `protected_paths` in
-   `.factory/instance.yaml`. Set `run_env` for any tool whose cache lives under HOME,
+   `.factory/instance.yaml`. A `gate_commands` entry may declare `paths`, the git pathspecs the
+   command covers: `{command: "<command>", paths: [":(exclude)dev/"]}`. A sub-ticket whose changes
+   touch none of them skips that command. Prefer exclude pathspecs, so a new file still runs the
+   command. Set `run_env` for any tool whose cache lives under HOME,
    so it still finds that cache from inside the fresh temporary HOME.
 
 The repo is now a target. "Starting a run" is the rest.
@@ -815,7 +824,10 @@ path above is relative to the store.
   result where a CI result would go. The reviewer and verifier judge the same commit. A sub-ticket
   that passes is merged into the local integration branch, one merge at a time. If `main` moved
   during the build, the implementer merges it in before the checks re-run; two catch-up runs that
-  fail to merge it in park the sub-ticket.
+  fail to merge it in park the sub-ticket. A check command that declares the paths it covers is
+  skipped for a sub-ticket whose changes touch none of them: the reviewer and verifier are told it
+  is SKIPPED, with the reason, and the skip is recorded with the check result. The implementer
+  still gets every command. The skip is tested, and no repo's configuration uses it yet.
 - **Spec store.** Specs live in an OpenSpec tree, a folder-per-change layout borrowed from the
   OpenSpec project. A ticket's spec is a set of deltas against current truth. When a ticket closes,
   `archive` applies the deltas, so the description of the system is kept current by the pipeline.

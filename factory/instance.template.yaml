@@ -18,6 +18,11 @@ protected_paths:
 # tripwire: {park: [], escalate: []}
 # Commands every implementer and verifier runs in the checkout under test, each exactly as written.
 # `{integration}` is replaced with the checkout that has the integration branch.
+# An entry is a command string, or `{command: "<command>", paths: ["src/", ":(exclude)dev/"]}`.
+# `paths` are git pathspecs. A sub-ticket's reviewer and verifier skip a command when the
+# sub-ticket's diff touches none of its paths, and the ci row records it as SKIPPED. Omit `paths`
+# for a command that always runs. Prefer the exclude form (`:(exclude)dev/`): a new file outside
+# every excluded path still runs the command.
 gate_commands: []
 placeholders: {rounds: 2, spec_lines: 400, audit_n: 5, retro_min: 3}
 max_rounds: {spec: 2, pr: 2}
