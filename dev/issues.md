@@ -60,6 +60,11 @@ A fix closes its issue through a reviewed change on `main`; the merge column is 
 | [53](https://github.com/danielphang/spec-factory/issues/53) | A stopped workflow leaves its run 'in flight' forever: record the stop, record each run's owner, say so in the fence's refusal | not in intake (after #41, #24, #51) | — | — |
 | [54](https://github.com/danielphang/spec-factory/issues/54) | Reusable specs across re-ports: product vs implementation decisions, observable-surface scenarios, port export | not in intake (not urgent) | — | — |
 | [55](https://github.com/danielphang/spec-factory/issues/55) | README: what the factory keeps in a target (artifact, branch, committed by, restore) and what each gate reviews | done by hand as a docs change, not a ticket (README architecture overview, 2026-10-04) | `1e46841` | — |
+| [56](https://github.com/danielphang/spec-factory/issues/56) | Independent review (Codex/GPT-6 Astra): state races, stale spec deltas, critic intent, protected-path gate, result binding, workflow proposals | assessed 2026-10-05; umbrella for #57 to #60; F to #34, H and I to #43 | — | — |
+| [57](https://github.com/danielphang/spec-factory/issues/57) | Merge gate does not check protected paths; the reviewer prompt promises a check local mode never runs | not in intake (first after #41) | — | — |
+| [58](https://github.com/danielphang/spec-factory/issues/58) | A stale MODIFIED requirement can overwrite another ticket's change at archive: pin a content hash per requirement | not in intake (second; Nanobot audit first) | — | — |
+| [59](https://github.com/danielphang/spec-factory/issues/59) | The spec critic never sees the original request: add it, plus intent coverage and a wrong-implementation check | not in intake (after #24 A+C and #51) | — | — |
+| [60](https://github.com/danielphang/spec-factory/issues/60) | Store integrity: lost ticket updates between parallel checkers; checker results not bound to their ticket | not in intake (with #53) | — | — |
 
 Issues 1–10 are applied and can be closed against their merge; 11 applied (`9168ce1`); 13 and 14 fold into #21 (checklists until it archives); 15 closed as superseded. #12 was a duplicate of #11.
 New findings go straight to GitHub issues; this file is the index.
