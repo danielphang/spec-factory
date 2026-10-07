@@ -4,11 +4,12 @@ Per (role, round, resolution). No other code path assembles role input.
 """
 from __future__ import annotations
 
+import difflib
 import re
 import shlex
 from pathlib import Path
 
-from factory import instance, store
+from factory import instance, specstore, store
 
 
 def _runs_for(root: Path, ticket: str, role: str, exclude: str) -> list[str]:
@@ -90,6 +91,19 @@ def gate_skips(cfg: dict, repo: Path, base: str, head: str) -> list[dict]:
             if paths and not gitops.git(repo, "diff", "--name-only", f"{base}...{head}", "--", *paths)]
 
 
+def without_evidence(text: str) -> str:
+    """A spec text without its `## Evidence` and `## Responses` sections. Each runs from its heading
+    line (trailing spaces ignored) up to the next line starting `## ` or `=== `; a line inside a
+    fenced code block neither starts nor ends a section."""
+    out, cut = [], False
+    for line, in_fence in specstore.lines_outside_fences(text):
+        if not in_fence and line.startswith(("## ", "=== ")):
+            cut = line.rstrip() in ("## Evidence", "## Responses")
+        if not cut:
+            out.append(line)
+    return "\n".join(out) + ("\n" if out and text.endswith("\n") else "")
+
+
 _ENV_NAME = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
 
 
@@ -137,11 +151,16 @@ def compose(root: Path, cfg: dict, meta: dict, t: dict) -> tuple[str, list[str]]
              "ticket moves on, and keeps it while the ticket is parked.\n"]
     sources: list[str] = []
 
-    def add(rel: str, heading: str) -> None:
+    def add(rel: str, heading: str, edit=lambda text: text) -> None:
         p = root / rel
         if p.exists():
             sources.append(rel)
-            parts.append(f"\n## {heading}\n\n{p.read_text(encoding='utf-8').rstrip()}\n")
+            parts.append(f"\n## {heading}\n\n{edit(p.read_text(encoding='utf-8')).rstrip()}\n")
+
+    def add_spec(rel: str, heading: str) -> None:
+        # Evidence and Responses serve the critic and the spec gate; the full file stays one read away
+        add(rel, f"{heading}. Its Evidence and Responses sections are left out; the full spec is `{root / rel}`",
+            without_evidence)
 
     version = t["spec"]["version"]
     rnd = t["round"]["spec"]
@@ -189,14 +208,24 @@ def compose(root: Path, cfg: dict, meta: dict, t: dict) -> tuple[str, list[str]]
             crit = _runs_for(root, tid, "critic", run_id)
             if crit:
                 add(f"runs/{crit[-1]}/output.md", "Your prior findings (round %d)" % (rnd - 1))
-            add(f"specs/{tid}/v{version - 1}.md", f"Previous spec version (v{version - 1})")
+            # the smaller of the diff and the previous version: a rewrite's diff outgrows the version
+            prev_rel, cur_rel = f"specs/{tid}/v{version - 1}.md", f"specs/{tid}/v{version}.md"
+            prev, cur = ((root / r).read_text(encoding="utf-8") if (root / r).exists() else ""
+                         for r in (prev_rel, cur_rel))
+            diff = "\n".join(difflib.unified_diff(prev.splitlines(), cur.splitlines(), prev_rel, cur_rel,
+                                                  n=3, lineterm=""))
+            if len(diff.encode()) < len(prev.encode()):
+                add(prev_rel, f"Previous spec version (v{version - 1}), as a unified diff to v{version}",
+                    lambda _: diff)
+            else:
+                add(prev_rel, f"Previous spec version (v{version - 1}), whole: the diff to v{version} is not smaller")
         for p in _approvals(root, tid, "ruling"):
             add(str(p.relative_to(root)), "Human ruling")
     elif role == "planner":
         av = t["spec"]["approved_version"]
         if av is None:
             raise store.Refused(f"{tid} has no approved spec version")
-        add(f"specs/{tid}/v{av}.md", f"Approved spec (v{av}, pinned)")
+        add_spec(f"specs/{tid}/v{av}.md", f"Approved spec (v{av}, pinned)")
         add_decisions()
         for p in _approvals(root, tid, "ruling"):
             add(str(p.relative_to(root)), "Human ruling")
@@ -235,7 +264,7 @@ def compose(root: Path, cfg: dict, meta: dict, t: dict) -> tuple[str, list[str]]
                              "conflict, re-run the gates, commit, and add one note on the resolution to the PR description. "
                              "Change nothing else.\n")
             add(f"specs/{tid}/subticket.md", f"Sub-ticket {tid}")
-            add(f"specs/{parent}/v{av}.md", f"Parent spec (v{av}, pinned)")
+            add_spec(f"specs/{parent}/v{av}.md", f"Parent spec (v{av}, pinned)")
             prnd = t["round"]["pr"]
             if prnd >= 1 and t.get("head"):
                 for r in ("reviewer", "verifier"):
@@ -250,10 +279,10 @@ def compose(root: Path, cfg: dict, meta: dict, t: dict) -> tuple[str, list[str]]
                 add(str(p.relative_to(root)), "Human ruling")
         else:
             if parent == tid:
-                add(f"specs/{tid}/v{av}.md", f"Parent spec (v{av}, pinned): verify every scenario on main")
+                add_spec(f"specs/{tid}/v{av}.md", f"Parent spec (v{av}, pinned): verify every scenario on main")
             else:
                 add(f"specs/{tid}/subticket.md", f"Sub-ticket {tid}")
-                add(f"specs/{parent}/v{av}.md", f"Parent spec (v{av}, pinned)")
+                add_spec(f"specs/{parent}/v{av}.md", f"Parent spec (v{av}, pinned)")
                 impl = _runs_for(root, tid, "implementer", run_id)
                 if impl:
                     add(f"runs/{impl[-1]}/output.md", "PR description (the implementer's output)")
