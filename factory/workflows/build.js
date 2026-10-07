@@ -63,7 +63,19 @@ async function park(ticket, reason, outputs, phase) {
   log(`${ticket} parked: ${reason}`)
 }
 
+// An EMPTY-OUTPUT run is re-dispatched once, same role, same inputs; a second in a row parks the ticket
+// with both runs. The agent call reports no reason a run stopped, so neither is a budget kill.
 async function runRole(role, ticket, phase) {
+  const first = await runOnce(role, ticket, phase)
+  if (!first || first.status !== 'EMPTY-OUTPUT') return first
+  log(`${role} ${first.runId} (${ticket}): EMPTY-OUTPUT; re-dispatching ${role} once`)
+  const second = await runOnce(role, ticket, phase)
+  if (!second || second.status !== 'EMPTY-OUTPUT') return second
+  await park(ticket, `EMPTY-OUTPUT from ${role}`, [first.runId, second.runId], phase)
+  return null
+}
+
+async function runOnce(role, ticket, phase) {
   const start = await clerk(`${BIN} run start --role ${role} --ticket ${ticket} --model ${MODELS[role]}`, phase, `run start ${role} ${ticket}`)
   if (!start.ok) {
     // A refusal that starts `BLOCKED ` is the harness blocking the run (the sibling-tests check): park
@@ -106,14 +118,18 @@ async function runRole(role, ticket, phase) {
     const sh = `${args.stubs}/${role}-${stubCount[role]}.sh`
     await clerk(`if [ -f ${sh} ]; then (cd ${start.worktree} && sh ${sh}) >/dev/null 2>&1; fi; echo '{"ok": true}'`, phase, `stub script ${role}-${stubCount[role]}`)
   }
-  const killed = out === null || (typeof out === 'string' && out.trim() === '')
-  const fin = killed
-    ? await clerk(`${BIN} run finish ${runId} --status-override KILLED`, phase, `run finish ${role} (killed)`)
-    : await clerk(`${BIN} run finish ${runId}`, phase, `run finish ${role}`)
+  // run finish reads the output file for every run: a missing or blank one is EMPTY-OUTPUT.
+  const fin = await clerk(`${BIN} run finish ${runId}`, phase, `run finish ${role}`)
   if (role === 'reviewer' || role === 'verifier') await clerk(`${BIN} run cleanup ${runId}`, phase, `run cleanup ${role}`)
   if (!fin.ok) { await park(ticket, `harness-bug: run finish ${role}: ${fin.stderr || ''}`, [runId], phase); return null }
   // run finish parked the ticket (the tripwire saw a listed live file change): stop, do not route on STATUS
   if (fin.parked) { log(`${ticket} parked: ${fin.parked}`); return null }
+  // An EMPTY-OUTPUT run keeps the agent's last message, so a human can see why it stopped. A failure
+  // here never parks and never changes the route.
+  const said = typeof out === 'string' ? out.trim() : ''
+  if (fin.status === 'EMPTY-OUTPUT' && said) {
+    await clerk(`${BIN} run last-message ${runId} '--text=${said.slice(-4000).replace(/'/g, "'\\''")}'`, phase, `run last-message ${role}`)
+  }
   log(`${role} ${runId} (${ticket}): ${fin.status}`)
   return { runId, status: fin.status, outputPath }
 }
@@ -134,7 +150,6 @@ async function buildOne(st) {
     if (implemented) {
       const impl = await runRole('implementer', st, 'Build')
       if (!impl) return
-      if (impl.status === 'KILLED') { await park(st, 'budget kill: implementer', [impl.runId], 'Build'); return }
       if (impl.status === 'BLOCKED') { await park(st, 'BLOCKED from implementer', [impl.runId], 'Build'); return }
       if (impl.status !== 'READY-FOR-REVIEW') { await park(st, `harness-bug: unknown STATUS ${impl.status} from implementer`, [impl.runId], 'Build'); return }
       const moved = await clerk(`${BIN} ticket head ${st}`, 'Build', `ticket head ${st}`)

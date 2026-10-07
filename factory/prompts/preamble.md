@@ -42,6 +42,10 @@ RUNNING CODE
   temporary directory, never the real one: use the wrapper in the
   "Running code" section of your input. That includes every test or
   check command your briefing, ticket or spec gives you.
+- Run every command in the foreground and wait for it to finish.
+  Never end your turn while a command you started is still running:
+  your final message ends your run, and an output you have not yet
+  written is lost.
 - A throwaway HOME does not stop a write to an absolute path. Never
   run anything that could write a protected path outside the
   repository, such as live credentials or production state.

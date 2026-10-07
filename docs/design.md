@@ -98,14 +98,15 @@ Rules the table relies on:
 - A round is one checker pass; the first check is round 1. Two loops carry a counter: the spec loop (writer ↔ critic) and the PR loop (implementer ↔ reviewer + verifier). The counter increments when the author re-enters after REVISE, REQUEST-CHANGES, or FAILED. A gate failure, whether CI reports it or the verifier's gate step does, counts: the implementer ran the gates locally before pushing. Rebases and merge-main rounds do not count.
 - The PR loop routes only after CI and both checker results for the current head are recorded. One implementer run then receives all three outputs. Never launch a second implementer run on a branch that already has one in flight.
 - The dispatcher reads a role's trailer by its labels, not by line position. The last `STATUS:` line wins; CONFIDENCE is the next line labelled `CONFIDENCE:` after it, and ESCALATIONS the next line labelled `ESCALATIONS:` after that. Lines between labelled lines are continuation (a wrapped reason, a remark), so a verbose but well-formed verdict routes on its STATUS. A trailer with no CONFIDENCE or no ESCALATIONS line after its last STATUS is a parse failure, which routes as a STATUS not in this table.
-- A non-empty ESCALATIONS line is copied to the human queue without blocking the STATUS route. An ESCALATIONS line that starts with the word `none` followed by end of line or punctuation (so not `None of …`), with prose after it on that line and nothing below it, is empty for routing, and the prose is kept with the run for audit. A `none` line with further lines below it is a real list, copied verbatim from that line on. Only NEEDS-HUMAN, CLARIFY, BLOCKED, ESCALATE, SPEC-DEFECT, a max-round cutoff, a budget kill (piece 3), a parent-close FAILED, and an archive refusal (Spec store: a delta that does not apply, no change folder, or no spec store) park the ticket. A parking STATUS from one checker wins over the other's REQUEST-CHANGES or FAILED; both outputs go to the queue.
+- A non-empty ESCALATIONS line is copied to the human queue without blocking the STATUS route. An ESCALATIONS line that starts with the word `none` followed by end of line or punctuation (so not `None of …`), with prose after it on that line and nothing below it, is empty for routing, and the prose is kept with the run for audit. A `none` line with further lines below it is a real list, copied verbatim from that line on. Only NEEDS-HUMAN, CLARIFY, BLOCKED, ESCALATE, SPEC-DEFECT, a max-round cutoff, a budget kill (piece 3), a second EMPTY-OUTPUT in a row, a parent-close FAILED, and an archive refusal (Spec store: a delta that does not apply, no change folder, or no spec store) park the ticket. A parking STATUS from one checker wins over the other's REQUEST-CHANGES or FAILED; both outputs go to the queue.
+- A role run that ends without writing its output is EMPTY-OUTPUT, whatever stopped it. The agent call reports no reason, so an empty output is never recorded as a budget kill; the harness keeps the agent's last message with the run. The same role is re-dispatched once, on the same inputs and in the same round. A second EMPTY-OUTPUT in a row parks the ticket with both runs.
 - When a human resolves a parked ticket:
   - A question returns to the role that asked, with the answer and that role's previous output (the output that asked it); a requester's CLARIFY answer returns to Triage the same way. When the answer is a standing decision, the human passes `--decision "<line>"` with the answer, or with the close, so that it lands in `decisions.md`.
   - BLOCKED, a critic ESCALATE, and a planner ESCALATE return to the role that emitted them with the ruling, same round, or the human re-scopes (spec gate or writer round reset) or closes.
   - A spec loop at max rounds goes to the spec gate.
   - A parent-close FAILED or SPEC-DEFECT, an archive that does not apply, or a sub-ticket closed by the human, parks the parent: the human amends the spec and re-plans (new sub-tickets under the same parent) or closes the parent.
   - An archive refused for no change folder or no spec store parks the parent the same way, but its spec never entered the spec store: the human closes the parent as applied. Current truth is not updated, and archive appends nothing to `decisions.md`; the human logs any decision with `factory decision add`. If current truth should carry the spec, it is re-intaken as a new ticket.
-  - A PR loop at max rounds, a SPEC-DEFECT, or a reviewer ESCALATE returns to the implementer with the round reset and the human's ruling as findings, or the ticket closes. The human may amend the sub-ticket or the pinned spec first; the amended version is what the implementer and checkers receive. There is no merge-gate override. A budget-killed run re-dispatches the same role on the same inputs, same round (the human may raise that run's budget or amend the sub-ticket first), or the ticket closes. In-flight siblings keep the spec version they received; the human decides whether to re-plan.
+  - A PR loop at max rounds, a SPEC-DEFECT, or a reviewer ESCALATE returns to the implementer with the round reset and the human's ruling as findings, or the ticket closes. The human may amend the sub-ticket or the pinned spec first; the amended version is what the implementer and checkers receive. There is no merge-gate override. A budget-killed run, or a ticket parked on a second EMPTY-OUTPUT, re-dispatches the same role on the same inputs, same round (the human may raise that run's budget or amend the sub-ticket first), or the ticket closes. In-flight siblings keep the spec version they received; the human decides whether to re-plan.
 
 | From | STATUS | Next | Receives |
 |---|---|---|---|
@@ -132,6 +133,8 @@ Rules the table relies on:
 | Gate runner, Reviewer, and/or Verifier | CI FAIL and/or REQUEST-CHANGES and/or FAILED, once all three have reported | Implementer (round +1) if round < {2}, else Human queue | Both checkers' outputs and the CI result |
 | Reviewer | ESCALATE | Human queue | Output |
 | Verifier | SPEC-DEFECT | Human queue | Verifier output |
+| Any role | EMPTY-OUTPUT, the first in a row | The same role again, same round | The same inputs |
+| Any role | EMPTY-OUTPUT, the second in a row | Human queue | Both runs' last messages |
 | Merge gate | Head does not contain current main | Implementer (same round, conflict run): merge main into the branch, or rebase where {force-push allowed} | Conflict output; the new head re-runs CI and both checkers |
 | Merge gate | CI green + APPROVE + VERIFIED on current head + head contains main + piece-8 approvals | Merge; then dispatch sub-tickets that depended on this one. When all sub-tickets have merged, one verifier run on main against the parent's full Acceptance list (every scenario of its pinned delta, with its `verification.md` label). When the parent has one sub-ticket, `main` has not moved since that sub-ticket merged, the sub-ticket's text names every scenario of the parent's pinned delta, and its VERIFIED run checked the merged head against the parent's recorded base, that run stands for the parent-close run and no new run starts. VERIFIED archives the change (Spec store), then closes the parent; FAILED, SPEC-DEFECT or an archive refusal (Spec store: a delta that does not apply, no change folder, or no spec store) parks the parent in the human queue | Parent-close run: pinned parent spec; head = current main; base = the main SHA recorded before the parent's first sub-ticket merged; `{gate commands}` |
 | Weekly audit done, or on demand | — | Retro | Full outputs behind every outcome signal since the last retro (piece 10), current instruction files, every proposal still under evaluation with its metric, and per-role run and outcome counts, broken down by model, for the period and for each prior proposal's window, and the marker ledger: one row per `factory:` comment in the code on the integration branch, with file:line, limit and upgrade trigger, flagged `no-trigger` where it names none, composed by the harness when the retro runs |
@@ -218,6 +221,10 @@ RUNNING CODE
   temporary directory, never the real one: use the wrapper in the
   "Running code" section of your input. That includes every test or
   check command your briefing, ticket or spec gives you.
+- Run every command in the foreground and wait for it to finish.
+  Never end your turn while a command you started is still running:
+  your final message ends your run, and an output you have not yet
+  written is lost.
 - A throwaway HOME does not stop a write to an absolute path. Never
   run anything that could write a protected path outside the
   repository, such as live credentials or production state.
@@ -611,6 +618,12 @@ ROLE: Code reviewer. You judge whether a PR correctly implements its
 sub-ticket without collateral damage. You see the diff, the sub-ticket,
 the parent spec, and the repo. You never see the implementer's reasoning
 beyond the PR description.
+
+WHAT YOU RUN
+- Judge the diff by reading it. Do not run the test suite or the gate
+  commands: the verifier runs them on the same head.
+- You may run a narrow command to confirm a specific finding, such as
+  one test or a grep, and cite its output with that finding.
 
 CHECK, IN THIS ORDER
 1. Test integrity: any existing test file changed? Any test weakened,
