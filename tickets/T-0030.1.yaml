@@ -1,0 +1,50 @@
+id: T-0030.1
+type: sub-ticket
+title: A registered agent definition for every role, a file-tool fence on the reviewer and verifier, and
+  `run start --inline`
+request: requests/T-0030.md
+source: plan:run-0308-planner
+status: parked
+round:
+  spec: 0
+  pr: 0
+spec:
+  version: 2
+  approved_version: 2
+plan: null
+in_flight: []
+parked:
+  reason: BLOCKED from implementer
+  since: '2026-10-07T15:26:29+00:00'
+  from: ready-for-implementer
+  outputs:
+  - run-0318-implementer
+  question: null
+created: '2026-10-07T14:55:05+00:00'
+history:
+- ts: '2026-10-07T14:58:16+00:00'
+  from: ready-for-implementer
+  to: parked
+  by: park
+  reason: BLOCKED from implementer
+- ts: '2026-10-07T15:23:39+00:00'
+  from: parked
+  to: ready-for-implementer
+  by: dphang
+  resolve: ruling
+  ruling: approvals/T-0030.1/ruling-1.md
+- ts: '2026-10-07T15:26:29+00:00'
+  from: ready-for-implementer
+  to: parked
+  by: park
+  reason: BLOCKED from implementer
+parent: T-0030
+depends_on: []
+parallel_safe: false
+branch: factory/T-0030.1
+head: null
+merge:
+  base_before: null
+  main_after: null
+parent_base: null
+label: ST-1

@@ -5,14 +5,14 @@ title: 'Token cost: a registered agent definition for each of the seven roles (t
   per-role effort setting (#24 parts A and C, folding in #22)'
 request: requests/T-0030.md
 source: /private/tmp/claude-501/-Users-dphang-dev-nanobot/c69bfd1d-97a6-43e3-9d5a-a517c28d382c/scratchpad/req_24.md
-status: ready-for-planner
+status: planned
 round:
   spec: 1
   pr: 0
 spec:
   version: 2
   approved_version: 2
-plan: null
+plan: plans/T-0030.md
 in_flight: []
 parked: null
 created: '2026-10-04T22:16:23+00:00'
@@ -43,6 +43,13 @@ history:
   to: ready-for-planner
   by: dphang
   approved_version: 2
+- ts: '2026-10-07T14:55:17+00:00'
+  from: ready-for-planner
+  to: planned
+  by: workflow
+  round:
+    spec: 1
+    pr: 0
 parent: null
 depends_on: []
 parallel_safe: true
@@ -51,4 +58,4 @@ head: null
 merge:
   base_before: null
   main_after: null
-parent_base: null
+parent_base: d226a4d03ca94bab45bd4221972285a4d16ee0bb

@@ -1,0 +1,28 @@
+run_id: run-0316-critic
+role: critic
+ticket: T-0033
+model: fable
+round: 1
+spec_version: 1
+started: '2026-10-07T15:14:37+00:00'
+finished: '2026-10-07T15:20:58+00:00'
+wall_s: 381
+status: REVISE
+input_sources:
+- specs/T-0033/v1.md
+- openspec/specs/build-dispatch/spec.md
+- openspec/specs/gate-commands/spec.md
+- openspec/specs/harness-docs/spec.md
+- openspec/specs/harness-suite/spec.md
+- openspec/specs/human-resolution/spec.md
+- openspec/specs/live-store-guard/spec.md
+- openspec/specs/merge-gate/spec.md
+- openspec/specs/role-escalations/spec.md
+- openspec/specs/store-setup/spec.md
+- openspec/specs/sub-ticket-planning/spec.md
+- decisions.md
+confidence: high; every cited line, both reproduced scenarios, the git pathspec behaviour, the 18-of-20
+  count and the test search were checked on `d226a4d`, and the one blocking finding is a writing-standard
+  gap whose fix is a few sentences.
+escalations: []
+escalations_note: null

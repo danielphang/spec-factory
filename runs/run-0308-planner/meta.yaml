@@ -1,0 +1,18 @@
+run_id: run-0308-planner
+role: planner
+ticket: T-0030
+model: opus
+round: 1
+spec_version: 2
+started: '2026-10-07T14:50:20+00:00'
+finished: '2026-10-07T14:54:38+00:00'
+wall_s: 258
+status: PLANNED
+input_sources:
+- specs/T-0030/v2.md
+- decisions.md
+confidence: high. The seams come from the approved spec, and the only change to its ordering (ST-2 after
+  ST-1) follows from shared files I read. The REGRESSION labels and three of the "today" outputs were
+  run on `main` (`d226a4d`) under a throwaway HOME.
+escalations: []
+escalations_note: null

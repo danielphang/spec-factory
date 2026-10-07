@@ -1,0 +1,9 @@
+by: dphang
+at: '2026-10-07T14:52:34+00:00'
+kind: answer
+from: parked
+to: ready-for-triage
+answer: 1
+decision: '2026-10-07 T-0033 Protected paths at merge (#57, T-0033): the pinned spec''s Risk list is the
+  authorization; an undeclared changed protected path is refused at merge and parks for a ruling; no per-head
+  approval step. All instances.'

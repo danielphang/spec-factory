@@ -1,0 +1,31 @@
+run_id: run-0317-spec_writer
+role: spec_writer
+ticket: T-0033
+model: opus
+round: 2
+spec_version: 1
+started: '2026-10-07T15:21:18+00:00'
+finished: '2026-10-07T15:29:08+00:00'
+wall_s: 470
+status: READY-FOR-CRITIC
+input_sources:
+- runs/run-0310-triage/output.md
+- requests/T-0033.md
+- openspec/specs/build-dispatch/spec.md
+- openspec/specs/gate-commands/spec.md
+- openspec/specs/harness-docs/spec.md
+- openspec/specs/harness-suite/spec.md
+- openspec/specs/human-resolution/spec.md
+- openspec/specs/live-store-guard/spec.md
+- openspec/specs/merge-gate/spec.md
+- openspec/specs/role-escalations/spec.md
+- openspec/specs/store-setup/spec.md
+- openspec/specs/sub-ticket-planning/spec.md
+- decisions.md
+- runs/run-0316-critic/output.md
+- specs/T-0033/v1.md
+confidence: medium. Every cited file is unchanged between `d226a4d`, where the scenarios' failures were
+  observed, and today's `220ebdc`. In this round I could not re-run the fixture on `220ebdc`, and the
+  two new counts (`braces`, `piece9`) are confirmed by reading the files, not by running the scenarios.
+escalations: []
+escalations_note: null

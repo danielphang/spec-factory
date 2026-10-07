@@ -1,0 +1,30 @@
+id: T-0030.4
+type: sub-ticket
+title: 'Documents: design doc, build spec, changelog, README and the instance page'
+request: requests/T-0030.md
+source: plan:run-0308-planner
+status: waiting-dependencies
+round:
+  spec: 0
+  pr: 0
+spec:
+  version: 2
+  approved_version: 2
+plan: null
+in_flight: []
+parked: null
+created: '2026-10-07T14:55:05+00:00'
+history: []
+parent: T-0030
+depends_on:
+- T-0030.1
+- T-0030.2
+- T-0030.3
+parallel_safe: true
+branch: null
+head: null
+merge:
+  base_before: null
+  main_after: null
+parent_base: null
+label: ST-4

@@ -1,0 +1,16 @@
+run_id: run-0309-triage
+role: triage
+ticket: T-0033
+model: opus
+round: 0
+spec_version: 0
+started: '2026-10-07T14:50:23+00:00'
+finished: '2026-10-07T14:51:59+00:00'
+wall_s: 96
+status: NEEDS-HUMAN
+input_sources:
+- requests/T-0033.md
+confidence: high. I read the gate's code, the design doc's gate text and the T-0028.1 records directly;
+  the conflict between proposal A and design.md lines 21, 48 and 154 is in the text itself.
+escalations: []
+escalations_note: null

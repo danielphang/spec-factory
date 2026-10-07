@@ -1,0 +1,33 @@
+run_id: run-0314-verifier
+role: verifier
+ticket: T-0030.3
+model: opus
+round: 1
+spec_version: 2
+started: '2026-10-07T15:13:51+00:00'
+finished: '2026-10-07T15:20:50+00:00'
+wall_s: 419
+status: VERIFIED
+input_sources:
+- specs/T-0030.3/subticket.md
+- specs/T-0030/v2.md
+- runs/run-0313-implementer/output.md
+- runs/run-0314-verifier/diff.patch
+gate_skipped: []
+environment_files: []
+branch: factory/T-0030.3
+base: d226a4d03ca94bab45bd4221972285a4d16ee0bb
+head: 67b61a587546e8a45349e91c13c00c3daa8346fe
+worktree: /Users/dphang/dev/spec-factory/.factory/store/runs/run-0314-verifier/wt
+confidence: high. Both NEW criteria fail on base with the spec's "today" lines and pass on the head. The
+  REGRESSION criterion and both gate commands pass. Probes on all 61 real spec versions and 28 real version
+  pairs behave as the spec describes.
+escalations:
+- Minor, outside the sub-ticket's criteria. `without_evidence` uses the store's fence rule (`specstore.lines_outside_fences`,
+  factory/specstore.py:77–86), which recognises only ``` fences. So a `~~~` fenced block inside Evidence
+  can end the cut early, and an unclosed ``` fence hides every later section from the planner, implementer
+  and checkers. CRLF text comes back as LF. No stored spec version triggers any of these today (0 `~~~`
+  fences, 0 CRs, 0 odd fence counts reported by the implementer). The question for the operator is whether
+  the store's fence rule should also cover `~~~` and unclosed fences. That rule is shared with the spec-store
+  splitter, so it belongs with the separately filed splitter issue, not this sub-ticket.
+escalations_note: null

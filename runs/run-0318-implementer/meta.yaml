@@ -1,0 +1,40 @@
+run_id: run-0318-implementer
+role: implementer
+ticket: T-0030.1
+model: opus
+round: 0
+spec_version: 2
+started: '2026-10-07T15:24:27+00:00'
+finished: '2026-10-07T15:26:11+00:00'
+wall_s: 104
+status: BLOCKED
+input_sources:
+- specs/T-0030.1/subticket.md
+- specs/T-0030/v2.md
+- approvals/T-0030.1/ruling-1.md
+gate_skipped: []
+branch: factory/T-0030.1
+base: 5426ff2ef0e376f6962725bbe08a85eadff40060
+head: d226a4d03ca94bab45bd4221972285a4d16ee0bb
+worktree: /Users/dphang/dev/spec-factory/.factory/store/worktrees/T-0030.1
+resolution: null
+environment_files: []
+confidence: high, because nothing in the repository changed and both refusals are quoted below.
+escalations:
+- 'Claude Code''s auto-mode permission check refused this run again with the reason "Code from External".
+  The operator''s ruling of 2026-10-07 covers this case: stop, change nothing further, and report the
+  refused command. The refused commands:'
+- '1. Writing the spec''s fixture files by running the GIVEN block from the scratch directory. The exact
+  command: `S=/Users/dphang/dev/spec-factory/.factory/store/runs/run-0318-implementer/scratch; (export
+  HOME="$(cd "$(mktemp -d)" && pwd -P)"; export TMPDIR=$S/tmp; sh $S/given.sh) && ls $S/tmp`. The reason
+  given was "[Code from External]".'
+- '2. Sent in the same batch and refused with the same reason: a read-only check in the worktree, `ls
+  -d .venv; which node uv python3`.'
+- 'Without the first command, the role''s process cannot start: every acceptance command runs the fixtures
+  that block writes. To unblock this run, the operator can add a permission rule that allows the following:'
+- running `sh` on a script under `/Users/dphang/dev/spec-factory/.factory/store/runs/*/scratch/`;
+- running `node` and `.venv/bin/python` on the fixtures that script writes;
+- running the gate suite, `uv run --frozen pytest -q -p no:cacheprovider tests/factory`, in the worktree.
+- The operator can then send T-0030.1 back to the implementer unchanged. The base, branch and sub-ticket
+  are all still valid.
+escalations_note: null

@@ -1,0 +1,47 @@
+id: T-0030.3
+type: sub-ticket
+title: Each role's input cut to the spec sections it uses, and a round-2 critic diff
+request: requests/T-0030.md
+source: plan:run-0308-planner
+status: merged
+round:
+  spec: 0
+  pr: 1
+spec:
+  version: 2
+  approved_version: 2
+plan: null
+in_flight: []
+parked: null
+created: '2026-10-07T14:55:05+00:00'
+history:
+- ts: '2026-10-07T15:13:33+00:00'
+  from: ready-for-implementer
+  to: checks-in-flight
+  by: workflow
+  round:
+    spec: 0
+    pr: 1
+- ts: '2026-10-07T15:21:33+00:00'
+  from: checks-in-flight
+  to: ready-for-merge
+  by: workflow
+  round:
+    spec: 0
+    pr: 1
+- ts: '2026-10-07T15:21:42+00:00'
+  from: ready-for-merge
+  to: merged
+  by: merge
+  head: 67b61a587546e8a45349e91c13c00c3daa8346fe
+parent: T-0030
+depends_on: []
+parallel_safe: true
+branch: factory/T-0030.3
+head: 67b61a587546e8a45349e91c13c00c3daa8346fe
+merge:
+  base_before: d226a4d03ca94bab45bd4221972285a4d16ee0bb
+  main_after: 220ebdc7afd166d79d0c9224681ff4f36a848d9f
+parent_base: null
+label: ST-3
+merge_refused: null

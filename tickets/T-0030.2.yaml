@@ -1,0 +1,28 @@
+id: T-0030.2
+type: sub-ticket
+title: 'Effort per role: the instance''s `effort:` map reaches the agent call and the run record'
+request: requests/T-0030.md
+source: plan:run-0308-planner
+status: waiting-dependencies
+round:
+  spec: 0
+  pr: 0
+spec:
+  version: 2
+  approved_version: 2
+plan: null
+in_flight: []
+parked: null
+created: '2026-10-07T14:55:05+00:00'
+history: []
+parent: T-0030
+depends_on:
+- T-0030.1
+parallel_safe: false
+branch: null
+head: null
+merge:
+  base_before: null
+  main_after: null
+parent_base: null
+label: ST-2
