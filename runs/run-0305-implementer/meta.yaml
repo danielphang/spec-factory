@@ -1,0 +1,26 @@
+run_id: run-0305-implementer
+role: implementer
+ticket: T-0032.1
+model: opus
+round: 0
+spec_version: 1
+started: '2026-10-07T05:40:41+00:00'
+finished: '2026-10-07T05:47:51+00:00'
+wall_s: 430
+status: READY-FOR-REVIEW
+input_sources:
+- specs/T-0032.1/subticket.md
+- specs/T-0032/v1.md
+- approvals/T-0032.1/ruling-1.md
+- approvals/T-0032.1/ruling-2.md
+gate_skipped: []
+branch: factory/T-0032.1
+base: 97becfdf573248116c7933347224765c8a2ede83
+head: 679dccc005019b27abe4bd95444c48df49ac7766
+worktree: /Users/dphang/dev/spec-factory/.factory/store/worktrees/T-0032.1
+resolution: null
+environment_files: []
+confidence: high. All 14 scenarios print their THEN on `c01e7c2`, both gates pass (360 tests), and this
+  round's change is the two edits the ruling names.
+escalations: []
+escalations_note: null

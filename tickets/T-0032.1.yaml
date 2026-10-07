@@ -1,0 +1,59 @@
+id: T-0032.1
+type: sub-ticket
+title: A role that ends its turn while its own background commands are still running returns no output,
+  and the harness records it as a budget kill and parks the ticket
+request: requests/T-0032.md
+source: plan:whole-spec
+status: merged
+round:
+  spec: 0
+  pr: 1
+spec:
+  version: 1
+  approved_version: 1
+plan: null
+in_flight: []
+parked: null
+created: '2026-10-07T05:21:32+00:00'
+history:
+- ts: '2026-10-07T05:35:05+00:00'
+  from: ready-for-implementer
+  to: parked
+  by: park
+  reason: BLOCKED from implementer
+- ts: '2026-10-07T05:39:55+00:00'
+  from: parked
+  to: ready-for-implementer
+  by: dphang
+  resolve: ruling
+  ruling: approvals/T-0032.1/ruling-2.md
+- ts: '2026-10-07T05:48:10+00:00'
+  from: ready-for-implementer
+  to: checks-in-flight
+  by: workflow
+  round:
+    spec: 0
+    pr: 1
+- ts: '2026-10-07T05:56:31+00:00'
+  from: checks-in-flight
+  to: ready-for-merge
+  by: workflow
+  round:
+    spec: 0
+    pr: 1
+- ts: '2026-10-07T05:56:45+00:00'
+  from: ready-for-merge
+  to: merged
+  by: merge
+  head: c01e7c2cf8bdef4f73fd8443744906b9ea89db74
+parent: T-0032
+depends_on: []
+parallel_safe: true
+branch: factory/T-0032.1
+head: c01e7c2cf8bdef4f73fd8443744906b9ea89db74
+merge:
+  base_before: 97becfdf573248116c7933347224765c8a2ede83
+  main_after: 8bfa72d74e5b32daf7824563bd678ce9f9e8c7e7
+parent_base: null
+label: whole-spec
+merge_refused: null

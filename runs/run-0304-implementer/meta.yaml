@@ -1,0 +1,39 @@
+run_id: run-0304-implementer
+role: implementer
+ticket: T-0032.1
+model: opus
+round: 0
+spec_version: 1
+started: '2026-10-07T05:22:20+00:00'
+finished: '2026-10-07T05:34:43+00:00'
+wall_s: 743
+status: BLOCKED
+input_sources:
+- specs/T-0032.1/subticket.md
+- specs/T-0032/v1.md
+- approvals/T-0032.1/ruling-1.md
+gate_skipped: []
+branch: factory/T-0032.1
+base: 97becfdf573248116c7933347224765c8a2ede83
+head: 97becfdf573248116c7933347224765c8a2ede83
+worktree: /Users/dphang/dev/spec-factory/.factory/store/worktrees/T-0032.1
+resolution: null
+environment_files: []
+confidence: high. All 14 scenarios and 359 of 360 suite tests pass on the commit, and the one failure
+  is shown to be the spec's B.2 against a test added after the spec was written.
+escalations:
+- 'The test gate cannot pass as the spec is written. Part B.2 removes the gate commands from the code
+  reviewer''s input. The existing test `tests/factory/test_gate_paths.py::test_a_diff_that_touches_a_scoped_command_s_paths_runs_it`
+  (lines 121-126) asserts that the reviewer''s input lists them. The test arrived with T-0028 (`0e99fa7`)
+  after this spec''s evidence was taken on `a69aaf4`, so the spec''s "Tests to change: none" is out of
+  date. Decide one of these. (1) Recommended: rule that this test is a test to change, and that its `t.checker("reviewer")`
+  becomes `t.checker()` (the verifier). The test keeps its intent on the role that still receives the
+  commands, and the next implementer round changes that one line and re-runs the gate. (2) Drop B.2, so
+  the reviewer keeps receiving the gate commands. The prompt''s WHAT YOU RUN section would then contradict
+  its own input, which is the cause of the incident.'
+- With the same ruling, confirm that the reviewer also gets no "SKIPPED by the harness" lines, as built
+  on this branch. That narrows the current-truth `gate-commands` requirement ("When a reviewer or verifier
+  run starts … MUST list that command apart from the commands to run") to the verifier only. If you confirm
+  it, the pinned spec should carry a MODIFIED `gate-commands` requirement so current truth matches when
+  this change archives. If you do not, the next round restores those lines for the reviewer.
+escalations_note: null

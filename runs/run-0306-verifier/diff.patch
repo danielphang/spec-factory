@@ -1,0 +1,500 @@
+diff --git a/README.md b/README.md
+index 8ec155d..2215c6b 100644
+--- a/README.md
++++ b/README.md
+@@ -6,7 +6,7 @@ table, and human gates. This page is the system as it runs today; install and us
+ 
+ | | |
+ |---|---|
+-| **Status** | Current state as of 2026-10-04. Intake works end to end. Build works, in local-only mode. |
++| **Status** | Current state as of 2026-10-06. Intake works end to end. Build works, in local-only mode. |
+ | **Reader** | Technical, seeing this project for the first time. Terms specific to this system are defined in "Terms used on this page" or at first use. |
+ | **Scope** | What runs now. The intended design and its reasoning are in `docs/design.md`; where the two disagree, this page is right about what runs and the design is amended. |
+ | **Internal references** | Ticket ids, issue numbers and who did what are in "Related work and history" near the end. |
+@@ -170,8 +170,10 @@ not updated. While that final run is in progress, the ticket's record lists it a
+ any other run.
+ 
+ At any step a role can say it needs a human: a question, an escalation, a blocked build. The
+-harness parks the ticket. So does running out of rounds, or a run exceeding its budget. A human
+-unsticks it with `factory resolve`, and the ticket re-enters at the step the rules name.
++harness parks the ticket. So does running out of rounds, or a role that ended without output
++twice in a row (the first time, the harness runs it once more on the same inputs and keeps its
++last message). A human unsticks it with `factory resolve`, and the ticket re-enters at the step
++the rules name.
+ 
+ ```mermaid
+ flowchart LR
+@@ -212,7 +214,7 @@ flowchart LR
+   CL --> ST[("the store<br/>tickets · runs · specs · verdicts · log · current truth")]:::store
+ 
+   PK{"parked ticket<br/>a human runs factory resolve"}:::human
+-  TR & SW & SC & PL & IM & J & PC -. "needs a human · out of rounds · over budget" .-> PK
++  TR & SW & SC & PL & IM & J & PC -. "needs a human · out of rounds · no output twice" .-> PK
+ ```
+ 
+ *One ticket from request file to closed record. Orange is the human; grey is the agents; teal is
+@@ -789,7 +791,7 @@ FACTORY_DISPATCH=1 $RUNTIME/bin/factory run finish <run> --status-override KILLE
+ |---|---|---|
+ | **File** | `factory ticket new --file <abs path>` | that this request is worth a ticket |
+ | **Gate** | `factory approve-spec T-n [--edit F]` · `factory request-changes T-n F` · close | the spec's intent, risk declarations, operator steps, "tests to change"; a gate edit becomes a new spec version and is what gets pinned |
+-| **Unstick** | `factory resolve T-n --answer F` (a role asked a question) · `--ruling F` (a role escalated, an implementer reported itself blocked, or the harness blocked an implementer whose sub-ticket lists a test no merged sibling added) · `--redispatch` (re-run the checks on the same commit after an outside fix) · `--replan F` (the final check failed after every sub-ticket merged: back to the planner with a note; new sub-tickets take the next free ids) · `--to spec-gate` · `--close`; with `--answer` or `--close`, add `--decision "<line>"` to also record the answer as a standing decision | an answer, a ruling, a re-check, a re-plan, a re-scope, or closing |
++| **Unstick** | `factory resolve T-n --answer F` (a role asked a question) · `--ruling F` (a role escalated, an implementer reported itself blocked, or the harness blocked an implementer whose sub-ticket lists a test no merged sibling added) · `--redispatch` (re-run the checks on the same commit after an outside fix, or after a checker ended without output twice) · `--replan F` (the final check failed after every sub-ticket merged: back to the planner with a note; new sub-tickets take the next free ids) · `--to spec-gate` · `--close`; with `--answer` or `--close`, add `--decision "<line>"` to also record the answer as a standing decision | an answer, a ruling, a re-check, a re-plan, a re-scope, or closing |
+ | **Record** | `factory decision add T-n "<line>"`, at any ticket state, closed included. It appends one dated line to the target's decision log, `decisions.md`, which the spec writer, critic and planner receive with their input | that a decision binds later tickets |
+ | **Upgrade** | `factory --accept-harness <sha> <command>` | that this target adopts a new harness revision |
+ 
+@@ -855,6 +857,13 @@ path above is relative to the store.
+   sub-ticket added the file. If none did, the sub-ticket parks as blocked, and the human rules on it
+   as on any blocked build ("Where a human decides"). Any other existing test still changes only if
+   the approved spec lists it. It is tested, and has not yet fired on a real ticket.
++- **Empty output.** A role run that ends without writing its output file is run once more on the
++  same inputs, and the harness keeps the agent's last message with the run. A second run in a row
++  that ends the same way parks the ticket. The harness enforces no time or token budget and cannot
++  tell why a run stopped, so it never labels such a run a budget kill. The code reviewer judges the
++  diff and leaves the test suite and the gate commands to the verifier. Every role is told to wait
++  for the commands it starts before it ends its turn. It is tested, and has not yet fired on a real
++  ticket.
+ 
+ **Not built**
+ 
+diff --git a/dev/build-harness.spec.md b/dev/build-harness.spec.md
+index 1991982..c7fc35d 100644
+--- a/dev/build-harness.spec.md
++++ b/dev/build-harness.spec.md
+@@ -202,7 +202,8 @@ CLI (the **store CLI** of doc §Harness table piece 1 — read, transition, reco
+ - `factory ticket show ID`; `factory ticket set ID key=value` (logged); `factory ticket transition ID --to STATE --by RUN [--round spec|pr:+1|reset|init]` (the clerk's one write for routing; `init` sets the counter to 1 if 0). **Guards (doc §Harness table piece 2: "put the round and routing guards in the CLI, not the clerk"):** exit 2, store unchanged, nothing logged, when `+1` would take the counter above `config.yaml` `max_rounds` (`round.spec 2 is at max_rounds 2`), or when `(current status, STATE)` is not an edge of the routing table stored in `config.yaml` `routing:` (the doc §Routing table rows plus the resolution rules; `no route ready-for-triage → merged`). `factory ticket park ID --reason R --outputs RUN,RUN [--question PATH]`.
+ - `factory run start --role R --ticket ID|none --head SHA|none [--model M]` → prints `run_id`, writes `runs/<run_id>/{meta.yaml,system-prompt.txt}` and creates the empty `runs/<run_id>/scratch/` for the run's temporary files, which the store's `.gitignore` excludes (`model: M`, default `config.yaml` `models[R]`; `budget_usd` copied from the ticket), appends the id to `in_flight`. **Guards:** exit 2, nothing written, when the ticket is not in R's ready state (`T-0001 is ready-for-triage, not ready-for-critic`; ready states: triage `ready-for-triage`, spec_writer `ready-for-spec-writer`, critic `ready-for-critic`, planner `ready-for-planner`, implementer `ready-for-implementer`, reviewer/verifier `checks-in-flight` or `ready-for-checks`, verifier also `ready-for-parent-verify`; retro runs with `--ticket none`), or when the ticket's branch already has a run in `in_flight` (implementer, retro: any run; reviewer, verifier: a run of the same role) — `ticket/T-0001 already has run <id> in flight`; or, for an implementer run of a sub-ticket, when a `` `<file>` (added by <ID>) `` line in its "Tests to change" field names a file that existed at the parent's `parent_base` or whose first adding commit on the integration branch since then lies inside no merged sibling's recorded `merge` (doc §Harness, "Tests a sibling added") — `BLOCKED from harness: Tests to change lists <file> as added by a sibling, but no merged sibling of <parent> added it since <base>; …`. **Run id reservation:** after the guards pass and before anything else is written, `run start` reserves the run's directory by creating `runs/<run_id>/` create-exclusive (an mkdir that fails when the path already exists); on a collision it takes the next id and tries again. Two starts on one store at the same moment, whatever their tickets or roles, therefore never share a run directory, and the id is final before its `meta.yaml` is written. A refused start reserves nothing (item 70).
+ - `factory run compose RUN` (**the one input mechanism**, critic S2) → writes `runs/<run_id>/input.md` from exactly the sources `factory/compose.py` declares for `(role, round, resolution)` — the "with input =" lists in H, read from the store and `~/factory/clone` — and records their paths as `input_sources:` and the pinned spec version it used as `spec_version:` in `meta.yaml` (a run keeps that version even if the spec is re-pinned while it is in flight, K). The file opens with the repo's role-context block (doc §Harness), ahead of those sources; it is not a store path, so it is not one of the `input_sources:` (its text is in `input.md`). The text `agent()` receives is only `Your entire input is ~/factory/state/runs/<run_id>/input.md; read it first.` No input text is composed anywhere else.
+-- `factory run finish RUN --output-file F [--status-override KILLED]` → writes `output.md`, parses STATUS (H), removes the id from `in_flight`, prints `STATUS CONFIDENCE ESCALATIONS` as JSON, logs `escalation.queued` when the list is non-empty (H).
++- `factory run finish RUN --output-file F [--status-override KILLED]` → writes `output.md`, parses STATUS (H), removes the id from `in_flight`, prints `STATUS CONFIDENCE ESCALATIONS` as JSON, logs `escalation.queued` when the list is non-empty (H). A missing or blank `output.md` with no override is `EMPTY-OUTPUT` (error `empty output`, logged `run.finished`); `--status-override KILLED` still records `KILLED` and logs `run.killed`.
++- `factory run last-message RUN --text=T` → on a run whose `meta.yaml` status is `EMPTY-OUTPUT`, writes T plus one newline to `runs/<RUN>/last-message.md` and prints its path; on any other run, exit 2 and nothing written (I.5).
+ - `factory spec add ID --file F` → `spec.version += 1`, `specs/ID/v<N>.md`; `factory spec tasks PARENT --run RUN` → writes that planner run's `output.md`, trailer removed as for spec text (above), to `openspec/changes/<PARENT>/tasks.md` (exit 2 unless RUN is a `PLANNED` planner run of PARENT); `factory subticket add PARENT --file F --depends-on IDS --parallel-safe yes|no` → sub-ticket in `ready-for-implementer` or `waiting-dependencies`; `factory plan whole-spec PARENT` → when the approved spec needs one sub-ticket (the parent has no sub-ticket and no earlier planner run, its latest spec-writer run did not end `NEEDS-SPLIT`, and the approved spec has no `##` or `###` heading, other than a `### Requirement:` line, naming seams), creates `<PARENT>.1` from the whole spec in `ready-for-implementer`, its text naming every scenario, writes the same text to `plans/<PARENT>.md` and, with a spec store, `openspec/changes/<PARENT>/tasks.md`, logs `plan.skipped`, and prints `"planner": "skipped"`; otherwise prints `"planner": "needed"` with the reason and writes nothing (exit 2 when PARENT is not `ready-for-planner`, has a run in flight, has no approved spec, or has no change folder under an active spec store).
+ - **Operator commands** (`approve-spec`, `approve-pr`, `approve-guardrail`, `request-changes`, `resolve`, `queue apply`, `merge`, `ticket new`, `results record`) refuse with exit 2, stderr `set FACTORY_KEY`, nothing written or logged, when `FACTORY_KEY` is unset (item 78); reads (`ticket show`, `results show`, `queue`, `log tail`) never need it. `gate-run` always uses the harness key.
+ 
+@@ -272,7 +273,7 @@ Both scripts are plain JS per E7; they hold the routing, the join and the round
+ 
+ **STATUS parser** (`factory/status.py`, used by `run finish` and `results record`; doc §Routing rules): the **last** line matching `^STATUS:\s*(\S+)` gives the STATUS. CONFIDENCE is the first line after it matching `^CONFIDENCE:`, and ESCALATIONS the first line after that matching `^ESCALATIONS:`; lines between labelled lines are continuation (a wrapped CONFIDENCE reason, commentary between STATUS and CONFIDENCE), never a parse failure. No `CONFIDENCE:` line after the last STATUS, or no `ESCALATIONS:` line after that CONFIDENCE → parse failure → unknown STATUS. The **head** is the rest of the `ESCALATIONS:` line, trimmed; the list is the head plus every non-blank line after it to EOF, each item as written (a leading `- ` or `* ` marker stripped, item 8). A **`none` head** matches `(?i)^none\s*($|[.,;:—–-])`: `none` in any case, then end of line or punctuation, never a space and a word, so `none`, `none.` and `none. The boundary was observed` are `none` heads and `Nonetheless …`, `None of …` are not. The list is empty iff nothing non-blank follows the head and the head is empty or a `none` head; a `none` head with prose after it on its line therefore routes as no escalation, and `run finish` writes that head verbatim to the run's `meta.yaml` as `escalations_note:` (written only when the list is empty and prose follows the `none` head; every other shape, including bare `none` and a `none` head with lines below it, writes `null`) so an auditor reads it with the run. A `none` head followed by any further non-blank line is a real list, every line from the head on an item, verbatim (a wrapped `none` prose line is such a line: when the parser is unsure, the text goes to the human queue). The parser reads no severities: doc §Human gates' rule that REVISE and REQUEST-CHANGES carry at least one BLOCKING finding is the checker's to keep, and every stub that models them (items 38, 44, 46) includes a BLOCKING line.
+ 
+-Common step `runRole(role, ticket, head)` in both scripts: clerk `factory run start … --model MODELS[role]` (prints `run_id`; exit 2 from a guard → park `harness-bug: <stderr>` and return; in `build.js`, a refusal whose JSON `error` starts `BLOCKED ` parks with that error verbatim instead, so `resolve --ruling` applies); clerk `factory run compose RUN_ID` (writes `input.md`, I.2); `const out = await agent('Your entire input is ~/factory/state/runs/' + runId + '/input.md; read it first.', {agentType: args.stubs ? 'factory-stub' : 'factory-' + role, model: MODELS[role], label: role + ' ' + ticket, isolation: role in {implementer, retro} ? 'worktree' : undefined})`; **KILLED condition** `out === null || out.trim() === ''` (I.5) → clerk `factory run finish RUN --status-override KILLED`; else clerk `factory run finish RUN --output-file -` with `out`. **A thrown `agent()`** (stub or real call) is finished the same way, clerk `factory run finish RUN --status-override KILLED` (in `build.js`, then clerk `factory run cleanup RUN` for a reviewer or verifier), and parks the ticket `agent call failed: <role>: <error>` with the run id as outputs; `runRole` returns `null`, on which every caller returns. The clerk returns only `{stdout, exit, stderr}`; the script parses `run_id` from `run start`'s JSON and `{status, escalations}` from `run finish`'s. The stub agent definition reads `args.stubs/<role>-<n>.md` (n = how many times that role has run in this workflow, counted in the script) and returns it verbatim, or **returns an empty string when the file is absent** (the KILLED seam): the only test seam. The CLI guards (B) are authoritative over the script's `round < MAX` checks: a `transition` the routing table or `max_rounds` forbids exits 2 with the store unchanged, and the script treats that as `park --reason 'harness-bug: <stderr>'`.
++Common step `runRole(role, ticket, head)` in both scripts: clerk `factory run start … --model MODELS[role]` (prints `run_id`; exit 2 from a guard → park `harness-bug: <stderr>` and return; in `build.js`, a refusal whose JSON `error` starts `BLOCKED ` parks with that error verbatim instead, so `resolve --ruling` applies); clerk `factory run compose RUN_ID` (writes `input.md`, I.2); `const out = await agent('Your entire input is ~/factory/state/runs/' + runId + '/input.md; read it first.', {agentType: args.stubs ? 'factory-stub' : 'factory-' + role, model: MODELS[role], label: role + ' ' + ticket, isolation: role in {implementer, retro} ? 'worktree' : undefined})`; one clerk `factory run finish RUN`, which reads the run's output file; on `EMPTY-OUTPUT` with non-blank returned text, clerk `factory run last-message RUN '--text=<last 4000 characters>'`, a failure of which is ignored, then one re-dispatch of the same role; a second `EMPTY-OUTPUT` in a row parks `EMPTY-OUTPUT from <role>` with both run ids as outputs (I.5). **A thrown `agent()`** (stub or real call) is finished the same way, clerk `factory run finish RUN --status-override KILLED` (in `build.js`, then clerk `factory run cleanup RUN` for a reviewer or verifier), and parks the ticket `agent call failed: <role>: <error>` with the run id as outputs; `runRole` returns `null`, on which every caller returns. The clerk returns only `{stdout, exit, stderr}`; the script parses `run_id` from `run start`'s JSON and `{status, escalations}` from `run finish`'s. The stub agent definition reads `args.stubs/<role>-<n>.md` (n = how many times that role has run in this workflow, counted in the script) and returns it verbatim, or **returns an empty string when the file is absent** (the EMPTY-OUTPUT seam): the only test seam. The CLI guards (B) are authoritative over the script's `round < MAX` checks: a `transition` the routing table or `max_rounds` forbids exits 2 with the store unchanged, and the script treats that as `park --reason 'harness-bug: <stderr>'`.
+ 
+ `intake.js` (`args: {ticket, stubs?}`):
+ 1. `phase('Triage')`: `runRole('triage', …)` with input = request, answers appended (+ after an `--answer`: Triage's previous output, K); `ACCEPT` → clerk `transition --to ready-for-spec-writer` (title/type from the output); `REJECT` → `closed`; `NEEDS-HUMAN` → `park --question`; `CLARIFY` → `transition --to waiting-requester` + clerk `factory reply ID --file -` (piece 9: writes `<source dir>/<file>.reply.md` next to the request, appends to `queue.md`, event `reply.sent`); then **return**. Unknown STATUS → `park --reason 'harness-bug: unknown STATUS <s>'` + `harness-bug` event; always return.
+@@ -297,7 +298,7 @@ Resumption after a human decision: the `/factory` skill re-runs `build.js` for t
+ 2. Input composed by `factory run compose RUN` (B): the role-context block (doc §Harness), then exactly the declared sources (H), written as `runs/<run_id>/input.md` with `input_sources:` in `meta.yaml` **before** the role runs; the role's prompt is a pointer to that file, so what the role saw is auditable and no second composition path exists.
+ 3. Mutating roles get `isolation: 'worktree'` (E7), which the Workflow tool creates and removes; the implementer's `git push` uses the implementer key via `GIT_SSH_COMMAND` set in its agent definition's `env:` (not verified: whether agent-definition frontmatter supports `env:`; fallback: a `factory git-push ticket/<ID>` wrapper the implementer is allowed to run, which supplies the key). Checkers run read+shell in a checkout the clerk made; they have no key, so a push fails at authentication.
+ 4. Tool restriction is the agent definition's `tools:` (R6); no `bypassPermissions` anywhere; `--restricted` applies to `claude -p` test drivers (E6).
+-5. Budget (piece 3): the KILLED condition is `out === null || out.trim() === ''` (`agent()` returned `null` on a terminal error or after the user skipped the agent, or returned nothing) → `run finish --status-override KILLED` → `KILLED` results row, `parked` (`budget kill: <role>`), round unchanged. The one manual kill path the Workflow reference provides: the user skips the agent in the session, `agent()` returns `null`, KILLED. Until then a hung agent blocks `parallel()` and every sibling in that join; the doc's "recorded … so no join waits on it" is post-hoc in v0, not pre-emptive. Wall-clock: the clerk stamps `started`/`finished` in `meta.yaml`; `run finish` sets `status: KILLED` when `wall_s > time_budget_s` even if output arrived. There is no pre-emptive kill in v0 (E7; Open question 4).
++5. Empty output (doc §Routing rules): no time or token budget is enforced, and `agent()` reports no reason a run stopped, so no empty output is a budget kill. A run that ends without its output file, or with a blank one, is `EMPTY-OUTPUT` in `run finish`, whether `agent()` returned text, blank text or `null` (a user skip or a terminal error). When the returned text is non-blank, the script keeps its last 4000 characters with `run last-message`. The same role is re-dispatched once, on the same inputs and in the same round; a second `EMPTY-OUTPUT` in a row parks `EMPTY-OUTPUT from <role>` with both runs as outputs and records no result row for it, so `resolve --redispatch` re-runs only that role. A thrown `agent()` stays `KILLED`, parked `agent call failed: <role>: <error>`, with no re-dispatch. Until a run returns, a hung agent blocks `parallel()` and every sibling in that join; the user skipping the agent is the one manual stop (E7; Open question 4).
+ 6. After each run: `meta.yaml` complete, the checker worktree removed by the clerk (`factory run cleanup RUN`). The run's `runs/<run_id>/scratch/` stays until its ticket's next state change other than `parked`, which removes it (`store.save_ticket`).
+ 
+ ### J. Secrets (piece 12)
+@@ -407,7 +408,7 @@ Driver: `claude -p … "/factory run build T-0001 --stubs tests/factory/fixtures
+ 46. Case `parking-wins` (reviewer REQUEST-CHANGES with a `[BLOCKING]` finding, verifier SPEC-DEFECT) → `parked`, `parked.outputs` lists both run ids; `queue.md` shows both output paths [NEW]
+ 47. Case `gate-fail` (verifier FAILED + `Gate suite: FAIL`, reviewer APPROVE, twice) → after round 1: `results/<head>/ci.yaml` `FAIL`, `round.pr: 2`; after round 2: `parked`, `max-round cutoff`. Variant: verifier output without a `Gate suite:` line → ci `FAIL`, `detail: missing Gate suite line`, and the join still proceeded (round incremented) [NEW]
+ 48. After 47: `AS daniel factory resolve T-0001.1 --ruling notes.md --to implementer --amend-subticket sub2.md --amend-spec spec2.md` → `ready-for-implementer`, `round.pr: 0`, `specs/T-0001/subticket.md` = `sub2.md`, `specs/T-0001/v<N+1>.md` = `spec2.md`, `approved_version: N+1`, `approvals/T-0001/spec-v<N+1>.yaml` exists, `knowledge_vault/sanitized_specs/T-0001.md` = `spec2.md`; re-running `build` → `runs/<implementer run>/input.md` contains the notes, `sub2.md` and `spec2.md` text [NEW]
+-49. **Checker KILLED (S6, S4):** case `reviewer-killed` (stub file `reviewer-1.md` absent → the stub agent returns an empty string → the script's KILLED condition `out === null || out.trim() === ''` (I.5) holds; verifier VERIFIED) → `results/<head>/reviewer.yaml` `KILLED`, `parked`, `parked.reason: budget kill: reviewer`, `round.pr: 1`; `AS daniel factory resolve T-0001.1 --redispatch` → `ready-for-checks`; re-running `build` with `reviewer-1.md` present → exactly one new `run.started` (reviewer, same head), none for verifier; `round.pr` still 1; ticket proceeds to `merged` [NEW]
++49. **Checker empty twice (S6, S4):** case `reviewer-empty` (stub files `reviewer-1.md` and `reviewer-2.md` absent → the stub agent returns an empty string and writes no output, twice → `run finish` gives `EMPTY-OUTPUT` both times (I.5); verifier VERIFIED) → no `results/<head>/reviewer.yaml`, `parked`, `parked.reason: EMPTY-OUTPUT from reviewer`, both reviewer runs as outputs, `round.pr: 1`; `AS daniel factory resolve T-0001.1 --redispatch` → `ready-for-checks`; re-running `build` with `reviewer-1.md` present (each workflow run counts stubs from 1) → exactly one new `run.started` (reviewer, same head), none for verifier; `round.pr` still 1; ticket proceeds to `merged` [NEW]
+ 50. `AS daniel factory resolve T-0001 --to spec-gate` on a parked spec loop → `ready-for-spec-gate`; `AS daniel factory resolve T-0001 --close` → `closed`, `approvals/T-0001/resolve-1.yaml` `by: daniel` [NEW]
+ 51. No second implementer: with `T-0001.1` `in_flight` set to an implementer run, running `build` → `factory ticket ready-implementers T-0001` → `[]`, no new `run.started` for `.1`; `git -C ~/factory/clone worktree list | grep -c ticket/T-0001.1` ≤ 1 [NEW]
+ 52. Head-does-not-contain-main inside the loop: case `review-fix` with `main` advanced by `M` between the push and the join → history shows `ready-for-merge → ready-for-implementer` with `round.pr` unchanged and findings `does not contain main M`; the next implementer input contains that line [NEW]
+diff --git a/docs/changelog.md b/docs/changelog.md
+index 2635d2e..da2cefe 100644
+--- a/docs/changelog.md
++++ b/docs/changelog.md
+@@ -58,5 +58,6 @@ Six review rounds ran on this doc, using the reviewer prompt in the appendix. Ro
+ 54. After issue #40 (2026-10-04), where sub-tickets parked for three causes that were visible when the work was planned or specified: a NEW check copied from the whole spec already passed at the sub-ticket's own start; an implementer could not change a test an earlier sibling sub-ticket had added to pin its interim behaviour, because only the spec gate's "Tests to change" list authorized a test edit and that test did not exist at the gate; and a spec's Decision overturned an existing test that nobody listed. The planner labels each check NEW or REGRESSION against the sub-ticket's own base, the integration branch with its dependencies merged, not by the parent's label. An earlier sibling names the new test files a later sibling will break under "Interim tests", which the harness does not read. A sub-ticket's "Tests to change" may list a test file an earlier sibling added, as `` `<file>[::<test>]` (added by <sibling ID>): <reason> ``. Before each implementer run, `run start` checks in git that the file was absent at the parent's base and was first added inside a merged sibling's recorded merge; otherwise it refuses with exit 2, writing nothing, with an error that starts `BLOCKED from harness:`, and the build parks the sub-ticket with that error so `resolve --ruling` returns it to its implementer. The preamble and the code reviewer accept such a checked entry. The spec writer lists the tests each behaviour-changing Decision overturns, and critic rubric 1 makes a missing one a finding. A test that existed before the parent's first merge still needs the pinned spec's list. Rejected: letting the implementer edit a test on its own judgement.
+ 55. After issue #49 (2026-10-04), where the implementer and verifier queued the same declared-path list as the code reviewer: in the store's log, 10 implementer and verifier runs did this, and their lists made up 30 of the 205 items queued so far. The implementer and verifier prompts gain one RULES bullet: a protected path the sub-ticket declares is not an escalation. The code reviewer lists declared paths once for each head it reviews, through its check 6, unchanged. The other two roles may name them in their output, but not under ESCALATIONS. An undeclared protected path, or a change to a declared one that the spec does not describe, still goes under ESCALATIONS from every role. Rejected: the retro's figure of 26 of 139 items, which its own table contradicts with 38.
+ 56. After issue #48 (2026-10-04), where every approved spec paid for a planner run and every sub-ticket for every gate command, though nine of the thirteen specs planned so far got exactly one sub-ticket, each after a 72 to 302 second planner run that restated it: the small-change lane. A spec that needs one sub-ticket skips the planner. At `ready-for-planner` the build first runs `factory plan whole-spec`, which creates `<parent>.1` from the whole spec, ready for its implementer, naming every scenario of the spec, and logs `plan.skipped`, when the parent has no sub-ticket and no earlier planner run, its latest spec-writer run did not end NEEDS-SPLIT, and its approved spec has no `##` or `###` heading, other than a `### Requirement:` line, that names seams. Otherwise it reports that the planner is needed, writes nothing, and the planner runs as before; it refuses a parent that is not ready for its planner, has a run in flight or has no approved spec, and the build parks that refusal as a harness bug. To force the planner on such a spec, the operator adds a `### Size and seams` heading at the gate. A gate command may also declare `paths`, as git pathspecs. When a reviewer or verifier run starts on a sub-ticket, the harness marks SKIPPED, with the reason, each command whose paths the sub-ticket's diff touches none of, lists it apart from the commands to run, and records it in the run's `meta.yaml` and on the `ci` row, whose PASS or FAIL still comes from the commands that ran. The implementer and the parent-close verifier still get every command, and a malformed entry refuses every build role's run start. This overturns the cut of the path-scoped skip in T-0016's spec; no repository's gate configuration changes. Rejected: the request's trigger of exactly one lettered part, which would have skipped none of the nine.
++57. After issue #41 (2026-10-04), where a code reviewer started the full test suite in the background, ended its turn to wait for it, and so wrote no review, three times in one day, each time on a commit the verifier had already passed; the harness recorded each run as KILLED and parked the ticket as a budget kill, though it enforces no budget and the agent call reports no reason a run stopped. A role run that ends without writing its output is now EMPTY-OUTPUT in `run finish`, never a budget kill, and the workflow keeps the agent's last message with the run (`factory run last-message`). The same role is re-dispatched once, on the same inputs and in the same round; a second EMPTY-OUTPUT in a row parks the ticket as `EMPTY-OUTPUT from <role>` with both runs, and records no result row for that run, so `resolve --redispatch` re-runs only that checker. A thrown agent call keeps its KILLED record and its `agent call failed` park. The shared preamble gains one RUNNING CODE bullet: run every command in the foreground and never end the turn while one is still running. The code reviewer prompt gains a WHAT YOU RUN section: judge the diff by reading it and leave the test suite and the gate commands to the verifier, which runs them on the same head; a narrow command that confirms one finding is allowed. The reviewer's input no longer lists the gate commands; it says the verifier runs them. The routing table gains two EMPTY-OUTPUT rows. Rejected: keeping a budget-kill label for some empty outputs, and a retry counter in the store.
+ 
+ Declined: a dedicated merge agent (merging is gate config plus human gates, not a judgment call).
+diff --git a/docs/design.md b/docs/design.md
+index 7375500..7a4ed2b 100644
+--- a/docs/design.md
++++ b/docs/design.md
+@@ -98,14 +98,15 @@ Rules the table relies on:
+ - A round is one checker pass; the first check is round 1. Two loops carry a counter: the spec loop (writer ↔ critic) and the PR loop (implementer ↔ reviewer + verifier). The counter increments when the author re-enters after REVISE, REQUEST-CHANGES, or FAILED. A gate failure, whether CI reports it or the verifier's gate step does, counts: the implementer ran the gates locally before pushing. Rebases and merge-main rounds do not count.
+ - The PR loop routes only after CI and both checker results for the current head are recorded. One implementer run then receives all three outputs. Never launch a second implementer run on a branch that already has one in flight.
+ - The dispatcher reads a role's trailer by its labels, not by line position. The last `STATUS:` line wins; CONFIDENCE is the next line labelled `CONFIDENCE:` after it, and ESCALATIONS the next line labelled `ESCALATIONS:` after that. Lines between labelled lines are continuation (a wrapped reason, a remark), so a verbose but well-formed verdict routes on its STATUS. A trailer with no CONFIDENCE or no ESCALATIONS line after its last STATUS is a parse failure, which routes as a STATUS not in this table.
+-- A non-empty ESCALATIONS line is copied to the human queue without blocking the STATUS route. An ESCALATIONS line that starts with the word `none` followed by end of line or punctuation (so not `None of …`), with prose after it on that line and nothing below it, is empty for routing, and the prose is kept with the run for audit. A `none` line with further lines below it is a real list, copied verbatim from that line on. Only NEEDS-HUMAN, CLARIFY, BLOCKED, ESCALATE, SPEC-DEFECT, a max-round cutoff, a budget kill (piece 3), a parent-close FAILED, and an archive refusal (Spec store: a delta that does not apply, no change folder, or no spec store) park the ticket. A parking STATUS from one checker wins over the other's REQUEST-CHANGES or FAILED; both outputs go to the queue.
++- A non-empty ESCALATIONS line is copied to the human queue without blocking the STATUS route. An ESCALATIONS line that starts with the word `none` followed by end of line or punctuation (so not `None of …`), with prose after it on that line and nothing below it, is empty for routing, and the prose is kept with the run for audit. A `none` line with further lines below it is a real list, copied verbatim from that line on. Only NEEDS-HUMAN, CLARIFY, BLOCKED, ESCALATE, SPEC-DEFECT, a max-round cutoff, a budget kill (piece 3), a second EMPTY-OUTPUT in a row, a parent-close FAILED, and an archive refusal (Spec store: a delta that does not apply, no change folder, or no spec store) park the ticket. A parking STATUS from one checker wins over the other's REQUEST-CHANGES or FAILED; both outputs go to the queue.
++- A role run that ends without writing its output is EMPTY-OUTPUT, whatever stopped it. The agent call reports no reason, so an empty output is never recorded as a budget kill; the harness keeps the agent's last message with the run. The same role is re-dispatched once, on the same inputs and in the same round. A second EMPTY-OUTPUT in a row parks the ticket with both runs.
+ - When a human resolves a parked ticket:
+   - A question returns to the role that asked, with the answer and that role's previous output (the output that asked it); a requester's CLARIFY answer returns to Triage the same way. When the answer is a standing decision, the human passes `--decision "<line>"` with the answer, or with the close, so that it lands in `decisions.md`.
+   - BLOCKED, a critic ESCALATE, and a planner ESCALATE return to the role that emitted them with the ruling, same round, or the human re-scopes (spec gate or writer round reset) or closes.
+   - A spec loop at max rounds goes to the spec gate.
+   - A parent-close FAILED or SPEC-DEFECT, an archive that does not apply, or a sub-ticket closed by the human, parks the parent: the human amends the spec and re-plans (new sub-tickets under the same parent) or closes the parent.
+   - An archive refused for no change folder or no spec store parks the parent the same way, but its spec never entered the spec store: the human closes the parent as applied. Current truth is not updated, and archive appends nothing to `decisions.md`; the human logs any decision with `factory decision add`. If current truth should carry the spec, it is re-intaken as a new ticket.
+-  - A PR loop at max rounds, a SPEC-DEFECT, or a reviewer ESCALATE returns to the implementer with the round reset and the human's ruling as findings, or the ticket closes. The human may amend the sub-ticket or the pinned spec first; the amended version is what the implementer and checkers receive. There is no merge-gate override. A budget-killed run re-dispatches the same role on the same inputs, same round (the human may raise that run's budget or amend the sub-ticket first), or the ticket closes. In-flight siblings keep the spec version they received; the human decides whether to re-plan.
++  - A PR loop at max rounds, a SPEC-DEFECT, or a reviewer ESCALATE returns to the implementer with the round reset and the human's ruling as findings, or the ticket closes. The human may amend the sub-ticket or the pinned spec first; the amended version is what the implementer and checkers receive. There is no merge-gate override. A budget-killed run, or a ticket parked on a second EMPTY-OUTPUT, re-dispatches the same role on the same inputs, same round (the human may raise that run's budget or amend the sub-ticket first), or the ticket closes. In-flight siblings keep the spec version they received; the human decides whether to re-plan.
+ 
+ | From | STATUS | Next | Receives |
+ |---|---|---|---|
+@@ -132,6 +133,8 @@ Rules the table relies on:
+ | Gate runner, Reviewer, and/or Verifier | CI FAIL and/or REQUEST-CHANGES and/or FAILED, once all three have reported | Implementer (round +1) if round < {2}, else Human queue | Both checkers' outputs and the CI result |
+ | Reviewer | ESCALATE | Human queue | Output |
+ | Verifier | SPEC-DEFECT | Human queue | Verifier output |
++| Any role | EMPTY-OUTPUT, the first in a row | The same role again, same round | The same inputs |
++| Any role | EMPTY-OUTPUT, the second in a row | Human queue | Both runs' last messages |
+ | Merge gate | Head does not contain current main | Implementer (same round, conflict run): merge main into the branch, or rebase where {force-push allowed} | Conflict output; the new head re-runs CI and both checkers |
+ | Merge gate | CI green + APPROVE + VERIFIED on current head + head contains main + piece-8 approvals | Merge; then dispatch sub-tickets that depended on this one. When all sub-tickets have merged, one verifier run on main against the parent's full Acceptance list (every scenario of its pinned delta, with its `verification.md` label). When the parent has one sub-ticket, `main` has not moved since that sub-ticket merged, the sub-ticket's text names every scenario of the parent's pinned delta, and its VERIFIED run checked the merged head against the parent's recorded base, that run stands for the parent-close run and no new run starts. VERIFIED archives the change (Spec store), then closes the parent; FAILED, SPEC-DEFECT or an archive refusal (Spec store: a delta that does not apply, no change folder, or no spec store) parks the parent in the human queue | Parent-close run: pinned parent spec; head = current main; base = the main SHA recorded before the parent's first sub-ticket merged; `{gate commands}` |
+ | Weekly audit done, or on demand | — | Retro | Full outputs behind every outcome signal since the last retro (piece 10), current instruction files, every proposal still under evaluation with its metric, and per-role run and outcome counts, broken down by model, for the period and for each prior proposal's window, and the marker ledger: one row per `factory:` comment in the code on the integration branch, with file:line, limit and upgrade trigger, flagged `no-trigger` where it names none, composed by the harness when the retro runs |
+@@ -218,6 +221,10 @@ RUNNING CODE
+   temporary directory, never the real one: use the wrapper in the
+   "Running code" section of your input. That includes every test or
+   check command your briefing, ticket or spec gives you.
++- Run every command in the foreground and wait for it to finish.
++  Never end your turn while a command you started is still running:
++  your final message ends your run, and an output you have not yet
++  written is lost.
+ - A throwaway HOME does not stop a write to an absolute path. Never
+   run anything that could write a protected path outside the
+   repository, such as live credentials or production state.
+@@ -612,6 +619,12 @@ sub-ticket without collateral damage. You see the diff, the sub-ticket,
+ the parent spec, and the repo. You never see the implementer's reasoning
+ beyond the PR description.
+ 
++WHAT YOU RUN
++- Judge the diff by reading it. Do not run the test suite or the gate
++  commands: the verifier runs them on the same head.
++- You may run a narrow command to confirm a specific finding, such as
++  one test or a grep, and cite its output with that finding.
++
+ CHECK, IN THIS ORDER
+ 1. Test integrity: any existing test file changed? Any test weakened,
+    skipped, deleted, or rewritten? Any assertion made less specific? Any
+diff --git a/docs/prompts/00-preamble.md b/docs/prompts/00-preamble.md
+index 2c24a07..9693b64 100644
+--- a/docs/prompts/00-preamble.md
++++ b/docs/prompts/00-preamble.md
+@@ -42,6 +42,10 @@ RUNNING CODE
+   temporary directory, never the real one: use the wrapper in the
+   "Running code" section of your input. That includes every test or
+   check command your briefing, ticket or spec gives you.
++- Run every command in the foreground and wait for it to finish.
++  Never end your turn while a command you started is still running:
++  your final message ends your run, and an output you have not yet
++  written is lost.
+ - A throwaway HOME does not stop a write to an absolute path. Never
+   run anything that could write a protected path outside the
+   repository, such as live credentials or production state.
+diff --git a/docs/prompts/06-code-reviewer.md b/docs/prompts/06-code-reviewer.md
+index 38d5596..d391fbb 100644
+--- a/docs/prompts/06-code-reviewer.md
++++ b/docs/prompts/06-code-reviewer.md
+@@ -3,6 +3,12 @@ sub-ticket without collateral damage. You see the diff, the sub-ticket,
+ the parent spec, and the repo. You never see the implementer's reasoning
+ beyond the PR description.
+ 
++WHAT YOU RUN
++- Judge the diff by reading it. Do not run the test suite or the gate
++  commands: the verifier runs them on the same head.
++- You may run a narrow command to confirm a specific finding, such as
++  one test or a grep, and cite its output with that finding.
++
+ CHECK, IN THIS ORDER
+ 1. Test integrity: any existing test file changed? Any test weakened,
+    skipped, deleted, or rewritten? Any assertion made less specific? Any
+diff --git a/factory/cli.py b/factory/cli.py
+index 6535ee6..f9c54d7 100644
+--- a/factory/cli.py
++++ b/factory/cli.py
+@@ -299,6 +299,16 @@ def _start_build_run(root: Path, cfg: dict, t: dict, meta: dict, d: Path, parent
+         meta.update({"branch": t.get("branch"), "base": base, "head": head, "worktree": str(wt)})
+ 
+ 
++def run_last_message(a, root, cfg):
++    """Keep the agent's last message with a run that ended EMPTY-OUTPUT, so a human can see why."""
++    d = _run_dir(root, a.run)
++    st = store.read_yaml(d / "meta.yaml").get("status")
++    if st != "EMPTY-OUTPUT":
++        raise Refused(f"{a.run} is {st or 'not finished'}, not EMPTY-OUTPUT: no last message to keep")
++    store.write_text(d / "last-message.md", a.text + "\n")
++    out({"ok": True, "run_id": a.run, "last_message": _rel(root, d / "last-message.md")})
++
++
+ def run_cleanup(a, root, cfg):
+     d = _run_dir(root, a.run)
+     meta = store.read_yaml(d / "meta.yaml")
+@@ -332,7 +342,8 @@ def run_finish(a, root, cfg):
+     if a.status_override:
+         parsed = {"status": a.status_override, "confidence": None, "escalations": []}
+     elif not text.strip():
+-        parsed = {"status": "KILLED", "confidence": None, "escalations": [], "error": "empty output"}
++        # The agent call reports no reason a run stopped, so an empty output is never a budget kill.
++        parsed = {"status": "EMPTY-OUTPUT", "confidence": None, "escalations": [], "error": "empty output"}
+     else:
+         parsed = status.parse(text)
+         if parsed["status"] is None:
+@@ -1440,6 +1451,10 @@ def build_parser() -> argparse.ArgumentParser:
+     p.add_argument("--output-file")
+     p.add_argument("--status-override")
+     p.set_defaults(fn=run_finish)
++    p = rn.add_parser("last-message")
++    p.add_argument("run")
++    p.add_argument("--text", required=True)
++    p.set_defaults(fn=run_last_message)
+     p = rn.add_parser("cleanup")
+     p.add_argument("run")
+     p.set_defaults(fn=run_cleanup)
+diff --git a/factory/compose.py b/factory/compose.py
+index d85ee69..59aa23f 100644
+--- a/factory/compose.py
++++ b/factory/compose.py
+@@ -218,12 +218,15 @@ def compose(root: Path, cfg: dict, meta: dict, t: dict) -> tuple[str, list[str]]
+         run = [g for (raw, paths), g in zip(gate_entries(cfg), gate_commands(cfg)) if paths is None or raw not in gone]
+         where = (f"\n## Where you work\nWorktree: `{meta.get('worktree')}` (branch `{meta.get('branch')}`, "
+                  f"base `{meta.get('base')}`, head `{meta.get('head')}`). There is no remote: commit on the "
+-                 f"branch; the PR is the branch plus the description you return. Gate commands (run each from "
+-                 f"your worktree, exactly as written; each is already wrapped): "
+-                 + ("; ".join(f"`{wrap(g, env)}`" for g in run) if run or not skipped
+-                    else "none (every gate command is skipped below)") + "\n"
+-                 + "".join(f"SKIPPED by the harness for this diff, do not run: `{s['command']}`: {s['reason']}\n"
+-                           for s in skipped))
++                 f"branch; the PR is the branch plus the description you return. ")
++        if role == "reviewer":  # the reviewer judges the diff; the verifier runs the gate (doc §6)
++            where += "The verifier runs the gate commands on this head; you do not run them.\n"
++        else:
++            where += ("Gate commands (run each from your worktree, exactly as written; each is already wrapped): "
++                      + ("; ".join(f"`{wrap(g, env)}`" for g in run) if run or not skipped
++                         else "none (every gate command is skipped below)") + "\n")
++        where += "".join(f"SKIPPED by the harness for this diff, do not run: `{s['command']}`: {s['reason']}\n"
++                         for s in skipped)
+         parts.append(where)
+         if role == "implementer":
+             if t.get("merge_refused"):
+diff --git a/factory/prompts/preamble.md b/factory/prompts/preamble.md
+index 2c24a07..9693b64 100644
+--- a/factory/prompts/preamble.md
++++ b/factory/prompts/preamble.md
+@@ -42,6 +42,10 @@ RUNNING CODE
+   temporary directory, never the real one: use the wrapper in the
+   "Running code" section of your input. That includes every test or
+   check command your briefing, ticket or spec gives you.
++- Run every command in the foreground and wait for it to finish.
++  Never end your turn while a command you started is still running:
++  your final message ends your run, and an output you have not yet
++  written is lost.
+ - A throwaway HOME does not stop a write to an absolute path. Never
+   run anything that could write a protected path outside the
+   repository, such as live credentials or production state.
+diff --git a/factory/prompts/reviewer.md b/factory/prompts/reviewer.md
+index a2a7c03..c94b6b9 100644
+--- a/factory/prompts/reviewer.md
++++ b/factory/prompts/reviewer.md
+@@ -3,6 +3,12 @@ sub-ticket without collateral damage. You see the diff, the sub-ticket,
+ the parent spec, and the repo. You never see the implementer's reasoning
+ beyond the PR description.
+ 
++WHAT YOU RUN
++- Judge the diff by reading it. Do not run the test suite or the gate
++  commands: the verifier runs them on the same head.
++- You may run a narrow command to confirm a specific finding, such as
++  one test or a grep, and cite its output with that finding.
++
+ CHECK, IN THIS ORDER
+ 1. Test integrity: any existing test file changed? Any test weakened,
+    skipped, deleted, or rewritten? Any assertion made less specific? Any
+diff --git a/factory/workflows/build.js b/factory/workflows/build.js
+index 1b87d18..48a2dfe 100644
+--- a/factory/workflows/build.js
++++ b/factory/workflows/build.js
+@@ -63,7 +63,19 @@ async function park(ticket, reason, outputs, phase) {
+   log(`${ticket} parked: ${reason}`)
+ }
+ 
++// An EMPTY-OUTPUT run is re-dispatched once, same role, same inputs; a second in a row parks the ticket
++// with both runs. The agent call reports no reason a run stopped, so neither is a budget kill.
+ async function runRole(role, ticket, phase) {
++  const first = await runOnce(role, ticket, phase)
++  if (!first || first.status !== 'EMPTY-OUTPUT') return first
++  log(`${role} ${first.runId} (${ticket}): EMPTY-OUTPUT; re-dispatching ${role} once`)
++  const second = await runOnce(role, ticket, phase)
++  if (!second || second.status !== 'EMPTY-OUTPUT') return second
++  await park(ticket, `EMPTY-OUTPUT from ${role}`, [first.runId, second.runId], phase)
++  return null
++}
++
++async function runOnce(role, ticket, phase) {
+   const start = await clerk(`${BIN} run start --role ${role} --ticket ${ticket} --model ${MODELS[role]}`, phase, `run start ${role} ${ticket}`)
+   if (!start.ok) {
+     // A refusal that starts `BLOCKED ` is the harness blocking the run (the sibling-tests check): park
+@@ -106,14 +118,18 @@ async function runRole(role, ticket, phase) {
+     const sh = `${args.stubs}/${role}-${stubCount[role]}.sh`
+     await clerk(`if [ -f ${sh} ]; then (cd ${start.worktree} && sh ${sh}) >/dev/null 2>&1; fi; echo '{"ok": true}'`, phase, `stub script ${role}-${stubCount[role]}`)
+   }
+-  const killed = out === null || (typeof out === 'string' && out.trim() === '')
+-  const fin = killed
+-    ? await clerk(`${BIN} run finish ${runId} --status-override KILLED`, phase, `run finish ${role} (killed)`)
+-    : await clerk(`${BIN} run finish ${runId}`, phase, `run finish ${role}`)
++  // run finish reads the output file for every run: a missing or blank one is EMPTY-OUTPUT.
++  const fin = await clerk(`${BIN} run finish ${runId}`, phase, `run finish ${role}`)
+   if (role === 'reviewer' || role === 'verifier') await clerk(`${BIN} run cleanup ${runId}`, phase, `run cleanup ${role}`)
+   if (!fin.ok) { await park(ticket, `harness-bug: run finish ${role}: ${fin.stderr || ''}`, [runId], phase); return null }
+   // run finish parked the ticket (the tripwire saw a listed live file change): stop, do not route on STATUS
+   if (fin.parked) { log(`${ticket} parked: ${fin.parked}`); return null }
++  // An EMPTY-OUTPUT run keeps the agent's last message, so a human can see why it stopped. A failure
++  // here never parks and never changes the route.
++  const said = typeof out === 'string' ? out.trim() : ''
++  if (fin.status === 'EMPTY-OUTPUT' && said) {
++    await clerk(`${BIN} run last-message ${runId} '--text=${said.slice(-4000).replace(/'/g, "'\\''")}'`, phase, `run last-message ${role}`)
++  }
+   log(`${role} ${runId} (${ticket}): ${fin.status}`)
+   return { runId, status: fin.status, outputPath }
+ }
+@@ -134,7 +150,6 @@ async function buildOne(st) {
+     if (implemented) {
+       const impl = await runRole('implementer', st, 'Build')
+       if (!impl) return
+-      if (impl.status === 'KILLED') { await park(st, 'budget kill: implementer', [impl.runId], 'Build'); return }
+       if (impl.status === 'BLOCKED') { await park(st, 'BLOCKED from implementer', [impl.runId], 'Build'); return }
+       if (impl.status !== 'READY-FOR-REVIEW') { await park(st, `harness-bug: unknown STATUS ${impl.status} from implementer`, [impl.runId], 'Build'); return }
+       const moved = await clerk(`${BIN} ticket head ${st}`, 'Build', `ticket head ${st}`)
+diff --git a/factory/workflows/intake.js b/factory/workflows/intake.js
+index 7f0c561..cb10d46 100644
+--- a/factory/workflows/intake.js
++++ b/factory/workflows/intake.js
+@@ -72,7 +72,19 @@ async function park(reason, outputs, phase) {
+   log(`${TICKET} parked: ${reason}`)
+ }
+ 
++// An EMPTY-OUTPUT run is re-dispatched once, same role, same inputs; a second in a row parks the ticket
++// with both runs. The agent call reports no reason a run stopped, so neither is a budget kill.
+ async function runRole(role, phase) {
++  const first = await runOnce(role, phase)
++  if (!first || first.status !== 'EMPTY-OUTPUT') return first
++  log(`${role} ${first.runId}: EMPTY-OUTPUT; re-dispatching ${role} once`)
++  const second = await runOnce(role, phase)
++  if (!second || second.status !== 'EMPTY-OUTPUT') return second
++  await park(`EMPTY-OUTPUT from ${role}`, [first.runId, second.runId], phase)
++  return null
++}
++
++async function runOnce(role, phase) {
+   const start = await clerk(`${BIN} run start --role ${role} --ticket ${TICKET} --model ${MODELS[role]}`, phase, `run start ${role}`)
+   if (!start.ok) { await park(`harness-bug: run start ${role}: ${start.stderr || ''}`, [], phase); return null }
+   const runId = start.run_id
+@@ -103,13 +115,17 @@ async function runRole(role, phase) {
+     await park(`agent call failed: ${role}: ${e && e.message ? e.message : e}`, [runId], phase)
+     return null
+   }
+-  const killed = out === null || (typeof out === 'string' && out.trim() === '')
+-  const fin = killed
+-    ? await clerk(`${BIN} run finish ${runId} --status-override KILLED`, phase, `run finish ${role} (killed)`)
+-    : await clerk(`${BIN} run finish ${runId}`, phase, `run finish ${role}`)
++  // run finish reads the output file for every run: a missing or blank one is EMPTY-OUTPUT.
++  const fin = await clerk(`${BIN} run finish ${runId}`, phase, `run finish ${role}`)
+   if (!fin.ok) { await park(`harness-bug: run finish ${role}: ${fin.stderr || ''}`, [runId], phase); return null }
+   // run finish parked the ticket (the tripwire saw a listed live file change): stop, do not route on STATUS
+   if (fin.parked) { log(`${TICKET} parked: ${fin.parked}`); return null }
++  // An EMPTY-OUTPUT run keeps the agent's last message, so a human can see why it stopped. A failure
++  // here never parks and never changes the route.
++  const said = typeof out === 'string' ? out.trim() : ''
++  if (fin.status === 'EMPTY-OUTPUT' && said) {
++    await clerk(`${BIN} run last-message ${runId} '--text=${said.slice(-4000).replace(/'/g, "'\\''")}'`, phase, `run last-message ${role}`)
++  }
+   log(`${role} ${runId}: ${fin.status}${fin.escalations && fin.escalations.length ? ` (+${fin.escalations.length} escalations)` : ''}`)
+   return { runId, status: fin.status, escalations: fin.escalations || [] }
+ }
+diff --git a/tests/factory/test_empty_output.py b/tests/factory/test_empty_output.py
+new file mode 100644
+index 0000000..ea97fd2
+--- /dev/null
++++ b/tests/factory/test_empty_output.py
+@@ -0,0 +1,83 @@
++"""A role run that leaves no output is EMPTY-OUTPUT, never a budget kill (T-0032 part C).
++
++The CLI half, black-box through `bin/factory` on a throwaway store: `run finish` labels a run with a
++missing or blank `output.md` EMPTY-OUTPUT, an explicit `--status-override KILLED` still records
++KILLED, and `run last-message` keeps the agent's last message for an EMPTY-OUTPUT run only. The
++workflow half (one re-dispatch, then a park) is checked by the spec's node scenarios.
++"""
++from __future__ import annotations
++
++import json
++import os
++import subprocess
++from pathlib import Path
++
++import pytest
++import yaml
++
++REPO = Path(__file__).resolve().parents[2]
++BIN = REPO / "bin" / "factory"
++
++
++class Store:
++    """A throwaway store with one ticket, T-0001, and one triage run started on it."""
++
++    def __init__(self, tmp_path: Path):
++        self.root = tmp_path / "state"
++        self.env = {**os.environ, "FACTORY_STATE": str(self.root), "PYTHONDONTWRITEBYTECODE": "1"}
++        req = tmp_path / "req.md"
++        req.write_text("# F\n\nDo x.\n")
++        self.ok("ticket", "new", "--file", str(req))
++        self.rid = self.ok("run", "start", "--role", "triage", "--ticket", "T-0001")["run_id"]
++        self.ok("run", "compose", self.rid)
++        self.run_dir = self.root / "runs" / self.rid
++
++    def cli(self, *argv: str) -> subprocess.CompletedProcess:
++        return subprocess.run([str(BIN), *argv], capture_output=True, text=True, env=self.env, cwd=REPO)
++
++    def ok(self, *argv: str) -> dict:
++        cp = self.cli(*argv)
++        assert cp.returncode == 0, cp.stderr
++        return json.loads(cp.stdout.strip().splitlines()[-1])
++
++    def meta(self) -> dict:
++        return yaml.safe_load((self.run_dir / "meta.yaml").read_text())
++
++    def events(self) -> list[str]:
++        return [json.loads(ln)["event"] for p in sorted((self.root / "log").glob("*.jsonl"))
++                for ln in p.read_text().splitlines() if ln.strip()]
++
++
++@pytest.mark.parametrize("output", [None, "", "  \n\n"])
++def test_run_finish_with_no_or_blank_output_is_empty_output(tmp_path, output):
++    s = Store(tmp_path)
++    if output is not None:
++        (s.run_dir / "output.md").write_text(output)
++    assert s.ok("run", "finish", s.rid)["status"] == "EMPTY-OUTPUT"
++    assert s.meta()["status"] == "EMPTY-OUTPUT"
++    assert "run.finished" in s.events() and "run.killed" not in s.events()
++
++
++def test_status_override_killed_still_records_killed(tmp_path):
++    s = Store(tmp_path)
++    assert s.ok("run", "finish", s.rid, "--status-override", "KILLED")["status"] == "KILLED"
++    assert s.meta()["status"] == "KILLED"
++    assert "run.killed" in s.events()
++
++
++def test_last_message_is_kept_for_an_empty_output_run(tmp_path):
++    s = Store(tmp_path)
++    s.ok("run", "finish", s.rid)
++    text = "The suite is still running; I'll write the review when it ends.\nsecond line"
++    res = s.ok("run", "last-message", s.rid, f"--text={text}")
++    assert res == {"ok": True, "run_id": s.rid, "last_message": f"runs/{s.rid}/last-message.md"}
++    assert (s.run_dir / "last-message.md").read_text() == text + "\n"
++
++
++def test_last_message_is_refused_for_a_run_that_wrote_its_output(tmp_path):
++    s = Store(tmp_path)
++    (s.run_dir / "output.md").write_text("Type: bug\nTitle: x\n\nSTATUS: ACCEPT\nCONFIDENCE: high, fixture\nESCALATIONS: none\n")
++    assert s.ok("run", "finish", s.rid)["status"] == "ACCEPT"
++    cp = s.cli("run", "last-message", s.rid, "--text=anything")
++    assert cp.returncode == 2 and "EMPTY-OUTPUT" in cp.stderr
++    assert not (s.run_dir / "last-message.md").exists()
+diff --git a/tests/factory/test_gate_paths.py b/tests/factory/test_gate_paths.py
+index 8cd4236..c4586b1 100644
+--- a/tests/factory/test_gate_paths.py
++++ b/tests/factory/test_gate_paths.py
+@@ -120,7 +120,7 @@ def test_a_scoped_command_is_skipped_for_a_diff_that_touches_none_of_its_paths(t
+ 
+ def test_a_diff_that_touches_a_scoped_command_s_paths_runs_it(tmp_path):
+     t = Target(tmp_path, SCOPED_GATE, changed="src/a.txt")
+-    _, text, meta = t.checker("reviewer")
++    _, text, meta = t.checker()
+     line = _gate_line(text)
+     assert UNSCOPED in line and "exit 7" in line
+     assert _skipped_lines(text) == [] and meta["gate_skipped"] == []

@@ -1,0 +1,27 @@
+run_id: run-0306-verifier
+role: verifier
+ticket: T-0032.1
+model: opus
+round: 1
+spec_version: 1
+started: '2026-10-07T05:48:28+00:00'
+finished: '2026-10-07T05:55:52+00:00'
+wall_s: 444
+status: VERIFIED
+input_sources:
+- specs/T-0032.1/subticket.md
+- specs/T-0032/v1.md
+- runs/run-0305-implementer/output.md
+- runs/run-0306-verifier/diff.patch
+- approvals/T-0032.1/ruling-1.md
+- approvals/T-0032.1/ruling-2.md
+gate_skipped: []
+environment_files: []
+branch: factory/T-0032.1
+base: 97becfdf573248116c7933347224765c8a2ede83
+head: c01e7c2cf8bdef4f73fd8443744906b9ea89db74
+worktree: /Users/dphang/dev/spec-factory/.factory/store/runs/run-0306-verifier/wt
+confidence: high, all 14 scenarios ran verbatim on both checkouts, every NEW one fails on base for the
+  stated reason and passes on the PR, both gates pass (360 tests), and the boundary probes found no special-casing.
+escalations: []
+escalations_note: null
