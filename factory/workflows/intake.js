@@ -72,7 +72,19 @@ async function park(reason, outputs, phase) {
   log(`${TICKET} parked: ${reason}`)
 }
 
+// An EMPTY-OUTPUT run is re-dispatched once, same role, same inputs; a second in a row parks the ticket
+// with both runs. The agent call reports no reason a run stopped, so neither is a budget kill.
 async function runRole(role, phase) {
+  const first = await runOnce(role, phase)
+  if (!first || first.status !== 'EMPTY-OUTPUT') return first
+  log(`${role} ${first.runId}: EMPTY-OUTPUT; re-dispatching ${role} once`)
+  const second = await runOnce(role, phase)
+  if (!second || second.status !== 'EMPTY-OUTPUT') return second
+  await park(`EMPTY-OUTPUT from ${role}`, [first.runId, second.runId], phase)
+  return null
+}
+
+async function runOnce(role, phase) {
   const start = await clerk(`${BIN} run start --role ${role} --ticket ${TICKET} --model ${MODELS[role]}`, phase, `run start ${role}`)
   if (!start.ok) { await park(`harness-bug: run start ${role}: ${start.stderr || ''}`, [], phase); return null }
   const runId = start.run_id
@@ -103,13 +115,17 @@ async function runRole(role, phase) {
     await park(`agent call failed: ${role}: ${e && e.message ? e.message : e}`, [runId], phase)
     return null
   }
-  const killed = out === null || (typeof out === 'string' && out.trim() === '')
-  const fin = killed
-    ? await clerk(`${BIN} run finish ${runId} --status-override KILLED`, phase, `run finish ${role} (killed)`)
-    : await clerk(`${BIN} run finish ${runId}`, phase, `run finish ${role}`)
+  // run finish reads the output file for every run: a missing or blank one is EMPTY-OUTPUT.
+  const fin = await clerk(`${BIN} run finish ${runId}`, phase, `run finish ${role}`)
   if (!fin.ok) { await park(`harness-bug: run finish ${role}: ${fin.stderr || ''}`, [runId], phase); return null }
   // run finish parked the ticket (the tripwire saw a listed live file change): stop, do not route on STATUS
   if (fin.parked) { log(`${TICKET} parked: ${fin.parked}`); return null }
+  // An EMPTY-OUTPUT run keeps the agent's last message, so a human can see why it stopped. A failure
+  // here never parks and never changes the route.
+  const said = typeof out === 'string' ? out.trim() : ''
+  if (fin.status === 'EMPTY-OUTPUT' && said) {
+    await clerk(`${BIN} run last-message ${runId} '--text=${said.slice(-4000).replace(/'/g, "'\\''")}'`, phase, `run last-message ${role}`)
+  }
   log(`${role} ${runId}: ${fin.status}${fin.escalations && fin.escalations.length ? ` (+${fin.escalations.length} escalations)` : ''}`)
   return { runId, status: fin.status, escalations: fin.escalations || [] }
 }

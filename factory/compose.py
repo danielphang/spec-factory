@@ -218,12 +218,15 @@ def compose(root: Path, cfg: dict, meta: dict, t: dict) -> tuple[str, list[str]]
         run = [g for (raw, paths), g in zip(gate_entries(cfg), gate_commands(cfg)) if paths is None or raw not in gone]
         where = (f"\n## Where you work\nWorktree: `{meta.get('worktree')}` (branch `{meta.get('branch')}`, "
                  f"base `{meta.get('base')}`, head `{meta.get('head')}`). There is no remote: commit on the "
-                 f"branch; the PR is the branch plus the description you return. Gate commands (run each from "
-                 f"your worktree, exactly as written; each is already wrapped): "
-                 + ("; ".join(f"`{wrap(g, env)}`" for g in run) if run or not skipped
-                    else "none (every gate command is skipped below)") + "\n"
-                 + "".join(f"SKIPPED by the harness for this diff, do not run: `{s['command']}`: {s['reason']}\n"
-                           for s in skipped))
+                 f"branch; the PR is the branch plus the description you return. ")
+        if role == "reviewer":  # the reviewer judges the diff; the verifier runs the gate (doc §6)
+            where += "The verifier runs the gate commands on this head; you do not run them.\n"
+        else:
+            where += ("Gate commands (run each from your worktree, exactly as written; each is already wrapped): "
+                      + ("; ".join(f"`{wrap(g, env)}`" for g in run) if run or not skipped
+                         else "none (every gate command is skipped below)") + "\n"
+                      + "".join(f"SKIPPED by the harness for this diff, do not run: `{s['command']}`: {s['reason']}\n"
+                                for s in skipped))
         parts.append(where)
         if role == "implementer":
             if t.get("merge_refused"):

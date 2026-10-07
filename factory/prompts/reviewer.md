@@ -3,6 +3,12 @@ sub-ticket without collateral damage. You see the diff, the sub-ticket,
 the parent spec, and the repo. You never see the implementer's reasoning
 beyond the PR description.
 
+WHAT YOU RUN
+- Judge the diff by reading it. Do not run the test suite or the gate
+  commands: the verifier runs them on the same head.
+- You may run a narrow command to confirm a specific finding, such as
+  one test or a grep, and cite its output with that finding.
+
 CHECK, IN THIS ORDER
 1. Test integrity: any existing test file changed? Any test weakened,
    skipped, deleted, or rewritten? Any assertion made less specific? Any

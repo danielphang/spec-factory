@@ -6,7 +6,7 @@ table, and human gates. This page is the system as it runs today; install and us
 
 | | |
 |---|---|
-| **Status** | Current state as of 2026-10-04. Intake works end to end. Build works, in local-only mode. |
+| **Status** | Current state as of 2026-10-06. Intake works end to end. Build works, in local-only mode. |
 | **Reader** | Technical, seeing this project for the first time. Terms specific to this system are defined in "Terms used on this page" or at first use. |
 | **Scope** | What runs now. The intended design and its reasoning are in `docs/design.md`; where the two disagree, this page is right about what runs and the design is amended. |
 | **Internal references** | Ticket ids, issue numbers and who did what are in "Related work and history" near the end. |
@@ -170,8 +170,10 @@ not updated. While that final run is in progress, the ticket's record lists it a
 any other run.
 
 At any step a role can say it needs a human: a question, an escalation, a blocked build. The
-harness parks the ticket. So does running out of rounds, or a run exceeding its budget. A human
-unsticks it with `factory resolve`, and the ticket re-enters at the step the rules name.
+harness parks the ticket. So does running out of rounds, or a role that ended without output
+twice in a row (the first time, the harness runs it once more on the same inputs and keeps its
+last message). A human unsticks it with `factory resolve`, and the ticket re-enters at the step
+the rules name.
 
 ```mermaid
 flowchart LR
@@ -212,7 +214,7 @@ flowchart LR
   CL --> ST[("the store<br/>tickets · runs · specs · verdicts · log · current truth")]:::store
 
   PK{"parked ticket<br/>a human runs factory resolve"}:::human
-  TR & SW & SC & PL & IM & J & PC -. "needs a human · out of rounds · over budget" .-> PK
+  TR & SW & SC & PL & IM & J & PC -. "needs a human · out of rounds · no output twice" .-> PK
 ```
 
 *One ticket from request file to closed record. Orange is the human; grey is the agents; teal is
@@ -789,7 +791,7 @@ FACTORY_DISPATCH=1 $RUNTIME/bin/factory run finish <run> --status-override KILLE
 |---|---|---|
 | **File** | `factory ticket new --file <abs path>` | that this request is worth a ticket |
 | **Gate** | `factory approve-spec T-n [--edit F]` · `factory request-changes T-n F` · close | the spec's intent, risk declarations, operator steps, "tests to change"; a gate edit becomes a new spec version and is what gets pinned |
-| **Unstick** | `factory resolve T-n --answer F` (a role asked a question) · `--ruling F` (a role escalated, an implementer reported itself blocked, or the harness blocked an implementer whose sub-ticket lists a test no merged sibling added) · `--redispatch` (re-run the checks on the same commit after an outside fix) · `--replan F` (the final check failed after every sub-ticket merged: back to the planner with a note; new sub-tickets take the next free ids) · `--to spec-gate` · `--close`; with `--answer` or `--close`, add `--decision "<line>"` to also record the answer as a standing decision | an answer, a ruling, a re-check, a re-plan, a re-scope, or closing |
+| **Unstick** | `factory resolve T-n --answer F` (a role asked a question) · `--ruling F` (a role escalated, an implementer reported itself blocked, or the harness blocked an implementer whose sub-ticket lists a test no merged sibling added) · `--redispatch` (re-run the checks on the same commit after an outside fix, or after a checker ended without output twice) · `--replan F` (the final check failed after every sub-ticket merged: back to the planner with a note; new sub-tickets take the next free ids) · `--to spec-gate` · `--close`; with `--answer` or `--close`, add `--decision "<line>"` to also record the answer as a standing decision | an answer, a ruling, a re-check, a re-plan, a re-scope, or closing |
 | **Record** | `factory decision add T-n "<line>"`, at any ticket state, closed included. It appends one dated line to the target's decision log, `decisions.md`, which the spec writer, critic and planner receive with their input | that a decision binds later tickets |
 | **Upgrade** | `factory --accept-harness <sha> <command>` | that this target adopts a new harness revision |
 
@@ -855,6 +857,13 @@ path above is relative to the store.
   sub-ticket added the file. If none did, the sub-ticket parks as blocked, and the human rules on it
   as on any blocked build ("Where a human decides"). Any other existing test still changes only if
   the approved spec lists it. It is tested, and has not yet fired on a real ticket.
+- **Empty output.** A role run that ends without writing its output file is run once more on the
+  same inputs, and the harness keeps the agent's last message with the run. A second run in a row
+  that ends the same way parks the ticket. The harness enforces no time or token budget and cannot
+  tell why a run stopped, so it never labels such a run a budget kill. The code reviewer judges the
+  diff and leaves the test suite and the gate commands to the verifier. Every role is told to wait
+  for the commands it starts before it ends its turn. It is tested, and has not yet fired on a real
+  ticket.
 
 **Not built**
 

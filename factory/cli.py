@@ -299,6 +299,16 @@ def _start_build_run(root: Path, cfg: dict, t: dict, meta: dict, d: Path, parent
         meta.update({"branch": t.get("branch"), "base": base, "head": head, "worktree": str(wt)})
 
 
+def run_last_message(a, root, cfg):
+    """Keep the agent's last message with a run that ended EMPTY-OUTPUT, so a human can see why."""
+    d = _run_dir(root, a.run)
+    st = store.read_yaml(d / "meta.yaml").get("status")
+    if st != "EMPTY-OUTPUT":
+        raise Refused(f"{a.run} is {st or 'not finished'}, not EMPTY-OUTPUT: no last message to keep")
+    store.write_text(d / "last-message.md", a.text + "\n")
+    out({"ok": True, "run_id": a.run, "last_message": _rel(root, d / "last-message.md")})
+
+
 def run_cleanup(a, root, cfg):
     d = _run_dir(root, a.run)
     meta = store.read_yaml(d / "meta.yaml")
@@ -332,7 +342,8 @@ def run_finish(a, root, cfg):
     if a.status_override:
         parsed = {"status": a.status_override, "confidence": None, "escalations": []}
     elif not text.strip():
-        parsed = {"status": "KILLED", "confidence": None, "escalations": [], "error": "empty output"}
+        # The agent call reports no reason a run stopped, so an empty output is never a budget kill.
+        parsed = {"status": "EMPTY-OUTPUT", "confidence": None, "escalations": [], "error": "empty output"}
     else:
         parsed = status.parse(text)
         if parsed["status"] is None:
@@ -1440,6 +1451,10 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--output-file")
     p.add_argument("--status-override")
     p.set_defaults(fn=run_finish)
+    p = rn.add_parser("last-message")
+    p.add_argument("run")
+    p.add_argument("--text", required=True)
+    p.set_defaults(fn=run_last_message)
     p = rn.add_parser("cleanup")
     p.add_argument("run")
     p.set_defaults(fn=run_cleanup)
