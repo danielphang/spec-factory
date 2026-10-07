@@ -195,4 +195,3 @@ def test_a_round2_critic_gets_a_rewritten_spec_s_previous_version_whole(tmp_path
     assert "-OLD-ONLY" not in lines and "--- specs/T-0001/v1.md" not in lines
     assert lines.count("keep line 100") == 1 and lines.count("other line 100") == 1
     assert sources[-1] == "specs/T-0001/v1.md"
-
