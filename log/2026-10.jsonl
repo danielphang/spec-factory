@@ -1637,3 +1637,6 @@
 {"ts": "2026-10-07T15:33:40+00:00", "event": "run.finished", "ticket": "T-0033", "run": "run-0319-critic", "role": "critic", "status": "APPROVE", "wall_s": 243}
 {"ts": "2026-10-07T15:33:50+00:00", "event": "ticket.transition", "ticket": "T-0033", "from": "ready-for-critic", "to": "awaiting-spec-gate", "by": "workflow", "round": {"spec": 2, "pr": 0}}
 {"ts": "2026-10-07T15:35:28+00:00", "event": "harness.accepted", "instance": "/Users/dphang/dev/spec-factory/.factory", "old": "c01e7c2cf8bdef4f73fd8443744906b9ea89db74", "new": "ef9a74bf735cb6a5a8a7f095613372e5b72e9cc8"}
+{"ts": "2026-10-07T16:33:27+00:00", "event": "approval.recorded", "ticket": "T-0033", "kind": "spec", "version": 2, "by": "dphang"}
+{"ts": "2026-10-07T16:33:27+00:00", "event": "change.pinned", "ticket": "T-0033", "version": 2, "files": ["openspec/changes/T-0033/proposal.md", "openspec/changes/T-0033/design.md", "openspec/changes/T-0033/specs/merge-gate/spec.md", "openspec/changes/T-0033/specs/build-dispatch/spec.md", "openspec/changes/T-0033/specs/human-resolution/spec.md", "openspec/changes/T-0033/specs/role-escalations/spec.md", "openspec/changes/T-0033/specs/harness-docs/spec.md", "openspec/changes/T-0033/verification.md"]}
+{"ts": "2026-10-07T16:33:27+00:00", "event": "ticket.transition", "ticket": "T-0033", "from": "awaiting-spec-gate", "to": "ready-for-planner", "by": "dphang"}
