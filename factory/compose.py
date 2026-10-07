@@ -224,9 +224,9 @@ def compose(root: Path, cfg: dict, meta: dict, t: dict) -> tuple[str, list[str]]
         else:
             where += ("Gate commands (run each from your worktree, exactly as written; each is already wrapped): "
                       + ("; ".join(f"`{wrap(g, env)}`" for g in run) if run or not skipped
-                         else "none (every gate command is skipped below)") + "\n"
-                      + "".join(f"SKIPPED by the harness for this diff, do not run: `{s['command']}`: {s['reason']}\n"
-                                for s in skipped))
+                         else "none (every gate command is skipped below)") + "\n")
+        where += "".join(f"SKIPPED by the harness for this diff, do not run: `{s['command']}`: {s['reason']}\n"
+                         for s in skipped)
         parts.append(where)
         if role == "implementer":
             if t.get("merge_refused"):

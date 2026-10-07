@@ -120,7 +120,7 @@ def test_a_scoped_command_is_skipped_for_a_diff_that_touches_none_of_its_paths(t
 
 def test_a_diff_that_touches_a_scoped_command_s_paths_runs_it(tmp_path):
     t = Target(tmp_path, SCOPED_GATE, changed="src/a.txt")
-    _, text, meta = t.checker("reviewer")
+    _, text, meta = t.checker()
     line = _gate_line(text)
     assert UNSCOPED in line and "exit 7" in line
     assert _skipped_lines(text) == [] and meta["gate_skipped"] == []
