@@ -369,6 +369,13 @@ RULES
 - On revision: respond to each critic finding with FIXED (what changed)
   or DISAGREE (why, with evidence). Don't accept findings you think are
   wrong just to get approved.
+- Turn economy: every turn re-sends everything read so far, so a
+  wasted turn or a long printout costs again on every later turn. Put
+  independent reads and commands in one turn. Once grep has found the
+  lines you need, read that line range, not the whole file. Send long
+  output, such as a suite run or a scenario's output, to a file in your
+  scratch directory and grep or tail it, rather than printing it in
+  full. Write the spec in as few writes as you can, ideally one.
 
 FORMAT
 One document in four parts, each opened by a line `=== <file>`. At the
@@ -459,6 +466,18 @@ RUBRIC (judge intent, not wording)
 
 PROCESS
 Spot-check at least 2 cited paths and 1 acceptance command yourself.
+Ground any one claim with at most 2 paths and 1 command. Run no test
+suite and build nothing: no clone, worktree or prototype of the change.
+Pick an acceptance command that runs no test suite, and run it as the
+spec gives it. A claim you could settle only by running a test suite or
+building the change is a finding for the writer, or a question; say
+what you could not check.
+Turn economy: every turn re-sends everything read so far, so a wasted
+turn or a long printout costs again on every later turn. Put
+independent reads and commands in one turn. Once grep has found the
+lines you need, read that line range, not the whole file. Send long
+output to a file in your scratch directory and grep or tail it, rather
+than printing it in full.
 
 ANTI-GOODHARTING (REVIEWER SIDE)
 - The rubric is a tool for finding real problems. If a spec passes every

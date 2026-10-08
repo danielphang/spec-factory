@@ -41,9 +41,11 @@ https://engineering.fb.com/2018/11/21/developer-tools/predictive-test-selection/
 Implemented by: regression checks and gates once per change (#31); `paths:` on a gate command, and
 the gate skips it when the diff touches none of them (#48, `gate_commands` in `instance.yaml`); the
 reviewer's WHAT YOU RUN section and its input, which says the verifier runs the gate commands (#41,
-`factory/prompts/reviewer.md`, `factory/compose.py`).
-Status of #72 part B.2 (reader roles run no suites): done by #41. The code reviewer is the only reader
-role that was given gate commands; the critic and triage never were.
+`factory/prompts/reviewer.md`, `factory/compose.py`); the critic's PROCESS section, which runs no test
+suite and builds nothing (#73, `factory/prompts/critic.md`).
+Status of #72 part B.2 (reader roles run no suites): done by #41 for the code reviewer and by #73 for
+the critic. The code reviewer is the only reader role that was given gate commands; the critic and
+triage never were, but the critic ran suites on its own initiative until #73.
 
 ### 3. Deterministic before judgment.
 
