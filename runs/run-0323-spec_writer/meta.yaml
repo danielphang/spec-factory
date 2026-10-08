@@ -1,0 +1,31 @@
+run_id: run-0323-spec_writer
+role: spec_writer
+ticket: T-0034
+model: opus
+round: 2
+spec_version: 1
+started: '2026-10-08T07:17:48+00:00'
+finished: '2026-10-08T07:24:57+00:00'
+wall_s: 429
+status: READY-FOR-CRITIC
+input_sources:
+- runs/run-0320-triage/output.md
+- requests/T-0034.md
+- openspec/specs/build-dispatch/spec.md
+- openspec/specs/gate-commands/spec.md
+- openspec/specs/harness-docs/spec.md
+- openspec/specs/harness-suite/spec.md
+- openspec/specs/human-resolution/spec.md
+- openspec/specs/live-store-guard/spec.md
+- openspec/specs/merge-gate/spec.md
+- openspec/specs/role-escalations/spec.md
+- openspec/specs/store-setup/spec.md
+- openspec/specs/sub-ticket-planning/spec.md
+- decisions.md
+- runs/run-0322-critic/output.md
+- specs/T-0034/v1.md
+confidence: high, every scenario was re-run this round on a rebuilt prototype and on `main` at `2e73dbb`
+  and printed what is stated, and the suite passed on the prototype; the turn savings themselves are judged
+  only by the operator's replay
+escalations: []
+escalations_note: null

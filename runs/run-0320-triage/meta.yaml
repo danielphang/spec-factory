@@ -1,0 +1,16 @@
+run_id: run-0320-triage
+role: triage
+ticket: T-0034
+model: opus
+round: 0
+spec_version: 0
+started: '2026-10-08T06:57:50+00:00'
+finished: '2026-10-08T07:00:37+00:00'
+wall_s: 167
+status: ACCEPT
+input_sources:
+- requests/T-0034.md
+confidence: high. The token figures reproduced from the transcripts, the cited prompt lines and principles
+  exist as quoted, and no open or recent ticket covers this.
+escalations: []
+escalations_note: null

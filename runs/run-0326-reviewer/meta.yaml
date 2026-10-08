@@ -1,0 +1,29 @@
+run_id: run-0326-reviewer
+role: reviewer
+ticket: T-0034.1
+model: fable
+round: 1
+spec_version: 2
+started: '2026-10-08T17:06:29+00:00'
+finished: '2026-10-08T17:09:00+00:00'
+wall_s: 151
+status: APPROVE
+input_sources:
+- specs/T-0034.1/subticket.md
+- specs/T-0034/v2.md
+- runs/run-0325-implementer/output.md
+- runs/run-0326-reviewer/diff.patch
+gate_skipped: []
+environment_files: []
+branch: factory/T-0034.1
+base: 2e73dbb8c997a4284649dcc25f5e9fbba8b65fea
+head: f25dffed5f970142f9da01b0ed24f8e8deaac40a
+worktree: /Users/dphang/dev/spec-factory/.factory/store/runs/run-0326-reviewer/wt
+confidence: high — the diff is additions only in the four prompt files and matches the spec's blocks verbatim;
+  I re-ran the copy-equality scenario and the documents scenario on the head and both printed their expected
+  output.
+escalations:
+- 'declared protected paths touched, as the spec''s Risk section lists: harness `factory/prompts/spec_writer.md`,
+  `factory/prompts/critic.md` (also agent prompts); generated `docs/prompts/02-spec-writer.md`, `docs/prompts/03-spec-critic.md`.
+  Human approval at the merge gate.'
+escalations_note: null

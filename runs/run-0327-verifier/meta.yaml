@@ -1,0 +1,26 @@
+run_id: run-0327-verifier
+role: verifier
+ticket: T-0034.1
+model: opus
+round: 1
+spec_version: 2
+started: '2026-10-08T17:06:29+00:00'
+finished: '2026-10-08T17:12:36+00:00'
+wall_s: 367
+status: VERIFIED
+input_sources:
+- specs/T-0034.1/subticket.md
+- specs/T-0034/v2.md
+- runs/run-0325-implementer/output.md
+- runs/run-0327-verifier/diff.patch
+gate_skipped: []
+environment_files: []
+branch: factory/T-0034.1
+base: 2e73dbb8c997a4284649dcc25f5e9fbba8b65fea
+head: f25dffed5f970142f9da01b0ed24f8e8deaac40a
+worktree: /Users/dphang/dev/spec-factory/.factory/store/runs/run-0327-verifier/wt
+confidence: high. All five scenarios produced their expected output on f25dffe. The three NEW ones produced
+  the predicted failures on 2e73dbb. Both gates passed. Byte-for-byte comparisons show the inserted text
+  is exactly the spec's.
+escalations: []
+escalations_note: null

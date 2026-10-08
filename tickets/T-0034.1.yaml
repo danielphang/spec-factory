@@ -1,0 +1,48 @@
+id: T-0034.1
+type: sub-ticket
+title: 'Cut the spec writer''s and critic''s turn count: batch reads, read line ranges, keep long output
+  in scratch; the critic runs no test suites and builds no prototypes'
+request: requests/T-0034.md
+source: plan:whole-spec
+status: merged
+round:
+  spec: 0
+  pr: 1
+spec:
+  version: 2
+  approved_version: 2
+plan: null
+in_flight: []
+parked: null
+created: '2026-10-08T16:59:15+00:00'
+history:
+- ts: '2026-10-08T17:06:12+00:00'
+  from: ready-for-implementer
+  to: checks-in-flight
+  by: workflow
+  round:
+    spec: 0
+    pr: 1
+- ts: '2026-10-08T17:13:15+00:00'
+  from: checks-in-flight
+  to: ready-for-merge
+  by: workflow
+  round:
+    spec: 0
+    pr: 1
+- ts: '2026-10-08T17:13:34+00:00'
+  from: ready-for-merge
+  to: merged
+  by: merge
+  head: f25dffed5f970142f9da01b0ed24f8e8deaac40a
+parent: T-0034
+depends_on: []
+parallel_safe: true
+branch: factory/T-0034.1
+head: f25dffed5f970142f9da01b0ed24f8e8deaac40a
+merge:
+  base_before: 2e73dbb8c997a4284649dcc25f5e9fbba8b65fea
+  main_after: 05cf8f97cbf51b337ec7eb39287809a76af796dc
+parent_base: null
+label: whole-spec
+merge_refused: null
