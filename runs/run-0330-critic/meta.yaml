@@ -1,0 +1,28 @@
+run_id: run-0330-critic
+role: critic
+ticket: T-0035
+model: fable
+round: 1
+spec_version: 1
+started: '2026-10-08T18:31:53+00:00'
+finished: '2026-10-08T18:35:37+00:00'
+wall_s: 224
+status: REVISE
+input_sources:
+- specs/T-0035/v1.md
+- openspec/specs/build-dispatch/spec.md
+- openspec/specs/gate-commands/spec.md
+- openspec/specs/harness-docs/spec.md
+- openspec/specs/harness-suite/spec.md
+- openspec/specs/human-resolution/spec.md
+- openspec/specs/live-store-guard/spec.md
+- openspec/specs/merge-gate/spec.md
+- openspec/specs/role-escalations/spec.md
+- openspec/specs/store-setup/spec.md
+- openspec/specs/sub-ticket-planning/spec.md
+- decisions.md
+confidence: high. Every cited path, line, commit and base output was checked and matched; the one blocking
+  item is a gloss the rubric requires in the sentence that states the authority to overturn an earlier
+  decision, and it needs no change to the design or the acceptance.
+escalations: []
+escalations_note: null

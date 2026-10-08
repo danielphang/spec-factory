@@ -1,0 +1,29 @@
+run_id: run-0335-reviewer
+role: reviewer
+ticket: T-0035.1
+model: fable
+round: 1
+spec_version: 2
+started: '2026-10-08T18:50:58+00:00'
+finished: '2026-10-08T18:52:56+00:00'
+wall_s: 118
+status: APPROVE
+input_sources:
+- specs/T-0035.1/subticket.md
+- specs/T-0035/v2.md
+- runs/run-0333-implementer/output.md
+- runs/run-0335-reviewer/diff.patch
+gate_skipped: []
+environment_files: []
+branch: factory/T-0035.1
+base: 49ea4c7646475a00adee963e1e806302a3eed18c
+head: 9a87c3e3983a8dd04c7e21f9dd6fdfe99dfe5a41
+worktree: /Users/dphang/dev/spec-factory/.factory/store/runs/run-0335-reviewer/wt
+confidence: high. Every changed region is byte-identical to the spec's blocks by `cmp`, the three critic
+  copies agree with each other exactly as they did on `main`, and no file outside the spec's five is touched.
+escalations:
+- 'Protected paths touched, both declared in the approved spec''s Risk section: `factory/prompts/critic.md`
+  (harness: the prompt the critic runs under) and `docs/prompts/03-spec-critic.md` (generated: a verbatim
+  copy of the design doc''s critic block, re-copied here from that block and matching it byte for byte).
+  The merge gate requires a human approval for them; nothing else to escalate.'
+escalations_note: null

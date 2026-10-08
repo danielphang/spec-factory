@@ -1,0 +1,31 @@
+run_id: run-0331-spec_writer
+role: spec_writer
+ticket: T-0035
+model: opus
+round: 2
+spec_version: 1
+started: '2026-10-08T18:35:57+00:00'
+finished: '2026-10-08T18:40:18+00:00'
+wall_s: 261
+status: READY-FOR-CRITIC
+input_sources:
+- runs/run-0328-triage/output.md
+- requests/T-0035.md
+- openspec/specs/build-dispatch/spec.md
+- openspec/specs/gate-commands/spec.md
+- openspec/specs/harness-docs/spec.md
+- openspec/specs/harness-suite/spec.md
+- openspec/specs/human-resolution/spec.md
+- openspec/specs/live-store-guard/spec.md
+- openspec/specs/merge-gate/spec.md
+- openspec/specs/role-escalations/spec.md
+- openspec/specs/store-setup/spec.md
+- openspec/specs/sub-ticket-planning/spec.md
+- decisions.md
+- runs/run-0330-critic/output.md
+- specs/T-0035/v1.md
+confidence: high, every scenario was re-run this round on the unchanged base (`49ea4c7`) and on a rebuilt
+  prototype with the revised part C text, matching the stated base outputs and THEN lines; the two prompt-copy
+  tests pass on the prototype.
+escalations: []
+escalations_note: null

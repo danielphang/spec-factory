@@ -1,0 +1,26 @@
+run_id: run-0333-implementer
+role: implementer
+ticket: T-0035.1
+model: opus
+round: 0
+spec_version: 2
+started: '2026-10-08T18:44:44+00:00'
+finished: '2026-10-08T18:50:22+00:00'
+wall_s: 338
+status: READY-FOR-REVIEW
+input_sources:
+- specs/T-0035.1/subticket.md
+- specs/T-0035/v2.md
+gate_skipped: []
+branch: factory/T-0035.1
+base: 49ea4c7646475a00adee963e1e806302a3eed18c
+head: 49ea4c7646475a00adee963e1e806302a3eed18c
+worktree: /Users/dphang/dev/spec-factory/.factory/store/worktrees/T-0035.1
+resolution: null
+environment_files: []
+confidence: high. The change is a word-for-word text replacement from the spec. All seven acceptance commands
+  print their THEN lines, both gates pass, and I ran each command myself on head `9a87c3e`.
+escalations: []
+escalations_note: none. The change touches two protected paths, `factory/prompts/critic.md` (harness)
+  and `docs/prompts/03-spec-critic.md` (generated; re-copied from the design block). The spec's Risk section
+  declares both.

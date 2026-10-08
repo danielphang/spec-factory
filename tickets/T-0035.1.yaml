@@ -1,0 +1,48 @@
+id: T-0035.1
+type: sub-ticket
+title: 'Revert #73''s critic limits: drop the per-claim cap and the no-build rule; keep the no-suite line
+  and the reading rules'
+request: requests/T-0035.md
+source: plan:whole-spec
+status: merged
+round:
+  spec: 0
+  pr: 1
+spec:
+  version: 2
+  approved_version: 2
+plan: null
+in_flight: []
+parked: null
+created: '2026-10-08T18:43:53+00:00'
+history:
+- ts: '2026-10-08T18:50:41+00:00'
+  from: ready-for-implementer
+  to: checks-in-flight
+  by: workflow
+  round:
+    spec: 0
+    pr: 1
+- ts: '2026-10-08T19:01:52+00:00'
+  from: checks-in-flight
+  to: ready-for-merge
+  by: workflow
+  round:
+    spec: 0
+    pr: 1
+- ts: '2026-10-08T19:02:00+00:00'
+  from: ready-for-merge
+  to: merged
+  by: merge
+  head: 9a87c3e3983a8dd04c7e21f9dd6fdfe99dfe5a41
+parent: T-0035
+depends_on: []
+parallel_safe: true
+branch: factory/T-0035.1
+head: 9a87c3e3983a8dd04c7e21f9dd6fdfe99dfe5a41
+merge:
+  base_before: 49ea4c7646475a00adee963e1e806302a3eed18c
+  main_after: 6abb60fa7ae15ce3c41253dec81b4d8d0babaac4
+parent_base: null
+label: whole-spec
+merge_refused: null

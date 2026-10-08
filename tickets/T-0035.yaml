@@ -1,0 +1,86 @@
+id: T-0035
+type: chore
+title: 'Revert #73''s critic limits: drop the per-claim cap and the no-build rule; keep the no-suite line
+  and the reading rules'
+request: requests/T-0035.md
+source: /private/tmp/claude-501/-Users-dphang-dev-nanobot/c69bfd1d-97a6-43e3-9d5a-a517c28d382c/scratchpad/req-74.md
+status: closed
+round:
+  spec: 2
+  pr: 0
+spec:
+  version: 2
+  approved_version: 2
+plan: plans/T-0035.md
+in_flight: []
+parked: null
+created: '2026-10-08T18:22:49+00:00'
+history:
+- ts: '2026-10-08T18:24:40+00:00'
+  from: ready-for-triage
+  to: ready-for-spec-writer
+  by: workflow
+  round:
+    spec: 0
+    pr: 0
+- ts: '2026-10-08T18:31:44+00:00'
+  from: ready-for-spec-writer
+  to: ready-for-critic
+  by: workflow
+  round:
+    spec: 1
+    pr: 0
+- ts: '2026-10-08T18:35:47+00:00'
+  from: ready-for-critic
+  to: ready-for-spec-writer
+  by: workflow
+  round:
+    spec: 2
+    pr: 0
+- ts: '2026-10-08T18:40:36+00:00'
+  from: ready-for-spec-writer
+  to: ready-for-critic
+  by: workflow
+  round:
+    spec: 2
+    pr: 0
+- ts: '2026-10-08T18:43:07+00:00'
+  from: ready-for-critic
+  to: awaiting-spec-gate
+  by: workflow
+  round:
+    spec: 2
+    pr: 0
+- ts: '2026-10-08T18:43:29+00:00'
+  from: awaiting-spec-gate
+  to: ready-for-planner
+  by: dphang
+  approved_version: 2
+- ts: '2026-10-08T18:44:02+00:00'
+  from: ready-for-planner
+  to: planned
+  by: workflow
+  round:
+    spec: 2
+    pr: 0
+- ts: '2026-10-08T19:02:19+00:00'
+  from: planned
+  to: ready-for-parent-verify
+  by: parent-check
+- ts: '2026-10-08T19:02:47+00:00'
+  from: ready-for-parent-verify
+  to: closed
+  by: workflow
+  round:
+    spec: 2
+    pr: 0
+  verified_by: run-0334-verifier
+parent: null
+depends_on: []
+parallel_safe: true
+branch: null
+head: null
+merge:
+  base_before: null
+  main_after: null
+parent_base: 49ea4c7646475a00adee963e1e806302a3eed18c

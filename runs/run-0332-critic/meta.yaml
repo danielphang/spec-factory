@@ -1,0 +1,30 @@
+run_id: run-0332-critic
+role: critic
+ticket: T-0035
+model: fable
+round: 2
+spec_version: 2
+started: '2026-10-08T18:40:45+00:00'
+finished: '2026-10-08T18:42:57+00:00'
+wall_s: 132
+status: APPROVE
+input_sources:
+- specs/T-0035/v2.md
+- openspec/specs/build-dispatch/spec.md
+- openspec/specs/gate-commands/spec.md
+- openspec/specs/harness-docs/spec.md
+- openspec/specs/harness-suite/spec.md
+- openspec/specs/human-resolution/spec.md
+- openspec/specs/live-store-guard/spec.md
+- openspec/specs/merge-gate/spec.md
+- openspec/specs/role-escalations/spec.md
+- openspec/specs/store-setup/spec.md
+- openspec/specs/sub-ticket-planning/spec.md
+- decisions.md
+- runs/run-0330-critic/output.md
+- specs/T-0035/v1.md
+confidence: high. Every round 1 finding is fixed in the text I diffed; the changed text matches the repository
+  line for line; the base outputs of three scenarios match verification.md; and part A's wording, applied
+  to a scratch copy, yields exactly the counts scenario 1 expects.
+escalations: []
+escalations_note: null

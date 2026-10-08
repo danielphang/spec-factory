@@ -1,0 +1,26 @@
+run_id: run-0334-verifier
+role: verifier
+ticket: T-0035.1
+model: fable
+round: 1
+spec_version: 2
+started: '2026-10-08T18:50:58+00:00'
+finished: '2026-10-08T19:01:13+00:00'
+wall_s: 615
+status: VERIFIED
+input_sources:
+- specs/T-0035.1/subticket.md
+- specs/T-0035/v2.md
+- runs/run-0333-implementer/output.md
+- runs/run-0334-verifier/diff.patch
+gate_skipped: []
+environment_files: []
+branch: factory/T-0035.1
+base: 49ea4c7646475a00adee963e1e806302a3eed18c
+head: 9a87c3e3983a8dd04c7e21f9dd6fdfe99dfe5a41
+worktree: /Users/dphang/dev/spec-factory/.factory/store/runs/run-0334-verifier/wt
+confidence: high. All seven acceptance commands print their THEN lines on the PR head and the five NEW
+  ones fail on base exactly as the spec predicts; both gates pass with exit 0; the replaced text is byte-identical
+  to the spec in every copy.
+escalations: []
+escalations_note: null

@@ -1,0 +1,29 @@
+run_id: run-0329-spec_writer
+role: spec_writer
+ticket: T-0035
+model: opus
+round: 0
+spec_version: 0
+started: '2026-10-08T18:24:50+00:00'
+finished: '2026-10-08T18:31:25+00:00'
+wall_s: 395
+status: READY-FOR-CRITIC
+input_sources:
+- runs/run-0328-triage/output.md
+- requests/T-0035.md
+- openspec/specs/build-dispatch/spec.md
+- openspec/specs/gate-commands/spec.md
+- openspec/specs/harness-docs/spec.md
+- openspec/specs/harness-suite/spec.md
+- openspec/specs/human-resolution/spec.md
+- openspec/specs/live-store-guard/spec.md
+- openspec/specs/merge-gate/spec.md
+- openspec/specs/role-escalations/spec.md
+- openspec/specs/store-setup/spec.md
+- openspec/specs/sub-ticket-planning/spec.md
+- decisions.md
+confidence: high. The lines to change are found at the cited places in all three copies, the operator's
+  decision is on record, and every scenario was run on the base and on a prototype, with base outputs
+  as listed and prototype outputs matching each THEN.
+escalations: []
+escalations_note: null
