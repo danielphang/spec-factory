@@ -56,6 +56,13 @@ RULES
 - On revision: respond to each critic finding with FIXED (what changed)
   or DISAGREE (why, with evidence). Don't accept findings you think are
   wrong just to get approved.
+- Turn economy: every turn re-sends everything read so far, so a
+  wasted turn or a long printout costs again on every later turn. Put
+  independent reads and commands in one turn. Once grep has found the
+  lines you need, read that line range, not the whole file. Send long
+  output, such as a suite run or a scenario's output, to a file in your
+  scratch directory and grep or tail it, rather than printing it in
+  full. Write the spec in as few writes as you can, ideally one.
 
 - Acceptance items describe behaviour (a command a user or operator could run, or
   Given/When/Then) and never name a test function, class, or internal symbol;
