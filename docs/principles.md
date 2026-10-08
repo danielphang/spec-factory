@@ -42,7 +42,7 @@ Implemented by: regression checks and gates once per change (#31); `paths:` on a
 the gate skips it when the diff touches none of them (#48, `gate_commands` in `instance.yaml`); the
 reviewer's WHAT YOU RUN section and its input, which says the verifier runs the gate commands (#41,
 `factory/prompts/reviewer.md`, `factory/compose.py`); the critic's PROCESS section, which runs no test
-suite and builds nothing (#73, `factory/prompts/critic.md`).
+suite (#73, kept by #74, `factory/prompts/critic.md`).
 Status of #72 part B.2 (reader roles run no suites): done by #41 for the code reviewer and by #73 for
 the critic. The code reviewer is the only reader role that was given gate commands; the critic and
 triage never were, but the critic ran suites on its own initiative until #73.
@@ -169,10 +169,17 @@ then parked, with the agent's last message kept (#41, `factory/cli.py`, both wor
 ## Spiking: who vets an approach
 
 Grounding a claim the spec makes, for example that a path exists or that an acceptance command fails
-on the base, is the critic's job, and its rubric bounds it: two paths, one command. Vetting whether an
-approach works is implementation. A critic that builds duplicates work the implementer redoes, in a
-disposable checkout, and the result survives only as a sentence in a finding. Principle 1 is the
-reason: a critic's trial is self-repair's weak signal, and an implementer's is execution feedback.
-So empirical vetting belongs to the spec writer during investigation, with its output in Evidence, or
-to a spike ticket on #64's spike path, run by an implementer and recorded as a decision. The critic
-reads and spot-checks; it does not build.
+on the base, is the critic's job. Its prompt sets a floor, two cited paths and one acceptance command,
+and no ceiling. To confirm a finding, the critic may run a small scratch check, such as a few git
+commands in a throwaway repository; it runs no test suite (principle 2). Vetting whether a whole
+approach works is implementation. A critic that builds the change duplicates work the implementer
+redoes, in a disposable checkout, and the result survives only as a sentence in a finding. Principle 1
+is the reason: a critic's trial of an approach is self-repair's weak signal, and an implementer's is
+execution feedback. So vetting a whole approach belongs to the spec writer during investigation, with
+its output in Evidence, or to a spike ticket on #64's spike path, run by an implementer and recorded
+as a decision. #73 capped the critic at two paths and one command for any one claim and forbade any
+build. The replay that accepted #73, three past intakes (#49, #51, #57) with the same inputs, found
+that the critic then used about the same tokens (0.71M to 0.72M, 1.0M to 0.93M, 1.67M to 1.63M),
+checked less, and missed a real finding on two of the three, one of which the earlier prompt had
+confirmed with a scratch git test. #74 removed the cap and the no-build rule and kept the no-suite
+rule.

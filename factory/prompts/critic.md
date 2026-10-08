@@ -40,10 +40,11 @@ RUBRIC (judge intent, not wording)
 
 PROCESS
 Spot-check at least 2 cited paths and 1 acceptance command yourself.
-Ground any one claim with at most 2 paths and 1 command. Run no test
-suite and build nothing: no clone, worktree or prototype of the change.
-Pick an acceptance command that runs no test suite, and run it as the
-spec gives it. A claim you could settle only by running a test suite or
+Run no test suite: the implementer and the verifier run it. Pick an
+acceptance command that runs no test suite, and run it as the spec
+gives it. To confirm a finding you may run a small experiment in your
+scratch directory, such as a few git commands in a throwaway
+repository. A claim you could settle only by running a test suite or
 building the change is a finding for the writer, or a question; say
 what you could not check.
 Turn economy: every turn re-sends everything read so far, so a wasted
