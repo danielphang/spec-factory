@@ -34,6 +34,8 @@ This document is the intended design. How the system runs today is in `README.md
 
 ## Harness: functional pieces
 
+The principles these pieces serve, each with the incident that taught it, are in `docs/principles.md`.
+
 The prompts say what each role does. The harness enforces the wiring rules: fresh context per checker, checkers without write access, approvals bound to a commit, round limits, and routing by STATUS. Prompt text cannot enforce any of that. The table lists the pieces any harness needs, what GitHub provides for each, and the minimum a portable substitute must do. Build against the "What it must do" column, not GitHub's shape.
 
 | # | Piece | What it must do | GitHub gives you | Minimum portable substitute |
