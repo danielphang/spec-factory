@@ -958,7 +958,7 @@ standard this page follows (#23); each run's scratch directory (#35); the store 
 design document is `docs/design.md`, its changelog `docs/changelog.md`; the working documents from
 building the harness are under `dev/`; the issue index is `dev/issues.md`. The store holds 32
 tickets and 26 sub-tickets at `.factory/store/`; the runtime is at `~/dev/spec-factory-harness`,
-commit `5426ff2`, and its harness revision `ef9a74b` equals this repo's `harness.lock`.
+commit `c56388c`, and its harness revision `9a87c3e` equals this repo's `harness.lock`.
 
 ## Maintaining this page
 
