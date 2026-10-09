@@ -5,6 +5,7 @@ Per (role, round, resolution). No other code path assembles role input.
 from __future__ import annotations
 
 import difflib
+import math
 import re
 import shlex
 from pathlib import Path
@@ -35,6 +36,36 @@ def current_truth(root: Path) -> list[Path]:
     Empty until `factory init` has created openspec/specs/ and an archive has filled it."""
     d = root / "openspec" / "specs"
     return sorted(d.glob("*/spec.md")) if d.exists() else []
+
+
+def triage_capabilities(root: Path, tid: str) -> list[str] | None:
+    """The current-truth capabilities on the first `Capabilities:` line of the ticket's latest
+    finished triage output, split on commas and whitespace, backticks and periods stripped, unknown
+    names (`none`, `new`) dropped. None when there is no such run or no such line: the ticket then
+    gets the whole of current truth and the decision log, as before the line existed."""
+    runs = _runs_for(root, tid, "triage", "")
+    p = root / "runs" / runs[-1] / "output.md" if runs else None
+    if p is None or not p.exists():
+        return None
+    for line in p.read_text(encoding="utf-8").splitlines():
+        if line.startswith("Capabilities:"):
+            have = {c.parent.name for c in current_truth(root)}
+            names = (w.strip("`.") for w in re.split(r"[,\s]+", line[len("Capabilities:"):]))
+            return list(dict.fromkeys(n for n in names if n in have))
+    return None
+
+
+def cited_capabilities(root: Path, text: str) -> list[str]:
+    """The current-truth capabilities whose `specs/<name>/spec.md` appears anywhere in `text`."""
+    return [c.parent.name for c in current_truth(root) if f"specs/{c.parent.name}/spec.md" in text]
+
+
+def capability_index(paths: list[Path]) -> str:
+    """One line per current-truth spec: its name, size in kB rounded up, absolute path and
+    requirement names."""
+    return "".join(f"- {p.parent.name}, {math.ceil(p.stat().st_size / 1000)} kB, `{p}`: "
+                   + "; ".join(specstore.requirement_blocks(p.read_text(encoding="utf-8"))) + "\n"
+                   for p in paths)
 
 
 def _last_run_meta(root: Path, ticket: str, role: str, exclude: str) -> dict | None:
@@ -104,6 +135,12 @@ def without_evidence(text: str) -> str:
     return "\n".join(out) + ("\n" if out and text.endswith("\n") else "")
 
 
+CAPABILITY_INDEX_NOTE = (
+    "This list is complete: every current-truth capability not given in full above has one line here. Open a "
+    "capability at its path before you rely on it. A spec that cites a capability's path, as "
+    "`openspec/specs/<name>/spec.md`, sends that capability in full to the critic, and the decisions that name it "
+    "to the critic and the planner, so cite under Evidence each capability you open.")
+
 _ENV_NAME = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
 
 
@@ -165,17 +202,64 @@ def compose(root: Path, cfg: dict, meta: dict, t: dict) -> tuple[str, list[str]]
     version = t["spec"]["version"]
     rnd = t["round"]["spec"]
 
-    def add_truth() -> None:
-        for p in current_truth(root):
-            add(str(p.relative_to(root)), f"Current truth: {p.parent.name}")
+    def selected(spec_rel: str | None) -> set[str] | None:
+        """The capabilities this role gets in full (doc §Harness, Spec store): triage's names plus
+        those the spec it works from cites. None, meaning all of them, without a `Capabilities:` line."""
+        names = triage_capabilities(root, tid)
+        if names is None:
+            return None
+        spec = root / spec_rel if spec_rel else None
+        return set(names) | set(cited_capabilities(root, spec.read_text(encoding="utf-8"))
+                                if spec and spec.exists() else [])
 
-    def add_decisions() -> None:
+    def add_truth(sel: set[str] | None) -> None:
+        rest = []
+        for p in current_truth(root):
+            if sel is None or p.parent.name in sel:
+                add(str(p.relative_to(root)), f"Current truth: {p.parent.name}")
+            else:
+                rest.append(p)
+        if rest:
+            parts.append("\n## Capability index: current truth not given in full above\n\n" + CAPABILITY_INDEX_NOTE
+                         + "\n\n" + capability_index(rest))
+
+    def add_decisions(sel: set[str] | None) -> None:
         # an empty log (the one `factory init` creates) carries nothing, so it is no input
         p = root / "decisions.md"
-        if p.exists() and p.read_text(encoding="utf-8").strip():
+        text = p.read_text(encoding="utf-8") if p.exists() else ""
+        if not text.strip():
+            return
+        if sel is None:
             add("decisions.md", "Decision log (decisions.md): standing decisions, read-only")
+            return
+        named = [re.compile(rf"(?<![A-Za-z0-9_-]){re.escape(c)}(?![A-Za-z0-9_-])") for c in sel]
+        kept, rest = [], {}
+        for line in filter(str.strip, text.splitlines()):
+            f = line.split(maxsplit=2)
+            # a line without a date and a ticket id cannot be indexed, so it is kept
+            if len(f) < 3 or f[1] == tid or any(r.search(f[2]) for r in named):
+                kept.append(line)
+            else:
+                rest.setdefault(f[1], []).append(f[0])
+        if kept:
+            add("decisions.md", "Decision log (decisions.md): the standing decisions logged against this ticket "
+                f"or naming a capability given in full, read-only. The full log is `{p}`", lambda _: "\n".join(kept))
+        if rest:
+            def title(t_id: str) -> str:
+                tp = store.ticket_path(root, t_id)
+                return str(store.read_yaml(tp).get("title") or "") if tp.exists() else ""
+            parts.append("\n## Decision index: decisions not given in full above\n\nThis list is complete: every "
+                         "ticket with a decision not given in full above has one line here. Read a ticket's decisions "
+                         f"with `grep ' <ticket id> ' {p}`.\n\n"
+                         + "".join(f"- {k} ({len(d)} decision{'s' * (len(d) > 1)}, {min(d)} to {max(d)}): "
+                                   f"{title(k)}".rstrip() + "\n" for k, d in rest.items()))
     if role == "triage":
         add(t["request"], "Request (raw, with any answers appended)")
+        every = current_truth(root)
+        if every:
+            parts.append("\n## Capability index: every capability in current truth\n\nName the capabilities this "
+                         "request touches on your `Capabilities:` line. The spec writer receives those in full and "
+                         "this index for the rest.\n\n" + capability_index(every))
         prior = _runs_for(root, tid, "triage", run_id)
         if prior:
             add(f"runs/{prior[-1]}/output.md", "Your previous Triage output (the question you asked is answered above)")
@@ -184,8 +268,9 @@ def compose(root: Path, cfg: dict, meta: dict, t: dict) -> tuple[str, list[str]]
         if tri:
             add(f"runs/{tri[-1]}/output.md", "Ticket (Triage output)")
         add(t["request"], "Request (raw)")
-        add_truth()
-        add_decisions()
+        sel = selected(f"specs/{tid}/v{version}.md" if version >= 1 else None)
+        add_truth(sel)
+        add_decisions(sel)
         if rnd >= 1 and version >= 1:
             crit = _runs_for(root, tid, "critic", run_id)
             if crit:
@@ -202,8 +287,9 @@ def compose(root: Path, cfg: dict, meta: dict, t: dict) -> tuple[str, list[str]]
             add(str(p.relative_to(root)), "Human ruling")
     elif role == "critic":
         add(f"specs/{tid}/v{version}.md", f"Spec under review (v{version})")
-        add_truth()
-        add_decisions()
+        sel = selected(f"specs/{tid}/v{version}.md")
+        add_truth(sel)
+        add_decisions(sel)
         if rnd >= 2 and version >= 2:
             crit = _runs_for(root, tid, "critic", run_id)
             if crit:
@@ -226,7 +312,7 @@ def compose(root: Path, cfg: dict, meta: dict, t: dict) -> tuple[str, list[str]]
         if av is None:
             raise store.Refused(f"{tid} has no approved spec version")
         add_spec(f"specs/{tid}/v{av}.md", f"Approved spec (v{av}, pinned)")
-        add_decisions()
+        add_decisions(selected(f"specs/{tid}/v{av}.md"))  # no current truth for the planner, so no index
         for p in _approvals(root, tid, "ruling"):
             add(str(p.relative_to(root)), "Human ruling")
         subs = store.subtickets_of(root, tid)
