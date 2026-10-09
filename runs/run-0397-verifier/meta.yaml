@@ -1,0 +1,25 @@
+run_id: run-0397-verifier
+role: verifier
+ticket: T-0031.2
+model: opus
+round: 1
+spec_version: 3
+started: '2026-10-09T18:23:57+00:00'
+finished: '2026-10-09T18:36:15+00:00'
+wall_s: 738
+status: VERIFIED
+input_sources:
+- specs/T-0031.2/subticket.md
+- specs/T-0031/v3.md
+- runs/run-0396-implementer/output.md
+- runs/run-0397-verifier/diff.patch
+gate_skipped: []
+environment_files: []
+branch: factory/T-0031.2
+base: 2bd99697e3bdbe0ae735294afae1b3109070d7c6
+head: da50576fd4215aa31d4d8091e089c8f50cb791e5
+worktree: /Users/dphang/dev/spec-factory/.factory/store/runs/run-0397-verifier/wt
+confidence: high. All nine acceptance commands ran verbatim on the PR head and printed the expected output.
+  Every NEW one failed on the base as the spec predicts, both gates passed, and the probes found no special-casing.
+escalations: []
+escalations_note: null

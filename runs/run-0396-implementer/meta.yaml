@@ -1,0 +1,24 @@
+run_id: run-0396-implementer
+role: implementer
+ticket: T-0031.2
+model: opus
+round: 0
+spec_version: 3
+started: '2026-10-09T18:11:39+00:00'
+finished: '2026-10-09T18:23:19+00:00'
+wall_s: 700
+status: READY-FOR-REVIEW
+input_sources:
+- specs/T-0031.2/subticket.md
+- specs/T-0031/v3.md
+gate_skipped: []
+branch: factory/T-0031.2
+base: 2bd99697e3bdbe0ae735294afae1b3109070d7c6
+head: 2bd99697e3bdbe0ae735294afae1b3109070d7c6
+worktree: /Users/dphang/dev/spec-factory/.factory/store/worktrees/T-0031.2
+resolution: null
+environment_files: []
+confidence: high. All eight acceptance commands and both gates were run on `da50576` and printed the expected
+  output, and the four NEW scenarios that test behaviour printed the spec's "today" output on the base.
+escalations: []
+escalations_note: null

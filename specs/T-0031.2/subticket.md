@@ -1,9 +1,3 @@
-# Plan for T-0031 (approved spec v3)
-
-One sub-ticket. The spec's design asks for one PR of about 225 lines with one changelog entry. Its parts depend on each other through the same code and tests. Part A (the wrapper prefix) is what makes the sync's environment clean in part C, and the sync scenarios check both at once (`ve=0 venv_on_path=0`). Parts B to D share `factory/compose.py` and `factory/cli.py` and one new test file. Part F writes one changelog entry for A to D. Splitting A from B–D would need two changelog entries or a document part that waits on both, and two serial merges on the same two files. That adds a re-verify round and makes neither review nor rollback easier.
-
-This plan supersedes T-0031.1, which was planned from v2 and is parked. Its branch `factory/T-0031.1` holds one commit (`f13e707`) built to v2. The new sub-ticket does not depend on it and does not build on that branch.
-
 ### ST-1 / Role commands drop an inherited VIRTUAL_ENV, and build checkouts start with a synced environment
 Depends on: none
 Parallel-safe: yes
@@ -66,17 +60,8 @@ Out of scope:
 - A time limit on the sync.
 - Any prompt copy under `docs/prompts/` or `factory/prompts/`.
 
-Coverage map:
-- A role's wrapper and its wrapped gate command drop an inherited virtual environment → ST-1
-- An implementer's worktree is synced through the wrapper at every dispatch, and its input says so → ST-1
-- A checker's checkout is synced before the checker starts, and its input says so → ST-1
-- A failed sync refuses the run start with a one-line reason, keeps its output in a log, and leaves no run or checker checkout → ST-1
-- Without environment_sync, run start and the input are as before → ST-1
-- The design doc, build spec, template and README name the sync and the dropped virtual environment, and no prompt copy changes → ST-1
-- The changelog records the environment sync as its last entry → ST-1
-- The environment-sync change adds no whitespace errors → ST-1
+## Shared plan context (from the plan; applies to every sub-ticket)
 
-What I checked, on `main` at `2bd9969`:
-- `grep -rn 'export HOME=' tests/factory` finds the old wrapper text only at `test_run_isolation.py:22` and `test_gate_paths.py:217`. No test merged since `b002c95` pins the wrapper text.
-- `grep` finds no `environment_sync` or `VIRTUAL_ENV` in `factory/`, `tests/`, `docs/design.md`, `README.md` or `dev/build-harness.spec.md`. So the NEW labels still hold.
-- `test_instance.py:101` loads the template generically, so adding `environment_sync: null` should not break it. I did not run the suite.
+One sub-ticket. The spec's design asks for one PR of about 225 lines with one changelog entry. Its parts depend on each other through the same code and tests. Part A (the wrapper prefix) is what makes the sync's environment clean in part C, and the sync scenarios check both at once (`ve=0 venv_on_path=0`). Parts B to D share `factory/compose.py` and `factory/cli.py` and one new test file. Part F writes one changelog entry for A to D. Splitting A from B–D would need two changelog entries or a document part that waits on both, and two serial merges on the same two files. That adds a re-verify round and makes neither review nor rollback easier.
+
+This plan supersedes T-0031.1, which was planned from v2 and is parked. Its branch `factory/T-0031.1` holds one commit (`f13e707`) built to v2. The new sub-ticket does not depend on it and does not build on that branch.

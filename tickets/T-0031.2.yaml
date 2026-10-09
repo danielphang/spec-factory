@@ -1,0 +1,48 @@
+id: T-0031.2
+type: sub-ticket
+title: Role commands drop an inherited VIRTUAL_ENV, and build checkouts start with a synced environment
+request: requests/T-0031.md
+source: plan:run-0395-planner
+status: merged
+round:
+  spec: 0
+  pr: 1
+spec:
+  version: 3
+  approved_version: 3
+plan: null
+in_flight: []
+parked: null
+created: '2026-10-09T18:11:03+00:00'
+history:
+- ts: '2026-10-09T18:23:38+00:00'
+  from: ready-for-implementer
+  to: checks-in-flight
+  by: workflow
+  round:
+    spec: 0
+    pr: 1
+- ts: '2026-10-09T18:36:55+00:00'
+  from: checks-in-flight
+  to: ready-for-merge
+  by: workflow
+  round:
+    spec: 0
+    pr: 1
+- ts: '2026-10-09T18:37:08+00:00'
+  from: ready-for-merge
+  to: merged
+  by: merge
+  head: da50576fd4215aa31d4d8091e089c8f50cb791e5
+parent: T-0031
+depends_on: []
+parallel_safe: true
+branch: factory/T-0031.2
+head: da50576fd4215aa31d4d8091e089c8f50cb791e5
+merge:
+  base_before: 2bd99697e3bdbe0ae735294afae1b3109070d7c6
+  main_after: a22ee4b9d7ae835710186c4731e3591ae221b3d0
+parent_base: null
+label: ST-1
+planned_from: 3
+merge_refused: null

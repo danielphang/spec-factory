@@ -80,3 +80,7 @@ What I checked, on `main` at `2bd9969`:
 - `grep -rn 'export HOME=' tests/factory` finds the old wrapper text only at `test_run_isolation.py:22` and `test_gate_paths.py:217`. No test merged since `b002c95` pins the wrapper text.
 - `grep` finds no `environment_sync` or `VIRTUAL_ENV` in `factory/`, `tests/`, `docs/design.md`, `README.md` or `dev/build-harness.spec.md`. So the NEW labels still hold.
 - `test_instance.py:101` loads the template generically, so adding `environment_sync: null` should not break it. I did not run the suite.
+
+STATUS: PLANNED
+CONFIDENCE: high. The spec asks for one PR, and every cited symbol and both listed test lines were re-located on current `main`; only the line numbers moved.
+ESCALATIONS: none

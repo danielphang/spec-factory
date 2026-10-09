@@ -1,0 +1,17 @@
+run_id: run-0395-planner
+role: planner
+ticket: T-0031
+model: opus
+round: 1
+spec_version: 3
+started: '2026-10-09T18:08:42+00:00'
+finished: '2026-10-09T18:10:36+00:00'
+wall_s: 114
+status: PLANNED
+input_sources:
+- specs/T-0031/v3.md
+- decisions.md
+confidence: high. The spec asks for one PR, and every cited symbol and both listed test lines were re-located
+  on current `main`; only the line numbers moved.
+escalations: []
+escalations_note: null

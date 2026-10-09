@@ -1,0 +1,472 @@
+diff --git a/README.md b/README.md
+index 51be5e8..bd08bf1 100644
+--- a/README.md
++++ b/README.md
+@@ -28,6 +28,7 @@ built, who checked it against what, and why it was allowed through.
+ declared inputs: the critic never sees the writer's reasoning, the reviewer never sees the
+ implementer's.
+ Every role's input carries a wrapper that runs a command with a fresh temporary HOME, and the repo's check commands come already wrapped.
++The wrapper also drops a Python virtual environment inherited from the launching shell (`VIRTUAL_ENV`, `PYTHONHOME`, and its `bin/` on `PATH`).
+ It does not stop a write to an absolute path.
+ 
+ | Role | Does | Model |
+@@ -587,7 +588,10 @@ From inside the target repo, with `R` the runtime (`~/dev/spec-factory-harness`)
+    command covers: `{command: "<command>", paths: [":(exclude)dev/"]}`. A sub-ticket whose changes
+    touch none of them skips that command. Prefer exclude pathspecs, so a new file still runs the
+    command. Set `run_env` for any tool whose cache lives under HOME,
+-   so it still finds that cache from inside the fresh temporary HOME.
++   so it still finds that cache from inside the fresh temporary HOME. Set `environment_sync` to the
++   command that installs the repo's environment (for example `uv sync --frozen`), so each build
++   checkout starts synced: `run start` runs it in the checkout before the role starts, and refuses
++   the run if it fails.
+ 
+ The repo is now a target. "Starting a run" is the rest.
+ 
+diff --git a/dev/build-harness.spec.md b/dev/build-harness.spec.md
+index 4b989d6..814042c 100644
+--- a/dev/build-harness.spec.md
++++ b/dev/build-harness.spec.md
+@@ -297,6 +297,7 @@ Resumption after a human decision: the `/factory` skill re-runs `build.js` for t
+ 1. System prompt = the agent definition (`factory/prompts/preamble.md` is read by its first instruction); the clerk records it in `runs/<run_id>/system-prompt.txt`.
+ 2. Input composed by `factory run compose RUN` (B): the role-context block (doc §Harness), then exactly the declared sources (H), written as `runs/<run_id>/input.md` with `input_sources:` in `meta.yaml` **before** the role runs; the role's prompt is a pointer to that file, so what the role saw is auditable and no second composition path exists.
+ 3. Mutating roles get `isolation: 'worktree'` (E7), which the Workflow tool creates and removes; the implementer's `git push` uses the implementer key via `GIT_SSH_COMMAND` set in its agent definition's `env:` (not verified: whether agent-definition frontmatter supports `env:`; fallback: a `factory git-push ticket/<ID>` wrapper the implementer is allowed to run, which supplies the key). Checkers run read+shell in a checkout the clerk made; they have no key, so a push fails at authentication.
++   - Environment sync: when the instance sets `environment_sync`, `run start` runs that command in each build checkout (the implementer's worktree at every dispatch, and each checker's checkout) through the running-code wrapper, after the environment files are copied and before the role starts. A failure refuses the run, with the command and its output in `runs/<id>/environment-sync.log`.
+ 4. Tool restriction is the agent definition's `tools:` (R6); no `bypassPermissions` anywhere; `--restricted` applies to `claude -p` test drivers (E6).
+ 5. Empty output (doc §Routing rules): no time or token budget is enforced, and `agent()` reports no reason a run stopped, so no empty output is a budget kill. A run that ends without its output file, or with a blank one, is `EMPTY-OUTPUT` in `run finish`, whether `agent()` returned text, blank text or `null` (a user skip or a terminal error). When the returned text is non-blank, the script keeps its last 4000 characters with `run last-message`. The same role is re-dispatched once, on the same inputs and in the same round; a second `EMPTY-OUTPUT` in a row parks `EMPTY-OUTPUT from <role>` with both runs as outputs and records no result row for it, so `resolve --redispatch` re-runs only that role. A thrown `agent()` stays `KILLED`, parked `agent call failed: <role>: <error>`, with no re-dispatch. Until a run returns, a hung agent blocks `parallel()` and every sibling in that join; the user skipping the agent is the one manual stop (E7; Open question 4).
+ 6. After each run: `meta.yaml` complete, the checker worktree removed by the clerk (`factory run cleanup RUN`). The run's `runs/<run_id>/scratch/` stays until its ticket's next state change other than `parked`, which removes it (`store.save_ticket`).
+diff --git a/docs/changelog.md b/docs/changelog.md
+index 4c0c3f6..d90de0a 100644
+--- a/docs/changelog.md
++++ b/docs/changelog.md
+@@ -67,5 +67,6 @@ Six review rounds ran on this doc, using the reviewer prompt in the appendix. Ro
+ 63. After issue #57 (2026-10-05), where the merge gate merged changes to protected paths without reading any declaration of them, while the code reviewer's prompt promised that the gate would require a human approval: the approved spec's Risk section is now the authorization. The spec writer declares every protected path the change will touch on one line of Risk, `Protected paths: none` or `Protected paths:` followed by backticked entries, one path or glob per entry, with no brace lists; the human approves that line at the spec gate. At merge, the gate compares the changed paths, from the merge base with the integration branch and with both sides of a move, against the instance's in-repo protected globs and the pinned spec's line. It refuses each undeclared protected path by name, with an error that starts `BLOCKED from merge gate`, and the build parks the sub-ticket with that error. The human answers the park with `resolve --accept-paths F`, which accepts those paths for that sub-ticket and returns it to its checks, whose passing results stand, or with `resolve --ruling F`, which sends it back to its implementer at the same round. A ruling on a reviewer's ESCALATE now returns the sub-ticket to its checks, with the results that did not pass set aside, instead of to the spec critic, a step that never runs for a sub-ticket. Check 6 of the code reviewer prompt says what the gate does, the spec writer's FORMAT gives the declaration line, and the design's gate lines, piece 7, piece 8, piece 9 and the resolution rules drop the per-PR approval for protected paths. Rejected: reading every backticked path in Risk, since Risk sections also name paths they promise not to touch; and a human approval on every change to a protected path, which would have stopped 18 of the last 20 merges in this repository.
+ 64. After issue #76 (2026-10-09), where five of the seven role prompts, triage, planner, implementer, code reviewer and verifier, lacked the reading rules that #73 gave the spec writer and critic, though the implementer and verifier run test suites and other long commands, and every later turn re-sends what a run has read. Each of the five prompts gains the critic's Turn economy bullet, word for word: put independent reads and commands in one turn, read a line range once grep has found it, and send long output to a file in the run's scratch directory and grep or tail it. The spec writer's sentence on writing the spec in as few writes as possible stays out. The bullet goes directly before the declared-path rule in the implementer's and verifier's RULES, last in the code reviewer's WHAT YOU RUN, and last in the planner's and triage's RULES. #74's replay (entry 59) found that these rules cut the spec writer's tokens by about 37% at the same quality, but it tested the critic's reading rules only together with a cap on checking, and that pair saved nothing and made the critic check less. Nothing else in the five prompts changes, and the hook that would refuse whole-file reads and uncapped searches stays with #65. The runtime moves to these prompts only after the operator's replay of past implementer and verifier runs, with the old and the new prompts, holds quality. Rejected: a shared preamble line, which would also reach the spec writer and critic, which already carry the rules.
+ 65. After issues #44 and #50 (2026-10-04), where scenarios approved at the spec gate could not pass once another ticket merged first, and nothing could correct the pinned spec: on the Nanobot target, two scenarios of its ticket T-0008 created no policy file after a merged ticket made one mandatory, rulings let the build go on, and archive would still have written the unamended scenarios into current truth; here, T-0012's pinned spec was edited in place by hand, and a test that merged after T-0032's spec was written blocked T-0032.1's implementer. A human now amends a pinned spec with `factory spec amend <ticket id> --file F --reason "<line>" --intent unchanged`. It writes F as the next version and makes it the approved one, which every later role run receives. It re-pins the change folder but keeps the planner's `tasks.md`, so archive writes the amended scenarios. `--intent` is required: the harness checks that the Problem, every Decisions line, and each requirement's name, operation and statement are unchanged. It refuses `--intent changed`, or any such difference, with a restart note that names the merged sub-tickets a restart keeps, the unmerged ones it discards, and the commands to re-spec and re-plan or to close and re-file. It also refuses, writing nothing, while any run is in flight on the ticket or its sub-tickets, on a sub-ticket, at the gate, on a closed or archived ticket, and for a version that fails the gate's checks. Each amendment is recorded in `approvals/<ticket id>/amendment-<n>.md`, logged as `spec.amended`, and changes no ticket state. Every stored spec version now records the integration branch's head in `specs/<ticket id>/v<n>.yaml`. Before a sub-ticket's first implementer run, `run start` checks for spec drift: its Acceptance names an unmerged sibling it does not depend on, or a test file changed since its parent's approved version was written, in a commit that also changed a file the design names, and no Tests to change list names it. Drift refuses the run with an error that starts `BLOCKED from harness: spec drift:`, and the build parks the sub-ticket; the human amends, rules, or both, and a ruling on file stops the check. Measured on both stores' history, the test rule would have caught 9 of 10 known breaks and parks about half of all sub-tickets. The critic now receives every other approved change not yet archived, with the requirements it changes and its decisions, and its rubric item 5 makes a scenario BLOCKING when its setup would not hold whichever of the two tickets merges first. Rejected: the build spec's unbuilt `resolve --amend-spec`, because an amendment may be needed while the ticket is not stopped; a critic run on every amendment, which needs a new route; running each scenario at build start, whose expected failure is prose a program cannot compare; and a new park status for drift, which needs a new `resolve` route.
++66. After issue #51 (2026-10-04), where every build role lost its first attempt to a broken Python environment: a role's shell inherited the virtual environment activated in the session that launched the factory, which on this machine belongs to another repository's checkout, and each fresh build checkout had no `.venv`, so a `uv run --no-sync` check failed on its first import until the implementer, then the reviewer, then the verifier each installed the environment themselves. The running-code wrapper, around every role command and every gate command, now first removes the exact `$VIRTUAL_ENV/bin` entry from `PATH` and unsets `VIRTUAL_ENV` and `PYTHONHOME`, then sets the fresh HOME and the `run_env` exports as before. An instance may name one shell command, `environment_sync`, in `instance.yaml`. `run start` runs it through that wrapper in the run's checkout, the implementer's worktree at every dispatch and each checker's checkout, including the parent-close verifier's, after the environment files are copied and before the role starts. On success the run's `meta.yaml` records the command and the role's input ends its "Where you work" section with a line saying the environment is already synced and should not be synced again unless the change alters the files it is built from. A failed sync refuses the run start with exit 2 and one line naming the exit code and the run's `environment-sync.log`, which holds the command and its full output; no run is recorded or put in flight, and a checker's checkout is removed while the implementer's worktree is kept. Without the key nothing runs and the input is as before. Rejected: unsetting only the two variables, which leaves the environment's `python` first on `PATH`; an opt-in way to unset variables through `run_env`, which would leave the deactivation off by default; syncing only when the implementer's worktree is first created, because the environment files and a conflict run's merge can change the lock file at a later dispatch; and quoting the command or its output in the refusal, because the build workflow expands backticks and `$` in a park reason.
+ 
+ Declined: a dedicated merge agent (merging is gate config plus human gates, not a judgment call).
+diff --git a/docs/design.md b/docs/design.md
+index 19d37e6..4c1fdb0 100644
+--- a/docs/design.md
++++ b/docs/design.md
+@@ -65,7 +65,7 @@ The prompts say what each role does. The harness enforces the wiring rules: fres
+ 
+ **Scratch directory per run.** Every run gets its own directory for temporary files, `runs/<run id>/scratch/` in the store, so runs that happen at the same time never write into one shared place and no run leaves files in a repository checkout. `run start` creates it for every role, after every guard has passed, and makes sure the store's `.gitignore` excludes `runs/*/scratch/`: an absent or empty `.gitignore` gets the harness's commented block, and an existing one keeps its own lines and gains only the lines it lacks. The composer names the directory's absolute path in a "Scratch directory" section of the run's input, directly after "Running code", and the shared preamble's SCRATCH FILES rule tells every role to put its own temporary files there and nowhere else, taking precedence over any other instruction to use a session scratchpad. When a ticket's status changes to anything other than `parked`, the harness removes the scratch directory of each finished run of that ticket; runs still in flight, other tickets' runs and every path outside `runs/*/scratch` are left alone. A park keeps the files because a human who answers a parked ticket may need to see what the run built; they are removed once the human sends the ticket on or closes it. So a role that wants a later reader to see what a prototype showed puts that in its output, since the directory is gone by the time the ticket's next role reads it.
+ 
+-**Role-context block.** Every role's input opens with a role-context block, ahead of the INPUT its role prompt declares and anything the routing table's "Receives" column adds. The block is per repo, like `{repo name}` and the protected paths: it says which repository the role works in, how to run commands and tests there, what kind of request to expect, and who reads what the roles write there. Its text is the same for every role. It is a declared input of every role, so composing from *only* declared sources includes it; it travels with the input (piece 3), not in the system prompt. A wrong block misdirects every role at once, and the checkers receive the same block, so they share the error instead of catching it. The block is kept in the repo it describes, at `.factory/context.md`. That directory, `.factory/`, is the repo's instance of the factory: `instance.yaml` (the per-repo config: `{repo name}`, protected paths, `{gate commands}`, the variables kept for code runs (`run_env`), models, routing, the store's path and the harness checkout it runs with), `context.md`, `harness.lock` (the harness revision the instance has accepted; the harness refuses to touch the instance's store under any other revision until a human accepts it, and logs the acceptance) and the store: a git worktree of the repo's `factory-store` branch, at a path the integration branch has never tracked, because a checkout of an older commit would otherwise overwrite live records. That branch is never merged into the integration branch, so a store commit never moves it. A command run from inside a code checkout finds that checkout's own instance, whose store does not exist there, so it reports no such ticket rather than reaching the live store. The harness picks the instance by walking up from the working directory to the nearest `.factory/instance.yaml`, or takes it from an explicit override, and never falls back to an instance of its own; the composer prepends that instance's `context.md`, and the preamble's `{repo name}` and protected paths are filled from its `instance.yaml`, and `{writing standard}` with the path of `docs/writing.md` in the harness checkout that runs it. `{coding standard}`, in the implementer and code reviewer prompts, is filled the same way with the path of `docs/coding.md` in that checkout. The composer also gives every role a "Running code" section: a wrapper that runs one command in a subshell with `HOME` set to a fresh temporary directory, exporting any variables the instance lists in `run_env`; `{gate commands}` reach a role already wrapped. It is guidance, not a sandbox: a command can still write an absolute path, which the preamble forbids for protected paths outside the repository. Each run leaves its temporary directory behind.
++**Role-context block.** Every role's input opens with a role-context block, ahead of the INPUT its role prompt declares and anything the routing table's "Receives" column adds. The block is per repo, like `{repo name}` and the protected paths: it says which repository the role works in, how to run commands and tests there, what kind of request to expect, and who reads what the roles write there. Its text is the same for every role. It is a declared input of every role, so composing from *only* declared sources includes it; it travels with the input (piece 3), not in the system prompt. A wrong block misdirects every role at once, and the checkers receive the same block, so they share the error instead of catching it. The block is kept in the repo it describes, at `.factory/context.md`. That directory, `.factory/`, is the repo's instance of the factory: `instance.yaml` (the per-repo config: `{repo name}`, protected paths, `{gate commands}`, the variables kept for code runs (`run_env`), the command that installs each build checkout's environment (`environment_sync`), models, routing, the store's path and the harness checkout it runs with), `context.md`, `harness.lock` (the harness revision the instance has accepted; the harness refuses to touch the instance's store under any other revision until a human accepts it, and logs the acceptance) and the store: a git worktree of the repo's `factory-store` branch, at a path the integration branch has never tracked, because a checkout of an older commit would otherwise overwrite live records. That branch is never merged into the integration branch, so a store commit never moves it. A command run from inside a code checkout finds that checkout's own instance, whose store does not exist there, so it reports no such ticket rather than reaching the live store. The harness picks the instance by walking up from the working directory to the nearest `.factory/instance.yaml`, or takes it from an explicit override, and never falls back to an instance of its own; the composer prepends that instance's `context.md`, and the preamble's `{repo name}` and protected paths are filled from its `instance.yaml`, and `{writing standard}` with the path of `docs/writing.md` in the harness checkout that runs it. `{coding standard}`, in the implementer and code reviewer prompts, is filled the same way with the path of `docs/coding.md` in that checkout. The composer also gives every role a "Running code" section: a wrapper that runs one command in a subshell that first drops a Python virtual environment inherited from the launching shell (its `bin/` off `PATH`, `VIRTUAL_ENV` and `PYTHONHOME` unset), then sets `HOME` to a fresh temporary directory and exports any variables the instance lists in `run_env`; `{gate commands}` reach a role already wrapped. When the instance names an `environment_sync` command, `run start` runs it through that wrapper in each build checkout before the role starts, refuses the run if it fails (keeping the command and its output in the run's `environment-sync.log`), and the role's input says the environment is already synced. It is guidance, not a sandbox: a command can still write an absolute path, which the preamble forbids for protected paths outside the repository. Each run leaves its temporary directory behind.
+ 
+ **Model per role, starting point.** One rule: a role's model depends on what checks its output. Default Opus. A checker is never weaker than the author it checks, except the verifier, whose check is the commands. Fable goes where a role's output is checked only by a human: the critic, the code reviewer, the retro. Sonnet only where the output is checked mechanically inside the same loop. The verifier is the one checker whose check is the commands themselves; its probe step is judgment, so it drops to Sonnet only where probes rarely matter. Tune effort before changing model; record the model on every run so the retro can compare failure rates by model; this table is the harness's model config, so a retro diff to it is the proposal path. Never let an author and its checker share a model where you can avoid it; the verifier is again the exception.
+ 
+diff --git a/factory/cli.py b/factory/cli.py
+index 02741dc..4e90169 100644
+--- a/factory/cli.py
++++ b/factory/cli.py
+@@ -215,6 +215,7 @@ def run_start(a, root, cfg):
+         _check_sibling_tests(root, cfg, t)
+     if a.role in BUILD_ROLES:
+         compose.gate_entries(cfg)  # a malformed gate entry refuses here, before a run id is reserved
++        compose.environment_sync(cfg)  # so does a malformed environment_sync
+     baseline = tripwire.baseline(cfg)  # hashed before the run id is reserved: a refusal writes nothing
+     rid = store.next_run_id(root, a.role)
+     model = a.model or cfg["models"][a.role]
+@@ -361,7 +362,9 @@ def _tests_to_change_section(design_text: str) -> str:
+ def _start_build_run(root: Path, cfg: dict, t: dict, meta: dict, d: Path, parent_close: bool) -> None:
+     """Worktrees for the build roles (build spec I.3, local stand-in): the implementer gets the
+     ticket's branch (created from the integration branch at first dispatch); each checker gets a
+-    detached checkout of the head it checks, plus the diff written as runs/<id>/diff.patch."""
++    detached checkout of the head it checks, plus the diff written as runs/<id>/diff.patch. Each
++    checkout then runs the instance's `environment_sync`, if set (`_sync_environment`)."""
++    sync = compose.environment_sync(cfg)
+     repo = gitops.repo_root(cfg)
+     integ = gitops.integration_branch(cfg, repo)
+     store.ensure_gitignore(root)
+@@ -376,6 +379,7 @@ def _start_build_run(root: Path, cfg: dict, t: dict, meta: dict, d: Path, parent
+         meta.update({"branch": branch, "base": gitops.rev(repo, integ), "head": gitops.rev(repo, branch),
+                      "worktree": str(wt), "resolution": "conflict" if t.get("merge_refused") else None,
+                      "environment_files": gitops.copy_environment_files(cfg, repo, wt)})
++        _sync_environment(cfg, sync, meta, repo, wt, d, checker=False)
+     else:
+         head = gitops.rev(repo, integ) if parent_close else t.get("head")
+         base = (t.get("parent_base") or head) if parent_close else gitops.rev(repo, integ)
+@@ -386,11 +390,29 @@ def _start_build_run(root: Path, cfg: dict, t: dict, meta: dict, d: Path, parent
+         wt = d / "wt"
+         gitops.add_detached_worktree(repo, wt, head)
+         meta["environment_files"] = gitops.copy_environment_files(cfg, repo, wt)
++        _sync_environment(cfg, sync, meta, repo, wt, d, checker=True)
+         if not parent_close:
+             store.write_text(d / "diff.patch", gitops.diff(repo, base, head))
+         meta.update({"branch": t.get("branch"), "base": base, "head": head, "worktree": str(wt)})
+ 
+ 
++def _sync_environment(cfg: dict, sync: str | None, meta: dict, repo: Path, wt: Path, d: Path, checker: bool) -> None:
++    """Run the instance's `environment_sync` in the checkout `wt` through the running-code wrapper and
++    record it in `meta`. A failure writes runs/<id>/environment-sync.log, removes a checker's checkout,
++    and refuses the run start with one line that carries neither the command nor its output."""
++    if sync is None:
++        return
++    cp = subprocess.run(["sh", "-c", compose.wrap(sync, compose.run_env(cfg))], cwd=wt, capture_output=True, text=True)
++    if cp.returncode == 0:
++        meta["environment_sync"] = sync
++        return
++    log = d / "environment-sync.log"
++    store.write_text(log, f"command: {sync}\nexit: {cp.returncode}\n--- stdout\n{cp.stdout}--- stderr\n{cp.stderr}")
++    if checker:
++        gitops.remove_worktree(repo, wt)
++    raise Refused(f"environment_sync failed (exit {cp.returncode}) in {wt}; its command and output are in {log}")
++
++
+ def run_last_message(a, root, cfg):
+     """Keep the agent's last message with a run that ended EMPTY-OUTPUT, so a human can see why."""
+     d = _run_dir(root, a.run)
+diff --git a/factory/compose.py b/factory/compose.py
+index 177d41b..84e9d38 100644
+--- a/factory/compose.py
++++ b/factory/compose.py
+@@ -161,11 +161,29 @@ def run_env(cfg: dict) -> dict:
+     return env
+ 
+ 
++def environment_sync(cfg: dict) -> str | None:
++    """The instance's `environment_sync`: one shell command `run start` runs in each build checkout,
++    through the running-code wrapper. Absent or null is None; anything but a non-empty string is refused."""
++    cmd = cfg.get("environment_sync")
++    if cmd is None:
++        return None
++    if not isinstance(cmd, str) or not cmd.strip():
++        raise store.Refused(f"environment_sync must be one shell command as a non-empty string, or null, not {cmd!r}")
++    return cmd
++
++
++# Deactivates a virtual environment inherited from the launching shell: its bin/ off PATH, then
++# VIRTUAL_ENV and PYTHONHOME unset. Shown inside backticks in role input, so it holds no backtick.
++_DROP_VENV = ('[ -z "${VIRTUAL_ENV:-}" ] || PATH=$(printf %s "$PATH" | tr : \'\\n\' | grep -vxF "$VIRTUAL_ENV/bin" '
++              '| paste -sd: -); unset VIRTUAL_ENV PYTHONHOME; ')
++
++
+ def wrap(command: str, env: dict) -> str:
+-    """`command` in a subshell with HOME set to a fresh temporary directory, then each `run_env`
+-    variable exported in file order. A subshell, so the export covers every part of `a && b`."""
++    """`command` in a subshell that first drops an inherited virtual environment (`_DROP_VENV`), then
++    sets HOME to a fresh temporary directory, then exports each `run_env` variable in file order. A
++    subshell, so the export covers every part of `a && b`."""
+     exports = "".join(f" {k}={shlex.quote(str(v))}" for k, v in env.items())
+-    return f'(export HOME="$(cd "$(mktemp -d)" && pwd -P)"{exports}; {command})'
++    return f'({_DROP_VENV}export HOME="$(cd "$(mktemp -d)" && pwd -P)"{exports}; {command})'
+ 
+ 
+ def compose(root: Path, cfg: dict, meta: dict, t: dict) -> tuple[str, list[str]]:
+@@ -351,6 +369,10 @@ def compose(root: Path, cfg: dict, meta: dict, t: dict) -> tuple[str, list[str]]
+                          else "none (every gate command is skipped below)") + "\n")
+         where += "".join(f"SKIPPED by the harness for this diff, do not run: `{s['command']}`: {s['reason']}\n"
+                          for s in skipped)
++        if meta.get("environment_sync"):
++            where += (f"Environment: the harness ran this instance's environment sync, `{meta['environment_sync']}`, "
++                      "in this checkout through the running-code wrapper before you started, so the environment is "
++                      "already synced. Do not sync it again unless your change alters the files it is built from.\n")
+         parts.append(where)
+         if role == "implementer":
+             if t.get("merge_refused"):
+diff --git a/factory/instance.template.yaml b/factory/instance.template.yaml
+index e55c29e..ed65b60 100644
+--- a/factory/instance.template.yaml
++++ b/factory/instance.template.yaml
+@@ -38,6 +38,10 @@ environment_files: []
+ # Variables the running-code wrapper exports after the throwaway HOME, for tools that keep a cache
+ # under HOME (for example UV_CACHE_DIR: /Users/me/.cache/uv). HOME itself is refused.
+ run_env: {}
++# One shell command the harness runs in each build checkout at run start, through the running-code
++# wrapper, after the environment files are copied (for example `uv sync --frozen`). null means none.
++# A failure refuses the run.
++environment_sync: null
+ force_push_allowed: false
+ models:
+   triage: opus
+diff --git a/tests/factory/test_environment_sync.py b/tests/factory/test_environment_sync.py
+new file mode 100644
+index 0000000..ca2ec2f
+--- /dev/null
++++ b/tests/factory/test_environment_sync.py
+@@ -0,0 +1,254 @@
++"""The running-code wrapper drops an inherited virtual environment, and the instance's
++`environment_sync` runs in each build checkout at run start (T-0031).
++
++Black-box through `bin/factory`, each case on a throwaway store (FACTORY_STATE), a scratch target
++repo (FACTORY_REPO) and a copy of the suite's fixture instance (FACTORY_INSTANCE) with the keys
++under test appended. A fake virtual environment, a directory holding `bin/python`, stands in for
++the one a launching session activated.
++"""
++from __future__ import annotations
++
++import json
++import os
++import shutil
++import subprocess
++from pathlib import Path
++
++import pytest
++import yaml
++
++REPO = Path(__file__).resolve().parents[2]
++BIN = REPO / "bin" / "factory"
++FIXTURE_INSTANCE = Path(__file__).resolve().parent / "fixtures" / "instance"
++GIT_ID = {"GIT_AUTHOR_NAME": "f", "GIT_AUTHOR_EMAIL": "f@x", "GIT_COMMITTER_NAME": "f", "GIT_COMMITTER_EMAIL": "f@x"}
++DUMP = "env > synced.env"  # a sync that records the environment it ran in
++FAIL = "echo sync-$((1+1)) >&2; echo out-line; exit $((2+1))"  # output and exit code are computed
++
++
++class Target:
++    """T-0001 approved and split into T-0001.1, ready for its implementer, on an instance whose
++    `run_env` exports T31_CACHE and whose `environment_sync` is `sync` (None: the key is absent)."""
++
++    def __init__(self, tmp_path: Path, sync: str | None):
++        self.tmp = tmp_path
++        self.root = tmp_path / "state"
++        self.repo = tmp_path / "target"
++        self.venv = tmp_path / "venv"
++        (self.venv / "bin").mkdir(parents=True)
++        (self.venv / "bin" / "python").write_text("#!/bin/sh\necho fake\n")
++        (self.venv / "bin" / "python").chmod(0o755)
++        inst = tmp_path / "inst"
++        shutil.copytree(FIXTURE_INSTANCE, inst)
++        with (inst / "instance.yaml").open("a", encoding="utf-8") as f:
++            f.write("run_env: {T31_CACHE: /tmp/t31-cache}\n")
++            if sync is not None:
++                f.write(f"environment_sync: {json.dumps(sync)}\n")
++        self.repo.mkdir()
++        self.env = {**os.environ, **GIT_ID, "FACTORY_STATE": str(self.root), "FACTORY_INSTANCE": str(inst),
++                    "FACTORY_REPO": str(self.repo), "FACTORY_INTEGRATION_BRANCH": "main",
++                    "PYTHONDONTWRITEBYTECODE": "1"}
++        self.git("init", "-q", "-b", "main")
++        self.git("commit", "-q", "--allow-empty", "-m", "init")
++        req, spec, plan = tmp_path / "req.md", tmp_path / "spec.md", tmp_path / "plan.md"
++        req.write_text("# F\n\nDo x.\n")
++        spec.write_text("## Problem\nx\n")
++        plan.write_text("ST-1 / Do it\nDepends on: none\nParallel-safe: yes\n")
++        self.ok("ticket", "new", "--file", str(req))
++        self.ok("ticket", "transition", "T-0001", "--to", "ready-for-spec-writer", "--by", "t")
++        self.ok("spec", "add", "T-0001", "--file", str(spec))
++        self.ok("ticket", "transition", "T-0001", "--to", "ready-for-critic", "--by", "t", "--round", "spec:init")
++        self.ok("ticket", "transition", "T-0001", "--to", "awaiting-spec-gate", "--by", "t")
++        self.ok("approve-spec", "T-0001")
++        self.ok("subticket", "add", "T-0001", "--file", str(plan))
++
++    def git(self, *argv: str, cwd: Path | None = None) -> str:
++        cp = subprocess.run(["git", "-C", str(cwd or self.repo), *argv], capture_output=True, text=True,
++                            env=self.env, check=True)
++        return cp.stdout.strip()
++
++    def cli(self, *argv: str, venv: bool = False) -> subprocess.CompletedProcess:
++        """`bin/factory`, launched from a shell with the fake virtual environment activated when `venv`
++        (VIRTUAL_ENV and its bin/ first on PATH; not PYTHONHOME, which would break the harness's own
++        interpreter: the wrapper test covers PYTHONHOME)."""
++        env = self.env
++        if venv:
++            env = {**env, "VIRTUAL_ENV": str(self.venv), "PATH": f"{self.venv}/bin:{env['PATH']}"}
++        return subprocess.run([str(BIN), *argv], capture_output=True, text=True, env=env, cwd=REPO)
++
++    def ok(self, *argv: str, venv: bool = False) -> dict:
++        cp = self.cli(*argv, venv=venv)
++        assert cp.returncode == 0, cp.stderr
++        return json.loads(cp.stdout.strip().splitlines()[-1])
++
++    def start(self, role: str, tid: str) -> str:
++        return self.ok("run", "start", "--role", role, "--ticket", tid, venv=True)["run_id"]
++
++    def input_of(self, run_id: str) -> str:
++        self.ok("run", "compose", run_id)
++        return (self.root / "runs" / run_id / "input.md").read_text(encoding="utf-8")
++
++    def meta(self, run_id: str) -> dict:
++        return yaml.safe_load((self.root / "runs" / run_id / "meta.yaml").read_text(encoding="utf-8"))
++
++    def ticket(self, tid: str) -> dict:
++        return self.ok("ticket", "show", tid, "--json")
++
++    def worktree(self) -> Path:
++        return self.root / "worktrees" / "T-0001.1"
++
++    def ready_for_checks(self) -> str:
++        """A commit on T-0001.1's branch (in the implementer's worktree when one exists), and the
++        ticket set to checks."""
++        if self.worktree().is_dir():
++            self.git("commit", "-q", "--allow-empty", "-m", "work", cwd=self.worktree())
++            head = self.git("rev-parse", "HEAD", cwd=self.worktree())
++        else:
++            self.git("branch", "factory/T-0001.1", "main")
++            self.git("checkout", "-q", "factory/T-0001.1")
++            self.git("commit", "-q", "--allow-empty", "-m", "work")
++            head = self.git("rev-parse", "HEAD")
++            self.git("checkout", "-q", "main")
++        self.ok("ticket", "set", "T-0001.1", "status=checks-in-flight", "branch=factory/T-0001.1", f"head={head}")
++        return head
++
++    def checker_checkouts(self) -> list[str]:
++        return [ln for ln in self.git("worktree", "list").splitlines() if "/runs/" in ln]
++
++
++def synced_env(path: Path) -> dict:
++    """The `env > synced.env` dump as name -> value (single-line values only, which is all we read)."""
++    out = {}
++    for line in path.read_text().splitlines():
++        name, sep, value = line.partition("=")
++        if sep:
++            out[name] = value
++    return out
++
++
++def assert_synced_clean(t: Target, dump: Path) -> None:
++    env = synced_env(dump)
++    assert "VIRTUAL_ENV" not in env and "PYTHONHOME" not in env, env
++    assert f"{t.venv}/bin" not in env["PATH"].split(":")
++    assert env["T31_CACHE"] == "/tmp/t31-cache", "the run_env exports reach the sync"
++    assert env["HOME"] != os.environ["HOME"] and Path(env["HOME"]).is_dir(), "the sync gets a fresh HOME"
++
++
++def sync_line(text: str) -> list[str]:
++    where = text.split("\n## Where you work\n", 1)[1].split("\n## ", 1)[0]
++    return [ln for ln in where.splitlines() if ln.startswith("Environment: ")]
++
++
++def wrapper_in(text: str) -> str:
++    section = text.split("\n## Running code\n", 1)[1].split("\n## ", 1)[0]
++    found = [s for s in section.split("`")[1::2] if "<command>" in s]
++    assert len(found) == 1, section
++    return found[0]
++
++
++PROBE = 'printf "%s|%s|%s\\n" "${VIRTUAL_ENV-unset}" "${PYTHONHOME-unset}" "$PATH"'
++
++
++def test_the_composed_wrapper_drops_an_inherited_virtual_environment_and_keeps_the_rest_of_path(tmp_path):
++    t = Target(tmp_path, None)
++    text = t.input_of(t.start("implementer", "T-0001.1"))
++    wrapped = wrapper_in(text).replace("<command>", PROBE)
++    venv_bin = f"{t.venv}/bin"
++    rest = f"/x/one:{venv_bin}x:/x/two:/usr/bin:/bin"  # `<venv>/binx` is not the exact entry, so it stays
++    cp = subprocess.run(["sh", "-c", wrapped], capture_output=True, text=True, check=True,
++                        env={"VIRTUAL_ENV": str(t.venv), "PYTHONHOME": str(t.venv), "PATH": f"{venv_bin}:{rest}",
++                             "HOME": os.environ["HOME"]})
++    assert cp.stdout == f"unset|unset|{rest}\n"
++    plain = "/x/one:/x/two:/usr/bin:/bin"
++    cp = subprocess.run(["sh", "-c", wrapped], capture_output=True, text=True, check=True,
++                        env={"PATH": plain, "HOME": os.environ["HOME"]})
++    assert cp.stdout == f"unset|unset|{plain}\n", "a PATH with no environment is unchanged"
++
++
++def test_an_implementer_worktree_is_synced_at_every_dispatch_and_its_input_says_so(tmp_path):
++    t = Target(tmp_path, DUMP)
++    run_id = t.start("implementer", "T-0001.1")
++    dump = t.worktree() / "synced.env"
++    assert_synced_clean(t, dump)
++    assert t.meta(run_id)["environment_sync"] == DUMP
++    lines = sync_line(t.input_of(run_id))
++    assert lines == [f"Environment: the harness ran this instance's environment sync, `{DUMP}`, in this checkout "
++                     "through the running-code wrapper before you started, so the environment is already synced. "
++                     "Do not sync it again unless your change alters the files it is built from."]
++    t.ok("run", "finish", run_id, "--status-override", "KILLED")
++    dump.unlink()
++    again = t.start("implementer", "T-0001.1")
++    assert dump.is_file(), "a later dispatch to the same worktree syncs again"
++    assert t.meta(again)["environment_sync"] == DUMP
++
++
++def test_a_reviewer_checkout_is_synced_before_the_reviewer_starts_and_its_input_says_so(tmp_path):
++    t = Target(tmp_path, DUMP)
++    t.ready_for_checks()
++    run_id = t.start("reviewer", "T-0001.1")
++    assert_synced_clean(t, t.root / "runs" / run_id / "wt" / "synced.env")
++    assert t.meta(run_id)["environment_sync"] == DUMP
++    assert len(sync_line(t.input_of(run_id))) == 1
++
++
++def test_the_parent_close_verifier_checkout_is_synced(tmp_path):
++    t = Target(tmp_path, DUMP)
++    t.ok("ticket", "set", "T-0001", "status=ready-for-parent-verify")
++    run_id = t.start("verifier", "T-0001")
++    assert_synced_clean(t, t.root / "runs" / run_id / "wt" / "synced.env")
++    assert t.meta(run_id)["environment_sync"] == DUMP
++    assert len(sync_line(t.input_of(run_id))) == 1
++
++
++def assert_refused_and_logged(t: Target, cp: subprocess.CompletedProcess) -> Path:
++    assert cp.returncode == 2
++    lines = cp.stderr.strip().splitlines()
++    assert len(lines) == 1, cp.stderr
++    line = lines[0]
++    assert line.startswith("environment_sync failed (exit 3) in "), line
++    assert not set(line) & set('`$"'), "the refusal carries no shell-expanding character"
++    assert "sync-" not in line and "out-line" not in line and "echo" not in line, "nor the command or its output"
++    log = Path(line.rsplit(" are in ", 1)[1])
++    assert log.name == "environment-sync.log" and log.parent.parent == t.root / "runs"
++    body = log.read_text()
++    assert FAIL in body and "sync-2" in body and "out-line" in body and "exit: 3" in body
++    assert sorted(p.name for p in log.parent.iterdir()) == ["environment-sync.log"], "no meta.yaml, no checkout"
++    return log
++
++
++def test_a_failed_sync_refuses_the_implementer_start_and_keeps_its_worktree(tmp_path):
++    t = Target(tmp_path, FAIL)
++    cp = t.cli("run", "start", "--role", "implementer", "--ticket", "T-0001.1", venv=True)
++    assert_refused_and_logged(t, cp)
++    assert t.ticket("T-0001.1")["in_flight"] == []
++    assert t.worktree().is_dir(), "the implementer's worktree is kept for the next dispatch"
++
++
++def test_a_failed_sync_refuses_the_reviewer_start_and_removes_its_checkout(tmp_path):
++    t = Target(tmp_path, FAIL)
++    t.ready_for_checks()
++    cp = t.cli("run", "start", "--role", "reviewer", "--ticket", "T-0001.1", venv=True)
++    log = assert_refused_and_logged(t, cp)
++    assert not (log.parent / "wt").exists() and t.checker_checkouts() == []
++    assert t.ticket("T-0001.1")["in_flight"] == []
++
++
++@pytest.mark.parametrize("value", ["[uv, sync]", '""', "3"])
++def test_a_malformed_environment_sync_is_refused_before_any_checkout_or_run(tmp_path, value):
++    t = Target(tmp_path, None)
++    inst = Path(t.env["FACTORY_INSTANCE"]) / "instance.yaml"
++    inst.write_text(inst.read_text() + f"environment_sync: {value}\n")
++    cp = t.cli("run", "start", "--role", "implementer", "--ticket", "T-0001.1", venv=True)
++    assert cp.returncode == 2 and "environment_sync" in cp.stderr, cp.stderr
++    assert not t.worktree().exists()
++    assert not (t.root / "runs").exists() or list((t.root / "runs").iterdir()) == []
++
++
++def test_without_the_key_nothing_runs_and_no_input_carries_the_line(tmp_path):
++    t = Target(tmp_path, None)
++    run_id = t.start("implementer", "T-0001.1")
++    assert "environment_sync" not in t.meta(run_id) and sync_line(t.input_of(run_id)) == []
++    assert t.git("status", "--porcelain", "--untracked-files=all", cwd=t.worktree()) == ""
++    t.ok("run", "finish", run_id, "--status-override", "KILLED")
++    t.ready_for_checks()
++    rev = t.start("reviewer", "T-0001.1")
++    assert "environment_sync" not in t.meta(rev) and sync_line(t.input_of(rev)) == []
+diff --git a/tests/factory/test_gate_paths.py b/tests/factory/test_gate_paths.py
+index c4586b1..3323b29 100644
+--- a/tests/factory/test_gate_paths.py
++++ b/tests/factory/test_gate_paths.py
+@@ -214,7 +214,8 @@ def test_a_null_absent_or_unscoped_mapping_gate_runs_as_a_string_list_does(tmp_p
+     t = Target(tmp_path, SCOPED_GATE)
+     t.set_gate(gate)
+     _, text, meta = t.checker()
+-    want = f"`(export HOME=\"$(cd \"$(mktemp -d)\" && pwd -P)\"; {UNSCOPED})`" if UNSCOPED in gate else ""
++    want = (f"`([ -z \"${{VIRTUAL_ENV:-}}\" ] || PATH=$(printf %s \"$PATH\" | tr : '\\n' | grep -vxF \"$VIRTUAL_ENV/bin\" | paste -sd: -); "
++            f"unset VIRTUAL_ENV PYTHONHOME; export HOME=\"$(cd \"$(mktemp -d)\" && pwd -P)\"; {UNSCOPED})`" if UNSCOPED in gate else "")
+     assert _gate_line(text).endswith("each is already wrapped): " + want)
+     assert _skipped_lines(text) == [] and meta["gate_skipped"] == []
+ 
+diff --git a/tests/factory/test_run_isolation.py b/tests/factory/test_run_isolation.py
+index 164a927..c3b41f1 100644
+--- a/tests/factory/test_run_isolation.py
++++ b/tests/factory/test_run_isolation.py
+@@ -19,7 +19,8 @@ import pytest
+ REPO = Path(__file__).resolve().parents[2]
+ BIN = REPO / "bin" / "factory"
+ FIXTURE_INSTANCE = Path(__file__).resolve().parent / "fixtures" / "instance"
+-WRAP = '(export HOME="$(cd "$(mktemp -d)" && pwd -P)"{vars}; {cmd})'
++WRAP = ('([ -z "${{VIRTUAL_ENV:-}}" ] || PATH=$(printf %s "$PATH" | tr : \'\\n\' | grep -vxF "$VIRTUAL_ENV/bin" | paste -sd: -); '
++        'unset VIRTUAL_ENV PYTHONHOME; export HOME="$(cd "$(mktemp -d)" && pwd -P)"{vars}; {cmd})')
+ SECTION = ("\n## Running code\nRun every test, script or prototype through this wrapper, which gives it a "
+            "fresh temporary HOME so it cannot write the operator's real home directory: `{wrapper}`. Put your "
+            "command in place of <command>. This includes every test or check command the briefing above gives. "

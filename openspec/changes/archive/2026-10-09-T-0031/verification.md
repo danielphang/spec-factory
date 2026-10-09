@@ -127,3 +127,7 @@ Out-of-scope observations
 - Part A's PATH filter sets an empty `PATH` when `$VIRTUAL_ENV/bin` is the only entry (`grep -v` prints nothing). Not a realistic shell; noting it beside the empty-entry edge Risk already names.
 
 Prior findings: none (first critic round on v3).
+
+## Verifier results
+
+da50576fd4215aa31d4d8091e089c8f50cb791e5 · T-0031.2 · VERIFIED · run-0397-verifier
