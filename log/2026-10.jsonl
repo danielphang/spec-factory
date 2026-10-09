@@ -2080,3 +2080,4 @@
 {"ts": "2026-10-09T18:37:28+00:00", "event": "ticket.transition", "ticket": "T-0031", "from": "planned", "to": "ready-for-parent-verify", "by": "parent-check"}
 {"ts": "2026-10-09T18:37:46+00:00", "event": "change.archived", "ticket": "T-0031", "archived_to": "openspec/changes/archive/2026-10-09-T-0031", "capabilities": ["harness-docs", "run-environment"], "decisions": 7}
 {"ts": "2026-10-09T18:37:56+00:00", "event": "ticket.transition", "ticket": "T-0031", "from": "ready-for-parent-verify", "to": "closed", "by": "workflow", "round": {"spec": 1, "pr": 0}}
+{"ts": "2026-10-09T18:38:26+00:00", "event": "harness.accepted", "instance": "/Users/dphang/dev/spec-factory/.factory", "old": "ba3fea8154f74ccd5007fd25d18f8215e0b7f000", "new": "da50576fd4215aa31d4d8091e089c8f50cb791e5"}
