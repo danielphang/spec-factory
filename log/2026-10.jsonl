@@ -1887,3 +1887,4 @@
 {"ts": "2026-10-09T06:50:33+00:00", "event": "human.resolved", "ticket": "T-0030", "kind": "close", "by": "dphang", "from": "planned", "to": "closed"}
 {"ts": "2026-10-09T06:50:33+00:00", "event": "decision.recorded", "ticket": "T-0026", "by": "dphang", "line": "2026-10-09 T-0026 T-0026 (#47) withdrawn: merged into #65 at the backlog review 2026-10-09; the Workflow scripts it would change retire with #65.", "via": "resolve --close"}
 {"ts": "2026-10-09T06:50:33+00:00", "event": "human.resolved", "ticket": "T-0026", "kind": "close", "by": "dphang", "from": "ready-for-planner", "to": "closed"}
+{"ts": "2026-10-09T12:02:21+00:00", "event": "harness.accepted", "instance": "/Users/dphang/dev/spec-factory/.factory", "old": "9a87c3e3983a8dd04c7e21f9dd6fdfe99dfe5a41", "new": "ba3fea8154f74ccd5007fd25d18f8215e0b7f000"}
