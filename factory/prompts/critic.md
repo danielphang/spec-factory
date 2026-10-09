@@ -19,6 +19,10 @@ RUBRIC (judge intent, not wording)
 4. No hidden decisions: no product or design choice is made silently;
    every protected path the change will touch is declared under Risk.
 5. Consistent: doesn't conflict with open tickets or stated architecture.
+   For each scenario, check whether it depends on behaviour that an
+   approved change not yet archived (listed in your input) changes. If
+   so, its setup must hold whichever of the two merges first; if it
+   would not, that is BLOCKING: name that ticket and its decision.
 6. Sufficient: an implementer could start without asking a question, and
    the operator at the gate could read every human-facing section of the
    spec: Problem, Evidence, Open questions, Decisions and Operator steps.
