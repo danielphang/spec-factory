@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import argparse
 import datetime as dt
+import difflib
 import getpass
 import json
 import os
@@ -406,6 +407,95 @@ def spec_add(a, root, cfg):
     t = store.load_ticket(root, a.id)
     n = _add_spec_version(root, t, _text_from(a, root), a.from_run or a.file)
     out({"ok": True, "id": t["id"], "version": n, "path": f"specs/{t['id']}/v{n}.md"})
+
+
+def _restart_note(root: Path, t: dict) -> str:
+    """What a restart keeps (merged sub-tickets) and discards (the rest not closed), and its two routes."""
+    subs = store.subtickets_of(root, t["id"])
+    kept = [f"{s['id']} / {s['title']} (merge {((s.get('merge') or {}).get('main_after') or '')[:9] or 'not recorded'})"
+            for s in subs if s["status"] == "merged"]
+    lost = [f"{s['id']} / {s['title']}: {s['status']}" + (f", branch {s['branch']}" if s.get("branch") else "")
+            for s in subs if s["status"] not in ("merged", "closed")]
+    tid = t["id"]
+    return (f"Restart instead of amending. Merged, and their merge commits stay on the integration branch: "
+            f"{'; '.join(kept) or 'none'}. Not merged, which a restart discards: {'; '.join(lost) or 'none'}. "
+            f"To re-spec and re-plan: `factory ticket park {tid} --reason \"<why>\"`, `factory resolve {tid} "
+            f"--to spec-gate`, then `factory approve-spec {tid} --edit F`; the new plan supersedes the unmerged "
+            f"sub-tickets. To close and re-file: `factory resolve {tid} --close`, then `factory ticket new --file F`. "
+            "The factory never restarts by itself.")
+
+
+def spec_amend(a, root, cfg):
+    """`spec amend PARENT --file F --reason LINE --intent unchanged`: a human writes F as the next spec
+    version and makes it the approved one, re-pinning the change folder and keeping its tasks.md.
+    Doc §Harness, Spec store. Every refusal comes before the first write."""
+    t = store.load_ticket(root, a.id)
+    tid, av = t["id"], t["spec"]["approved_version"]
+    if t.get("parent"):
+        raise Refused(f"{tid} is a sub-ticket; amend its parent's spec: spec amend {t['parent']}")
+    if t["status"] == "awaiting-spec-gate":
+        raise Refused(f"{tid} is awaiting-spec-gate; amend it at the gate with approve-spec {tid} --edit F")
+    if av is None:
+        raise Refused(f"{tid} has no approved spec to amend")
+    if t["status"] == "closed":
+        raise Refused(f"{tid} is closed")
+    reason = (a.reason or "").strip()
+    if not reason or len(reason.splitlines()) > 1:
+        raise Refused("--reason is one non-blank line of text")
+    subs = store.subtickets_of(root, tid)
+    runs = [r for x in (t, *subs) for r in x.get("in_flight") or []]
+    if runs:
+        raise Refused(f"{tid} has runs in flight on it or its sub-tickets: {', '.join(runs)}; amend once they finish")
+    if a.intent == "changed":
+        raise Refused(f"intent changed: an amendment keeps the spec's intent, so --intent changed is never "
+                      f"applied. {_restart_note(root, t)}")
+    old = (root / "specs" / tid / f"v{av}.md").read_text(encoding="utf-8")
+    text = Path(a.file).read_text(encoding="utf-8")
+    changes = specstore.intent_changes(old, text)
+    if changes:
+        raise Refused(f"intent changed ({'; '.join(changes)}). --intent unchanged keeps the Problem section, "
+                      "every Decisions line, and each requirement's name, operation and statement; scenarios, "
+                      f"their setup, Evidence, design text and Tests to change may change. {_restart_note(root, t)}")
+    if specstore.is_active(root):
+        if not specstore.change_dir(root, tid).exists():
+            raise Refused(f"{tid} has no change folder ({_rel(root, specstore.change_dir(root, tid))}): "
+                          "it was archived, so its spec can no longer be amended")
+        _, deltas, errors = specstore.validate(text)
+        errors += specstore.applies(root, deltas) if not errors else []
+        if errors:
+            raise Refused("spec not amended: " + "; ".join(errors))
+    n = _add_spec_version(root, t, text, f"amend {a.file}")
+    if specstore.is_active(root):
+        tasks = specstore.change_dir(root, tid) / "tasks.md"
+        kept = tasks.read_text(encoding="utf-8") if tasks.exists() else None
+        specstore.pin(root, tid, text)
+        if kept is not None:
+            store.write_text(tasks, kept)
+    t["spec"]["approved_version"] = n
+    store.save_ticket(root, t)
+    for s in subs:
+        if s["status"] not in ("merged", "closed"):
+            s["spec"] = {"version": n, "approved_version": n}  # planned_from stays: no plan is superseded
+            store.save_ticket(root, s)
+    ob, nb = specstore.scenario_blocks(old), specstore.scenario_blocks(text)
+    scen = ([f"- changed: {k}" for k in nb if k in ob and ob[k] != nb[k]] + [f"- added: {k}" for k in nb if k not in ob]
+            + [f"- removed: {k}" for k in ob if k not in nb])
+    merged = [f"- {s['id']} / {s['title']}: merged" for s in subs if s["status"] == "merged"]
+    diff = "".join(difflib.unified_diff(old.splitlines(keepends=True), text.splitlines(keepends=True),
+                                        f"specs/{tid}/v{av}.md", f"specs/{tid}/v{n}.md")).rstrip("\n")
+    fence = "```"
+    while fence in diff:  # the spec's own fences must not close the record's
+        fence += "`"
+    d = _approval_dir(root, tid)
+    rec = d / f"amendment-{_next_n(d, 'amendment')}.md"
+    store.write_text(rec, "\n\n".join([
+        f"# {tid}: spec amended, v{av} to v{n}", f"By {_by()} at {store.now()}.", f"Reason: {reason}",
+        "Intent: unchanged", "## Scenarios changed", "\n".join(scen) or "none",
+        "## Sub-tickets merged before this amendment", "\n".join(merged) or "none",
+        "## Diff", f"{fence}diff\n{diff}\n{fence}"]) + "\n")
+    store.log_event(root, "spec.amended", ticket=tid, by=_by(), previous=av, version=n, reason=reason,
+                    record=_rel(root, rec))
+    out({"ok": True, "id": tid, "version": n, "record": _rel(root, rec)})
 
 
 def plan_add(a, root, cfg):
@@ -1567,6 +1657,13 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--from-run")
     p.add_argument("--file")
     p.set_defaults(fn=spec_add)
+    p = sc.add_parser("amend", help="a human amends PARENT's pinned spec when its intent is unchanged: F becomes "
+                                    "the next and approved version, re-pinned with tasks.md kept")
+    p.add_argument("id")
+    p.add_argument("--file", required=True)
+    p.add_argument("--reason", required=True, help="one line: why the spec is amended")
+    p.add_argument("--intent", required=True, choices=("unchanged", "changed"))
+    p.set_defaults(fn=spec_amend)
     pl = sp.add_parser("plan").add_subparsers(dest="sub", required=True)
     p = pl.add_parser("add")
     p.add_argument("id")
