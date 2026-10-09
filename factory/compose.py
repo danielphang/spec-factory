@@ -10,7 +10,7 @@ import re
 import shlex
 from pathlib import Path
 
-from factory import instance, specstore, store
+from factory import instance, specstore, store, subtickets
 
 
 def _runs_for(root: Path, ticket: str, role: str, exclude: str) -> list[str]:
@@ -297,6 +297,10 @@ def compose(root: Path, cfg: dict, meta: dict, t: dict) -> tuple[str, list[str]]
             parts.append(f"\n## Sub-tickets already under {tid}\n\nA new plan's sub-tickets are numbered after these. "
                          "A `Depends on:` line may name any of these ids.\n\n"
                          + "".join(f"- {s['id']} / {s['title']}: {s['status']}\n" for s in subs))
+            gone = subtickets.superseded_by_plan(subs, av)
+            if gone:
+                parts.append("\nNot merged and planned from an earlier approved version, so a new plan supersedes "
+                             f"them and may not depend on them: {', '.join(gone)}\n")
     elif role in ("implementer", "reviewer", "verifier"):
         parent = t.get("parent") or tid  # the parent-close verifier runs on the parent itself
         pt = store.load_ticket(root, parent) if parent != tid else t

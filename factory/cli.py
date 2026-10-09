@@ -449,21 +449,31 @@ def subticket_add(a, root, cfg):
         text = status.strip_trailer((d / "output.md").read_text(encoding="utf-8"))
     else:
         text = Path(a.file).read_text(encoding="utf-8")
+    existing = store.subtickets_of(root, parent["id"])
     try:
-        subs = subtickets.parse(text, parent["id"], [s["id"] for s in store.subtickets_of(root, parent["id"])])
+        subs = subtickets.parse(text, parent["id"], [s["id"] for s in existing])
     except ValueError as e:
         raise Refused(str(e)) from None
     if not subs:
         raise Refused("no sub-tickets found (a head line `<id> / Title`, id like T-0001-A, ST-1 or T-0001.1, "
                       "then `Depends on:` and `Parallel-safe:`)")
     ids = {s["id"] for s in subs}
+    av = parent["spec"]["approved_version"]
+    before = {s["id"] for s in subtickets.split_plan(existing)[1]}
+    after = subtickets.superseded_by_plan(existing, av)
     for sdef in subs:
         for dep in sdef["depends_on"]:
+            if dep in after:  # never dispatched, so the dependant would wait forever
+                raise Refused(f"{sdef['id']} ({sdef['label']}) depends on {dep}, which this plan supersedes")
             if dep not in ids and not store.ticket_path(root, dep).exists():
                 raise Refused(f"{sdef['id']} ({sdef['label']}) depends on {dep}, which is neither in this plan nor a ticket in the store")
         if store.ticket_path(root, sdef["id"]).exists():
             raise Refused(f"{sdef['id']} already exists")
-    out({"ok": True, "parent": parent["id"], "subtickets": _create_subtickets(root, parent, subs, f"plan:{a.run or a.file}")})
+    made = _create_subtickets(root, parent, subs, f"plan:{a.run or a.file}")
+    superseded = [i for i in after if i not in before]
+    if superseded:
+        store.log_event(root, "subtickets.superseded", ticket=parent["id"], subtickets=superseded, approved_version=av)
+    out({"ok": True, "parent": parent["id"], "subtickets": made, "superseded": superseded})
 
 
 def _create_subtickets(root: Path, parent: dict, subs: list[dict], source: str) -> list[dict]:
@@ -476,6 +486,7 @@ def _create_subtickets(root: Path, parent: dict, subs: list[dict], source: str) 
                    "parallel_safe": sdef["parallel_safe"],
                    "status": "ready-for-implementer" if not sdef["depends_on"] else "waiting-dependencies"})
         st["spec"] = {"version": parent["spec"]["version"], "approved_version": parent["spec"]["approved_version"]}
+        st["planned_from"] = parent["spec"]["approved_version"]  # never changed afterwards, unlike `spec`
         store.write_text(root / "specs" / sdef["id"] / "subticket.md", sdef["text"])
         store.save_ticket(root, st)
         store.log_event(root, "ticket.created", ticket=sdef["id"], parent=parent["id"], status=st["status"])
@@ -547,7 +558,8 @@ def plan_whole_spec(a, root, cfg):
 
 
 def ticket_ready_implementers(a, root, cfg):
-    subs = store.subtickets_of(root, a.id)
+    every = store.subtickets_of(root, a.id)
+    subs, superseded = subtickets.split_plan(every)  # a later plan's superseded sub-tickets count nowhere
 
     def status_of(tid: str):
         p = store.ticket_path(root, tid)
@@ -560,14 +572,15 @@ def ticket_ready_implementers(a, root, cfg):
             s["history"].append({"ts": store.now(), "from": "waiting-dependencies", "to": "ready-for-implementer", "by": "ready-implementers"})
             store.save_ticket(root, s)
             store.log_event(root, "ticket.transition", ticket=s["id"], **{"from": "waiting-dependencies", "to": "ready-for-implementer", "by": "ready-implementers"})
-    out({"ok": True, "parent": a.id, "ready": ready, "subtickets": [s["id"] for s in subs],
+    out({"ok": True, "parent": a.id, "ready": ready, "subtickets": [s["id"] for s in every],
          "remaining": [s["id"] for s in subs if s["status"] not in ("merged", "parked", "closed")],
          "in_flight": [s["id"] for s in subs if s["in_flight"] or s["status"] in subtickets.IN_FLIGHT_STATES],
          "parked": [s["id"] for s in subs if s["status"] == "parked"],
          # stopped mid-check (a dispatcher that died or was stopped): no run in flight, so buildOne
          # resumes it from its stored state; the checkers re-run on its current head
          "resumable": [s["id"] for s in subs if s["status"] in subtickets.IN_FLIGHT_STATES and not s["in_flight"]],
-         "closed": [s["id"] for s in subs if s["status"] == "closed"]})
+         "closed": [s["id"] for s in subs if s["status"] == "closed"],
+         "superseded": [s["id"] for s in superseded]})
 
 
 def ticket_head(a, root, cfg):
@@ -735,11 +748,13 @@ def ticket_join(a, root, cfg):
 
 
 def ticket_parent_check(a, root, cfg):
-    """When every sub-ticket is merged, the parent moves to ready-for-parent-verify (part G)."""
+    """When every sub-ticket of the current plan is merged, the parent moves to ready-for-parent-verify
+    (part G); sub-tickets a later plan superseded do not count."""
     parent = store.load_ticket(root, a.id)
-    subs = store.subtickets_of(root, parent["id"])
-    if not subs:
+    every = store.subtickets_of(root, parent["id"])
+    if not every:
         raise Refused(f"{parent['id']} has no sub-tickets")
+    subs, superseded = subtickets.split_plan(every)
     if all(s["status"] == "merged" for s in subs) and parent["status"] == "planned":
         frm = parent["status"]
         parent["status"] = "ready-for-parent-verify"
@@ -748,7 +763,8 @@ def ticket_parent_check(a, root, cfg):
         store.log_event(root, "ticket.transition", ticket=parent["id"], **{"from": frm, "to": "ready-for-parent-verify", "by": "parent-check"})
     reuse = _reused_subticket_run(root, cfg, parent) if parent["status"] == "ready-for-parent-verify" else None
     out({"ok": True, "id": parent["id"], "state": parent["status"],
-         "subtickets": {s["id"]: s["status"] for s in subs}, "reuse": reuse})
+         "subtickets": {s["id"]: s["status"] for s in subs}, "superseded": [s["id"] for s in superseded],
+         "reuse": reuse})
 
 
 # ----- human surface (K-lite) -----------------------------------------------------
@@ -913,7 +929,7 @@ def resolve(a, root, cfg):
         subs = store.subtickets_of(root, t["id"])
         if not subs:
             raise Refused(f"--replan applies to a parent with sub-tickets; {t['id']} has none")
-        unmerged = [f"{s['id']} is {s['status']}" for s in subs if s["status"] != "merged"]
+        unmerged = [f"{s['id']} is {s['status']}" for s in subtickets.split_plan(subs)[0] if s["status"] != "merged"]
         if unmerged:
             raise Refused(f"--replan needs every sub-ticket merged: {', '.join(unmerged)}")
         dest = d / f"ruling-{_next_n(d, 'ruling')}.md"
@@ -1305,7 +1321,7 @@ def _reused_subticket_run(root: Path, cfg: dict, t: dict) -> str | None:
     (design doc routing table, Merge gate row), or None when the parent needs its own run."""
     # factory: one sub-ticket only, and scenario coverage is read from scenario names occurring in
     # the sub-ticket's text; widen only when the store can check a coverage map per sub-ticket.
-    subs = store.subtickets_of(root, t["id"])
+    subs = subtickets.split_plan(store.subtickets_of(root, t["id"]))[0]
     if len(subs) != 1 or not t.get("parent_base"):
         return None
     s = subs[0]
@@ -1333,10 +1349,11 @@ def _reused_subticket_run(root: Path, cfg: dict, t: dict) -> str | None:
 
 
 def _parent_close_verified(root: Path, cfg: dict, t: dict) -> str | None:
-    """The run that verifies the parent: every sub-ticket merged, and a finished verifier run on the
-    parent itself said VERIFIED on a head that contains every one of those merges (a run from before
-    the last merge does not count); else a sub-ticket's run that stands for it; else None."""
-    subs = store.subtickets_of(root, t["id"])
+    """The run that verifies the parent: every current sub-ticket merged (a superseded one does not
+    count), and a finished verifier run on the parent itself said VERIFIED on a head that contains
+    every one of those merges (a run from before the last merge does not count); else a
+    sub-ticket's run that stands for it; else None."""
+    subs = subtickets.split_plan(store.subtickets_of(root, t["id"]))[0]
     if any(s["status"] != "merged" for s in subs):
         return None
     repo = gitops.repo_root(cfg)

@@ -11,7 +11,8 @@ numbers them <PARENT>.1, .2, … in plan order and keeps the planner's own id as
 A later plan for the same parent (a re-plan after a failed parent-close check) continues that
 numbering: its sub-tickets take the next free ids after the parent's existing ones, its
 `Depends on:` lines may name an existing sub-ticket, and a head line that reuses an existing
-sub-ticket's id is refused.
+sub-ticket's id is refused. A plan made from a later approved spec version supersedes the earlier
+plans' sub-tickets that have not merged (`split_plan`).
 
 A field line may start with a `- ` or `* ` list bullet, before any bold marks. Every sub-ticket
 needs a `Depends on:` line (`Depends on: none` when it depends on nothing); a plan with a
@@ -136,6 +137,33 @@ def parse(planner_output: str, parent: str, existing=()) -> list[dict]:
         sub["text"] = text
         subs.append(sub)
     return subs
+
+
+def planned_from(sub: dict):
+    """The parent's approved version this sub-ticket was planned from: its `planned_from`, else (a
+    record made before that field) its `spec.approved_version`, else None."""
+    if sub.get("planned_from") is not None:
+        return sub["planned_from"]
+    return (sub.get("spec") or {}).get("approved_version")
+
+
+def split_plan(subs: list[dict]) -> tuple[list[dict], list[dict]]:
+    """(current, superseded), each in input order. A sub-ticket is superseded when it has not merged
+    and was planned from a lower approved version than the parent's latest plan; one with no
+    version counts as current. A superseded sub-ticket keeps its record but no longer counts."""
+    versions = [v for s in subs if (v := planned_from(s)) is not None]
+    top = max(versions, default=None)
+    current, superseded = [], []
+    for s in subs:
+        v = planned_from(s)
+        (superseded if s.get("status") != "merged" and v is not None and v < top else current).append(s)
+    return current, superseded
+
+
+def superseded_by_plan(subs: list[dict], version) -> list[str]:
+    """The ids split_plan marks superseded once a plan made from approved version `version` joins `subs`."""
+    plan = {"planned_from": version}
+    return [s["id"] for s in split_plan([*subs, plan])[1] if s is not plan]
 
 
 def ready_implementers(subs: list[dict], status_of=None) -> list[str]:

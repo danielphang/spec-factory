@@ -857,6 +857,13 @@ path above is relative to the store.
   sub-ticket added the file. If none did, the sub-ticket parks as blocked, and the human rules on it
   as on any blocked build ("Where a human decides"). Any other existing test still changes only if
   the approved spec lists it. It is tested, and has not yet fired on a real ticket.
+- **Re-plan after a re-spec.** When the human sends a planned parent back to the spec gate and
+  approves a new spec version, the planner splits it again under the same parent. Each sub-ticket
+  records the approved version it was planned from. The new plan supersedes the old plan's
+  sub-tickets that have not merged: they keep their records and ids, but are no longer dispatched,
+  no longer park the parent, and no longer hold back its final check or close. Old sub-tickets that
+  merged stay merged and count as done work. A new plan may not depend on a sub-ticket it
+  supersedes. It is tested, and has not yet fired on a real ticket.
 - **Empty output.** A role run that ends without writing its output file is run once more on the
   same inputs, and the harness keeps the agent's last message with the run. A second run in a row
   that ends the same way parks the ticket. The harness enforces no time or token budget and cannot
