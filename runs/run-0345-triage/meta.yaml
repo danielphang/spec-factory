@@ -1,0 +1,16 @@
+run_id: run-0345-triage
+role: triage
+ticket: T-0038
+model: opus
+round: 0
+spec_version: 0
+started: '2026-10-09T04:51:10+00:00'
+finished: '2026-10-09T04:53:02+00:00'
+wall_s: 112
+status: ACCEPT
+input_sources:
+- requests/T-0038.md
+confidence: high. The failure is reproduced in the Nanobot store's log and records, and every code path
+  the request names was read on this checkout.
+escalations: []
+escalations_note: null

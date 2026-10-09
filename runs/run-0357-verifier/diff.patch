@@ -1,0 +1,236 @@
+diff --git a/README.md b/README.md
+index 8518e67..322d463 100644
+--- a/README.md
++++ b/README.md
+@@ -6,7 +6,7 @@ table, and human gates. This page is the system as it runs today; install and us
+ 
+ | | |
+ |---|---|
+-| **Status** | Current state as of 2026-10-08. Intake works end to end. Build works, in local-only mode. |
++| **Status** | Current state as of 2026-10-09. Intake works end to end. Build works, in local-only mode. |
+ | **Reader** | Technical, seeing this project for the first time. Terms specific to this system are defined in "Terms used on this page" or at first use. |
+ | **Scope** | What runs now. The intended design and its reasoning are in `docs/design.md`; where the two disagree, this page is right about what runs and the design is amended. |
+ | **Internal references** | Ticket ids, issue numbers and who did what are in "Related work and history" near the end. |
+@@ -82,9 +82,9 @@ directories and `models` entries use.
+ | Role | Reads | Ends with `STATUS:` | What the harness keeps |
+ |---|---|---|---|
+ | Triage (`triage`) | the request; the capability index, one line per current-truth capability with its spec's path and requirement names; after a human answer, its own earlier output | ACCEPT · CLARIFY · NEEDS-HUMAN · REJECT | the title and type, copied onto the ticket |
+-| Spec writer (`spec_writer`) | triage's output, the request; current truth in full for the capabilities triage named, and the capability index for the rest; the decision log's lines for this ticket and those capabilities, and a decision index for the rest, one line per other ticket; after a revision request, the critic's findings and its own previous spec; the human's change requests from the gate; any human answer or ruling | READY-FOR-CRITIC · NEEDS-SPLIT · NEEDS-HUMAN | the spec, saved as its next version, `specs/<ticket>/v<n>.md` |
+-| Spec critic (`critic`) | the spec version; current truth in full for the capabilities triage named or the spec cites, and the capability index for the rest; the decision log's lines for this ticket and those capabilities, and a decision index for the rest; from round 2, its own earlier findings and the previous version; any ruling | APPROVE · REVISE · ESCALATE | the verdict; its findings are attached to the spec when it is pinned |
+-| Planner (`planner`) | the approved spec; the decision log's lines for this ticket and its capabilities, and a decision index for the rest; rulings; any sub-tickets that already exist | PLANNED · ESCALATE | the plan, `plans/<ticket>.md`, and one sub-ticket per piece, with its dependencies |
++| Spec writer (`spec_writer`) | triage's output, the request; current truth in full for the capabilities triage named, and the capability index for the rest; the whole decision log; after a revision request, the critic's findings and its own previous spec; the human's change requests from the gate; any human answer or ruling | READY-FOR-CRITIC · NEEDS-SPLIT · NEEDS-HUMAN | the spec, saved as its next version, `specs/<ticket>/v<n>.md` |
++| Spec critic (`critic`) | the spec version; current truth in full for the capabilities triage named or the spec cites, and the capability index for the rest; the whole decision log; from round 2, its own earlier findings and the previous version; any ruling | APPROVE · REVISE · ESCALATE | the verdict; its findings are attached to the spec when it is pinned |
++| Planner (`planner`) | the approved spec; the whole decision log; rulings; any sub-tickets that already exist | PLANNED · ESCALATE | the plan, `plans/<ticket>.md`, and one sub-ticket per piece, with its dependencies |
+ | Implementer (`implementer`) | where it works (its worktree, branch, base commit and the wrapped gate commands), the sub-ticket, the pinned spec; on a revision, both checkers' findings and the gate result | READY-FOR-REVIEW · BLOCKED | its commits on branch `factory/<sub-ticket>` and the head commit; the message itself is the PR description |
+ | Code reviewer (`reviewer`) | the sub-ticket, the pinned spec, the PR description, the diff; from round 2, both checkers' findings from the previous round; any ruling | APPROVE · REQUEST-CHANGES · ESCALATE | a verdict for that commit, `results/<commit>/reviewer.yaml` |
+ | Verifier (`verifier`) | the same as the code reviewer; the final run on a parent gets the spec, where it works, and any ruling | VERIFIED · FAILED · SPEC-DEFECT | a verdict for that commit, `verifier.yaml`, and the gate result, `ci.yaml` |
+diff --git a/docs/changelog.md b/docs/changelog.md
+index 6b3d210..c0cf9e8 100644
+--- a/docs/changelog.md
++++ b/docs/changelog.md
+@@ -62,5 +62,6 @@ Six review rounds ran on this doc, using the reviewer prompt in the appendix. Ro
+ 58. After issue #73 (2026-10-07), where the spec writer took a third of all workflow context tokens (309M of 866M; a median of 29 agent calls and 5.3M tokens per run), because every call re-sends the start-up context and everything read so far, and where the critic ran the test suite and built prototype clones of the change on its own initiative, though its grounding is meant to stay within two paths and one command per claim. The spec writer prompt gains a RULES bullet, Turn economy: put independent reads and commands in one turn, read a line range once grep has found it, send long output to a file in the run's scratch directory and grep or tail it, and write the spec in as few writes as possible. The critic's PROCESS keeps its minimum spot-check and caps any one claim at two paths and one command; it runs no test suite and builds nothing, and a claim it could settle only by building becomes a finding for the writer or a question. It gains the same reading rules. No rubric item, round limit or required spec section changes, and the shared preamble does not change. Rejected: a shared preamble line, which would reach every role.
+ 59. After issue #74 (2026-10-08), where the operator's replay of three past intakes (#49, #51, #57), with the same inputs and bases, found that #73's spec writer rules cut its tokens by about 37% at the same quality, but that its critic rules saved nothing (0.71M to 0.72M, 1.0M to 0.93M, 1.67M to 1.63M tokens) and made the critic check less: it missed the Nanobot `UV_PYTHON_INSTALL_DIR` risk on #51 and, on #57, the brace-list declaration bug that the earlier prompt had confirmed with a scratch git test. The critic's PROCESS drops the per-claim cap (at most two paths and one command for any one claim) and the no-build rule (no clone, worktree or prototype), and says the critic may run a small experiment in its scratch directory to confirm a finding. It keeps its minimum spot-check, the rule that it runs no test suite, the rule for picking an acceptance command, the rule that a claim needing a suite run or a build of the change is a finding or a question, and the three reading rules. `docs/principles.md` principle 2 keeps the critic's no-suite rule, and its Spiking section drops the two-path bound and says that vetting a whole approach is still the spec writer's or a spike's job. The spec writer prompt is unchanged from #73.
+ 60. After issue #75 (2026-10-08), where every spec writer and critic input carried all of current truth and the whole decision log, whatever its ticket touched: one spec writer input on this repo's store was 171.6 kB, of which 123.9 kB was current truth and 32.4 kB the log, and the Nanobot store adds about 480 kB to each writer input. Triage now receives the capability index, one line per current-truth capability with its size, spec path and requirement names, and names the capabilities a request touches on a new `Capabilities:` output line. The spec writer and critic receive those capabilities in full, plus each one their spec cites by path, and the capability index for the rest. They and the planner receive the decision-log lines of the ticket and of those capabilities, and a decision index for the rest: one line per other ticket, with a `grep` command that reads its lines. A ticket whose triage output has no `Capabilities:` line keeps the whole of both. The projection for the Nanobot store's last ten tickets is a mean writer input of 101 kB and a maximum of 167 kB, against 521 kB and 635 kB before; that still misses the request's 40 kB and 100 kB targets, because the rest of a writer input lies outside this change. Rejected: `factory spec show` and `factory decision show` commands, because a command run from inside a role must clear the live-store fence, the guard that refuses store commands while a role runs, and find the instance; a path needs neither.
++61. After issue #78 (2026-10-09), where #75's filter reduced every decision logged against another ticket to a line of the decision index, because no line in either store's decision log names a capability: in the operator's replay of a Nanobot ticket, the spec writer put new code in a module that another ticket's standing decision rules out, and the critic missed it. The spec writer, critic and planner receive the whole decision log again, whatever capabilities their ticket names. The decision index and its `grep` command are gone; the capability index stays. Measured on 2026-10-09, the decision part of each of their inputs grows from under 3 kB to about 36 kB on this repo's store, and from about 5 kB to about 80 kB on the Nanobot store. Rejected: the request's rule of sending in full the lines that name no capability and filtering the rest, because on today's logs it sends every line anyway, and it could still hide a cross-cutting decision that happens to name a capability.
+ 
+ Declined: a dedicated merge agent (merging is gate config plus human gates, not a judgment call).
+diff --git a/docs/design.md b/docs/design.md
+index f0c9315..c9bfdf3 100644
+--- a/docs/design.md
++++ b/docs/design.md
+@@ -91,7 +91,7 @@ The prompts say what each role does. The harness enforces the wiring rules: fres
+ | `tasks.md` | The sub-tickets and coverage map | Planner, or the harness when it skips the planner |
+ | `verification.md` (the artifact the fork adds) | The NEW or REGRESSION label of each scenario and the writer's Responses; every critic round's output; at archive, every verifier result recorded per head for the parent and its sub-tickets | Spec writer (labels, Responses), critic, verifier |
+ 
+-`decisions.md`, one per repo beside `openspec/`, is the decision log: one line per decision, with its ticket id. Roles return text and never write the tree; the harness writes it. The spec writer returns one document in parts (§2 FORMAT), and the store keeps every version. The human spec gate pins one version: it refuses a delta that does not apply to current truth, and writes the pinned version as the change folder, so the planner, implementer and verifier work from the delta the human approved. Labels and round-to-round churn stay in `verification.md`, out of the delta. **Archive** is the parent-close step. After the parent-close run returns VERIFIED, or a sub-ticket's VERIFIED run stands in for it (routing table, Merge gate row), the harness applies each delta to current truth (ADDED appends the requirement, MODIFIED replaces the requirement of that name whole, REMOVED deletes it), moves the folder to `openspec/changes/archive/<YYYY-MM-DD>-<ticket id>/`, and appends each line of the proposal's Decisions to `decisions.md` with the date and ticket id; then the parent closes. An archive refusal writes nothing and parks the parent. There are three: a delta that no longer applies (an ADDED name already in current truth, a MODIFIED or REMOVED name missing); no change folder, because the spec was pinned before the repo had an `openspec/` tree; and no spec store at all (no `openspec/` tree). Only the archive step writes current truth. `decisions.md` has three writers: archive; `factory decision add <ticket id> "<line>"`, which a human runs at any ticket state, closed included; and `resolve --answer` or `resolve --close` with `--decision "<line>"`. Each appends `<YYYY-MM-DD> <ticket id> <line>`, with the UTC date. Triage receives the capability index: one line per current-truth capability, with its size, the absolute path of its spec and its requirement names. Triage names the capabilities the request touches on its `Capabilities:` line. The spec writer and the critic receive those capabilities in full, plus each one whose `specs/<name>/spec.md` path the spec they work from cites, and the capability index for the rest (routing table). They and the planner receive the decision log's lines logged against the ticket or naming one of those capabilities, and a decision index for the rest: one line per other ticket, with the `grep` command that reads its lines from `decisions.md`. A ticket whose latest triage output has no `Capabilities:` line gets the whole of both: every current-truth spec, and `decisions.md` when it holds any text.
++`decisions.md`, one per repo beside `openspec/`, is the decision log: one line per decision, with its ticket id. Roles return text and never write the tree; the harness writes it. The spec writer returns one document in parts (§2 FORMAT), and the store keeps every version. The human spec gate pins one version: it refuses a delta that does not apply to current truth, and writes the pinned version as the change folder, so the planner, implementer and verifier work from the delta the human approved. Labels and round-to-round churn stay in `verification.md`, out of the delta. **Archive** is the parent-close step. After the parent-close run returns VERIFIED, or a sub-ticket's VERIFIED run stands in for it (routing table, Merge gate row), the harness applies each delta to current truth (ADDED appends the requirement, MODIFIED replaces the requirement of that name whole, REMOVED deletes it), moves the folder to `openspec/changes/archive/<YYYY-MM-DD>-<ticket id>/`, and appends each line of the proposal's Decisions to `decisions.md` with the date and ticket id; then the parent closes. An archive refusal writes nothing and parks the parent. There are three: a delta that no longer applies (an ADDED name already in current truth, a MODIFIED or REMOVED name missing); no change folder, because the spec was pinned before the repo had an `openspec/` tree; and no spec store at all (no `openspec/` tree). Only the archive step writes current truth. `decisions.md` has three writers: archive; `factory decision add <ticket id> "<line>"`, which a human runs at any ticket state, closed included; and `resolve --answer` or `resolve --close` with `--decision "<line>"`. Each appends `<YYYY-MM-DD> <ticket id> <line>`, with the UTC date. Triage receives the capability index: one line per current-truth capability, with its size, the absolute path of its spec and its requirement names. Triage names the capabilities the request touches on its `Capabilities:` line. The spec writer and the critic receive those capabilities in full, plus each one whose `specs/<name>/spec.md` path the spec they work from cites, and the capability index for the rest (routing table). They and the planner receive the whole decision log, `decisions.md`, when it holds any text, whatever capabilities the ticket names: a standing decision often names no capability, yet every ticket must follow it. A ticket whose latest triage output has no `Capabilities:` line gets every current-truth spec in full.
+ 
+ **Routing table.** The dispatcher (piece 2) is this table and nothing else. Each row: a STATUS a role emits, what runs next, and what it receives. "Receives" adds to the INPUT the role prompt already declares. Both follow the role-context block (above).
+ 
+diff --git a/factory/compose.py b/factory/compose.py
+index 16cafe6..213355c 100644
+--- a/factory/compose.py
++++ b/factory/compose.py
+@@ -138,8 +138,8 @@ def without_evidence(text: str) -> str:
+ CAPABILITY_INDEX_NOTE = (
+     "This list is complete: every current-truth capability not given in full above has one line here. Open a "
+     "capability at its path before you rely on it. A spec that cites a capability's path, as "
+-    "`openspec/specs/<name>/spec.md`, sends that capability in full to the critic, and the decisions that name it "
+-    "to the critic and the planner, so cite under Evidence each capability you open.")
++    "`openspec/specs/<name>/spec.md`, sends that capability in full to the critic, so cite under Evidence each "
++    "capability you open.")
+ 
+ _ENV_NAME = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
+ 
+@@ -223,36 +223,13 @@ def compose(root: Path, cfg: dict, meta: dict, t: dict) -> tuple[str, list[str]]
+             parts.append("\n## Capability index: current truth not given in full above\n\n" + CAPABILITY_INDEX_NOTE
+                          + "\n\n" + capability_index(rest))
+ 
+-    def add_decisions(sel: set[str] | None) -> None:
+-        # an empty log (the one `factory init` creates) carries nothing, so it is no input
++    def add_decisions() -> None:
++        # the whole log, whatever capabilities the ticket names: a standing decision often names no
++        # capability, yet every ticket must follow it (#78). An empty log (the one `factory init`
++        # creates) carries nothing, so it is no input.
+         p = root / "decisions.md"
+-        text = p.read_text(encoding="utf-8") if p.exists() else ""
+-        if not text.strip():
+-            return
+-        if sel is None:
++        if p.exists() and p.read_text(encoding="utf-8").strip():
+             add("decisions.md", "Decision log (decisions.md): standing decisions, read-only")
+-            return
+-        named = [re.compile(rf"(?<![A-Za-z0-9_-]){re.escape(c)}(?![A-Za-z0-9_-])") for c in sel]
+-        kept, rest = [], {}
+-        for line in filter(str.strip, text.splitlines()):
+-            f = line.split(maxsplit=2)
+-            # a line without a date and a ticket id cannot be indexed, so it is kept
+-            if len(f) < 3 or f[1] == tid or any(r.search(f[2]) for r in named):
+-                kept.append(line)
+-            else:
+-                rest.setdefault(f[1], []).append(f[0])
+-        if kept:
+-            add("decisions.md", "Decision log (decisions.md): the standing decisions logged against this ticket "
+-                f"or naming a capability given in full, read-only. The full log is `{p}`", lambda _: "\n".join(kept))
+-        if rest:
+-            def title(t_id: str) -> str:
+-                tp = store.ticket_path(root, t_id)
+-                return str(store.read_yaml(tp).get("title") or "") if tp.exists() else ""
+-            parts.append("\n## Decision index: decisions not given in full above\n\nThis list is complete: every "
+-                         "ticket with a decision not given in full above has one line here. Read a ticket's decisions "
+-                         f"with `grep ' <ticket id> ' {p}`.\n\n"
+-                         + "".join(f"- {k} ({len(d)} decision{'s' * (len(d) > 1)}, {min(d)} to {max(d)}): "
+-                                   f"{title(k)}".rstrip() + "\n" for k, d in rest.items()))
+     if role == "triage":
+         add(t["request"], "Request (raw, with any answers appended)")
+         every = current_truth(root)
+@@ -270,7 +247,7 @@ def compose(root: Path, cfg: dict, meta: dict, t: dict) -> tuple[str, list[str]]
+         add(t["request"], "Request (raw)")
+         sel = selected(f"specs/{tid}/v{version}.md" if version >= 1 else None)
+         add_truth(sel)
+-        add_decisions(sel)
++        add_decisions()
+         if rnd >= 1 and version >= 1:
+             crit = _runs_for(root, tid, "critic", run_id)
+             if crit:
+@@ -289,7 +266,7 @@ def compose(root: Path, cfg: dict, meta: dict, t: dict) -> tuple[str, list[str]]
+         add(f"specs/{tid}/v{version}.md", f"Spec under review (v{version})")
+         sel = selected(f"specs/{tid}/v{version}.md")
+         add_truth(sel)
+-        add_decisions(sel)
++        add_decisions()
+         if rnd >= 2 and version >= 2:
+             crit = _runs_for(root, tid, "critic", run_id)
+             if crit:
+@@ -312,7 +289,7 @@ def compose(root: Path, cfg: dict, meta: dict, t: dict) -> tuple[str, list[str]]
+         if av is None:
+             raise store.Refused(f"{tid} has no approved spec version")
+         add_spec(f"specs/{tid}/v{av}.md", f"Approved spec (v{av}, pinned)")
+-        add_decisions(selected(f"specs/{tid}/v{av}.md"))  # no current truth for the planner, so no index
++        add_decisions()  # no current truth for the planner, and the whole log
+         for p in _approvals(root, tid, "ruling"):
+             add(str(p.relative_to(root)), "Human ruling")
+         subs = store.subtickets_of(root, tid)
+diff --git a/tests/factory/test_capability_index.py b/tests/factory/test_capability_index.py
+index eb934a1..9ac00dd 100644
+--- a/tests/factory/test_capability_index.py
++++ b/tests/factory/test_capability_index.py
+@@ -1,11 +1,11 @@
+-"""The capability index and the decision index (spec-factory T-0036, issue #75).
++"""The capability index (spec-factory T-0036, issue #75) and the whole decision log (T-0037, #78).
+ 
+ Triage names the capabilities a request touches on a `Capabilities:` line, from a capability index
+ in its input. The spec writer and critic then receive those capabilities in full, plus the ones
+-their spec cites by `specs/<name>/spec.md`, and one index line for every other capability. The
+-writer, critic and planner receive the decision-log lines of their ticket and those capabilities,
+-and one index line per other ticket. A ticket whose triage output has no `Capabilities:` line keeps
+-the whole of both. Black-box through `bin/factory`.
++their spec cites by `specs/<name>/spec.md`, and one index line for every other capability. A ticket
++whose triage output has no `Capabilities:` line gets every capability in full. The writer, critic
++and planner receive the whole decision log whatever capabilities their ticket names: a standing
++decision often names no capability. Black-box through `bin/factory`.
+ """
+ from __future__ import annotations
+ 
+@@ -19,7 +19,6 @@ import yaml
+ REPO = Path(__file__).resolve().parents[2]
+ BIN = REPO / "bin" / "factory"
+ CAPS = ("alpha", "beta", "gamma")
+-CITES = "the decisions that name it to the critic and the planner"
+ SPEC = "\n".join([
+     "=== proposal.md", "## Problem", "Beta is lax.", "## Evidence", "Read `openspec/specs/gamma/spec.md`.",
+     "## Decisions", "none", "## Risk", "none", "=== design.md", "## Proposed change", "A. Tighten beta.",
+@@ -122,8 +121,7 @@ def test_writer_gets_the_named_capability_in_full_and_an_index_line_for_each_oth
+     head = ("\n## Capability index: current truth not given in full above\n\nThis list is complete: every "
+             "current-truth capability not given in full above has one line here. Open a capability at its path "
+             "before you rely on it. A spec that cites a capability's path, as `openspec/specs/<name>/spec.md`, "
+-            "sends that capability in full to the critic, and " + CITES + ", so cite under Evidence each "
+-            "capability you open.\n\n")
++            "sends that capability in full to the critic, so cite under Evidence each capability you open.\n\n")
+     assert head + index_line(s, "alpha") + index_line(s, "gamma") in text
+     assert sources(s, r["spec_writer"]) == [f"runs/{r['triage']}/output.md", "requests/T-0001.md",
+                                             "openspec/specs/beta/spec.md", "decisions.md"]
+@@ -189,53 +187,19 @@ def test_the_latest_finished_triage_run_decides(tmp_path):
+     assert "ALPHA-BODY" in text and "BETA-BODY" not in text
+ 
+ 
+-# ----- part B6: decision lines of this ticket and its capabilities, an index line per other ticket -
++# ----- the whole decision log, whatever capabilities the ticket names (T-0037) --------------------
+ 
+-def decision_block(store: Path, lines: list[str]) -> str:
+-    return ("\n## Decision log (decisions.md): the standing decisions logged against this ticket or naming a "
+-            f"capability given in full, read-only. The full log is `{store / 'decisions.md'}`\n\n"
+-            + "\n".join(lines) + "\n")
++WHOLE_LOG = "\n## Decision log (decisions.md): standing decisions, read-only\n\n"
+ 
+ 
+-def decision_index(store: Path, lines: list[str]) -> str:
+-    return ("\n## Decision index: decisions not given in full above\n\nThis list is complete: every ticket with "
+-            "a decision not given in full above has one line here. Read a ticket's decisions with "
+-            f"`grep ' <ticket id> ' {store / 'decisions.md'}`.\n\n" + "".join(f"{x}\n" for x in lines))
+-
+-
+-def test_each_role_gets_its_ticket_s_and_its_capabilities_decisions_and_an_index_of_the_rest(tmp_path):
+-    s, r = build(tmp_path, "Capabilities: beta")
+-    w = text_of(s, r["spec_writer"])
+-    assert decision_block(s, DECISIONS[:2]) in w
+-    assert decision_index(s, ["- T-0008 (1 decision, 2026-10-03 to 2026-10-03):",
+-                              "- T-0009 (2 decisions, 2026-10-04 to 2026-10-06):"]) in w
+-    for role in ("critic", "planner"):
+-        text = text_of(s, r[role])
+-        assert decision_block(s, DECISIONS[:3]) in text, role
+-        assert decision_index(s, ["- T-0009 (2 decisions, 2026-10-04 to 2026-10-06):"]) in text, role
++@pytest.mark.parametrize("caps_line", ["Capabilities: beta", "Capabilities: none"])
++def test_each_role_gets_the_whole_decision_log_and_no_decision_index(tmp_path, caps_line):
++    s, r = build(tmp_path, caps_line)
+     for role in ("spec_writer", "critic", "planner"):
+-        assert "OTHER-LINE" not in text_of(s, r[role]) and "OTHER2-LINE" not in text_of(s, r[role]), role
+-
+-
+-def test_a_decision_index_line_carries_the_ticket_s_title(tmp_path):
+-    s, r = build(tmp_path, "Capabilities: beta", ["2026-10-05 T-0002 later", "2026-10-04 T-0002 earlier"],
+-                 others=("Rotate the logs",))
+-    assert decision_index(s, ["- T-0002 (2 decisions, 2026-10-04 to 2026-10-05): Rotate the logs"]) \
+-        in text_of(s, r["spec_writer"])
+-
+-
+-def test_no_kept_line_leaves_only_the_index_and_no_decisions_source(tmp_path):
+-    s, r = build(tmp_path, "Capabilities: none", ["2026-10-04 T-0009 OTHER-LINE logs rotate weekly."])
+-    text = text_of(s, r["spec_writer"])
+-    assert "## Decision log" not in text and "OTHER-LINE" not in text
+-    assert decision_index(s, ["- T-0009 (1 decision, 2026-10-04 to 2026-10-04):"]) in text
+-    assert "decisions.md" not in sources(s, r["spec_writer"])
+-
+-
+-def test_every_line_kept_leaves_no_decision_index(tmp_path):
+-    s, r = build(tmp_path, "Capabilities: beta", DECISIONS[:2])
+-    text = text_of(s, r["spec_writer"])
+-    assert decision_block(s, DECISIONS[:2]) in text and "Decision index" not in text
++        text = text_of(s, r[role])
++        assert WHOLE_LOG + "\n".join(DECISIONS) + "\n" in text, role
++        assert "Decision index" not in text and "<ticket id>" not in text, role
++        assert "decisions.md" in sources(s, r[role]), role
+ 
+ 
+ def test_a_whitespace_only_log_still_adds_nothing(tmp_path):

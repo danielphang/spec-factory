@@ -1,0 +1,16 @@
+run_id: run-0344-triage
+role: triage
+ticket: T-0037
+model: opus
+round: 0
+spec_version: 0
+started: '2026-10-09T04:50:55+00:00'
+finished: '2026-10-09T04:53:02+00:00'
+wall_s: 127
+status: NEEDS-HUMAN
+input_sources:
+- requests/T-0037.md
+confidence: 'high. The duplicate search found only this ticket (T-0037 is #78). I measured the zero-match
+  finding on both stores and checked it a second way.'
+escalations: []
+escalations_note: null

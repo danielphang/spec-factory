@@ -1,0 +1,48 @@
+id: T-0037.1
+type: sub-ticket
+title: 'Send the whole decision log to the spec writer, critic and planner again, removing #75''s decision
+  filter (#75 follow-up)'
+request: requests/T-0037.md
+source: plan:whole-spec
+status: merged
+round:
+  spec: 0
+  pr: 1
+spec:
+  version: 2
+  approved_version: 2
+plan: null
+in_flight: []
+parked: null
+created: '2026-10-09T05:26:54+00:00'
+history:
+- ts: '2026-10-09T05:42:52+00:00'
+  from: ready-for-implementer
+  to: checks-in-flight
+  by: workflow
+  round:
+    spec: 0
+    pr: 1
+- ts: '2026-10-09T05:56:01+00:00'
+  from: checks-in-flight
+  to: ready-for-merge
+  by: workflow
+  round:
+    spec: 0
+    pr: 1
+- ts: '2026-10-09T05:56:12+00:00'
+  from: ready-for-merge
+  to: merged
+  by: merge
+  head: 2f3fcef2f7a433585b85e99aedf9302133c01002
+parent: T-0037
+depends_on: []
+parallel_safe: true
+branch: factory/T-0037.1
+head: 2f3fcef2f7a433585b85e99aedf9302133c01002
+merge:
+  base_before: 51e2af7f1737f5fc4d9780ea725710dc1112702f
+  main_after: 76707edf355e23743beb4326aa4c4bc660efdc9e
+parent_base: null
+label: whole-spec
+merge_refused: null

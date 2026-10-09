@@ -1,0 +1,31 @@
+run_id: run-0352-spec_writer
+role: spec_writer
+ticket: T-0038
+model: opus
+round: 2
+spec_version: 1
+started: '2026-10-09T05:19:33+00:00'
+finished: '2026-10-09T05:23:23+00:00'
+wall_s: 230
+status: READY-FOR-CRITIC
+input_sources:
+- runs/run-0345-triage/output.md
+- requests/T-0038.md
+- openspec/specs/build-dispatch/spec.md
+- openspec/specs/gate-commands/spec.md
+- openspec/specs/harness-docs/spec.md
+- openspec/specs/harness-suite/spec.md
+- openspec/specs/human-resolution/spec.md
+- openspec/specs/live-store-guard/spec.md
+- openspec/specs/merge-gate/spec.md
+- openspec/specs/role-escalations/spec.md
+- openspec/specs/role-inputs/spec.md
+- openspec/specs/store-setup/spec.md
+- openspec/specs/sub-ticket-planning/spec.md
+- decisions.md
+- runs/run-0350-critic/output.md
+- specs/T-0038/v1.md
+confidence: high. Round 2 changes only wording that the critic named. `main` is unchanged at `51e2af7`,
+  and three NEW items re-run on it this round printed the recorded "today" output.
+escalations: []
+escalations_note: null

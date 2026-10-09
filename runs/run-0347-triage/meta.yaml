@@ -1,0 +1,18 @@
+run_id: run-0347-triage
+role: triage
+ticket: T-0037
+model: opus
+round: 0
+spec_version: 0
+started: '2026-10-09T05:00:13+00:00'
+finished: '2026-10-09T05:01:24+00:00'
+wall_s: 71
+status: ACCEPT
+input_sources:
+- requests/T-0037.md
+- runs/run-0344-triage/output.md
+confidence: high. The answer chooses one option explicitly and is already logged as a standing decision
+  (`decisions.md` line 109). I re-read the filter code, the role-inputs spec and the docs lines on this
+  checkout.
+escalations: []
+escalations_note: null

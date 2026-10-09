@@ -1,0 +1,26 @@
+run_id: run-0357-verifier
+role: verifier
+ticket: T-0037.1
+model: opus
+round: 1
+spec_version: 2
+started: '2026-10-09T05:43:09+00:00'
+finished: '2026-10-09T05:55:23+00:00'
+wall_s: 734
+status: VERIFIED
+input_sources:
+- specs/T-0037.1/subticket.md
+- specs/T-0037/v2.md
+- runs/run-0355-implementer/output.md
+- runs/run-0357-verifier/diff.patch
+gate_skipped: []
+environment_files: []
+branch: factory/T-0037.1
+base: 51e2af7f1737f5fc4d9780ea725710dc1112702f
+head: 2f3fcef2f7a433585b85e99aedf9302133c01002
+worktree: /Users/dphang/dev/spec-factory/.factory/store/runs/run-0357-verifier/wt
+confidence: high, because each acceptance command printed its THEN exactly on `2f3fcef`, both NEW commands
+  printed the stated failure on `51e2af7`, both gates passed, and the probes showed the whole log passes
+  through verbatim whatever the Capabilities line says.
+escalations: []
+escalations_note: null

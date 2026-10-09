@@ -1,0 +1,30 @@
+run_id: run-0346-spec_writer
+role: spec_writer
+ticket: T-0038
+model: opus
+round: 0
+spec_version: 0
+started: '2026-10-09T04:53:20+00:00'
+finished: '2026-10-09T05:12:01+00:00'
+wall_s: 1121
+status: READY-FOR-CRITIC
+input_sources:
+- runs/run-0345-triage/output.md
+- requests/T-0038.md
+- openspec/specs/build-dispatch/spec.md
+- openspec/specs/gate-commands/spec.md
+- openspec/specs/harness-docs/spec.md
+- openspec/specs/harness-suite/spec.md
+- openspec/specs/human-resolution/spec.md
+- openspec/specs/live-store-guard/spec.md
+- openspec/specs/merge-gate/spec.md
+- openspec/specs/role-escalations/spec.md
+- openspec/specs/role-inputs/spec.md
+- openspec/specs/store-setup/spec.md
+- openspec/specs/sub-ticket-planning/spec.md
+- decisions.md
+confidence: high. Every scenario was run on `main` and printed what is stated. Every code scenario was
+  run on a scratch prototype of parts A-E and printed its THEN, and that prototype passed the full suite
+  (384 passed). The documents scenario was not run against an edited document.
+escalations: []
+escalations_note: null

@@ -1,0 +1,31 @@
+run_id: run-0354-critic
+role: critic
+ticket: T-0038
+model: fable
+round: 2
+spec_version: 2
+started: '2026-10-09T05:23:50+00:00'
+finished: '2026-10-09T05:26:19+00:00'
+wall_s: 149
+status: APPROVE
+input_sources:
+- specs/T-0038/v2.md
+- openspec/specs/build-dispatch/spec.md
+- openspec/specs/gate-commands/spec.md
+- openspec/specs/harness-docs/spec.md
+- openspec/specs/harness-suite/spec.md
+- openspec/specs/human-resolution/spec.md
+- openspec/specs/live-store-guard/spec.md
+- openspec/specs/merge-gate/spec.md
+- openspec/specs/role-escalations/spec.md
+- openspec/specs/role-inputs/spec.md
+- openspec/specs/store-setup/spec.md
+- openspec/specs/sub-ticket-planning/spec.md
+- decisions.md
+- runs/run-0350-critic/output.md
+- specs/T-0038/v1.md
+confidence: high; the round-1 findings are fixed exactly as described, the only changed text is wording
+  in proposal.md and I read all of it, the two no-suite acceptance commands ran as written and matched,
+  and the design, specs and acceptance are byte-identical to the v1 I spot-checked against the code.
+escalations: []
+escalations_note: null

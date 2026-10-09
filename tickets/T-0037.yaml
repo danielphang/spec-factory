@@ -1,0 +1,100 @@
+id: T-0037
+type: bug
+title: 'Send the whole decision log to the spec writer, critic and planner again, removing #75''s decision
+  filter (#75 follow-up)'
+request: requests/T-0037.md
+source: /private/tmp/claude-501/-Users-dphang-dev-nanobot/c69bfd1d-97a6-43e3-9d5a-a517c28d382c/scratchpad/req-78.md
+status: closed
+round:
+  spec: 2
+  pr: 0
+spec:
+  version: 2
+  approved_version: 2
+plan: plans/T-0037.md
+in_flight: []
+parked: null
+created: '2026-10-09T04:50:28+00:00'
+history:
+- ts: '2026-10-09T04:53:11+00:00'
+  from: ready-for-triage
+  to: parked
+  by: park
+  reason: NEEDS-HUMAN from triage
+- ts: '2026-10-09T04:59:48+00:00'
+  from: parked
+  to: ready-for-triage
+  by: dphang
+  resolve: answer
+  answer: 1
+  decision: '2026-10-09 T-0037 Decision log in role inputs (#78, T-0037): the spec writer, critic and
+    planner get decisions.md whole; #75''s decision filter is removed; any future scoping must not be
+    able to drop a cross-cutting standing decision (see #54).'
+- ts: '2026-10-09T05:01:34+00:00'
+  from: ready-for-triage
+  to: ready-for-spec-writer
+  by: workflow
+  round:
+    spec: 0
+    pr: 0
+- ts: '2026-10-09T05:11:42+00:00'
+  from: ready-for-spec-writer
+  to: ready-for-critic
+  by: workflow
+  round:
+    spec: 1
+    pr: 0
+- ts: '2026-10-09T05:16:19+00:00'
+  from: ready-for-critic
+  to: ready-for-spec-writer
+  by: workflow
+  round:
+    spec: 2
+    pr: 0
+- ts: '2026-10-09T05:23:41+00:00'
+  from: ready-for-spec-writer
+  to: ready-for-critic
+  by: workflow
+  round:
+    spec: 2
+    pr: 0
+- ts: '2026-10-09T05:26:14+00:00'
+  from: ready-for-critic
+  to: awaiting-spec-gate
+  by: workflow
+  round:
+    spec: 2
+    pr: 0
+- ts: '2026-10-09T05:26:30+00:00'
+  from: awaiting-spec-gate
+  to: ready-for-planner
+  by: dphang
+  approved_version: 2
+- ts: '2026-10-09T05:27:02+00:00'
+  from: ready-for-planner
+  to: planned
+  by: workflow
+  round:
+    spec: 2
+    pr: 0
+- ts: '2026-10-09T05:56:31+00:00'
+  from: planned
+  to: ready-for-parent-verify
+  by: parent-check
+- ts: '2026-10-09T05:57:02+00:00'
+  from: ready-for-parent-verify
+  to: closed
+  by: workflow
+  round:
+    spec: 2
+    pr: 0
+  verified_by: run-0357-verifier
+parent: null
+depends_on: []
+parallel_safe: true
+branch: null
+head: null
+merge:
+  base_before: null
+  main_after: null
+parent_base: 51e2af7f1737f5fc4d9780ea725710dc1112702f
