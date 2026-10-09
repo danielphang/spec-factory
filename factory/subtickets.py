@@ -39,21 +39,30 @@ def _is_heading(line: str) -> bool:
     return bool(re.match(r"^#{1,4}\s+\S", line))
 
 
+def field_text(text: str, name: str) -> str:
+    """The lines of a sub-ticket's plan field `name` (one of PLAN_FIELDS, lower case), joined: from
+    the field's own line to the next plan field or heading. "" when the text has no such field."""
+    lines: list[str] = []
+    inside = False
+    for line in text.splitlines():
+        f = FIELD_RE.match(line)
+        if (f and f.group(1).strip().lower() in PLAN_FIELDS) or _is_heading(line):
+            inside = bool(f) and f.group(1).strip().lower() == name
+        if inside:
+            lines.append(line)
+    return "\n".join(lines)
+
+
 def sibling_tests(text: str) -> list[str]:
     """The test files a sub-ticket's "Tests to change" field lists as added by an earlier sibling
     (`` `<file>[::<test>]` (added by <ID>) ``), in order, without repeats. The field runs from its
     own line to the next plan field or heading; the same form anywhere else is ignored."""
     paths: list[str] = []
-    inside = False
-    for line in text.splitlines():
-        f = FIELD_RE.match(line)
-        if (f and f.group(1).strip().lower() in PLAN_FIELDS) or _is_heading(line):
-            inside = bool(f) and f.group(1).strip().lower() == "tests to change"
-        if inside:
-            for m in SIBLING_TEST_RE.finditer(line):
-                path = m.group(1).split("::", 1)[0]
-                if path not in paths:
-                    paths.append(path)
+    for line in field_text(text, "tests to change").splitlines():
+        for m in SIBLING_TEST_RE.finditer(line):
+            path = m.group(1).split("::", 1)[0]
+            if path not in paths:
+                paths.append(path)
     return paths
 
 

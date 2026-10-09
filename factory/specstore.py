@@ -320,6 +320,76 @@ def decisions_of(proposal: str) -> list[str]:
     return out
 
 
+# ----- what an amendment may change (`factory spec amend`) ------------------------------------
+
+def scenario_blocks(text: str) -> dict[str, str]:
+    """`#### Scenario: <name>` → its block (the heading through the line before the next `##`,
+    `###` or `####` heading outside fences), over every delta part of a spec version."""
+    out: dict[str, str] = {}
+    for path, body in split_parts(text):
+        if not DELTA_RE.match(path):
+            continue
+        name, buf = None, []
+        for line, in_fence in lines_outside_fences(body):
+            if _heading(line, in_fence):
+                if name is not None:
+                    out[name] = "\n".join(buf).rstrip()
+                m = SCEN_RE.match(line)
+                name, buf = (m.group(1), [line]) if m else (None, [])
+                continue
+            if name is not None:
+                buf.append(line)
+        if name is not None:
+            out[name] = "\n".join(buf).rstrip()
+    return out
+
+
+def _collapsed(s: str) -> str:
+    return " ".join(s.split())
+
+
+def intent_of(text: str) -> tuple[str, list[str], dict[tuple[str, str, str], str]]:
+    """A spec version's intent: the `## Problem` body of proposal.md; its Decisions lines; and per
+    (capability, op, requirement name), the requirement block up to its first `#### Scenario:` line
+    outside fences. Each with whitespace runs collapsed."""
+    parts = dict(split_parts(text))
+    problem, inside = [], False
+    for line, in_fence in lines_outside_fences(parts.get("proposal.md", "")):
+        if not in_fence and line.startswith("## "):
+            inside = line.startswith("## Problem")
+            continue
+        if inside:
+            problem.append(line)
+    decisions = [_collapsed(d) for d in decisions_of(parts.get("proposal.md", ""))]
+    reqs: dict[tuple[str, str, str], str] = {}
+    for path, body in parts.items():
+        m = DELTA_RE.match(path)
+        if not m:
+            continue
+        for op, blocks in parse_delta(body)[0].items():
+            for name, block in blocks.items():
+                statement = []
+                for line, in_fence in lines_outside_fences(block):
+                    if not in_fence and SCEN_RE.match(line):
+                        break
+                    statement.append(line)
+                reqs[(m.group(1), op, name)] = _collapsed("\n".join(statement))
+    return _collapsed("\n".join(problem)), decisions, reqs
+
+
+def intent_changes(old: str, new: str) -> list[str]:
+    """Each way `new` changes `old`'s intent (`intent_of`); empty when the intent is unchanged."""
+    (op_, od, orq), (np_, nd, nrq) = intent_of(old), intent_of(new)
+    changes = ["the Problem section"] if op_ != np_ else []
+    changes += [f"Decisions line removed: {d}" for d in od if d not in nd]
+    changes += [f"Decisions line added: {d}" for d in nd if d not in od]
+    changes += [f"requirement removed: {c} {o} {n}" for (c, o, n) in orq if (c, o, n) not in nrq]
+    changes += [f"requirement added: {c} {o} {n}" for (c, o, n) in nrq if (c, o, n) not in orq]
+    changes += [f"requirement restated: {c} {o} {n}" for (c, o, n), s in orq.items()
+                if (c, o, n) in nrq and nrq[(c, o, n)] != s]
+    return changes
+
+
 def apply_delta(truth: str, capability: str, ops: dict[str, dict[str, str]]) -> str:
     if not truth.strip():
         truth = f"# {capability}\n\n## Requirements\n"
