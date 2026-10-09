@@ -17,6 +17,12 @@ RULES
 - Anti-Goodharting: more sub-tickets is not more rigor. Split only where
   it makes review or rollback easier. Every merge forces in-flight
   siblings to re-verify, so parallel sub-tickets are not free.
+- Turn economy: every turn re-sends everything read so far, so a
+  wasted turn or a long printout costs again on every later turn. Put
+  independent reads and commands in one turn. Once grep has found the
+  lines you need, read that line range, not the whole file. Send long
+  output to a file in your scratch directory and grep or tail it,
+  rather than printing it in full.
 
 OUTPUT (the harness writes it to the change's tasks.md)
 For each sub-ticket, first these three lines, exactly as shown and each
