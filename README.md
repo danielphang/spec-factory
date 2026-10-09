@@ -121,7 +121,7 @@ agent hosts is under "Where this can go".
 | sub-ticket | one independently mergeable piece of a planned ticket; `T-0012.4` |
 | gate | a point where a human must decide before the pipeline continues; the spec gate is the main one |
 | gate commands | the target's own check commands, such as lint and tests (`gate_commands` in `instance.yaml`); the verifier runs them and records the gate result. No human is involved |
-| merge gate | the harness's check before a merge: both verdicts and the gate result on the same commit, which is the branch's tip and contains the integration branch. No human is involved |
+| merge gate | the harness's check before a merge: both verdicts and the gate result on the same commit, which is the branch's tip and contains the integration branch, and every protected path the change touches declared in the approved spec. A protected path is one `instance.yaml` lists under `protected_paths` because a change to it is sensitive, such as the harness's own code. No human is involved, except that a refusal for an undeclared protected path parks the sub-ticket for a human |
 | checker | the code reviewer or the verifier: a role that judges a commit and cannot change it |
 | parent | a ticket that has sub-tickets; its final check verifies the whole spec |
 | PR description | the implementer's final report on what it changed; there is no pull request in local mode |
@@ -480,12 +480,15 @@ The harness changes git in five ways, all local; it never pushes.
   - the commit is the branch's tip;
   - the gate result is PASS, the reviewer's verdict APPROVE and the verifier's VERIFIED, all on
     that commit;
+  - every protected path the change touches is declared on the `Protected paths:` line of the
+    approved spec's Risk section, or a human accepted it for this sub-ticket;
   - the commit contains the integration branch's current tip.
 
   It checks the last condition and merges under a lock, so two merges never interleave. A passing
   sub-ticket is merged with `git merge --no-ff`, and its message names the branch, the title and
   the id. Only the last refusal is recorded on the ticket: the sub-ticket goes back to its
-  implementer to merge the integration branch in, and both checks run again.
+  implementer to merge the integration branch in, and both checks run again. A refusal for an
+  undeclared protected path changes nothing on the ticket; the build parks the sub-ticket with it.
 - **Setting up the store.** `factory init` checks `factory-store` out as a worktree at the store's
   path, creating the branch with no history when none exists, and adds the path to the repo's git
   exclude file. `factory store migrate` creates the branch from an existing store, with one commit.
@@ -791,7 +794,7 @@ FACTORY_DISPATCH=1 $RUNTIME/bin/factory run finish <run> --status-override KILLE
 |---|---|---|
 | **File** | `factory ticket new --file <abs path>` | that this request is worth a ticket |
 | **Gate** | `factory approve-spec T-n [--edit F]` · `factory request-changes T-n F` · close | the spec's intent, risk declarations, operator steps, "tests to change"; a gate edit becomes a new spec version and is what gets pinned |
-| **Unstick** | `factory resolve T-n --answer F` (a role asked a question) · `--ruling F` (a role escalated, an implementer reported itself blocked, or the harness blocked an implementer whose sub-ticket lists a test no merged sibling added) · `--redispatch` (re-run the checks on the same commit after an outside fix, or after a checker ended without output twice) · `--replan F` (the final check failed after every sub-ticket merged: back to the planner with a note; new sub-tickets take the next free ids) · `--to spec-gate` · `--close`; with `--answer` or `--close`, add `--decision "<line>"` to also record the answer as a standing decision | an answer, a ruling, a re-check, a re-plan, a re-scope, or closing |
+| **Unstick** | `factory resolve T-n --answer F` (a role asked a question) · `--ruling F` (a role escalated, an implementer reported itself blocked, or the harness blocked an implementer whose sub-ticket lists a test no merged sibling added; a ruling on the code reviewer's escalation re-runs the checks, with the ruling in their input) · `--accept-paths F` (the merge gate refused a protected path the approved spec does not declare: accept it under the approved design, and the sub-ticket returns to its checks; `--ruling F` sends the sub-ticket back to its implementer instead) · `--redispatch` (re-run the checks on the same commit after an outside fix, or after a checker ended without output twice) · `--replan F` (the final check failed after every sub-ticket merged: back to the planner with a note; new sub-tickets take the next free ids) · `--to spec-gate` · `--close`; with `--answer` or `--close`, add `--decision "<line>"` to also record the answer as a standing decision | an answer, a ruling, an accepted protected path, a re-check, a re-plan, a re-scope, or closing |
 | **Record** | `factory decision add T-n "<line>"`, at any ticket state, closed included. It appends one dated line to the target's decision log, `decisions.md`, which the spec writer, critic and planner receive with their input | that a decision binds later tickets |
 | **Upgrade** | `factory --accept-harness <sha> <command>` | that this target adopts a new harness revision |
 
@@ -871,6 +874,13 @@ path above is relative to the store.
   diff and leaves the test suite and the gate commands to the verifier. Every role is told to wait
   for the commands it starts before it ends its turn. It is tested, and has not yet fired on a real
   ticket.
+- **Protected paths at merge.** The merge gate refuses a change to a protected path that the
+  approved spec does not declare on the `Protected paths:` line of its Risk section, and names
+  each such path. The human approves that line at the spec gate, so a declared path merges with
+  no further approval. A refused sub-ticket parks as blocked. The human answers with
+  `resolve --accept-paths F`, which accepts the paths for that sub-ticket and returns it to its
+  checks, whose passing results stand, or with `resolve --ruling F`, which sends it back to its
+  implementer. It is tested, and has not yet fired on a real ticket.
 
 **Not built**
 

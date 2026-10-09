@@ -84,7 +84,10 @@ openspec/changes/<ticket id>/ (schema spec-factory).
 ## Open questions   none | list
 ## Decisions        none | one line per design call this change makes,
                     including each answered open question
-## Risk             blast radius; every protected path this will touch
+## Risk             blast radius; every protected path this will touch,
+                    declared on one line the merge gate reads:
+                    Protected paths: none | `<path or glob>`, `<path or glob>`
+                    one path or glob per entry, no brace lists
 ## Operator steps   (optional) actions or checks on live or protected state
                     that only the operator can perform, after merge; not
                     acceptance; the human approves them at the spec gate

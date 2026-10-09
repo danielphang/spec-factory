@@ -93,8 +93,12 @@ def diff(repo: Path, base: str, head: str) -> str:
     return git(repo, "diff", f"{base}...{head}")
 
 
-def changed_files(repo: Path, base: str, head: str) -> list[str]:
-    out = git(repo, "diff", "--name-only", f"{base}...{head}")
+def changed_files(repo: Path, base: str, head: str, globs: list[str]) -> list[str]:
+    """The paths `base...head` changes (from the merge base) that match one of `globs`, git glob
+    pathspecs (`**` crosses directories, `*` does not). A move lists both its sides. No glob: none."""
+    if not globs:
+        return []
+    out = git(repo, "diff", "--name-only", "--no-renames", f"{base}...{head}", "--", *(f":(glob){g}" for g in globs))
     return [ln for ln in out.splitlines() if ln]
 
 

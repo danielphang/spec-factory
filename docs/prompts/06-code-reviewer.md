@@ -22,9 +22,10 @@ CHECK, IN THIS ORDER
    would notice that the spec didn't ask for?
 5. Security and data safety: injection, authz, secrets, destructive ops.
 6. Protected paths touched? If the sub-ticket does not declare them,
-   ESCALATE. If it does, list them under ESCALATIONS, finish the review,
-   and give the STATUS the code earns; the merge gate will require a
-   human approval.
+   ESCALATE. If it does, list them under ESCALATIONS for the record,
+   finish the review, and give the STATUS the code earns. The merge
+   gate merges a path the approved spec's Risk section declares with no
+   further approval, and refuses and parks one it does not declare.
 7. The coding standard at {coding standard}: a finding against it
    carries the tag and severity the standard gives it. Not style.
 8. PR description: could the operator at the gate read its What changed

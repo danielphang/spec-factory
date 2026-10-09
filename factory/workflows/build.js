@@ -194,6 +194,9 @@ async function buildOne(st) {
       await transition(st, 'ready-for-merge', null, 'Build')
       const m = await clerk(`${BIN} merge ${st}`, 'Build', `merge ${st}`)
       if (m.ok) { log(`${st} merged: ${m.main_after}`); return }
+      // A refusal that starts `BLOCKED ` is the merge gate blocking the merge (an undeclared protected
+      // path): park with it verbatim, for `resolve --accept-paths` or `resolve --ruling`.
+      if (typeof m.error === 'string' && m.error.startsWith('BLOCKED ')) { await park(st, m.error, outs, 'Build'); return }
       // The gate refused. Ask the join again: a moved integration branch is a conflict run, bounded there.
       const again = await clerk(`${BIN} ticket join ${st}`, 'Build', `join ${st} after refusal`)
       if (again.ok && again.decision === 'conflict') { await transition(st, 'ready-for-implementer', null, 'Build'); continue }
