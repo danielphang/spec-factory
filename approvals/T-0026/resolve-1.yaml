@@ -1,0 +1,7 @@
+by: dphang
+at: '2026-10-09T06:50:33+00:00'
+kind: close
+from: ready-for-planner
+to: closed
+decision: '2026-10-09 T-0026 T-0026 (#47) withdrawn: merged into #65 at the backlog review 2026-10-09;
+  the Workflow scripts it would change retire with #65.'

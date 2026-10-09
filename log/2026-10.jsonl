@@ -1860,3 +1860,30 @@
 {"ts": "2026-10-09T06:20:01+00:00", "event": "ticket.transition", "ticket": "T-0038", "from": "planned", "to": "ready-for-parent-verify", "by": "parent-check"}
 {"ts": "2026-10-09T06:20:25+00:00", "event": "change.archived", "ticket": "T-0038", "archived_to": "openspec/changes/archive/2026-10-09-T-0038", "capabilities": ["build-dispatch", "harness-docs", "human-resolution", "sub-ticket-planning"], "decisions": 10}
 {"ts": "2026-10-09T06:20:35+00:00", "event": "ticket.transition", "ticket": "T-0038", "from": "ready-for-parent-verify", "to": "closed", "by": "workflow", "round": {"spec": 2, "pr": 0}}
+{"ts": "2026-10-09T06:21:21+00:00", "event": "ticket.created", "ticket": "T-0033.1", "parent": "T-0033", "status": "ready-for-implementer"}
+{"ts": "2026-10-09T06:21:21+00:00", "event": "tasks.written", "ticket": "T-0033", "source": "plan:whole-spec"}
+{"ts": "2026-10-09T06:21:21+00:00", "event": "plan.skipped", "ticket": "T-0033", "subticket": "T-0033.1", "reason": "one sub-ticket: no NEEDS-SPLIT, no seam heading, no earlier planner run"}
+{"ts": "2026-10-09T06:21:34+00:00", "event": "ticket.transition", "ticket": "T-0033", "from": "ready-for-planner", "to": "planned", "by": "workflow", "round": {"spec": 2, "pr": 0}}
+{"ts": "2026-10-09T06:22:02+00:00", "event": "run.started", "ticket": "T-0033.1", "run": "run-0361-implementer", "role": "implementer", "model": "opus"}
+{"ts": "2026-10-09T06:37:55+00:00", "event": "run.finished", "ticket": "T-0033.1", "run": "run-0361-implementer", "role": "implementer", "status": "READY-FOR-REVIEW", "wall_s": 953}
+{"ts": "2026-10-09T06:38:15+00:00", "event": "ticket.transition", "ticket": "T-0033.1", "from": "ready-for-implementer", "to": "checks-in-flight", "by": "workflow", "round": {"spec": 0, "pr": 1}}
+{"ts": "2026-10-09T06:38:32+00:00", "event": "run.started", "ticket": "T-0033.1", "run": "run-0362-verifier", "role": "verifier", "model": "opus"}
+{"ts": "2026-10-09T06:38:33+00:00", "event": "run.started", "ticket": "T-0033.1", "run": "run-0363-reviewer", "role": "reviewer", "model": "fable"}
+{"ts": "2026-10-09T06:43:43+00:00", "event": "run.finished", "ticket": "T-0033.1", "run": "run-0363-reviewer", "role": "reviewer", "status": "APPROVE", "wall_s": 310}
+{"ts": "2026-10-09T06:43:43+00:00", "event": "escalation.queued", "ticket": "T-0033.1", "run": "run-0363-reviewer", "items": ["for the record, declared protected paths touched (all on T-0033 v2's `Protected paths:` line): `factory/cli.py`, `factory/gitops.py`, `factory/workflows/build.js`, `factory/prompts/reviewer.md`, `factory/prompts/spec_writer.md`, `docs/prompts/02-spec-writer.md`, `docs/prompts/06-code-reviewer.md`"]}
+{"ts": "2026-10-09T06:44:05+00:00", "event": "result.recorded", "ticket": "T-0033.1", "head": "ba3fea8154f74ccd5007fd25d18f8215e0b7f000", "role": "reviewer", "status": "APPROVE", "run": "run-0363-reviewer"}
+{"ts": "2026-10-09T06:48:13+00:00", "event": "run.finished", "ticket": "T-0033.1", "run": "run-0362-verifier", "role": "verifier", "status": "VERIFIED", "wall_s": 581}
+{"ts": "2026-10-09T06:48:32+00:00", "event": "result.recorded", "ticket": "T-0033.1", "head": "ba3fea8154f74ccd5007fd25d18f8215e0b7f000", "role": "verifier", "status": "VERIFIED", "run": "run-0362-verifier"}
+{"ts": "2026-10-09T06:48:32+00:00", "event": "result.recorded", "ticket": "T-0033.1", "head": "ba3fea8154f74ccd5007fd25d18f8215e0b7f000", "role": "ci", "status": "PASS", "run": "run-0362-verifier"}
+{"ts": "2026-10-09T06:48:55+00:00", "event": "ticket.transition", "ticket": "T-0033.1", "from": "checks-in-flight", "to": "ready-for-merge", "by": "workflow", "round": {"spec": 0, "pr": 1}}
+{"ts": "2026-10-09T06:49:04+00:00", "event": "merge.done", "ticket": "T-0033.1", "head": "ba3fea8154f74ccd5007fd25d18f8215e0b7f000", "base_before": "2f7f75f3961d2bd20b2fb106bd587ff94dd7621f", "main_after": "2e078481dbd168dfbfb787ab920243ee3c24b0af"}
+{"ts": "2026-10-09T06:49:23+00:00", "event": "ticket.transition", "ticket": "T-0033", "from": "planned", "to": "ready-for-parent-verify", "by": "parent-check"}
+{"ts": "2026-10-09T06:49:40+00:00", "event": "change.archived", "ticket": "T-0033", "archived_to": "openspec/changes/archive/2026-10-09-T-0033", "capabilities": ["build-dispatch", "harness-docs", "human-resolution", "merge-gate", "role-escalations"], "decisions": 12}
+{"ts": "2026-10-09T06:49:49+00:00", "event": "ticket.transition", "ticket": "T-0033", "from": "ready-for-parent-verify", "to": "closed", "by": "workflow", "round": {"spec": 2, "pr": 0}}
+{"ts": "2026-10-09T06:50:33+00:00", "event": "human.resolved", "ticket": "T-0030.1", "kind": "close", "by": "dphang", "from": "parked", "to": "closed"}
+{"ts": "2026-10-09T06:50:33+00:00", "event": "human.resolved", "ticket": "T-0030.2", "kind": "close", "by": "dphang", "from": "waiting-dependencies", "to": "closed"}
+{"ts": "2026-10-09T06:50:33+00:00", "event": "human.resolved", "ticket": "T-0030.4", "kind": "close", "by": "dphang", "from": "waiting-dependencies", "to": "closed"}
+{"ts": "2026-10-09T06:50:33+00:00", "event": "decision.recorded", "ticket": "T-0030", "by": "dphang", "line": "2026-10-09 T-0030 T-0030 (#24 A+C) closed as partly applied: part C merged (T-0030.3); parts A, B and per-role effort moved to #65 (backlog review 2026-10-09). Current truth was not folded for this ticket.", "via": "resolve --close"}
+{"ts": "2026-10-09T06:50:33+00:00", "event": "human.resolved", "ticket": "T-0030", "kind": "close", "by": "dphang", "from": "planned", "to": "closed"}
+{"ts": "2026-10-09T06:50:33+00:00", "event": "decision.recorded", "ticket": "T-0026", "by": "dphang", "line": "2026-10-09 T-0026 T-0026 (#47) withdrawn: merged into #65 at the backlog review 2026-10-09; the Workflow scripts it would change retire with #65.", "via": "resolve --close"}
+{"ts": "2026-10-09T06:50:33+00:00", "event": "human.resolved", "ticket": "T-0026", "kind": "close", "by": "dphang", "from": "ready-for-planner", "to": "closed"}

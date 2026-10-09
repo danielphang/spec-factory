@@ -1,0 +1,784 @@
+diff --git a/README.md b/README.md
+index f6eddcc..235c207 100644
+--- a/README.md
++++ b/README.md
+@@ -121,7 +121,7 @@ agent hosts is under "Where this can go".
+ | sub-ticket | one independently mergeable piece of a planned ticket; `T-0012.4` |
+ | gate | a point where a human must decide before the pipeline continues; the spec gate is the main one |
+ | gate commands | the target's own check commands, such as lint and tests (`gate_commands` in `instance.yaml`); the verifier runs them and records the gate result. No human is involved |
+-| merge gate | the harness's check before a merge: both verdicts and the gate result on the same commit, which is the branch's tip and contains the integration branch. No human is involved |
++| merge gate | the harness's check before a merge: both verdicts and the gate result on the same commit, which is the branch's tip and contains the integration branch, and every protected path the change touches declared in the approved spec. A protected path is one `instance.yaml` lists under `protected_paths` because a change to it is sensitive, such as the harness's own code. No human is involved, except that a refusal for an undeclared protected path parks the sub-ticket for a human |
+ | checker | the code reviewer or the verifier: a role that judges a commit and cannot change it |
+ | parent | a ticket that has sub-tickets; its final check verifies the whole spec |
+ | PR description | the implementer's final report on what it changed; there is no pull request in local mode |
+@@ -480,12 +480,15 @@ The harness changes git in five ways, all local; it never pushes.
+   - the commit is the branch's tip;
+   - the gate result is PASS, the reviewer's verdict APPROVE and the verifier's VERIFIED, all on
+     that commit;
++  - every protected path the change touches is declared on the `Protected paths:` line of the
++    approved spec's Risk section, or a human accepted it for this sub-ticket;
+   - the commit contains the integration branch's current tip.
+ 
+   It checks the last condition and merges under a lock, so two merges never interleave. A passing
+   sub-ticket is merged with `git merge --no-ff`, and its message names the branch, the title and
+   the id. Only the last refusal is recorded on the ticket: the sub-ticket goes back to its
+-  implementer to merge the integration branch in, and both checks run again.
++  implementer to merge the integration branch in, and both checks run again. A refusal for an
++  undeclared protected path changes nothing on the ticket; the build parks the sub-ticket with it.
+ - **Setting up the store.** `factory init` checks `factory-store` out as a worktree at the store's
+   path, creating the branch with no history when none exists, and adds the path to the repo's git
+   exclude file. `factory store migrate` creates the branch from an existing store, with one commit.
+@@ -791,7 +794,7 @@ FACTORY_DISPATCH=1 $RUNTIME/bin/factory run finish <run> --status-override KILLE
+ |---|---|---|
+ | **File** | `factory ticket new --file <abs path>` | that this request is worth a ticket |
+ | **Gate** | `factory approve-spec T-n [--edit F]` · `factory request-changes T-n F` · close | the spec's intent, risk declarations, operator steps, "tests to change"; a gate edit becomes a new spec version and is what gets pinned |
+-| **Unstick** | `factory resolve T-n --answer F` (a role asked a question) · `--ruling F` (a role escalated, an implementer reported itself blocked, or the harness blocked an implementer whose sub-ticket lists a test no merged sibling added) · `--redispatch` (re-run the checks on the same commit after an outside fix, or after a checker ended without output twice) · `--replan F` (the final check failed after every sub-ticket merged: back to the planner with a note; new sub-tickets take the next free ids) · `--to spec-gate` · `--close`; with `--answer` or `--close`, add `--decision "<line>"` to also record the answer as a standing decision | an answer, a ruling, a re-check, a re-plan, a re-scope, or closing |
++| **Unstick** | `factory resolve T-n --answer F` (a role asked a question) · `--ruling F` (a role escalated, an implementer reported itself blocked, or the harness blocked an implementer whose sub-ticket lists a test no merged sibling added; a ruling on the code reviewer's escalation re-runs the checks, with the ruling in their input) · `--accept-paths F` (the merge gate refused a protected path the approved spec does not declare: accept it under the approved design, and the sub-ticket returns to its checks; `--ruling F` sends the sub-ticket back to its implementer instead) · `--redispatch` (re-run the checks on the same commit after an outside fix, or after a checker ended without output twice) · `--replan F` (the final check failed after every sub-ticket merged: back to the planner with a note; new sub-tickets take the next free ids) · `--to spec-gate` · `--close`; with `--answer` or `--close`, add `--decision "<line>"` to also record the answer as a standing decision | an answer, a ruling, an accepted protected path, a re-check, a re-plan, a re-scope, or closing |
+ | **Record** | `factory decision add T-n "<line>"`, at any ticket state, closed included. It appends one dated line to the target's decision log, `decisions.md`, which the spec writer, critic and planner receive with their input | that a decision binds later tickets |
+ | **Upgrade** | `factory --accept-harness <sha> <command>` | that this target adopts a new harness revision |
+ 
+@@ -871,6 +874,13 @@ path above is relative to the store.
+   diff and leaves the test suite and the gate commands to the verifier. Every role is told to wait
+   for the commands it starts before it ends its turn. It is tested, and has not yet fired on a real
+   ticket.
++- **Protected paths at merge.** The merge gate refuses a change to a protected path that the
++  approved spec does not declare on the `Protected paths:` line of its Risk section, and names
++  each such path. The human approves that line at the spec gate, so a declared path merges with
++  no further approval. A refused sub-ticket parks as blocked. The human answers with
++  `resolve --accept-paths F`, which accepts the paths for that sub-ticket and returns it to its
++  checks, whose passing results stand, or with `resolve --ruling F`, which sends it back to its
++  implementer. It is tested, and has not yet fired on a real ticket.
+ 
+ **Not built**
+ 
+diff --git a/dev/build-harness.spec.md b/dev/build-harness.spec.md
+index 1fd6fa9..e18390b 100644
+--- a/dev/build-harness.spec.md
++++ b/dev/build-harness.spec.md
+@@ -243,7 +243,7 @@ Runtime: `factory/hooks/pre-receive` is a `#!/bin/sh` shim installed into `~/fac
+ 4. **`refs/heads/main`** (merge gate). Only `harness`; fast-forward only. `H = new`; ticket with `head == H`. Normal conditions, first failure named:
+    - `results/H/{ci,reviewer,verifier}.yaml` = `PASS`,`APPROVE`,`VERIFIED` (`missing: ci, reviewer, verifier for H`);
+    - `git merge-base --is-ancestor old H` (`head H does not contain main <old>`);
+-   - piece 8, per path in `git diff --name-only old H`: protected glob or **non-test guardrail glob** → `approvals/<ID>/pr-H.yaml` must exist (`protected path <p> needs human approval on H` / `guardrail path <p> needs human approval on H`); existing test file (test glob, present in `old`) modified or deleted → in `spec.tests_to_change` of the pinned version, or named by one of the sub-ticket's `(added by <ID>)` lines that `run start` checked (`existing test <p> modified; not in Tests to change of pinned spec v<N>`); new test file → nothing.
++   - piece 8, per path in `git diff --name-only old H`: in-repo protected glob → declared on the `Protected paths:` line of the pinned spec's Risk section, or in the sub-ticket's `accepted_paths` (`protected path <p> not declared in the pinned spec v<N>`); **non-test guardrail glob** → `approvals/<ID>/pr-H.yaml` must exist (`guardrail path <p> needs human approval on H`); existing test file (test glob, present in `old`) modified or deleted → in `spec.tests_to_change` of the pinned version, or named by one of the sub-ticket's `(added by <ID>)` lines that `run start` checked (`existing test <p> modified; not in Tests to change of pinned spec v<N>`); new test file → nothing.
+    - **Exception (doc §Harness table piece 7; the only one), two branches:**
+      - *retro*: `type: retro`, `parent: null`, every changed path matches a non-test guardrail glob (the doc's list: CI config, AGENTS.md, skills, prompts — `factory/hooks/**`, `paths.yaml`, `identities.yaml`, `factory/workflows/**` are protected, S5) → conditions become `ci PASS` + head contains main + `approvals/<ID>/guardrail-H.yaml` (human-pushed).
+      - *revert*: `type: revert`, `parent: null`, `reverted_head: X` the `head` of a `merged` ticket `T` whose record holds `merge: {base_before: B, main_after: A}` (written by `factory merge`, G), the branch human-pushed (rule 1: no role may push `revert/*`), and `git diff old H` equals `git diff A B` — the inverse of that change proposal's diff, main-before-merge against main-after-merge (E5: a clean `git revert` produces exactly this patch and an extra hunk breaks it) → the same three conditions. Piece 8 on a revert: files present in `A` and absent in `B` (files the reverted PR added) and the tests `T`'s pinned spec listed under "Tests to change" are exempt, `approvals/<ID>/guardrail-H.yaml` being the piece-8 row for them; any other existing test modified or deleted → the normal piece-8 refusal.
+@@ -374,7 +374,7 @@ Setup: `git clone $O w; cd w; git commit --allow-empty -m c`.
+ 22. Rows `ci PASS`, `reviewer APPROVE`, `verifier VERIFIED` for `H` (via `results record`), `H` contains `main`, diff = `nanobot/hello.py` + new `tests/factory/test_hello.py` → `factory merge T-0001` exit 0; `git ls-remote $O main | cut -f1` → `H`; `status: merged` [NEW]
+ 23. As 22 but `main` advanced by `M` after the rows → exit 2, `head H does not contain main M`; `status: ready-for-implementer`, `round: {spec: 0, pr: 1}` [NEW]
+ 24. As 22 but rows for previous head `H0` → exit 2, `missing: ci, reviewer, verifier for H` [NEW]
+-25. As 22 plus `pyproject.toml` changed, no approval → exit 2, `protected path pyproject.toml needs human approval on H`; after `AS daniel factory approve-pr T-0001 --head H` → exit 0 [NEW]
++25. As 22 plus `pyproject.toml` changed, not declared → exit 2, `protected path pyproject.toml not declared in the pinned spec v1`; with `pyproject.toml` on the pinned spec's `Protected paths:` line → exit 0, no approval row [NEW]
+ 26. **Guardrail gate on a normal PR:** as 22 plus `AGENTS.md` changed → exit 2, `guardrail path AGENTS.md needs human approval on H`; after `approve-pr` → exit 0 [NEW]
+ 27. As 22 but modifying existing `tests/factory/test_existing.py` not in the pinned list → exit 2, `existing test tests/factory/test_existing.py modified; not in Tests to change of pinned spec v1`; with it listed → exit 0 [NEW]
+ 28. As 22 but only adding `tests/factory/test_new.py` → exit 0, no approval row [NEW]
+diff --git a/docs/changelog.md b/docs/changelog.md
+index 8507f64..fd60730 100644
+--- a/docs/changelog.md
++++ b/docs/changelog.md
+@@ -64,5 +64,6 @@ Six review rounds ran on this doc, using the reviewer prompt in the appendix. Ro
+ 60. After issue #75 (2026-10-08), where every spec writer and critic input carried all of current truth and the whole decision log, whatever its ticket touched: one spec writer input on this repo's store was 171.6 kB, of which 123.9 kB was current truth and 32.4 kB the log, and the Nanobot store adds about 480 kB to each writer input. Triage now receives the capability index, one line per current-truth capability with its size, spec path and requirement names, and names the capabilities a request touches on a new `Capabilities:` output line. The spec writer and critic receive those capabilities in full, plus each one their spec cites by path, and the capability index for the rest. They and the planner receive the decision-log lines of the ticket and of those capabilities, and a decision index for the rest: one line per other ticket, with a `grep` command that reads its lines. A ticket whose triage output has no `Capabilities:` line keeps the whole of both. The projection for the Nanobot store's last ten tickets is a mean writer input of 101 kB and a maximum of 167 kB, against 521 kB and 635 kB before; that still misses the request's 40 kB and 100 kB targets, because the rest of a writer input lies outside this change. Rejected: `factory spec show` and `factory decision show` commands, because a command run from inside a role must clear the live-store fence, the guard that refuses store commands while a role runs, and find the instance; a path needs neither.
+ 61. After issue #78 (2026-10-09), where #75's filter reduced every decision logged against another ticket to a line of the decision index, because no line in either store's decision log names a capability: in the operator's replay of a Nanobot ticket, the spec writer put new code in a module that another ticket's standing decision rules out, and the critic missed it. The spec writer, critic and planner receive the whole decision log again, whatever capabilities their ticket names. The decision index and its `grep` command are gone; the capability index stays. Measured on 2026-10-09, the decision part of each of their inputs grows from under 3 kB to about 36 kB on this repo's store, and from about 5 kB to about 80 kB on the Nanobot store. Rejected: the request's rule of sending in full the lines that name no capability and filtering the rest, because on today's logs it sends every line anyway, and it could still hide a cross-cutting decision that happens to name a capability.
+ 62. After issue #77 (2026-10-08), where Nanobot ticket T-0024 was sent back to the spec gate after planning and approved at a new version: its new plan's sub-ticket was created, but the old plan's sub-ticket that the operator had closed parked the parent at once, and only moving that sub-ticket's record out of the store's `tickets/` by hand let the build go on. Each sub-ticket now records `planned_from`, the parent's approved version when it was created, which nothing changes afterwards. Once a parent has a sub-ticket planned from a later version, its sub-tickets that have not merged and were planned from an earlier one are superseded: kept with their ids and records, but left out of `ready-implementers` (listed under `superseded`), the final check, the close, archive and `resolve --replan`. Merged ones stay merged and count. `subticket add` reports and logs the sub-tickets it supersedes, and refuses a plan whose `Depends on` names one; the planner's input names them. A record without `planned_from` falls back to its `spec.approved_version`, and a second plan at the same approved version supersedes nothing. Rejected: a superseded mark written at re-plan time, which needs a migration for stores that already hold such sub-tickets; and comparing with the parent's current approved version, which would supersede the live plan after a spec amendment that keeps it.
++63. After issue #57 (2026-10-05), where the merge gate merged changes to protected paths without reading any declaration of them, while the code reviewer's prompt promised that the gate would require a human approval: the approved spec's Risk section is now the authorization. The spec writer declares every protected path the change will touch on one line of Risk, `Protected paths: none` or `Protected paths:` followed by backticked entries, one path or glob per entry, with no brace lists; the human approves that line at the spec gate. At merge, the gate compares the changed paths, from the merge base with the integration branch and with both sides of a move, against the instance's in-repo protected globs and the pinned spec's line. It refuses each undeclared protected path by name, with an error that starts `BLOCKED from merge gate`, and the build parks the sub-ticket with that error. The human answers the park with `resolve --accept-paths F`, which accepts those paths for that sub-ticket and returns it to its checks, whose passing results stand, or with `resolve --ruling F`, which sends it back to its implementer at the same round. A ruling on a reviewer's ESCALATE now returns the sub-ticket to its checks, with the results that did not pass set aside, instead of to the spec critic, a step that never runs for a sub-ticket. Check 6 of the code reviewer prompt says what the gate does, the spec writer's FORMAT gives the declaration line, and the design's gate lines, piece 7, piece 8, piece 9 and the resolution rules drop the per-PR approval for protected paths. Rejected: reading every backticked path in Risk, since Risk sections also name paths they promise not to touch; and a human approval on every change to a protected path, which would have stopped 18 of the last 20 merges in this repository.
+ 
+ Declined: a dedicated merge agent (merging is gate config plus human gates, not a judgment call).
+diff --git a/docs/design.md b/docs/design.md
+index 2a98d97..b23a4d8 100644
+--- a/docs/design.md
++++ b/docs/design.md
+@@ -18,9 +18,9 @@ The pipeline, in order:
+ 8. REQUEST-CHANGES, FAILED, and CI failures go back to the implementer as findings; a merge conflict triggers a conflict run (same round); a verifier SPEC-DEFECT goes to the human queue. Merge only when CI is green, both the reviewer's APPROVE and the verifier's VERIFIED name the PR's current head commit, the head contains current main, and any piece-8 approval is recorded. Any new commit, including a CI fix or rebase, re-runs both (harness piece 6).
+ 9. **Retro** runs weekly after the audit, or on demand after a major block of work, and proposes instruction changes from failure patterns, as a PR. It is not optional: it is the only path by which the pipeline improves.
+ 
+-The pipeline runs autonomously. A human is interrupted only at the five gates in "Human gates and convergence": spec approval, a PR touching a protected path, the daily escalation queue, a guardrail change, and the weekly audit. Everything else is dispatched by the harness without asking.
++The pipeline runs autonomously. A human is interrupted only at the five gates in "Human gates and convergence": spec approval, a merge refused for a protected path the approved spec does not declare, the daily escalation queue, a guardrail change, and the weekly audit. Everything else is dispatched by the harness without asking.
+ 
+-Two path lists appear throughout. **Guardrail paths** are fixed: existing tests, CI config, AGENTS.md, skills, and these prompts. **Protected paths** are per repo: `{auth, payments, migrations, infra, public API, dependencies}`. A change to either needs a human approval record before it merges.
++Two path lists appear throughout. **Guardrail paths** are fixed: existing tests, CI config, AGENTS.md, skills, and these prompts. **Protected paths** are per repo: `{auth, payments, migrations, infra, public API, dependencies}`. A change to a guardrail path needs a human approval record before it merges. A change to a protected path merges when the approved spec's Risk section declares it: the human approves that declaration at the spec gate, and the merge gate refuses a protected path the spec does not declare.
+ 
+ Three wiring rules matter more than any wording:
+ 
+@@ -46,9 +46,9 @@ The prompts say what each role does. The harness enforces the wiring rules: fres
+ | 4 | Scoped credentials | Each role gets only the access its rules allow. Implementer: push to its own branch. Triage, spec writer, critic, planner, reviewer, verifier, and gate runner: read-only clone plus a shell, with no secrets in the environment, since they run PR code before any security check has passed (model access through a proxy sidecar that holds the key, so the container has none to leak; no git write token; restricted egress). Retro: push a branch and open a PR, nothing else. No role can push to main. Only the harness identity and humans write the ticket store; role outputs enter it through the dispatcher, and the merge gate accepts an approval row only if a human identity pushed it, judged by the server's pusher identity, not the commit author | Job-level `permissions:` on a per-job `GITHUB_TOKEN` | One git user or deploy key per role, with server-side rights set on the git host. Secrets injected per job from a vault or env, never baked into the image |
+ | 5 | Change proposal | A unit of review: a branch, its base, its head commit, and a place for the PR description and findings. Approvals attach to the head commit. Fix rounds push to the same branch, which is the ticket's identity | Pull requests | A branch naming convention (`ticket/<id>`) plus a record in the ticket store holding base, head SHA, and the description. GitLab MRs or Gerrit changes are direct equivalents |
+ | 6 | Commit-bound results | Reviewer, verifier, and CI results are stored against a specific head SHA. A new push makes prior results stale; a result arriving for a head that is no longer current is discarded | Check runs and commit statuses; required checks re-run on push | A `results` table keyed by `(head_sha, role)`. The merge condition queries the *current* head only, so stale rows never match |
+-| 7 | Merge gate | Nothing reaches main without CI green, APPROVE and VERIFIED on the current head, a head that contains current main, and a human approval record where piece 8 requires it. A bug in a prompt cannot bypass this. One exception, stated here and nowhere else, for two kinds of PR with no sub-ticket: a retro PR whose diff touches only non-test guardrail paths, and a human-authored revert whose diff the gate verifies is exactly the inverse of one merged change proposal's diff (main before that merge against main after it, both recorded in the store at merge time). Either merges on CI green, head contains main, and a human approval on that head recorded under the guardrail-changes gate; the human reads the whole diff, which stands in for APPROVE and VERIFIED. A no-sub-ticket PR that fails this test is closed and logged to the human queue | Branch protection with required checks and required reviews. Required checks cannot be waived per PR, so the exception needs a harness-emitted check that reports success for exception PRs | A server-side pre-receive hook on main that checks the results table, or a single merge bot that alone can write to main and checks the conditions before fast-forwarding. Either works; the hook is stricter |
+-| 8 | Guardrail and protected paths | If the diff touches a guardrail or protected path, the merge gate requires an approval row signed by a human identity. For existing tests, the spec gate's approval of "Tests to change" is that row for exactly the tests listed. A test file an earlier sibling sub-ticket of the same parent added is also covered when the sub-ticket lists it as added by that sibling and the sibling-tests check has passed (Tests a sibling added, below); any other guardrail or protected path needs a human approval on the PR itself. The harness code (its package, entry point, agent templates and dependency lock) is itself a protected path in the repo that holds it. | CODEOWNERS with required owner review for CI config, AGENTS.md, skills, prompts, and protected paths. Not for tests: CODEOWNERS fires on added files too. Existing tests get a required check that fails when a test file is modified or deleted and not in the pinned spec's "Tests to change" or among the sub-ticket's checked sibling entries (on a revert: files the reverted PR added and the tests its pinned spec listed under "Tests to change" are exempt, and the revert's human approval is the piece-8 row for them) | A path list checked in the merge gate, with the same modified-or-deleted rule for test files. Keep the list in the repo under CI config, so it is itself a guardrail path |
+-| 9 | Human surface | Where people approve specs, answer escalations, review protected PRs, reply to requesters, and read the weekly audit sample. Every decision writes back to the store as a record: who, when, which spec version or head SHA | Issue comments, PR reviews, approvals | The tracker's UI plus notifications (Slack, email) with links. The approval must be a stored, attributable record the merge gate can check, not a chat message |
++| 7 | Merge gate | Nothing reaches main without CI green, APPROVE and VERIFIED on the current head, a head that contains current main, every changed protected path declared (piece 8), and a human approval record where piece 8 requires one. A bug in a prompt cannot bypass this. One exception, stated here and nowhere else, for two kinds of PR with no sub-ticket: a retro PR whose diff touches only non-test guardrail paths, and a human-authored revert whose diff the gate verifies is exactly the inverse of one merged change proposal's diff (main before that merge against main after it, both recorded in the store at merge time). Either merges on CI green, head contains main, and a human approval on that head recorded under the guardrail-changes gate; the human reads the whole diff, which stands in for APPROVE and VERIFIED. A no-sub-ticket PR that fails this test is closed and logged to the human queue | Branch protection with required checks and required reviews. Required checks cannot be waived per PR, so the exception needs a harness-emitted check that reports success for exception PRs | A server-side pre-receive hook on main that checks the results table, or a single merge bot that alone can write to main and checks the conditions before fast-forwarding. Either works; the hook is stricter |
++| 8 | Guardrail and protected paths | If the diff touches a protected path, the merge gate requires the pinned spec's Risk section to declare it on its `Protected paths:` line, or a human to have accepted that path for the sub-ticket after the gate refused it (`resolve --accept-paths`); the spec gate's approval is the authorization, and there is no per-PR approval. If the diff touches a guardrail path, the merge gate requires an approval row signed by a human identity. For existing tests, the spec gate's approval of "Tests to change" is that row for exactly the tests listed. A test file an earlier sibling sub-ticket of the same parent added is also covered when the sub-ticket lists it as added by that sibling and the sibling-tests check has passed (Tests a sibling added, below); any other guardrail path needs a human approval on the PR itself. The harness code (its package, entry point, agent templates and dependency lock) is itself a protected path in the repo that holds it. | CODEOWNERS with required owner review for CI config, AGENTS.md, skills and prompts; protected paths get a required check that fails on a changed protected path the pinned spec does not declare. Not for tests: CODEOWNERS fires on added files too. Existing tests get a required check that fails when a test file is modified or deleted and not in the pinned spec's "Tests to change" or among the sub-ticket's checked sibling entries (on a revert: files the reverted PR added and the tests its pinned spec listed under "Tests to change" are exempt, and the revert's human approval is the piece-8 row for them) | A path list checked in the merge gate, with the same modified-or-deleted rule for test files. Keep the list in the repo under CI config, so it is itself a guardrail path |
++| 9 | Human surface | Where people approve specs, answer escalations, answer merges refused for an undeclared protected path, reply to requesters, and read the weekly audit sample. Every decision writes back to the store as a record: who, when, which spec version or head SHA | Issue comments, PR reviews, approvals | The tracker's UI plus notifications (Slack, email) with links. The approval must be a stored, attributable record the merge gate can check, not a chat message |
+ | 10 | Audit log | Every transition, every agent output, every human decision, append-only. The weekly audit and the retro read from here | Issue and PR timelines, Actions logs | An append-only table or log stream. Store full agent outputs as artifacts keyed by run id. If it isn't logged, the retro can't see it |
+ | 11 | Gate runner | Runs `{gate commands}` (build, lint, typecheck, tests) on a head SHA and records PASS/FAIL against it (piece 6) | Actions CI | Any CI. Without one, the verifier runs the gates as step 4 of its prompt, and its "Gate suite" line is recorded as the CI result. Separate CI is better because it isn't an agent. A gate command may name the paths it covers, as git pathspecs. For a sub-ticket whose diff touches none of them, the harness marks the command SKIPPED for the reviewer and verifier, with the reason, and records it on the `ci` row; the row's PASS or FAIL still comes from the commands that ran. A command without paths always runs |
+ | 12 | Secrets | Model API keys and git credentials, available to a run that needs them but never in the repo, the prompt, or the log | Actions secrets | Vault, cloud secret manager, or env injection at container start. Redact from logs |
+@@ -105,10 +105,12 @@ Rules the table relies on:
+ - When a human resolves a parked ticket:
+   - A question returns to the role that asked, with the answer and that role's previous output (the output that asked it); a requester's CLARIFY answer returns to Triage the same way. When the answer is a standing decision, the human passes `--decision "<line>"` with the answer, or with the close, so that it lands in `decisions.md`.
+   - BLOCKED, a critic ESCALATE, and a planner ESCALATE return to the role that emitted them with the ruling, same round, or the human re-scopes (spec gate or writer round reset) or closes.
++  - A merge the gate refused for an undeclared protected path parks as BLOCKED. A ruling returns the sub-ticket to its implementer, same round. `resolve --accept-paths` instead adds the named paths to what that sub-ticket may change and returns it to its checks, whose passing results stand; every other merge condition still applies.
+   - A spec loop at max rounds goes to the spec gate.
+   - A parent-close FAILED or SPEC-DEFECT, an archive that does not apply, or a sub-ticket closed by the human, parks the parent: the human amends the spec and re-plans (new sub-tickets under the same parent) or closes the parent. A new plan made from a later approved version supersedes the earlier plan's sub-tickets that have not merged: they keep their records and ids, are no longer dispatched, and neither park the parent nor hold back its close. Merged ones stay merged and count toward the close.
+   - An archive refused for no change folder or no spec store parks the parent the same way, but its spec never entered the spec store: the human closes the parent as applied. Current truth is not updated, and archive appends nothing to `decisions.md`; the human logs any decision with `factory decision add`. If current truth should carry the spec, it is re-intaken as a new ticket.
+-  - A PR loop at max rounds, a SPEC-DEFECT, or a reviewer ESCALATE returns to the implementer with the round reset and the human's ruling as findings, or the ticket closes. The human may amend the sub-ticket or the pinned spec first; the amended version is what the implementer and checkers receive. There is no merge-gate override. A budget-killed run, or a ticket parked on a second EMPTY-OUTPUT, re-dispatches the same role on the same inputs, same round (the human may raise that run's budget or amend the sub-ticket first), or the ticket closes. In-flight siblings keep the spec version they received; the human decides whether to re-plan.
++  - A reviewer ESCALATE returns to its checks with the ruling in both checkers' input, same round. Its results that did not pass are set aside, so the reviewer runs again; a ruling that asks for a fix becomes the reviewer's REQUEST-CHANGES.
++  - A PR loop at max rounds or a SPEC-DEFECT returns to the implementer with the round reset and the human's ruling as findings, or the ticket closes. The human may amend the sub-ticket or the pinned spec first; the amended version is what the implementer and checkers receive. There is no merge-gate override. A budget-killed run, or a ticket parked on a second EMPTY-OUTPUT, re-dispatches the same role on the same inputs, same round (the human may raise that run's budget or amend the sub-ticket first), or the ticket closes. In-flight siblings keep the spec version they received; the human decides whether to re-plan.
+ 
+ | From | STATUS | Next | Receives |
+ |---|---|---|---|
+@@ -138,7 +140,7 @@ Rules the table relies on:
+ | Any role | EMPTY-OUTPUT, the first in a row | The same role again, same round | The same inputs |
+ | Any role | EMPTY-OUTPUT, the second in a row | Human queue | Both runs' last messages |
+ | Merge gate | Head does not contain current main | Implementer (same round, conflict run): merge main into the branch, or rebase where {force-push allowed} | Conflict output; the new head re-runs CI and both checkers |
+-| Merge gate | CI green + APPROVE + VERIFIED on current head + head contains main + piece-8 approvals | Merge; then dispatch sub-tickets that depended on this one. When all sub-tickets have merged, one verifier run on main against the parent's full Acceptance list (every scenario of its pinned delta, with its `verification.md` label). When the parent has one sub-ticket, `main` has not moved since that sub-ticket merged, the sub-ticket's text names every scenario of the parent's pinned delta, and its VERIFIED run checked the merged head against the parent's recorded base, that run stands for the parent-close run and no new run starts. VERIFIED archives the change (Spec store), then closes the parent; FAILED, SPEC-DEFECT or an archive refusal (Spec store: a delta that does not apply, no change folder, or no spec store) parks the parent in the human queue | Parent-close run: pinned parent spec; head = current main; base = the main SHA recorded before the parent's first sub-ticket merged; `{gate commands}` |
++| Merge gate | CI green + APPROVE + VERIFIED on current head + head contains main + piece-8 checks | Merge; then dispatch sub-tickets that depended on this one. When all sub-tickets have merged, one verifier run on main against the parent's full Acceptance list (every scenario of its pinned delta, with its `verification.md` label). When the parent has one sub-ticket, `main` has not moved since that sub-ticket merged, the sub-ticket's text names every scenario of the parent's pinned delta, and its VERIFIED run checked the merged head against the parent's recorded base, that run stands for the parent-close run and no new run starts. VERIFIED archives the change (Spec store), then closes the parent; FAILED, SPEC-DEFECT or an archive refusal (Spec store: a delta that does not apply, no change folder, or no spec store) parks the parent in the human queue | Parent-close run: pinned parent spec; head = current main; base = the main SHA recorded before the parent's first sub-ticket merged; `{gate commands}` |
+ | Weekly audit done, or on demand | — | Retro | Full outputs behind every outcome signal since the last retro (piece 10), current instruction files, every proposal still under evaluation with its metric, and per-role run and outcome counts, broken down by model, for the period and for each prior proposal's window, and the marker ledger: one row per `factory:` comment in the code on the integration branch, with file:line, limit and upgrade trigger, flagged `no-trigger` where it names none, composed by the harness when the retro runs |
+ | Retro | PROPOSED | Guardrail-changes gate (human); on approval, the no-sub-ticket merge row | PR |
+ | Retro | NO-CHANGES | Log only | — |
+@@ -153,7 +155,7 @@ Humans own the decisions agents are worst at: what to build, what's risky, and w
+ | Gate | When | Human does |
+ |---|---|---|
+ | Spec approval | Every spec, before planning | Confirms intent and priority; answers open questions; approves the Risk section's protected-path declarations, any Operator steps, and the "Tests to change" list, which is the only authorization to alter a test that existed before the parent's first sub-ticket merged; a test an earlier sibling added needs only the sub-ticket's checked entry (piece 8) |
+-| Protected paths | Any PR touching a protected path | Reviews the PR and records the piece-8 approval; the merge gate does not merge without it |
++| Protected paths | A merge the gate refused because a changed protected path is not declared in the pinned spec's Risk section | Accepts the paths under the approved design (`resolve --accept-paths`), which returns the sub-ticket to its checks, or sends it back to its implementer with a ruling (`resolve --ruling`) |
+ | Escalations | Daily | Clears the queue; answers or re-scopes |
+ | Guardrail changes | Any PR touching a guardrail path beyond the tests its spec lists; any retro or revert PR | Approves or rejects, including retro proposals and reverts |
+ | Audit | Weekly | Reads {5} random merged PRs end to end; tracks failure rate and cost per issue |
+@@ -397,7 +399,10 @@ openspec/changes/<ticket id>/ (schema spec-factory).
+ ## Open questions   none | list
+ ## Decisions        none | one line per design call this change makes,
+                     including each answered open question
+-## Risk             blast radius; every protected path this will touch
++## Risk             blast radius; every protected path this will touch,
++                    declared on one line the merge gate reads:
++                    Protected paths: none | `<path or glob>`, `<path or glob>`
++                    one path or glob per entry, no brace lists
+ ## Operator steps   (optional) actions or checks on live or protected state
+                     that only the operator can perform, after merge; not
+                     acceptance; the human approves them at the spec gate
+@@ -664,9 +669,10 @@ CHECK, IN THIS ORDER
+    would notice that the spec didn't ask for?
+ 5. Security and data safety: injection, authz, secrets, destructive ops.
+ 6. Protected paths touched? If the sub-ticket does not declare them,
+-   ESCALATE. If it does, list them under ESCALATIONS, finish the review,
+-   and give the STATUS the code earns; the merge gate will require a
+-   human approval.
++   ESCALATE. If it does, list them under ESCALATIONS for the record,
++   finish the review, and give the STATUS the code earns. The merge
++   gate merges a path the approved spec's Risk section declares with no
++   further approval, and refuses and parks one it does not declare.
+ 7. The coding standard at {coding standard}: a finding against it
+    carries the tag and severity the standard gives it. Not style.
+ 8. PR description: could the operator at the gate read its What changed
+diff --git a/docs/prompts/02-spec-writer.md b/docs/prompts/02-spec-writer.md
+index e2b097d..a2b04de 100644
+--- a/docs/prompts/02-spec-writer.md
++++ b/docs/prompts/02-spec-writer.md
+@@ -80,7 +80,10 @@ openspec/changes/<ticket id>/ (schema spec-factory).
+ ## Open questions   none | list
+ ## Decisions        none | one line per design call this change makes,
+                     including each answered open question
+-## Risk             blast radius; every protected path this will touch
++## Risk             blast radius; every protected path this will touch,
++                    declared on one line the merge gate reads:
++                    Protected paths: none | `<path or glob>`, `<path or glob>`
++                    one path or glob per entry, no brace lists
+ ## Operator steps   (optional) actions or checks on live or protected state
+                     that only the operator can perform, after merge; not
+                     acceptance; the human approves them at the spec gate
+diff --git a/docs/prompts/06-code-reviewer.md b/docs/prompts/06-code-reviewer.md
+index d391fbb..6fb668f 100644
+--- a/docs/prompts/06-code-reviewer.md
++++ b/docs/prompts/06-code-reviewer.md
+@@ -22,9 +22,10 @@ CHECK, IN THIS ORDER
+    would notice that the spec didn't ask for?
+ 5. Security and data safety: injection, authz, secrets, destructive ops.
+ 6. Protected paths touched? If the sub-ticket does not declare them,
+-   ESCALATE. If it does, list them under ESCALATIONS, finish the review,
+-   and give the STATUS the code earns; the merge gate will require a
+-   human approval.
++   ESCALATE. If it does, list them under ESCALATIONS for the record,
++   finish the review, and give the STATUS the code earns. The merge
++   gate merges a path the approved spec's Risk section declares with no
++   further approval, and refuses and parks one it does not declare.
+ 7. The coding standard at {coding standard}: a finding against it
+    carries the tag and severity the standard gives it. Not style.
+ 8. PR description: could the operator at the gate read its What changed
+diff --git a/factory/cli.py b/factory/cli.py
+index 2da17fa..759811b 100644
+--- a/factory/cli.py
++++ b/factory/cli.py
+@@ -655,23 +655,80 @@ def results_show(a, root, cfg):
+     out({"ok": True, "id": t["id"], "head": head, "rows": {k: v["status"] for k, v in rows.items()}, "missing": missing})
+ 
+ 
++DECLARED_RE = re.compile(r"^\s*(?:[-*]\s+)?Protected paths:\s*(none|`[^`]+`(?:\s*,\s*`[^`]+`)*)\s*\.?\s*$")
++
++
++def _in_repo(globs: list[str]) -> list[str]:
++    """The patterns a repository diff can match: one starting `~` or `/` names a path outside it."""
++    return [g for g in globs if not g.startswith(("~", "/"))]
++
++
++def declared_paths(spec_text: str) -> list[str]:
++    """The entries of each `Protected paths:` line (DECLARED_RE) in the spec's `## Risk` section, in
++    order. The section runs from a line that is exactly `## Risk` to the next line starting `## ` or
++    `=== `; a line inside a fenced code block neither starts nor ends it and declares nothing."""
++    entries, in_risk = [], False
++    for line, in_fence in specstore.lines_outside_fences(spec_text):
++        if in_fence:
++            continue
++        if line.startswith(("## ", "=== ")):
++            in_risk = line.rstrip() == "## Risk"
++        elif in_risk and (m := DECLARED_RE.match(line)) and m.group(1) != "none":
++            entries += re.findall(r"`([^`]+)`", m.group(1))
++    return _in_repo(entries)
++
++
++def undeclared_protected(root: Path, cfg: dict, t: dict, head: str) -> tuple[list[str], str]:
++    """(the changed protected paths of `t` at `head` that the pinned spec does not declare, sorted;
++    where the declarations were read, for the refusal). Changed is `integration...head`. The pinned
++    spec is the parent's approved version, or the ticket's own when it has no parent; a path in the
++    ticket's `accepted_paths` counts as declared (`resolve --accept-paths`)."""
++    sid = t.get("parent") or t["id"]
++    av = (store.load_ticket(root, sid) if sid != t["id"] else t)["spec"]["approved_version"]
++    where = f"in {sid} spec v{av}" if av is not None else f"({sid} has no approved spec)"
++    patterns = [g for globs in (cfg.get("protected_paths") or {}).values()
++                for g in ([globs] if isinstance(globs, str) else list(globs or []))]
++    repo = gitops.repo_root(cfg)
++    integ = gitops.integration_branch(cfg, repo)
++    changed = gitops.changed_files(repo, integ, head, _in_repo(patterns))
++    if not changed:
++        return [], where
++    spec = root / "specs" / sid / f"v{av}.md"
++    declared = declared_paths(spec.read_text(encoding="utf-8")) if av is not None and spec.exists() else []
++    ok = set(gitops.changed_files(repo, integ, head, declared)) | set(t.get("accepted_paths") or [])
++    return sorted(p for p in changed if p not in ok), where
++
++
++def _branch_tip(repo: Path, t: dict) -> str:
++    """The ticket's head, refused unless it is the tip of its branch."""
++    head = t.get("head")
++    if not head or gitops.rev(repo, t["branch"]) != head:
++        raise Refused(f"{t['id']} head {head} is not the branch tip; run ticket head")
++    return head
++
++
+ def merge_cmd(a, root, cfg):
+     """Rule-4 checks (part G) in the local stand-in: ci PASS + APPROVE + VERIFIED on the current
+-    head, head contains the integration branch; then a local --no-ff merge. Exit 2 names the
+-    first failing condition; 'head does not contain main' is the conflict-run signal."""
++    head, every changed protected path declared by the pinned spec (piece 8), head contains the
++    integration branch; then a local --no-ff merge. Exit 2 names the first failing condition;
++    'BLOCKED from merge gate' parks for a human; 'head does not contain main' is the conflict-run
++    signal."""
+     t = store.load_ticket(root, a.id)
+     if t["status"] not in ("ready-for-merge", "checks-in-flight"):
+         raise Refused(f"{t['id']} is {t['status']}, not ready-for-merge")
+     repo = gitops.repo_root(cfg)
+     integ = gitops.integration_branch(cfg, repo)
+-    head = t.get("head")
+-    if not head or gitops.rev(repo, t["branch"]) != head:
+-        raise Refused(f"{t['id']} head {head} is not the branch tip; run ticket head")
++    head = _branch_tip(repo, t)
+     rows = store.results_for(root, head)
+     for role, want in (("ci", "PASS"), ("reviewer", "APPROVE"), ("verifier", "VERIFIED")):
+         got = (rows.get(role) or {}).get("status")
+         if got != want:
+             raise Refused(f"{role} is {got or 'missing'} for {head[:9]}, need {want}")
++    undeclared, where = undeclared_protected(root, cfg, t, head)
++    if undeclared:
++        store.log_event(root, "merge.refused", ticket=t["id"], head=head, reason="protected paths not declared",
++                        paths=undeclared)
++        raise Refused(f"BLOCKED from merge gate: protected paths not declared {where}: {', '.join(undeclared)}")
+     with gitops.MergeLock(repo):
+         if not gitops.head_contains(repo, head, integ):
+             t["merge_refused"] = "head does not contain main"
+@@ -839,7 +896,7 @@ def request_changes(a, root, cfg):
+ def resolve(a, root, cfg):
+     if a.decision is not None:  # refuse before anything is written, so a decision is never dropped
+         # the branch below that will run: --answer wins, and --close runs only with no other mode
+-        if not (a.answer or (a.close and not (a.ruling or a.to or a.redispatch or a.replan))):
++        if not (a.answer or (a.close and not (a.ruling or a.accept_paths or a.to or a.redispatch or a.replan))):
+             raise Refused("--decision applies only with --answer or --close")
+         specstore.decision_text(a.decision)
+     t = store.load_ticket(root, a.id)
+@@ -882,13 +939,35 @@ def resolve(a, root, cfg):
+             if st == "parked" and (reason.startswith("NEEDS-HUMAN") or "CLARIFY" in reason):
+                 raise Refused("use --answer")
+             raise Refused(f"--ruling applies to an ESCALATE or BLOCKED park; {t['id']} is {st} ({reason or 'no park'})")
+-        if reason.startswith("BLOCKED"):  # an implementer's BLOCKED: back to it, same round, ruling in its input
++        if reason.startswith("ESCALATE from reviewer"):
++            # Back to its checks, same round: the reviewer runs again with the ruling in its input.
++            head, moved = t.get("head"), _set_aside_failed_rows(root, t)
++            store.log_event(root, "results.superseded", ticket=t["id"], head=head, roles=moved)
++            dest = d / f"ruling-{_next_n(d, 'ruling')}.md"
++            shutil.copyfile(a.ruling, dest)
++            move("checks-in-flight", "ruling", {"ruling": _rel(root, dest), "head": head, "superseded": moved})
++            return
++        if reason.startswith("BLOCKED"):  # an implementer's or the gate's BLOCKED: back to the implementer, same round
+             to = "ready-for-implementer"
+         else:
+             to = "ready-for-planner" if "planner" in reason else "ready-for-critic"
+         dest = d / f"ruling-{_next_n(d, 'ruling')}.md"
+         shutil.copyfile(a.ruling, dest)
+         move(to, "ruling", {"ruling": _rel(root, dest)})
++    elif a.accept_paths:
++        # The merge gate refused a protected path the pinned spec does not declare; the human accepts
++        # it under the approved design for this sub-ticket. Its results stand, so the build merges it.
++        if st != "parked" or not reason.startswith("BLOCKED from merge gate:"):
++            raise Refused("--accept-paths applies to a merge gate park (BLOCKED from merge gate); "
++                          f"{t['id']} is {st} ({reason or 'no park'})")
++        head = _branch_tip(gitops.repo_root(cfg), t)
++        paths, _ = undeclared_protected(root, cfg, t, head)
++        if not paths:
++            raise Refused(f"nothing to accept: {t['id']} has no undeclared protected path at {head[:9]}")
++        dest = d / f"ruling-{_next_n(d, 'ruling')}.md"
++        shutil.copyfile(a.accept_paths, dest)
++        t["accepted_paths"] = sorted(set(t.get("accepted_paths") or []) | set(paths))
++        move("checks-in-flight", "accept-paths", {"ruling": _rel(root, dest), "head": head, "accepted": paths})
+     elif a.to:
+         if a.to != "spec-gate":
+             raise Refused("--to accepts only spec-gate")
+@@ -897,28 +976,10 @@ def resolve(a, root, cfg):
+         move("awaiting-spec-gate", "to-spec-gate", {})
+     elif a.redispatch:
+         # Re-run the checkers on the same head after the cause of the park is fixed outside the ticket
+-        # (a harness or gate defect, a killed checker). Round unchanged. The head's rows that did not
+-        # pass are set aside under results/<head>/superseded-<n>/ so the join cannot read them as
+-        # current; the build then runs only the checkers with no row. The reviewer row stays when it
+-        # is APPROVE; the verifier and ci rows, written by one verifier run, stay together when they
+-        # are VERIFIED and PASS.
++        # (a harness or gate defect, a killed checker). Round unchanged.
+         if st != "parked" or parked.get("from") not in ("checks-in-flight", "ready-for-merge"):
+             raise Refused(f"--redispatch applies to a sub-ticket parked from its checks; {t['id']} is {st} (from {parked.get('from')})")
+-        head = t.get("head")
+-        moved = []
+-        if head:
+-            rows = {k: v.get("status") for k, v in store.results_for(root, head).items()}
+-            stale = [] if rows.get("reviewer") == "APPROVE" else ["reviewer"]
+-            if not (rows.get("verifier") == "VERIFIED" and rows.get("ci") == "PASS"):
+-                stale += ["verifier", "ci"]
+-            rd = root / "results" / head
+-            todo = [store.result_path(root, head, r) for r in stale if r in rows]
+-            if todo:
+-                dest = rd / f"superseded-{len(list(rd.glob('superseded-*'))) + 1}"
+-                dest.mkdir(parents=True, exist_ok=True)
+-                for f in todo:
+-                    f.rename(dest / f.name)
+-                    moved.append(f.stem)
++        head, moved = t.get("head"), _set_aside_failed_rows(root, t)
+         store.log_event(root, "results.superseded", ticket=t["id"], head=head, roles=moved)
+         move("checks-in-flight", "redispatch", {"head": head, "superseded": moved})
+     elif a.replan:
+@@ -940,7 +1001,31 @@ def resolve(a, root, cfg):
+             raise Refused(f"{t['id']} is already closed")
+         move("closed", "close", decided("resolve --close"))
+     else:
+-        raise Refused("resolve needs one of --answer F | --ruling F | --to spec-gate | --redispatch | --replan F | --close")
++        raise Refused("resolve needs one of --answer F | --ruling F | --accept-paths F | --to spec-gate | --redispatch | "
++                      "--replan F | --close")
++
++
++def _set_aside_failed_rows(root: Path, t: dict) -> list[str]:
++    """Move the head's rows that did not pass under results/<head>/superseded-<n>/, so the join cannot
++    read them as current and the build runs only the checkers with no row. The reviewer row stays
++    when it is APPROVE; the verifier and ci rows, written by one verifier run, stay together when
++    they are VERIFIED and PASS. Returns the roles moved."""
++    head = t.get("head")
++    moved: list[str] = []
++    if head:
++        rows = {k: v.get("status") for k, v in store.results_for(root, head).items()}
++        stale = [] if rows.get("reviewer") == "APPROVE" else ["reviewer"]
++        if not (rows.get("verifier") == "VERIFIED" and rows.get("ci") == "PASS"):
++            stale += ["verifier", "ci"]
++        rd = root / "results" / head
++        todo = [store.result_path(root, head, r) for r in stale if r in rows]
++        if todo:
++            dest = rd / f"superseded-{len(list(rd.glob('superseded-*'))) + 1}"
++            dest.mkdir(parents=True, exist_ok=True)
++            for f in todo:
++                f.rename(dest / f.name)
++                moved.append(f.stem)
++    return moved
+ 
+ 
+ def decision_add(a, root, cfg):
+@@ -1546,6 +1631,7 @@ def build_parser() -> argparse.ArgumentParser:
+     p.add_argument("id")
+     p.add_argument("--answer")
+     p.add_argument("--ruling")
++    p.add_argument("--accept-paths", metavar="F", help="a sub-ticket the merge gate refused for undeclared protected paths: accept them under the approved design and return it to its reviewer and verifier")
+     p.add_argument("--to")
+     p.add_argument("--redispatch", action="store_true")
+     p.add_argument("--replan", metavar="F", help="a parked parent whose sub-tickets all merged: back to the planner with F as a ruling")
+diff --git a/factory/gitops.py b/factory/gitops.py
+index 0acc227..b20da26 100644
+--- a/factory/gitops.py
++++ b/factory/gitops.py
+@@ -93,8 +93,12 @@ def diff(repo: Path, base: str, head: str) -> str:
+     return git(repo, "diff", f"{base}...{head}")
+ 
+ 
+-def changed_files(repo: Path, base: str, head: str) -> list[str]:
+-    out = git(repo, "diff", "--name-only", f"{base}...{head}")
++def changed_files(repo: Path, base: str, head: str, globs: list[str]) -> list[str]:
++    """The paths `base...head` changes (from the merge base) that match one of `globs`, git glob
++    pathspecs (`**` crosses directories, `*` does not). A move lists both its sides. No glob: none."""
++    if not globs:
++        return []
++    out = git(repo, "diff", "--name-only", "--no-renames", f"{base}...{head}", "--", *(f":(glob){g}" for g in globs))
+     return [ln for ln in out.splitlines() if ln]
+ 
+ 
+diff --git a/factory/prompts/reviewer.md b/factory/prompts/reviewer.md
+index c94b6b9..f7656fb 100644
+--- a/factory/prompts/reviewer.md
++++ b/factory/prompts/reviewer.md
+@@ -22,9 +22,10 @@ CHECK, IN THIS ORDER
+    would notice that the spec didn't ask for?
+ 5. Security and data safety: injection, authz, secrets, destructive ops.
+ 6. Protected paths touched? If the sub-ticket does not declare them,
+-   ESCALATE. If it does, list them under ESCALATIONS, finish the review,
+-   and give the STATUS the code earns; the merge gate will require a
+-   human approval.
++   ESCALATE. If it does, list them under ESCALATIONS for the record,
++   finish the review, and give the STATUS the code earns. The merge
++   gate merges a path the approved spec's Risk section declares with no
++   further approval, and refuses and parks one it does not declare.
+ 7. The coding standard at {coding standard}: a finding against it
+    carries the tag and severity the standard gives it. Not style.
+ 8. PR description: could the operator at the gate read its What changed
+diff --git a/factory/prompts/spec_writer.md b/factory/prompts/spec_writer.md
+index c60265a..28b4892 100644
+--- a/factory/prompts/spec_writer.md
++++ b/factory/prompts/spec_writer.md
+@@ -84,7 +84,10 @@ openspec/changes/<ticket id>/ (schema spec-factory).
+ ## Open questions   none | list
+ ## Decisions        none | one line per design call this change makes,
+                     including each answered open question
+-## Risk             blast radius; every protected path this will touch
++## Risk             blast radius; every protected path this will touch,
++                    declared on one line the merge gate reads:
++                    Protected paths: none | `<path or glob>`, `<path or glob>`
++                    one path or glob per entry, no brace lists
+ ## Operator steps   (optional) actions or checks on live or protected state
+                     that only the operator can perform, after merge; not
+                     acceptance; the human approves them at the spec gate
+diff --git a/factory/workflows/build.js b/factory/workflows/build.js
+index 48a2dfe..b76619c 100644
+--- a/factory/workflows/build.js
++++ b/factory/workflows/build.js
+@@ -194,6 +194,9 @@ async function buildOne(st) {
+       await transition(st, 'ready-for-merge', null, 'Build')
+       const m = await clerk(`${BIN} merge ${st}`, 'Build', `merge ${st}`)
+       if (m.ok) { log(`${st} merged: ${m.main_after}`); return }
++      // A refusal that starts `BLOCKED ` is the merge gate blocking the merge (an undeclared protected
++      // path): park with it verbatim, for `resolve --accept-paths` or `resolve --ruling`.
++      if (typeof m.error === 'string' && m.error.startsWith('BLOCKED ')) { await park(st, m.error, outs, 'Build'); return }
+       // The gate refused. Ask the join again: a moved integration branch is a conflict run, bounded there.
+       const again = await clerk(`${BIN} ticket join ${st}`, 'Build', `join ${st} after refusal`)
+       if (again.ok && again.decision === 'conflict') { await transition(st, 'ready-for-implementer', null, 'Build'); continue }
+diff --git a/tests/factory/test_merge_protected_paths.py b/tests/factory/test_merge_protected_paths.py
+new file mode 100644
+index 0000000..0e87552
+--- /dev/null
++++ b/tests/factory/test_merge_protected_paths.py
+@@ -0,0 +1,296 @@
++"""The merge gate refuses a changed protected path the pinned spec does not declare (spec-factory
++T-0033, issue #57). The pinned spec's Risk section declares protected paths on one line,
++`Protected paths: none | `<path or glob>`, ...`; the operator approves it at the spec gate. At merge,
++`factory merge` refuses each changed protected path that line does not declare, naming it, with an
++error that starts `BLOCKED from merge gate: `, and the build parks the sub-ticket with that error.
++`resolve --accept-paths F` accepts the paths for that sub-ticket and returns it to its checks;
++`resolve --ruling F` sends it back to its implementer. A ruling on a reviewer's ESCALATE returns the
++sub-ticket to its checks.
++
++Black-box through `bin/factory`, each case on the spec's t0033-gate.sh fixture: a scratch instance
++whose protected paths are `core/**`, `bin/tool` and `~/.secret/**`, a throwaway store and a scratch
++target whose main holds core/a.py, core/b.py, bin/tool and docs/d.md.
++"""
++from __future__ import annotations
++
++import json
++import os
++import shutil
++import subprocess
++from pathlib import Path
++
++import pytest
++import yaml
++
++REPO = Path(__file__).resolve().parents[2]
++BIN = REPO / "bin" / "factory"
++FIXTURE = REPO / "tests" / "factory" / "fixtures" / "instance"
++
++# Drives factory/workflows/build.js with a stub clerk: each command gets the reply of the longest key
++# its `bin/factory` arguments start with (a list is used in turn, the last one repeating). Prints
++# `park: <reason>` per park.
++WF_DRIVER = r"""
++import { readFileSync } from 'node:fs'
++const R = { 'config': { out: { ok: true, models: {}, max_rounds: { spec: 2, pr: 2 }, state_dir: '/tmp/s' } },
++  'run start': { out: { ok: true, run_id: 'run-0009-x', worktree: '/w' } }, ...JSON.parse(process.argv[3]) }
++const src = readFileSync(process.argv[2], 'utf8').replace(/^export const meta/m, 'const meta')
++const lines = []
++const agent = async (prompt) => {
++  const m = prompt.match(/and nothing else:\n\n([\s\S]*?)\n\nReport/)
++  if (!m) return 'STATUS: X\nCONFIDENCE: high\nESCALATIONS: none\n'
++  const cmd = m[1].replace(/^.*?bin\/factory /s, '')
++  const p = cmd.match(/^ticket park \S+ --reason "([^"]*)"/)
++  if (p) lines.push(`park: ${p[1]}`)
++  const key = Object.keys(R).filter(k => cmd.startsWith(k)).sort((a, b) => b.length - a.length)[0]
++  let r = key ? R[key] : { out: { ok: true } }
++  if (Array.isArray(r)) r = r.length > 1 ? r.shift() : r[0]
++  return { stdout: JSON.stringify(r.out), exit: r.exit || 0, stderr: '' }
++}
++const fn = new (async () => {}).constructor('args', 'agent', 'log', 'phase', 'parallel', src)
++await fn({ ticket: 'T-0001', repo: '/r', state: '/tmp/s' }, agent, () => {}, () => {}, async (fs) => Promise.all(fs.map(f => f())))
++console.log(lines.join('\n'))
++"""
++
++
++class Gate:
++    """The t0033-gate.sh fixture. `risk` is the line T-0001's approved spec carries in its Risk
++    section (None: T-0001 is never approved and has no sub-ticket; the commit lands on T-0001's own
++    branch). `changes` as in the fixture: `p` appends to p, `p-` deletes p, `p>q` renames p to q."""
++
++    def __init__(self, tmp_path: Path, risk: str | None, changes: str):
++        self.tmp = tmp_path
++        inst, self.store, self.target = tmp_path / "inst", tmp_path / "store", tmp_path / "t"
++        inst.mkdir()
++        shutil.copy(FIXTURE / "context.md", inst / "context.md")
++        kept = [ln for ln in (FIXTURE / "instance.yaml").read_text().splitlines()
++                if not ln.startswith(("protected_paths:", "  infra:"))]
++        (inst / "instance.yaml").write_text("\n".join(kept + [
++            "protected_paths:", '  harness: ["core/**", "bin/tool"]', '  credentials: ["~/.secret/**"]']) + "\n")
++        self.env = {**os.environ, "FACTORY_INSTANCE": str(inst), "FACTORY_STATE": str(self.store),
++                    "FACTORY_REPO": str(self.target), "FACTORY_INTEGRATION_BRANCH": "main",
++                    "PYTHONDONTWRITEBYTECODE": "1"}
++        subprocess.run(["git", "init", "-q", "-b", "main", str(self.target)], check=True)
++        for f in ("core/a.py", "core/b.py", "bin/tool", "docs/d.md"):
++            (self.target / f).parent.mkdir(parents=True, exist_ok=True)
++            (self.target / f).write_text("x\n")
++        self.git("add", "-A")
++        self.git("commit", "-qm", "init")
++        for tid, line in (("T-0001", risk), ("T-0002", "Protected paths: `core/b.py`")):
++            self.spec(tid, line)
++        self.sub = "T-0001"
++        if risk is not None:
++            plan = tmp_path / "plan.md"
++            plan.write_text("ST-1 / Do it\nDepends on: none\nParallel-safe: yes\n")
++            self.ok("subticket", "add", "T-0001", "--file", str(plan))
++            self.ok("ticket", "transition", "T-0001", "--to", "planned", "--by", "t")
++            self.sub = "T-0001.1"
++        branch = f"factory/{self.sub}"
++        self.git("checkout", "-qb", branch)
++        for c in changes.split():
++            if ">" in c:
++                src, dst = c.split(">")
++                (self.target / dst).parent.mkdir(parents=True, exist_ok=True)
++                self.git("mv", src, dst)
++            elif c.endswith("-"):
++                self.git("rm", "-q", c[:-1])
++            else:
++                (self.target / c).parent.mkdir(parents=True, exist_ok=True)
++                with (self.target / c).open("a") as fh:
++                    fh.write("y\n")
++                self.git("add", c)
++        self.git("commit", "-qm", "work")
++        self.head = self.git("rev-parse", "HEAD")
++        self.git("checkout", "-q", "main")
++        self.main = self.git("rev-parse", "main")
++        self.ok("ticket", "set", self.sub, "status=checks-in-flight", f"branch={branch}", f"head={self.head}")
++        self.record("verifier", "Gate suite: PASS\nSTATUS: VERIFIED", "run-0001-verifier")
++        self.record("reviewer", "STATUS: APPROVE", "run-0002-reviewer")
++
++    def spec(self, tid: str, line: str | None) -> None:
++        req, spec = self.tmp / "req.md", self.tmp / "spec.md"
++        req.write_text(f"# F {tid}\n\nDo x.\n")
++        spec.write_text(f"=== proposal.md\n## Problem\nx\n## Risk\nBlast radius: small.\n{line or ''}\n"
++                        "=== design.md\n## Proposed change\nA. x\n")
++        self.ok("ticket", "new", "--file", str(req))
++        self.ok("ticket", "transition", tid, "--to", "ready-for-spec-writer", "--by", "t")
++        self.ok("spec", "add", tid, "--file", str(spec))
++        self.ok("ticket", "transition", tid, "--to", "ready-for-critic", "--by", "t", "--round", "spec:init")
++        if line is not None:
++            self.ok("ticket", "transition", tid, "--to", "awaiting-spec-gate", "--by", "t")
++            self.ok("approve-spec", tid)
++
++    def record(self, role: str, body: str, run: str) -> None:
++        out = self.tmp / f"{run}.md"
++        out.write_text(f"Commit: {self.head}\n{body}\nCONFIDENCE: high, fixture\nESCALATIONS: none\n")
++        self.ok("results", "record", self.sub, "--head", self.head, "--role", role, "--output", str(out), "--run", run)
++
++    def git(self, *argv: str) -> str:
++        cp = subprocess.run(["git", "-c", "user.email=f@x", "-c", "user.name=f", *argv], cwd=self.target,
++                            capture_output=True, text=True, check=True)
++        return cp.stdout.strip()
++
++    def cli(self, *argv: str) -> subprocess.CompletedProcess:
++        return subprocess.run([str(BIN), *argv], capture_output=True, text=True, env=self.env, cwd=REPO)
++
++    def ok(self, *argv: str) -> dict:
++        cp = self.cli(*argv)
++        assert cp.returncode == 0, cp.stderr
++        return json.loads(cp.stdout.strip().splitlines()[-1])
++
++    def refused(self, *argv: str) -> str:
++        cp = self.cli(*argv)
++        assert cp.returncode == 2, cp.stdout + cp.stderr
++        return json.loads(cp.stdout.strip().splitlines()[-1])["error"]
++
++    def ticket(self, tid: str | None = None) -> dict:
++        return yaml.safe_load((self.store / "tickets" / f"{tid or self.sub}.yaml").read_text())
++
++    def park_with_merge_error(self) -> str:
++        error = self.refused("merge", self.sub)
++        self.ok("ticket", "park", self.sub, "--reason", error)
++        return error
++
++    def rows(self) -> list[str]:
++        return sorted(p.name for p in (self.store / "results" / self.head).glob("*.yaml"))
++
++    def ruling(self, text: str) -> str:
++        f = self.tmp / "ruling.md"
++        f.write_text(text)
++        return str(f)
++
++
++def test_an_undeclared_protected_path_is_refused_by_name_and_nothing_changes(tmp_path):
++    g = Gate(tmp_path, "Protected paths: `core/a.py`", "core/a.py core/b.py bin/tool docs/d.md")
++    before = g.ticket()
++    error = g.refused("merge", g.sub)
++    assert error == "BLOCKED from merge gate: protected paths not declared in T-0001 spec v1: bin/tool, core/b.py"
++    assert not any(c in error for c in "`$\"")
++    assert g.git("rev-parse", "main") == g.main
++    assert g.ticket() == before
++    events = [json.loads(ln) for p in sorted((g.store / "log").glob("*.jsonl")) for ln in p.read_text().splitlines()]
++    refused = [e for e in events if e["event"] == "merge.refused"]
++    assert len(refused) == 1 and refused[0]["paths"] == ["bin/tool", "core/b.py"]
++    assert refused[0]["reason"] == "protected paths not declared" and refused[0]["head"] == g.head
++
++
++@pytest.mark.parametrize("risk, changes", [
++    ("Protected paths: none", "core/b.py"),                 # T-0002 declares core/b.py, not T-0001
++    ("Protected paths: none", "core/b.py>docs/b.py"),       # moved out of the protected tree
++    ("Not touched: `core/b.py`", "core/b.py"),              # a Risk line in another form
++    ("```\nProtected paths: `core/b.py`\n```", "core/b.py"),  # inside a fenced code block
++    ("Protected paths: `core/{a,b}.py`", "core/b.py"),      # a brace list is one literal entry
++])
++def test_nothing_but_the_pinned_specs_own_declaration_line_declares_a_path(tmp_path, risk, changes):
++    g = Gate(tmp_path, risk, changes)
++    error = g.refused("merge", g.sub)
++    assert error == "BLOCKED from merge gate: protected paths not declared in T-0001 spec v1: core/b.py"
++    assert g.git("rev-parse", "main") == g.main
++
++
++@pytest.mark.parametrize("risk, changes", [
++    ("Protected paths: `core/**`, `bin/tool`", "core/a.py core/new/c.py bin/tool"),
++    ("- Protected paths: `core/b.py`.", "core/b.py docs/d.md"),
++    ("Protected paths: none", "docs/d.md docs/e.md"),
++])
++def test_a_declared_protected_path_or_an_unprotected_one_merges(tmp_path, risk, changes):
++    g = Gate(tmp_path, risk, changes)
++    assert g.ok("merge", g.sub)["state"] == "merged"
++    assert g.git("rev-parse", "main") != g.main
++
++
++def test_a_ticket_with_no_parent_and_no_approved_spec_declares_nothing(tmp_path):
++    g = Gate(tmp_path, None, "core/a.py")
++    assert g.refused("merge", g.sub) == (
++        "BLOCKED from merge gate: protected paths not declared (T-0001 has no approved spec): core/a.py")
++
++
++def test_the_build_parks_a_merge_gate_refusal_with_its_reason(tmp_path):
++    node = shutil.which("node")
++    assert node, "node must be on PATH: this case runs factory/workflows/build.js"
++    error = "BLOCKED from merge gate: protected paths not declared in T-0001 spec v1: core/b.py"
++    replies = {
++        "ticket show T-0001 ": {"out": {"ok": True, "state": "planned"}},
++        "ticket ready-implementers": [
++            {"out": {"ok": True, "ready": [], "resumable": ["T-0001.1"], "remaining": ["T-0001.1"],
++                     "subtickets": ["T-0001.1"], "closed": []}},
++            {"out": {"ok": True, "ready": [], "resumable": [], "remaining": ["T-0001.1"],
++                     "subtickets": ["T-0001.1"], "closed": []}}],
++        "ticket show T-0001.1": {"out": {"ok": True, "state": "checks-in-flight"}},
++        "ticket head": {"out": {"ok": True, "head": "ab" * 20}},
++        "results show": {"out": {"ok": True, "rows": {"reviewer": "APPROVE", "verifier": "VERIFIED", "ci": "PASS"},
++                                 "missing": []}},
++        "ticket join": {"out": {"ok": True, "decision": "merge", "reason": "ci PASS + APPROVE + VERIFIED"}},
++        "merge": {"out": {"ok": False, "error": error}, "exit": 2},
++    }
++    driver = tmp_path / "wf.mjs"
++    driver.write_text(WF_DRIVER)
++    cp = subprocess.run([node, str(driver), "factory/workflows/build.js", json.dumps(replies)],
++                        capture_output=True, text=True, cwd=REPO)
++    assert cp.stdout.strip() == f"park: {error}", cp.stdout + cp.stderr
++
++
++def test_accepting_the_refused_paths_returns_the_sub_ticket_to_its_checks_and_it_merges(tmp_path):
++    g = Gate(tmp_path, "Protected paths: `core/a.py`", "core/a.py core/b.py bin/tool")
++    g.park_with_merge_error()
++    pr = g.ticket()["round"]["pr"]
++    g.ok("resolve", g.sub, "--accept-paths", g.ruling("Ruling: part of the approved design.\n"))
++    t = g.ticket()
++    assert t["status"] == "checks-in-flight" and t["parked"] is None and t["round"]["pr"] == pr
++    assert t["accepted_paths"] == ["bin/tool", "core/b.py"]
++    assert g.rows() == ["ci.yaml", "reviewer.yaml", "verifier.yaml"]
++    assert (g.store / "approvals" / g.sub / "ruling-1.md").read_text() == "Ruling: part of the approved design.\n"
++    assert g.ok("merge", g.sub)["state"] == "merged"
++
++
++def test_accepting_paths_is_refused_on_any_other_park_and_writes_nothing(tmp_path):
++    g = Gate(tmp_path, "Protected paths: none", "core/b.py")
++    g.ok("ticket", "park", g.sub, "--reason", "ESCALATE from reviewer")
++    before = g.ticket()
++    error = g.refused("resolve", g.sub, "--accept-paths", g.ruling("Ruling: x\n"))
++    assert error.startswith("--accept-paths applies to a merge gate park (BLOCKED from merge gate); T-0001.1 is parked")
++    assert g.ticket() == before and not list((g.store / "approvals" / g.sub).glob("ruling-*"))
++
++
++def test_accepting_paths_is_refused_when_the_head_is_not_the_branch_tip(tmp_path):
++    g = Gate(tmp_path, "Protected paths: none", "core/b.py")
++    g.park_with_merge_error()
++    g.git("checkout", "-q", "factory/T-0001.1")
++    g.git("commit", "-q", "--allow-empty", "-m", "later")
++    g.git("checkout", "-q", "main")
++    before = g.ticket()
++    assert "is not the branch tip" in g.refused("resolve", g.sub, "--accept-paths", g.ruling("Ruling: x\n"))
++    assert g.ticket() == before and not list((g.store / "approvals" / g.sub).glob("ruling-*"))
++
++
++def test_accepting_paths_is_refused_when_no_undeclared_protected_path_remains(tmp_path):
++    g = Gate(tmp_path, "Protected paths: none", "core/b.py")
++    g.park_with_merge_error()
++    g.ok("resolve", g.sub, "--accept-paths", g.ruling("Ruling: x\n"))
++    g.ok("ticket", "park", g.sub, "--reason", "BLOCKED from merge gate: again")
++    before = g.ticket()
++    error = g.refused("resolve", g.sub, "--accept-paths", g.ruling("Ruling: y\n"))
++    assert error == f"nothing to accept: T-0001.1 has no undeclared protected path at {g.head[:9]}"
++    assert g.ticket() == before and len(list((g.store / "approvals" / g.sub).glob("ruling-*"))) == 1
++
++
++def test_a_ruling_on_a_merge_gate_refusal_sends_the_sub_ticket_back_to_its_implementer(tmp_path):
++    g = Gate(tmp_path, "Protected paths: none", "core/b.py")
++    g.park_with_merge_error()
++    pr = g.ticket()["round"]["pr"]
++    g.ok("resolve", g.sub, "--ruling", g.ruling("Ruling: take core/b.py out of this change.\n"))
++    t = g.ticket()
++    assert t["status"] == "ready-for-implementer" and t["round"]["pr"] == pr and not t.get("accepted_paths")
++
++
++def test_a_ruling_on_a_reviewer_escalation_returns_the_sub_ticket_to_its_checks(tmp_path):
++    g = Gate(tmp_path, "Protected paths: none", "docs/d.md")
++    g.record("reviewer", "STATUS: ESCALATE", "run-0003-reviewer")
++    g.ok("ticket", "park", g.sub, "--reason", "ESCALATE from reviewer")
++    pr = g.ticket()["round"]["pr"]
++    g.ok("resolve", g.sub, "--ruling", g.ruling("Ruling: the escalation is settled.\n"))
++    t = g.ticket()
++    assert t["status"] == "checks-in-flight" and t["round"]["pr"] == pr
++    assert g.rows() == ["ci.yaml", "verifier.yaml"]
++    assert [p.name for p in (g.store / "results" / g.head / "superseded-1").iterdir()] == ["reviewer.yaml"]
++    assert t["history"][-1]["superseded"] == ["reviewer"]
++    assert (g.store / "approvals" / g.sub / "ruling-1.md").exists()

@@ -1,0 +1,48 @@
+id: T-0033.1
+type: sub-ticket
+title: Merge gate merges protected-path changes the approved spec never declared, and the reviewer prompt
+  promises a check the gate does not run
+request: requests/T-0033.md
+source: plan:whole-spec
+status: merged
+round:
+  spec: 0
+  pr: 1
+spec:
+  version: 2
+  approved_version: 2
+plan: null
+in_flight: []
+parked: null
+created: '2026-10-09T06:21:21+00:00'
+history:
+- ts: '2026-10-09T06:38:15+00:00'
+  from: ready-for-implementer
+  to: checks-in-flight
+  by: workflow
+  round:
+    spec: 0
+    pr: 1
+- ts: '2026-10-09T06:48:55+00:00'
+  from: checks-in-flight
+  to: ready-for-merge
+  by: workflow
+  round:
+    spec: 0
+    pr: 1
+- ts: '2026-10-09T06:49:04+00:00'
+  from: ready-for-merge
+  to: merged
+  by: merge
+  head: ba3fea8154f74ccd5007fd25d18f8215e0b7f000
+parent: T-0033
+depends_on: []
+parallel_safe: true
+branch: factory/T-0033.1
+head: ba3fea8154f74ccd5007fd25d18f8215e0b7f000
+merge:
+  base_before: 2f7f75f3961d2bd20b2fb106bd587ff94dd7621f
+  main_after: 2e078481dbd168dfbfb787ab920243ee3c24b0af
+parent_base: null
+label: whole-spec
+merge_refused: null

@@ -4,7 +4,7 @@ title: A registered agent definition for every role, a file-tool fence on the re
   `run start --inline`
 request: requests/T-0030.md
 source: plan:run-0308-planner
-status: parked
+status: closed
 round:
   spec: 0
   pr: 0
@@ -13,13 +13,7 @@ spec:
   approved_version: 2
 plan: null
 in_flight: []
-parked:
-  reason: BLOCKED from implementer
-  since: '2026-10-07T15:26:29+00:00'
-  from: ready-for-implementer
-  outputs:
-  - run-0318-implementer
-  question: null
+parked: null
 created: '2026-10-07T14:55:05+00:00'
 history:
 - ts: '2026-10-07T14:58:16+00:00'
@@ -38,6 +32,11 @@ history:
   to: parked
   by: park
   reason: BLOCKED from implementer
+- ts: '2026-10-09T06:50:33+00:00'
+  from: parked
+  to: closed
+  by: dphang
+  resolve: close
 parent: T-0030
 depends_on: []
 parallel_safe: false

@@ -1,0 +1,25 @@
+run_id: run-0362-verifier
+role: verifier
+ticket: T-0033.1
+model: opus
+round: 1
+spec_version: 2
+started: '2026-10-09T06:38:32+00:00'
+finished: '2026-10-09T06:48:13+00:00'
+wall_s: 581
+status: VERIFIED
+input_sources:
+- specs/T-0033.1/subticket.md
+- specs/T-0033/v2.md
+- runs/run-0361-implementer/output.md
+- runs/run-0362-verifier/diff.patch
+gate_skipped: []
+environment_files: []
+branch: factory/T-0033.1
+base: 2f7f75f3961d2bd20b2fb106bd587ff94dd7621f
+head: ba3fea8154f74ccd5007fd25d18f8215e0b7f000
+worktree: /Users/dphang/dev/spec-factory/.factory/store/runs/run-0362-verifier/wt
+confidence: high, every scenario was run as written on both trees with the outputs above, both gates passed
+  on `ba3fea8`, and 14 probes behaved as the spec decides.
+escalations: []
+escalations_note: null

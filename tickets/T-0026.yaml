@@ -3,7 +3,7 @@ type: feature
 title: Workflow view shows a short task title beside every ticket id, in narrator lines and agent labels
 request: requests/T-0026.md
 source: /private/tmp/claude-501/-Users-dphang-dev-nanobot/c69bfd1d-97a6-43e3-9d5a-a517c28d382c/scratchpad/47_wfview.md
-status: ready-for-planner
+status: closed
 round:
   spec: 2
   pr: 0
@@ -55,6 +55,13 @@ history:
   to: ready-for-planner
   by: dphang
   approved_version: 2
+- ts: '2026-10-09T06:50:33+00:00'
+  from: ready-for-planner
+  to: closed
+  by: dphang
+  resolve: close
+  decision: '2026-10-09 T-0026 T-0026 (#47) withdrawn: merged into #65 at the backlog review 2026-10-09;
+    the Workflow scripts it would change retire with #65.'
 parent: null
 depends_on: []
 parallel_safe: true

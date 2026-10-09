@@ -1,0 +1,8 @@
+by: dphang
+at: '2026-10-09T06:50:33+00:00'
+kind: close
+from: planned
+to: closed
+decision: '2026-10-09 T-0030 T-0030 (#24 A+C) closed as partly applied: part C merged (T-0030.3); parts
+  A, B and per-role effort moved to #65 (backlog review 2026-10-09). Current truth was not folded for
+  this ticket.'

@@ -4,14 +4,14 @@ title: Merge gate merges protected-path changes the approved spec never declared
   promises a check the gate does not run
 request: requests/T-0033.md
 source: /private/tmp/claude-501/-Users-dphang-dev-nanobot/c69bfd1d-97a6-43e3-9d5a-a517c28d382c/scratchpad/req-57.md
-status: ready-for-planner
+status: closed
 round:
   spec: 2
   pr: 0
 spec:
   version: 2
   approved_version: 2
-plan: null
+plan: plans/T-0033.md
 in_flight: []
 parked: null
 created: '2026-10-07T14:48:01+00:00'
@@ -70,6 +70,25 @@ history:
   to: ready-for-planner
   by: dphang
   approved_version: 2
+- ts: '2026-10-09T06:21:34+00:00'
+  from: ready-for-planner
+  to: planned
+  by: workflow
+  round:
+    spec: 2
+    pr: 0
+- ts: '2026-10-09T06:49:23+00:00'
+  from: planned
+  to: ready-for-parent-verify
+  by: parent-check
+- ts: '2026-10-09T06:49:49+00:00'
+  from: ready-for-parent-verify
+  to: closed
+  by: workflow
+  round:
+    spec: 2
+    pr: 0
+  verified_by: run-0362-verifier
 parent: null
 depends_on: []
 parallel_safe: true
@@ -78,4 +97,4 @@ head: null
 merge:
   base_before: null
   main_after: null
-parent_base: null
+parent_base: 2f7f75f3961d2bd20b2fb106bd587ff94dd7621f

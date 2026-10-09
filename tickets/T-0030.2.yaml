@@ -3,7 +3,7 @@ type: sub-ticket
 title: 'Effort per role: the instance''s `effort:` map reaches the agent call and the run record'
 request: requests/T-0030.md
 source: plan:run-0308-planner
-status: waiting-dependencies
+status: closed
 round:
   spec: 0
   pr: 0
@@ -14,7 +14,12 @@ plan: null
 in_flight: []
 parked: null
 created: '2026-10-07T14:55:05+00:00'
-history: []
+history:
+- ts: '2026-10-09T06:50:33+00:00'
+  from: waiting-dependencies
+  to: closed
+  by: dphang
+  resolve: close
 parent: T-0030
 depends_on:
 - T-0030.1

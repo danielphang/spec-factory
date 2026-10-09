@@ -5,7 +5,7 @@ title: 'Token cost: a registered agent definition for each of the seven roles (t
   per-role effort setting (#24 parts A and C, folding in #22)'
 request: requests/T-0030.md
 source: /private/tmp/claude-501/-Users-dphang-dev-nanobot/c69bfd1d-97a6-43e3-9d5a-a517c28d382c/scratchpad/req_24.md
-status: planned
+status: closed
 round:
   spec: 1
   pr: 0
@@ -50,6 +50,14 @@ history:
   round:
     spec: 1
     pr: 0
+- ts: '2026-10-09T06:50:33+00:00'
+  from: planned
+  to: closed
+  by: dphang
+  resolve: close
+  decision: '2026-10-09 T-0030 T-0030 (#24 A+C) closed as partly applied: part C merged (T-0030.3); parts
+    A, B and per-role effort moved to #65 (backlog review 2026-10-09). Current truth was not folded for
+    this ticket.'
 parent: null
 depends_on: []
 parallel_safe: true

@@ -108,3 +108,7 @@ Suggested fix: Write "a PASS `ci` result (the gate suite)" or "a PASS test-suite
 The change not asked for by a finding (reading the Risk section with `specstore.lines_outside_fences`) is sound: it reuses the section rule `main` adopted in `220ebdc`, and without it a quoted example declaration in a Risk section would authorize paths. The spec also says plainly that v2's scenarios were not re-run; I re-ran four of them and they match.
 
 Out-of-scope observations: none new. The round-1 note on the 2026-10-07 T-0032 decision line stands; the spec records the correct cause in Evidence and leaves the log alone, which is right for this ticket.
+
+## Verifier results
+
+ba3fea8154f74ccd5007fd25d18f8215e0b7f000 · T-0033.1 · VERIFIED · run-0362-verifier
