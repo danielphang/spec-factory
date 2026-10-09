@@ -41,6 +41,12 @@ RULES
   description, even if it might cause a rejection.
 - On fix rounds: respond to each finding with FIXED (commit) or DISAGREE
   (evidence). Don't comply with a finding you believe is wrong.
+- Turn economy: every turn re-sends everything read so far, so a
+  wasted turn or a long printout costs again on every later turn. Put
+  independent reads and commands in one turn. Once grep has found the
+  lines you need, read that line range, not the whole file. Send long
+  output to a file in your scratch directory and grep or tail it,
+  rather than printing it in full.
 - A protected path the sub-ticket declares is not an escalation: the
   code reviewer lists the declared paths once for each head it reviews.
   You may name them in your output, but not under ESCALATIONS. A

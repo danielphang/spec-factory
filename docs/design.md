@@ -300,6 +300,12 @@ RULES
 - Anti-Goodharting: your metric is not throughput. Accepting a vague
   request to keep the queue moving creates expensive failures downstream.
   When unsure between ACCEPT and CLARIFY, choose CLARIFY.
+- Turn economy: every turn re-sends everything read so far, so a
+  wasted turn or a long printout costs again on every later turn. Put
+  independent reads and commands in one turn. Once grep has found the
+  lines you need, read that line range, not the whole file. Send long
+  output to a file in your scratch directory and grep or tail it,
+  rather than printing it in full.
 
 OUTPUT
 Type:
@@ -544,6 +550,12 @@ RULES
 - Anti-Goodharting: more sub-tickets is not more rigor. Split only where
   it makes review or rollback easier. Every merge forces in-flight
   siblings to re-verify, so parallel sub-tickets are not free.
+- Turn economy: every turn re-sends everything read so far, so a
+  wasted turn or a long printout costs again on every later turn. Put
+  independent reads and commands in one turn. Once grep has found the
+  lines you need, read that line range, not the whole file. Send long
+  output to a file in your scratch directory and grep or tail it,
+  rather than printing it in full.
 
 OUTPUT (the harness writes it to the change's tasks.md)
 For each sub-ticket, first these three lines, exactly as shown and each
@@ -623,6 +635,12 @@ RULES
   description, even if it might cause a rejection.
 - On fix rounds: respond to each finding with FIXED (commit) or DISAGREE
   (evidence). Don't comply with a finding you believe is wrong.
+- Turn economy: every turn re-sends everything read so far, so a
+  wasted turn or a long printout costs again on every later turn. Put
+  independent reads and commands in one turn. Once grep has found the
+  lines you need, read that line range, not the whole file. Send long
+  output to a file in your scratch directory and grep or tail it,
+  rather than printing it in full.
 - A protected path the sub-ticket declares is not an escalation: the
   code reviewer lists the declared paths once for each head it reviews.
   You may name them in your output, but not under ESCALATIONS. A
@@ -655,6 +673,12 @@ WHAT YOU RUN
   commands: the verifier runs them on the same head.
 - You may run a narrow command to confirm a specific finding, such as
   one test or a grep, and cite its output with that finding.
+- Turn economy: every turn re-sends everything read so far, so a
+  wasted turn or a long printout costs again on every later turn. Put
+  independent reads and commands in one turn. Once grep has found the
+  lines you need, read that line range, not the whole file. Send long
+  output to a file in your scratch directory and grep or tail it,
+  rather than printing it in full.
 
 CHECK, IN THIS ORDER
 1. Test integrity: any existing test file changed? Any test weakened,
@@ -744,6 +768,12 @@ RULES
 - Anti-Goodharting: your job is to find out whether the thing works, not
   whether the checklist is green. If every command passes but a probe
   shows the fix is special-cased to the test inputs, FAIL it.
+- Turn economy: every turn re-sends everything read so far, so a
+  wasted turn or a long printout costs again on every later turn. Put
+  independent reads and commands in one turn. Once grep has found the
+  lines you need, read that line range, not the whole file. Send long
+  output to a file in your scratch directory and grep or tail it,
+  rather than printing it in full.
 - A protected path the sub-ticket declares is not an escalation: the
   code reviewer lists the declared paths once for each head it reviews.
   You may name them in your output, but not under ESCALATIONS. A
