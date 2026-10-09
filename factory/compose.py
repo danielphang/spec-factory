@@ -230,6 +230,33 @@ def compose(root: Path, cfg: dict, meta: dict, t: dict) -> tuple[str, list[str]]
         p = root / "decisions.md"
         if p.exists() and p.read_text(encoding="utf-8").strip():
             add("decisions.md", "Decision log (decisions.md): standing decisions, read-only")
+
+    def add_approved_changes() -> None:
+        # for the critic's cross-ticket check (its rubric item 5): every other change folder whose
+        # ticket is past the gate and not closed, with the requirements it changes and its decisions
+        changes = specstore.root_dir(root) / "changes"
+        if not changes.is_dir():
+            return
+        entries = []
+        for d in sorted(p for p in changes.iterdir() if p.is_dir()):
+            cid = d.name
+            if cid in ("archive", tid) or not store.ticket_path(root, cid).exists():
+                continue
+            other = store.load_ticket(root, cid)
+            if other["status"] in ("closed", "ready-for-spec-writer", "ready-for-critic", "awaiting-spec-gate"):
+                continue
+            ops = [f"{cap}: {op} {name}" for cap, by_op in specstore.delta_ops_of_change(root, cid).items()
+                   for op, reqs in by_op.items() for name in reqs]
+            proposal = d / "proposal.md"
+            decisions = []
+            if proposal.exists():
+                sources.append(str(proposal.relative_to(root)))
+                decisions = specstore.decisions_of(proposal.read_text(encoding="utf-8"))
+            entries.append(f"### {cid}: {other['title']} ({other['status']})\nChange folder: `{d}`\n"
+                           f"Changes: {'; '.join(ops) or 'none'}\n"
+                           + ("Decisions:\n" + "".join(f"- {ln}\n" for ln in decisions) if decisions
+                              else "Decisions: none\n"))
+        parts.append("\n## Approved changes not yet archived\n\n" + ("\n".join(entries) if entries else "none\n"))
     if role == "triage":
         add(t["request"], "Request (raw, with any answers appended)")
         every = current_truth(root)
@@ -267,6 +294,7 @@ def compose(root: Path, cfg: dict, meta: dict, t: dict) -> tuple[str, list[str]]
         sel = selected(f"specs/{tid}/v{version}.md")
         add_truth(sel)
         add_decisions()
+        add_approved_changes()
         if rnd >= 2 and version >= 2:
             crit = _runs_for(root, tid, "critic", run_id)
             if crit:
