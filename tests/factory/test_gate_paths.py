@@ -214,7 +214,8 @@ def test_a_null_absent_or_unscoped_mapping_gate_runs_as_a_string_list_does(tmp_p
     t = Target(tmp_path, SCOPED_GATE)
     t.set_gate(gate)
     _, text, meta = t.checker()
-    want = f"`(export HOME=\"$(cd \"$(mktemp -d)\" && pwd -P)\"; {UNSCOPED})`" if UNSCOPED in gate else ""
+    want = (f"`([ -z \"${{VIRTUAL_ENV:-}}\" ] || PATH=$(printf %s \"$PATH\" | tr : '\\n' | grep -vxF \"$VIRTUAL_ENV/bin\" | paste -sd: -); "
+            f"unset VIRTUAL_ENV PYTHONHOME; export HOME=\"$(cd \"$(mktemp -d)\" && pwd -P)\"; {UNSCOPED})`" if UNSCOPED in gate else "")
     assert _gate_line(text).endswith("each is already wrapped): " + want)
     assert _skipped_lines(text) == [] and meta["gate_skipped"] == []
 

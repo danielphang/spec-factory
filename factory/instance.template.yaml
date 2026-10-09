@@ -38,6 +38,10 @@ environment_files: []
 # Variables the running-code wrapper exports after the throwaway HOME, for tools that keep a cache
 # under HOME (for example UV_CACHE_DIR: /Users/me/.cache/uv). HOME itself is refused.
 run_env: {}
+# One shell command the harness runs in each build checkout at run start, through the running-code
+# wrapper, after the environment files are copied (for example `uv sync --frozen`). null means none.
+# A failure refuses the run.
+environment_sync: null
 force_push_allowed: false
 models:
   triage: opus

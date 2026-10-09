@@ -28,6 +28,7 @@ built, who checked it against what, and why it was allowed through.
 declared inputs: the critic never sees the writer's reasoning, the reviewer never sees the
 implementer's.
 Every role's input carries a wrapper that runs a command with a fresh temporary HOME, and the repo's check commands come already wrapped.
+The wrapper also drops a Python virtual environment inherited from the launching shell (`VIRTUAL_ENV`, `PYTHONHOME`, and its `bin/` on `PATH`).
 It does not stop a write to an absolute path.
 
 | Role | Does | Model |
@@ -587,7 +588,10 @@ From inside the target repo, with `R` the runtime (`~/dev/spec-factory-harness`)
    command covers: `{command: "<command>", paths: [":(exclude)dev/"]}`. A sub-ticket whose changes
    touch none of them skips that command. Prefer exclude pathspecs, so a new file still runs the
    command. Set `run_env` for any tool whose cache lives under HOME,
-   so it still finds that cache from inside the fresh temporary HOME.
+   so it still finds that cache from inside the fresh temporary HOME. Set `environment_sync` to the
+   command that installs the repo's environment (for example `uv sync --frozen`), so each build
+   checkout starts synced: `run start` runs it in the checkout before the role starts, and refuses
+   the run if it fails.
 
 The repo is now a target. "Starting a run" is the rest.
 
