@@ -94,3 +94,7 @@ Not checked, as in round 1 and unchanged: the prototype outputs of the NEW scena
 Substance: unchanged from round 1 and still sound. The split rule (unmerged and `planned_from` below the parent's highest) covers the Nanobot record without a migration, the T-0027 moved record, and the same-version re-plan; the `Depends on` refusal and the planner line close the one route by which a new plan could wait on a superseded sub-ticket; every lettered part is needed; "Tests to change: none" holds against the pins I read in round 1 (`test_shepherd.py:385`, `test_replan.py:108,117,127`, `test_build_startup.py:84-91`, each one approved version per parent); the protected path `factory/**` is declared.
 
 Out-of-scope observations: the dev checkout has an untracked file `.factory/answers/T-0037-answer.md` (`git status --short`). It belongs to another ticket and does not touch this spec.
+
+## Verifier results
+
+9aa97bf43d815b288ca4dd1cf89cbde4dac55103 · T-0038.1 · VERIFIED · run-0359-verifier

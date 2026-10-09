@@ -1,0 +1,25 @@
+run_id: run-0358-implementer
+role: implementer
+ticket: T-0038.1
+model: opus
+round: 0
+spec_version: 2
+started: '2026-10-09T05:58:25+00:00'
+finished: '2026-10-09T06:09:48+00:00'
+wall_s: 683
+status: READY-FOR-REVIEW
+input_sources:
+- specs/T-0038.1/subticket.md
+- specs/T-0038/v2.md
+gate_skipped: []
+branch: factory/T-0038.1
+base: f4ea04193e829219b592f44c3fc55d9e42e768d9
+head: f4ea04193e829219b592f44c3fc55d9e42e768d9
+worktree: /Users/dphang/dev/spec-factory/.factory/store/worktrees/T-0038.1
+resolution: null
+environment_files: []
+confidence: high. Every acceptance scenario printed its THEN verbatim after the change, every NEW scenario
+  printed the spec's "today" output before it, and the full suite passed (391).
+escalations: []
+escalations_note: none. The protected paths touched are `factory/cli.py`, `factory/subtickets.py` and
+  `factory/compose.py`, all under harness `factory/**`, and the spec's Risk section declares all three.

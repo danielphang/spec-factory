@@ -1,0 +1,48 @@
+id: T-0038.1
+type: sub-ticket
+title: 'After a re-spec and re-plan, a sub-ticket from the old plan keeps parking the parent: sub-tickets
+  should record which plan they belong to, and only the current plan''s sub-tickets should count'
+request: requests/T-0038.md
+source: plan:whole-spec
+status: merged
+round:
+  spec: 0
+  pr: 1
+spec:
+  version: 2
+  approved_version: 2
+plan: null
+in_flight: []
+parked: null
+created: '2026-10-09T05:57:48+00:00'
+history:
+- ts: '2026-10-09T06:10:08+00:00'
+  from: ready-for-implementer
+  to: checks-in-flight
+  by: workflow
+  round:
+    spec: 0
+    pr: 1
+- ts: '2026-10-09T06:19:27+00:00'
+  from: checks-in-flight
+  to: ready-for-merge
+  by: workflow
+  round:
+    spec: 0
+    pr: 1
+- ts: '2026-10-09T06:19:36+00:00'
+  from: ready-for-merge
+  to: merged
+  by: merge
+  head: 9aa97bf43d815b288ca4dd1cf89cbde4dac55103
+parent: T-0038
+depends_on: []
+parallel_safe: true
+branch: factory/T-0038.1
+head: 9aa97bf43d815b288ca4dd1cf89cbde4dac55103
+merge:
+  base_before: f4ea04193e829219b592f44c3fc55d9e42e768d9
+  main_after: 245096574f9a8905efa20ec05e30cd131b81951b
+parent_base: null
+label: whole-spec
+merge_refused: null

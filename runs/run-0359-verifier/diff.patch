@@ -1,0 +1,426 @@
+diff --git a/README.md b/README.md
+index 322d463..f6eddcc 100644
+--- a/README.md
++++ b/README.md
+@@ -857,6 +857,13 @@ path above is relative to the store.
+   sub-ticket added the file. If none did, the sub-ticket parks as blocked, and the human rules on it
+   as on any blocked build ("Where a human decides"). Any other existing test still changes only if
+   the approved spec lists it. It is tested, and has not yet fired on a real ticket.
++- **Re-plan after a re-spec.** When the human sends a planned parent back to the spec gate and
++  approves a new spec version, the planner splits it again under the same parent. Each sub-ticket
++  records the approved version it was planned from. The new plan supersedes the old plan's
++  sub-tickets that have not merged: they keep their records and ids, but are no longer dispatched,
++  no longer park the parent, and no longer hold back its final check or close. Old sub-tickets that
++  merged stay merged and count as done work. A new plan may not depend on a sub-ticket it
++  supersedes. It is tested, and has not yet fired on a real ticket.
+ - **Empty output.** A role run that ends without writing its output file is run once more on the
+   same inputs, and the harness keeps the agent's last message with the run. A second run in a row
+   that ends the same way parks the ticket. The harness enforces no time or token budget and cannot
+diff --git a/dev/build-harness.spec.md b/dev/build-harness.spec.md
+index 000f7de..1fd6fa9 100644
+--- a/dev/build-harness.spec.md
++++ b/dev/build-harness.spec.md
+@@ -283,7 +283,7 @@ Common step `runRole(role, ticket, head)` in both scripts: clerk `factory run st
+ 
+ `build.js` (`args: {ticket}`), run after `factory approve-spec`:
+ 1. `phase('Plan')` (only when the parent is `ready-for-planner`; a re-run starts from the stored state, so a `--ruling` on a planner ESCALATE re-runs the planner with the ruling in its input): first clerk `factory plan whole-spec PARENT` (B), with three outcomes: a refusal → park the parent `harness-bug: plan whole-spec: <stderr>`, return; `"planner": "skipped"` → no planner run, `transition --to planned`; any other success → the planner as follows. `runRole('planner')` with the pinned spec; `PLANNED` → clerk `factory spec tasks PARENT --run RUN` (B), then `subticket add` per sub-ticket (`depends_on`, `parallel_safe`); `ESCALATE` → park, return.
+-2. `phase('Build')`: `while` any sub-ticket is not `merged|parked|closed`: `ready = ` clerk `factory ticket ready-implementers PARENT` (JSON: sub-tickets in `ready-for-implementer` whose deps are merged, minus any with a run in flight on its branch; a `parallel_safe: false` sub-ticket runs alone: it is listed only when no sibling of the same parent is in flight — any role: `in_flight` non-empty or `checks-in-flight` — and nothing else is listed with it, and while it is in flight no sibling is listed; doc §Routing table, Planner row; item 79; its `subtickets` lists every sub-ticket id of the parent in id order); when the first `ready` of a build run has an empty `subtickets` (a parent planned with none), clerk `factory subticket add PARENT` with no `--run`, once per build run: it takes the planner run named by the parent's latest `plan.added` event; on its refusal park the parent `no sub-tickets, and none could be created from the recorded plan: <stderr>` and return, on success continue the loop; `await parallel(ready.map(st => () => buildOne(st)))`; if `ready` is empty and nothing is in flight, return (the rest is parked or waiting on a human). When nothing is left to build, clerk `factory ticket parent-check PARENT`; a refusal parks the parent `parent-check refused: <stderr>` and returns. When the parent reaches `ready-for-parent-verify` (G), or a re-run finds it there: clerk `factory ticket parent-check PARENT` first. Its `reuse` field names a run when the parent has exactly one sub-ticket and it is merged, `main` is still at that sub-ticket's merge commit, the results row for the merged head is VERIFIED from a run whose base is the parent's `parent_base`, and the sub-ticket's text names every scenario of the pinned spec; that run stands for the parent-close run: no verifier run starts, the build goes to `factory archive PARENT` with that run id as the park outputs, and the close records it as `verified_by` (`null` → as follows). Otherwise `runRole('verifier', PARENT, <main SHA>)` — the parent-close run, whose inputs doc §Routing table (merge-gate row) declares: the pinned parent spec (every delta scenario with its `## Acceptance` label), head = current `main`, base = the parent's `parent_base`, `{gate commands}`; `run compose` supplies exactly these four (no sub-ticket text), the clerk makes the checkout of that head, and the verifier definition (rendered verbatim from the doc) checks out the head it was given and runs the base it was given; `VERIFIED` → clerk `factory archive PARENT` (K), then `closed`, or on its exit 2 `park --reason 'archive: <stderr>'`; `FAILED`/`SPEC-DEFECT` → `park --reason 'parent verify: <STATUS>'` with the output (human queue); then return.
++2. `phase('Build')`: `while` any sub-ticket is not `merged|parked|closed`: `ready = ` clerk `factory ticket ready-implementers PARENT` (JSON: sub-tickets in `ready-for-implementer` whose deps are merged, minus any with a run in flight on its branch; a `parallel_safe: false` sub-ticket runs alone: it is listed only when no sibling of the same parent is in flight — any role: `in_flight` non-empty or `checks-in-flight` — and nothing else is listed with it, and while it is in flight no sibling is listed; doc §Routing table, Planner row; item 79; its `subtickets` lists every sub-ticket id of the parent in id order; sub-tickets a later plan superseded, those not merged and planned from an earlier approved version, are listed under `superseded` and left out of every other list except `subtickets`); when the first `ready` of a build run has an empty `subtickets` (a parent planned with none), clerk `factory subticket add PARENT` with no `--run`, once per build run: it takes the planner run named by the parent's latest `plan.added` event; on its refusal park the parent `no sub-tickets, and none could be created from the recorded plan: <stderr>` and return, on success continue the loop; `await parallel(ready.map(st => () => buildOne(st)))`; if `ready` is empty and nothing is in flight, return (the rest is parked or waiting on a human). When nothing is left to build, clerk `factory ticket parent-check PARENT`; a refusal parks the parent `parent-check refused: <stderr>` and returns. When the parent reaches `ready-for-parent-verify` (G), or a re-run finds it there: clerk `factory ticket parent-check PARENT` first. Its `reuse` field names a run when the parent has exactly one sub-ticket and it is merged, `main` is still at that sub-ticket's merge commit, the results row for the merged head is VERIFIED from a run whose base is the parent's `parent_base`, and the sub-ticket's text names every scenario of the pinned spec; that run stands for the parent-close run: no verifier run starts, the build goes to `factory archive PARENT` with that run id as the park outputs, and the close records it as `verified_by` (`null` → as follows). Otherwise `runRole('verifier', PARENT, <main SHA>)` — the parent-close run, whose inputs doc §Routing table (merge-gate row) declares: the pinned parent spec (every delta scenario with its `## Acceptance` label), head = current `main`, base = the parent's `parent_base`, `{gate commands}`; `run compose` supplies exactly these four (no sub-ticket text), the clerk makes the checkout of that head, and the verifier definition (rendered verbatim from the doc) checks out the head it was given and runs the base it was given; `VERIFIED` → clerk `factory archive PARENT` (K), then `closed`, or on its exit 2 `park --reason 'archive: <stderr>'`; `FAILED`/`SPEC-DEFECT` → `park --reason 'parent verify: <STATUS>'` with the output (human queue); then return.
+ 3. `buildOne(st)`: loop:
+    - `runRole('implementer', st, …, {isolation: 'worktree'})`; the implementer's worktree is created on current `main` at dispatch (doc §Routing table, Planner row), input = sub-ticket, pinned parent spec, AGENTS.md (+ round ≥ 2: both checker outputs, CI result, or the human ruling); `BLOCKED` → park, return; `READY-FOR-REVIEW` → clerk `factory ticket head ST` (from `git ls-remote`), `transition --to checks-in-flight --round pr:init`.
+    - **Checkers in parallel, fresh contexts** (`parallel` is the join barrier, E7): `[rev, ver] = await parallel([() => runRole('reviewer', …), () => runRole('verifier', …)])` with input = `git diff main...head`, PR description, sub-ticket, parent spec (+ round ≥ 2: both prior outputs, the implementer's Responses); the clerk makes each a fresh checkout `~/factory/runs/<run_id>/wt` of the head; each result → clerk `results record` (stale rule applies; the `Commit:` line must equal the current head).
+diff --git a/docs/changelog.md b/docs/changelog.md
+index c0cf9e8..8507f64 100644
+--- a/docs/changelog.md
++++ b/docs/changelog.md
+@@ -63,5 +63,6 @@ Six review rounds ran on this doc, using the reviewer prompt in the appendix. Ro
+ 59. After issue #74 (2026-10-08), where the operator's replay of three past intakes (#49, #51, #57), with the same inputs and bases, found that #73's spec writer rules cut its tokens by about 37% at the same quality, but that its critic rules saved nothing (0.71M to 0.72M, 1.0M to 0.93M, 1.67M to 1.63M tokens) and made the critic check less: it missed the Nanobot `UV_PYTHON_INSTALL_DIR` risk on #51 and, on #57, the brace-list declaration bug that the earlier prompt had confirmed with a scratch git test. The critic's PROCESS drops the per-claim cap (at most two paths and one command for any one claim) and the no-build rule (no clone, worktree or prototype), and says the critic may run a small experiment in its scratch directory to confirm a finding. It keeps its minimum spot-check, the rule that it runs no test suite, the rule for picking an acceptance command, the rule that a claim needing a suite run or a build of the change is a finding or a question, and the three reading rules. `docs/principles.md` principle 2 keeps the critic's no-suite rule, and its Spiking section drops the two-path bound and says that vetting a whole approach is still the spec writer's or a spike's job. The spec writer prompt is unchanged from #73.
+ 60. After issue #75 (2026-10-08), where every spec writer and critic input carried all of current truth and the whole decision log, whatever its ticket touched: one spec writer input on this repo's store was 171.6 kB, of which 123.9 kB was current truth and 32.4 kB the log, and the Nanobot store adds about 480 kB to each writer input. Triage now receives the capability index, one line per current-truth capability with its size, spec path and requirement names, and names the capabilities a request touches on a new `Capabilities:` output line. The spec writer and critic receive those capabilities in full, plus each one their spec cites by path, and the capability index for the rest. They and the planner receive the decision-log lines of the ticket and of those capabilities, and a decision index for the rest: one line per other ticket, with a `grep` command that reads its lines. A ticket whose triage output has no `Capabilities:` line keeps the whole of both. The projection for the Nanobot store's last ten tickets is a mean writer input of 101 kB and a maximum of 167 kB, against 521 kB and 635 kB before; that still misses the request's 40 kB and 100 kB targets, because the rest of a writer input lies outside this change. Rejected: `factory spec show` and `factory decision show` commands, because a command run from inside a role must clear the live-store fence, the guard that refuses store commands while a role runs, and find the instance; a path needs neither.
+ 61. After issue #78 (2026-10-09), where #75's filter reduced every decision logged against another ticket to a line of the decision index, because no line in either store's decision log names a capability: in the operator's replay of a Nanobot ticket, the spec writer put new code in a module that another ticket's standing decision rules out, and the critic missed it. The spec writer, critic and planner receive the whole decision log again, whatever capabilities their ticket names. The decision index and its `grep` command are gone; the capability index stays. Measured on 2026-10-09, the decision part of each of their inputs grows from under 3 kB to about 36 kB on this repo's store, and from about 5 kB to about 80 kB on the Nanobot store. Rejected: the request's rule of sending in full the lines that name no capability and filtering the rest, because on today's logs it sends every line anyway, and it could still hide a cross-cutting decision that happens to name a capability.
++62. After issue #77 (2026-10-08), where Nanobot ticket T-0024 was sent back to the spec gate after planning and approved at a new version: its new plan's sub-ticket was created, but the old plan's sub-ticket that the operator had closed parked the parent at once, and only moving that sub-ticket's record out of the store's `tickets/` by hand let the build go on. Each sub-ticket now records `planned_from`, the parent's approved version when it was created, which nothing changes afterwards. Once a parent has a sub-ticket planned from a later version, its sub-tickets that have not merged and were planned from an earlier one are superseded: kept with their ids and records, but left out of `ready-implementers` (listed under `superseded`), the final check, the close, archive and `resolve --replan`. Merged ones stay merged and count. `subticket add` reports and logs the sub-tickets it supersedes, and refuses a plan whose `Depends on` names one; the planner's input names them. A record without `planned_from` falls back to its `spec.approved_version`, and a second plan at the same approved version supersedes nothing. Rejected: a superseded mark written at re-plan time, which needs a migration for stores that already hold such sub-tickets; and comparing with the parent's current approved version, which would supersede the live plan after a spec amendment that keeps it.
+ 
+ Declined: a dedicated merge agent (merging is gate config plus human gates, not a judgment call).
+diff --git a/docs/design.md b/docs/design.md
+index c9bfdf3..2a98d97 100644
+--- a/docs/design.md
++++ b/docs/design.md
+@@ -106,7 +106,7 @@ Rules the table relies on:
+   - A question returns to the role that asked, with the answer and that role's previous output (the output that asked it); a requester's CLARIFY answer returns to Triage the same way. When the answer is a standing decision, the human passes `--decision "<line>"` with the answer, or with the close, so that it lands in `decisions.md`.
+   - BLOCKED, a critic ESCALATE, and a planner ESCALATE return to the role that emitted them with the ruling, same round, or the human re-scopes (spec gate or writer round reset) or closes.
+   - A spec loop at max rounds goes to the spec gate.
+-  - A parent-close FAILED or SPEC-DEFECT, an archive that does not apply, or a sub-ticket closed by the human, parks the parent: the human amends the spec and re-plans (new sub-tickets under the same parent) or closes the parent.
++  - A parent-close FAILED or SPEC-DEFECT, an archive that does not apply, or a sub-ticket closed by the human, parks the parent: the human amends the spec and re-plans (new sub-tickets under the same parent) or closes the parent. A new plan made from a later approved version supersedes the earlier plan's sub-tickets that have not merged: they keep their records and ids, are no longer dispatched, and neither park the parent nor hold back its close. Merged ones stay merged and count toward the close.
+   - An archive refused for no change folder or no spec store parks the parent the same way, but its spec never entered the spec store: the human closes the parent as applied. Current truth is not updated, and archive appends nothing to `decisions.md`; the human logs any decision with `factory decision add`. If current truth should carry the spec, it is re-intaken as a new ticket.
+   - A PR loop at max rounds, a SPEC-DEFECT, or a reviewer ESCALATE returns to the implementer with the round reset and the human's ruling as findings, or the ticket closes. The human may amend the sub-ticket or the pinned spec first; the amended version is what the implementer and checkers receive. There is no merge-gate override. A budget-killed run, or a ticket parked on a second EMPTY-OUTPUT, re-dispatches the same role on the same inputs, same round (the human may raise that run's budget or amend the sub-ticket first), or the ticket closes. In-flight siblings keep the spec version they received; the human decides whether to re-plan.
+ 
+diff --git a/factory/cli.py b/factory/cli.py
+index f9c54d7..2da17fa 100644
+--- a/factory/cli.py
++++ b/factory/cli.py
+@@ -449,21 +449,31 @@ def subticket_add(a, root, cfg):
+         text = status.strip_trailer((d / "output.md").read_text(encoding="utf-8"))
+     else:
+         text = Path(a.file).read_text(encoding="utf-8")
++    existing = store.subtickets_of(root, parent["id"])
+     try:
+-        subs = subtickets.parse(text, parent["id"], [s["id"] for s in store.subtickets_of(root, parent["id"])])
++        subs = subtickets.parse(text, parent["id"], [s["id"] for s in existing])
+     except ValueError as e:
+         raise Refused(str(e)) from None
+     if not subs:
+         raise Refused("no sub-tickets found (a head line `<id> / Title`, id like T-0001-A, ST-1 or T-0001.1, "
+                       "then `Depends on:` and `Parallel-safe:`)")
+     ids = {s["id"] for s in subs}
++    av = parent["spec"]["approved_version"]
++    before = {s["id"] for s in subtickets.split_plan(existing)[1]}
++    after = subtickets.superseded_by_plan(existing, av)
+     for sdef in subs:
+         for dep in sdef["depends_on"]:
++            if dep in after:  # never dispatched, so the dependant would wait forever
++                raise Refused(f"{sdef['id']} ({sdef['label']}) depends on {dep}, which this plan supersedes")
+             if dep not in ids and not store.ticket_path(root, dep).exists():
+                 raise Refused(f"{sdef['id']} ({sdef['label']}) depends on {dep}, which is neither in this plan nor a ticket in the store")
+         if store.ticket_path(root, sdef["id"]).exists():
+             raise Refused(f"{sdef['id']} already exists")
+-    out({"ok": True, "parent": parent["id"], "subtickets": _create_subtickets(root, parent, subs, f"plan:{a.run or a.file}")})
++    made = _create_subtickets(root, parent, subs, f"plan:{a.run or a.file}")
++    superseded = [i for i in after if i not in before]
++    if superseded:
++        store.log_event(root, "subtickets.superseded", ticket=parent["id"], subtickets=superseded, approved_version=av)
++    out({"ok": True, "parent": parent["id"], "subtickets": made, "superseded": superseded})
+ 
+ 
+ def _create_subtickets(root: Path, parent: dict, subs: list[dict], source: str) -> list[dict]:
+@@ -476,6 +486,7 @@ def _create_subtickets(root: Path, parent: dict, subs: list[dict], source: str)
+                    "parallel_safe": sdef["parallel_safe"],
+                    "status": "ready-for-implementer" if not sdef["depends_on"] else "waiting-dependencies"})
+         st["spec"] = {"version": parent["spec"]["version"], "approved_version": parent["spec"]["approved_version"]}
++        st["planned_from"] = parent["spec"]["approved_version"]  # never changed afterwards, unlike `spec`
+         store.write_text(root / "specs" / sdef["id"] / "subticket.md", sdef["text"])
+         store.save_ticket(root, st)
+         store.log_event(root, "ticket.created", ticket=sdef["id"], parent=parent["id"], status=st["status"])
+@@ -547,7 +558,8 @@ def plan_whole_spec(a, root, cfg):
+ 
+ 
+ def ticket_ready_implementers(a, root, cfg):
+-    subs = store.subtickets_of(root, a.id)
++    every = store.subtickets_of(root, a.id)
++    subs, superseded = subtickets.split_plan(every)  # a later plan's superseded sub-tickets count nowhere
+ 
+     def status_of(tid: str):
+         p = store.ticket_path(root, tid)
+@@ -560,14 +572,15 @@ def ticket_ready_implementers(a, root, cfg):
+             s["history"].append({"ts": store.now(), "from": "waiting-dependencies", "to": "ready-for-implementer", "by": "ready-implementers"})
+             store.save_ticket(root, s)
+             store.log_event(root, "ticket.transition", ticket=s["id"], **{"from": "waiting-dependencies", "to": "ready-for-implementer", "by": "ready-implementers"})
+-    out({"ok": True, "parent": a.id, "ready": ready, "subtickets": [s["id"] for s in subs],
++    out({"ok": True, "parent": a.id, "ready": ready, "subtickets": [s["id"] for s in every],
+          "remaining": [s["id"] for s in subs if s["status"] not in ("merged", "parked", "closed")],
+          "in_flight": [s["id"] for s in subs if s["in_flight"] or s["status"] in subtickets.IN_FLIGHT_STATES],
+          "parked": [s["id"] for s in subs if s["status"] == "parked"],
+          # stopped mid-check (a dispatcher that died or was stopped): no run in flight, so buildOne
+          # resumes it from its stored state; the checkers re-run on its current head
+          "resumable": [s["id"] for s in subs if s["status"] in subtickets.IN_FLIGHT_STATES and not s["in_flight"]],
+-         "closed": [s["id"] for s in subs if s["status"] == "closed"]})
++         "closed": [s["id"] for s in subs if s["status"] == "closed"],
++         "superseded": [s["id"] for s in superseded]})
+ 
+ 
+ def ticket_head(a, root, cfg):
+@@ -735,11 +748,13 @@ def ticket_join(a, root, cfg):
+ 
+ 
+ def ticket_parent_check(a, root, cfg):
+-    """When every sub-ticket is merged, the parent moves to ready-for-parent-verify (part G)."""
++    """When every sub-ticket of the current plan is merged, the parent moves to ready-for-parent-verify
++    (part G); sub-tickets a later plan superseded do not count."""
+     parent = store.load_ticket(root, a.id)
+-    subs = store.subtickets_of(root, parent["id"])
+-    if not subs:
++    every = store.subtickets_of(root, parent["id"])
++    if not every:
+         raise Refused(f"{parent['id']} has no sub-tickets")
++    subs, superseded = subtickets.split_plan(every)
+     if all(s["status"] == "merged" for s in subs) and parent["status"] == "planned":
+         frm = parent["status"]
+         parent["status"] = "ready-for-parent-verify"
+@@ -748,7 +763,8 @@ def ticket_parent_check(a, root, cfg):
+         store.log_event(root, "ticket.transition", ticket=parent["id"], **{"from": frm, "to": "ready-for-parent-verify", "by": "parent-check"})
+     reuse = _reused_subticket_run(root, cfg, parent) if parent["status"] == "ready-for-parent-verify" else None
+     out({"ok": True, "id": parent["id"], "state": parent["status"],
+-         "subtickets": {s["id"]: s["status"] for s in subs}, "reuse": reuse})
++         "subtickets": {s["id"]: s["status"] for s in subs}, "superseded": [s["id"] for s in superseded],
++         "reuse": reuse})
+ 
+ 
+ # ----- human surface (K-lite) -----------------------------------------------------
+@@ -913,7 +929,7 @@ def resolve(a, root, cfg):
+         subs = store.subtickets_of(root, t["id"])
+         if not subs:
+             raise Refused(f"--replan applies to a parent with sub-tickets; {t['id']} has none")
+-        unmerged = [f"{s['id']} is {s['status']}" for s in subs if s["status"] != "merged"]
++        unmerged = [f"{s['id']} is {s['status']}" for s in subtickets.split_plan(subs)[0] if s["status"] != "merged"]
+         if unmerged:
+             raise Refused(f"--replan needs every sub-ticket merged: {', '.join(unmerged)}")
+         dest = d / f"ruling-{_next_n(d, 'ruling')}.md"
+@@ -1305,7 +1321,7 @@ def _reused_subticket_run(root: Path, cfg: dict, t: dict) -> str | None:
+     (design doc routing table, Merge gate row), or None when the parent needs its own run."""
+     # factory: one sub-ticket only, and scenario coverage is read from scenario names occurring in
+     # the sub-ticket's text; widen only when the store can check a coverage map per sub-ticket.
+-    subs = store.subtickets_of(root, t["id"])
++    subs = subtickets.split_plan(store.subtickets_of(root, t["id"]))[0]
+     if len(subs) != 1 or not t.get("parent_base"):
+         return None
+     s = subs[0]
+@@ -1333,10 +1349,11 @@ def _reused_subticket_run(root: Path, cfg: dict, t: dict) -> str | None:
+ 
+ 
+ def _parent_close_verified(root: Path, cfg: dict, t: dict) -> str | None:
+-    """The run that verifies the parent: every sub-ticket merged, and a finished verifier run on the
+-    parent itself said VERIFIED on a head that contains every one of those merges (a run from before
+-    the last merge does not count); else a sub-ticket's run that stands for it; else None."""
+-    subs = store.subtickets_of(root, t["id"])
++    """The run that verifies the parent: every current sub-ticket merged (a superseded one does not
++    count), and a finished verifier run on the parent itself said VERIFIED on a head that contains
++    every one of those merges (a run from before the last merge does not count); else a
++    sub-ticket's run that stands for it; else None."""
++    subs = subtickets.split_plan(store.subtickets_of(root, t["id"]))[0]
+     if any(s["status"] != "merged" for s in subs):
+         return None
+     repo = gitops.repo_root(cfg)
+diff --git a/factory/compose.py b/factory/compose.py
+index 213355c..f40d7c9 100644
+--- a/factory/compose.py
++++ b/factory/compose.py
+@@ -10,7 +10,7 @@ import re
+ import shlex
+ from pathlib import Path
+ 
+-from factory import instance, specstore, store
++from factory import instance, specstore, store, subtickets
+ 
+ 
+ def _runs_for(root: Path, ticket: str, role: str, exclude: str) -> list[str]:
+@@ -297,6 +297,10 @@ def compose(root: Path, cfg: dict, meta: dict, t: dict) -> tuple[str, list[str]]
+             parts.append(f"\n## Sub-tickets already under {tid}\n\nA new plan's sub-tickets are numbered after these. "
+                          "A `Depends on:` line may name any of these ids.\n\n"
+                          + "".join(f"- {s['id']} / {s['title']}: {s['status']}\n" for s in subs))
++            gone = subtickets.superseded_by_plan(subs, av)
++            if gone:
++                parts.append("\nNot merged and planned from an earlier approved version, so a new plan supersedes "
++                             f"them and may not depend on them: {', '.join(gone)}\n")
+     elif role in ("implementer", "reviewer", "verifier"):
+         parent = t.get("parent") or tid  # the parent-close verifier runs on the parent itself
+         pt = store.load_ticket(root, parent) if parent != tid else t
+diff --git a/factory/subtickets.py b/factory/subtickets.py
+index 1d986d8..2d7360f 100644
+--- a/factory/subtickets.py
++++ b/factory/subtickets.py
+@@ -11,7 +11,8 @@ numbers them <PARENT>.1, .2, … in plan order and keeps the planner's own id as
+ A later plan for the same parent (a re-plan after a failed parent-close check) continues that
+ numbering: its sub-tickets take the next free ids after the parent's existing ones, its
+ `Depends on:` lines may name an existing sub-ticket, and a head line that reuses an existing
+-sub-ticket's id is refused.
++sub-ticket's id is refused. A plan made from a later approved spec version supersedes the earlier
++plans' sub-tickets that have not merged (`split_plan`).
+ 
+ A field line may start with a `- ` or `* ` list bullet, before any bold marks. Every sub-ticket
+ needs a `Depends on:` line (`Depends on: none` when it depends on nothing); a plan with a
+@@ -138,6 +139,33 @@ def parse(planner_output: str, parent: str, existing=()) -> list[dict]:
+     return subs
+ 
+ 
++def planned_from(sub: dict):
++    """The parent's approved version this sub-ticket was planned from: its `planned_from`, else (a
++    record made before that field) its `spec.approved_version`, else None."""
++    if sub.get("planned_from") is not None:
++        return sub["planned_from"]
++    return (sub.get("spec") or {}).get("approved_version")
++
++
++def split_plan(subs: list[dict]) -> tuple[list[dict], list[dict]]:
++    """(current, superseded), each in input order. A sub-ticket is superseded when it has not merged
++    and was planned from a lower approved version than the parent's latest plan; one with no
++    version counts as current. A superseded sub-ticket keeps its record but no longer counts."""
++    versions = [v for s in subs if (v := planned_from(s)) is not None]
++    top = max(versions, default=None)
++    current, superseded = [], []
++    for s in subs:
++        v = planned_from(s)
++        (superseded if s.get("status") != "merged" and v is not None and v < top else current).append(s)
++    return current, superseded
++
++
++def superseded_by_plan(subs: list[dict], version) -> list[str]:
++    """The ids split_plan marks superseded once a plan made from approved version `version` joins `subs`."""
++    plan = {"planned_from": version}
++    return [s["id"] for s in split_plan([*subs, plan])[1] if s is not plan]
++
++
+ def ready_implementers(subs: list[dict], status_of=None) -> list[str]:
+     """Doc §Routing table, Planner row: sub-tickets whose dependencies are merged (a dependency on
+     another parent ticket: closed), minus any with a run in flight; a parallel_safe=false one runs
+diff --git a/tests/factory/test_superseded_plan.py b/tests/factory/test_superseded_plan.py
+new file mode 100644
+index 0000000..c6ab61d
+--- /dev/null
++++ b/tests/factory/test_superseded_plan.py
+@@ -0,0 +1,158 @@
++"""Superseded plans (spec-factory T-0038, issue #77).
++
++Each sub-ticket records `planned_from`, the parent's approved spec version it was planned from.
++Once a parent has a sub-ticket planned from a later version, its older sub-tickets that have not
++merged are superseded: kept with their ids and records, but no longer dispatched, parking the
++parent or holding back its final check, close or re-plan. Merged ones stay merged and count.
++
++Black-box through `bin/factory` on a throwaway store (FACTORY_STATE), as test_replan.py does.
++"""
++from __future__ import annotations
++
++import json
++import os
++import subprocess
++from pathlib import Path
++
++import pytest
++import yaml
++
++REPO = Path(__file__).resolve().parents[2]
++BIN = REPO / "bin" / "factory"
++OLD_PLAN = ("ST-1 / Base\nDepends on: none\nParallel-safe: yes\n\nST-2 / Dropped\nDepends on: none\nParallel-safe: yes\n\n"
++            "ST-3 / Unstarted\nDepends on: ST-2\nParallel-safe: yes\n")
++NEW_PLAN = "ST-1 / Redo\nDepends on: T-0001.1\nParallel-safe: yes\n"
++SUPERSEDES_LINE = ("Not merged and planned from an earlier approved version, so a new plan supersedes them and may "
++                   "not depend on them: T-0001.2, T-0001.3")
++
++
++def run(store: Path, *argv: str) -> subprocess.CompletedProcess:
++    env = {**os.environ, "FACTORY_STATE": str(store), "PYTHONDONTWRITEBYTECODE": "1"}
++    return subprocess.run([str(BIN), *argv], capture_output=True, text=True, env=env, cwd=REPO)
++
++
++def js(cp: subprocess.CompletedProcess) -> dict:
++    assert cp.returncode == 0, cp.stderr
++    return json.loads(cp.stdout.strip().splitlines()[-1])
++
++
++def ticket(store: Path, tid: str) -> dict:
++    return yaml.safe_load((store / "tickets" / f"{tid}.yaml").read_text())
++
++
++def add_plan(store: Path, tmp_path: Path, text: str, name: str) -> subprocess.CompletedProcess:
++    (tmp_path / name).write_text(text)
++    return run(store, "subticket", "add", "T-0001", "--file", str(tmp_path / name))
++
++
++def events(store: Path, name: str) -> list[dict]:
++    lines = [json.loads(ln) for p in sorted((store / "log").glob("*.jsonl")) for ln in p.read_text().splitlines()]
++    return [e for e in lines if e["event"] == name]
++
++
++@pytest.fixture
++def store(tmp_path: Path) -> Path:
++    """T-0001 past the spec gate at approved v1 (no spec store), with no sub-tickets yet."""
++    s = tmp_path / "store"
++    (tmp_path / "req.md").write_text("# Fixture\n\nThe bot should do the thing.\n")
++    (tmp_path / "spec.md").write_text("## Problem\nx\n")
++    js(run(s, "ticket", "new", "--file", str(tmp_path / "req.md")))
++    js(run(s, "ticket", "transition", "T-0001", "--to", "ready-for-spec-writer", "--by", "t"))
++    js(run(s, "spec", "add", "T-0001", "--file", str(tmp_path / "spec.md")))
++    js(run(s, "ticket", "transition", "T-0001", "--to", "ready-for-critic", "--by", "t", "--round", "spec:init"))
++    js(run(s, "ticket", "transition", "T-0001", "--to", "awaiting-spec-gate", "--by", "t"))
++    js(run(s, "approve-spec", "T-0001"))
++    return s
++
++
++@pytest.fixture
++def respecced(store: Path, tmp_path: Path) -> Path:
++    """Planned at v1 as T-0001.1 (merged), .2 (closed by a human) and .3 (never started), then sent
++    back to the spec gate and approved again, edited, as v2: ready for its planner again."""
++    js(add_plan(store, tmp_path, OLD_PLAN, "plan1.md"))
++    js(run(store, "ticket", "transition", "T-0001", "--to", "planned", "--by", "t"))
++    js(run(store, "ticket", "set", "T-0001.1", "status=merged"))
++    js(run(store, "ticket", "transition", "T-0001.2", "--to", "closed", "--by", "t"))
++    js(run(store, "ticket", "park", "T-0001", "--reason", "sub-ticket closed by a human: T-0001.2"))
++    js(run(store, "resolve", "T-0001", "--to", "spec-gate"))
++    (tmp_path / "spec2.md").write_text("## Problem\nx, amended\n")
++    js(run(store, "approve-spec", "T-0001", "--edit", str(tmp_path / "spec2.md")))
++    return store
++
++
++def replan(store: Path, tmp_path: Path) -> dict:
++    res = js(add_plan(store, tmp_path, NEW_PLAN, "plan2.md"))
++    js(run(store, "ticket", "transition", "T-0001", "--to", "planned", "--by", "t"))
++    return res
++
++
++def test_each_sub_ticket_records_the_approved_version_it_was_planned_from(respecced, tmp_path):
++    replan(respecced, tmp_path)
++    assert [ticket(respecced, f"T-0001.{i}")["planned_from"] for i in (1, 2, 3, 4)] == [1, 1, 1, 2]
++
++
++def test_a_re_plan_supersedes_the_old_unmerged_sub_tickets_and_keeps_their_records(respecced, tmp_path):
++    assert replan(respecced, tmp_path)["superseded"] == ["T-0001.2", "T-0001.3"]
++    r = js(run(respecced, "ticket", "ready-implementers", "T-0001"))
++    assert r["ready"] == ["T-0001.4"] and r["closed"] == [] and r["remaining"] == ["T-0001.4"]
++    assert r["superseded"] == ["T-0001.2", "T-0001.3"]
++    assert r["subtickets"] == ["T-0001.1", "T-0001.2", "T-0001.3", "T-0001.4"]
++    assert ticket(respecced, "T-0001.2")["status"] == "closed"
++    assert ticket(respecced, "T-0001.3")["status"] == "waiting-dependencies"
++    [e] = events(respecced, "subtickets.superseded")
++    assert (e["ticket"], e["subtickets"], e["approved_version"]) == ("T-0001", ["T-0001.2", "T-0001.3"], 2)
++
++
++def test_the_final_check_counts_only_the_current_plan(respecced, tmp_path):
++    replan(respecced, tmp_path)
++    assert js(run(respecced, "ticket", "parent-check", "T-0001"))["state"] == "planned"
++    js(run(respecced, "ticket", "set", "T-0001.4", "status=merged"))
++    r = js(run(respecced, "ticket", "parent-check", "T-0001"))
++    assert r["state"] == "ready-for-parent-verify"
++    assert r["subtickets"] == {"T-0001.1": "merged", "T-0001.4": "merged"}
++    assert r["superseded"] == ["T-0001.2", "T-0001.3"]
++
++
++def test_a_re_plan_past_superseded_sub_tickets_is_accepted(respecced, tmp_path):
++    replan(respecced, tmp_path)
++    js(run(respecced, "ticket", "set", "T-0001.4", "status=merged"))
++    js(run(respecced, "ticket", "parent-check", "T-0001"))
++    js(run(respecced, "ticket", "park", "T-0001", "--reason", "FAILED from parent-close verifier"))
++    (tmp_path / "note.md").write_text("Re-plan: one more fix.\n")
++    assert js(run(respecced, "resolve", "T-0001", "--replan", str(tmp_path / "note.md")))["state"] == "ready-for-planner"
++
++
++def test_a_plan_that_depends_on_a_sub_ticket_it_supersedes_is_refused_and_writes_nothing(respecced, tmp_path):
++    before = sorted(p.name for p in (respecced / "tickets").iterdir())
++    cp = add_plan(respecced, tmp_path, "ST-1 / Redo\nDepends on: T-0001.3\nParallel-safe: yes\n", "plan3.md")
++    assert cp.returncode == 2
++    assert "T-0001.4 (ST-1) depends on T-0001.3, which this plan supersedes" in cp.stderr
++    assert sorted(p.name for p in (respecced / "tickets").iterdir()) == before
++
++
++def test_the_planner_input_names_the_sub_tickets_a_new_plan_supersedes(respecced):
++    rid = js(run(respecced, "run", "start", "--role", "planner", "--ticket", "T-0001"))["run_id"]
++    js(run(respecced, "run", "compose", rid))
++    text = (respecced / "runs" / rid / "input.md").read_text()
++    assert "- T-0001.3 / Unstarted: waiting-dependencies\n\n" + SUPERSEDES_LINE + "\n" in text
++
++
++def test_a_second_plan_at_the_same_approved_version_supersedes_nothing(store, tmp_path):
++    js(add_plan(store, tmp_path, "ST-1 / First\nDepends on: none\nParallel-safe: yes\n", "plan1.md"))
++    assert js(add_plan(store, tmp_path, "ST-1 / Extra\nDepends on: none\nParallel-safe: yes\n", "plan2.md"))["superseded"] == []
++    r = js(run(store, "ticket", "ready-implementers", "T-0001"))
++    assert r["superseded"] == [] and r["ready"] == ["T-0001.1", "T-0001.2"]
++    assert events(store, "subtickets.superseded") == []
++
++
++def test_a_moved_spec_record_does_not_change_the_plan_a_sub_ticket_belongs_to(respecced, tmp_path):
++    js(run(respecced, "ticket", "set", "T-0001.3", "spec.version=2", "spec.approved_version=2"))
++    replan(respecced, tmp_path)
++    assert js(run(respecced, "ticket", "ready-implementers", "T-0001"))["superseded"] == ["T-0001.2", "T-0001.3"]
++
++
++def test_a_record_without_planned_from_falls_back_to_its_spec_version(respecced, tmp_path):
++    replan(respecced, tmp_path)
++    for i in (1, 2, 3, 4):
++        js(run(respecced, "ticket", "set", f"T-0001.{i}", "planned_from="))
++    assert js(run(respecced, "ticket", "ready-implementers", "T-0001"))["superseded"] == ["T-0001.2", "T-0001.3"]

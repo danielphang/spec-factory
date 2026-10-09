@@ -1,0 +1,31 @@
+run_id: run-0359-verifier
+role: verifier
+ticket: T-0038.1
+model: opus
+round: 1
+spec_version: 2
+started: '2026-10-09T06:10:26+00:00'
+finished: '2026-10-09T06:18:38+00:00'
+wall_s: 492
+status: VERIFIED
+input_sources:
+- specs/T-0038.1/subticket.md
+- specs/T-0038/v2.md
+- runs/run-0358-implementer/output.md
+- runs/run-0359-verifier/diff.patch
+gate_skipped: []
+environment_files: []
+branch: factory/T-0038.1
+base: f4ea04193e829219b592f44c3fc55d9e42e768d9
+head: 9aa97bf43d815b288ca4dd1cf89cbde4dac55103
+worktree: /Users/dphang/dev/spec-factory/.factory/store/runs/run-0359-verifier/wt
+confidence: high. Every acceptance command ran verbatim on both trees and matched the spec's "today" and
+  THEN outputs exactly, the full suite passed, and the probes show the rule is general, not fitted to
+  the scenario ids.
+escalations:
+- A hand-edited sub-ticket record whose `planned_from` (or `spec.approved_version`) is not an integer
+  makes every command that splits the plan fail with a TypeError, which would park the parent. These commands
+  are `ready-implementers`, `parent-check`, the close, `resolve --replan`, `subticket add` and the planner's
+  compose. Only a manual `ticket set` can write such a value, and the spec asks for no guard. The operator
+  may want a follow-up that refuses non-integer values in `ticket set` or ignores them in `split_plan`.
+escalations_note: null

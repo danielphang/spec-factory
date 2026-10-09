@@ -1,0 +1,30 @@
+run_id: run-0360-reviewer
+role: reviewer
+ticket: T-0038.1
+model: fable
+round: 1
+spec_version: 2
+started: '2026-10-09T06:10:26+00:00'
+finished: '2026-10-09T06:12:56+00:00'
+wall_s: 150
+status: APPROVE
+input_sources:
+- specs/T-0038.1/subticket.md
+- specs/T-0038/v2.md
+- runs/run-0358-implementer/output.md
+- runs/run-0360-reviewer/diff.patch
+gate_skipped: []
+environment_files: []
+branch: factory/T-0038.1
+base: f4ea04193e829219b592f44c3fc55d9e42e768d9
+head: 9aa97bf43d815b288ca4dd1cf89cbde4dac55103
+worktree: /Users/dphang/dev/spec-factory/.factory/store/runs/run-0360-reviewer/wt
+confidence: high. Every part of the spec is in the diff where the spec places it, no existing test changed,
+  and the four points I could not settle by reading (test-file list, id ordering, `ticket set` on the
+  new key, compose's `av`) were each confirmed by a command in the worktree.
+escalations:
+- 'Protected paths touched, all declared in the parent spec''s Risk section: harness `factory/**`, namely
+  `factory/cli.py`, `factory/subtickets.py`, `factory/compose.py`. No file under `factory/workflows/`,
+  `factory/prompts/`, `docs/prompts/`, `agents/`, `bin/factory`, `pyproject.toml`, `uv.lock` or `.factory/`
+  changes. The merge gate needs a human approval for the harness paths.'
+escalations_note: null
