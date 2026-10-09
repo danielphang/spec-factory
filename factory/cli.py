@@ -655,23 +655,80 @@ def results_show(a, root, cfg):
     out({"ok": True, "id": t["id"], "head": head, "rows": {k: v["status"] for k, v in rows.items()}, "missing": missing})
 
 
+DECLARED_RE = re.compile(r"^\s*(?:[-*]\s+)?Protected paths:\s*(none|`[^`]+`(?:\s*,\s*`[^`]+`)*)\s*\.?\s*$")
+
+
+def _in_repo(globs: list[str]) -> list[str]:
+    """The patterns a repository diff can match: one starting `~` or `/` names a path outside it."""
+    return [g for g in globs if not g.startswith(("~", "/"))]
+
+
+def declared_paths(spec_text: str) -> list[str]:
+    """The entries of each `Protected paths:` line (DECLARED_RE) in the spec's `## Risk` section, in
+    order. The section runs from a line that is exactly `## Risk` to the next line starting `## ` or
+    `=== `; a line inside a fenced code block neither starts nor ends it and declares nothing."""
+    entries, in_risk = [], False
+    for line, in_fence in specstore.lines_outside_fences(spec_text):
+        if in_fence:
+            continue
+        if line.startswith(("## ", "=== ")):
+            in_risk = line.rstrip() == "## Risk"
+        elif in_risk and (m := DECLARED_RE.match(line)) and m.group(1) != "none":
+            entries += re.findall(r"`([^`]+)`", m.group(1))
+    return _in_repo(entries)
+
+
+def undeclared_protected(root: Path, cfg: dict, t: dict, head: str) -> tuple[list[str], str]:
+    """(the changed protected paths of `t` at `head` that the pinned spec does not declare, sorted;
+    where the declarations were read, for the refusal). Changed is `integration...head`. The pinned
+    spec is the parent's approved version, or the ticket's own when it has no parent; a path in the
+    ticket's `accepted_paths` counts as declared (`resolve --accept-paths`)."""
+    sid = t.get("parent") or t["id"]
+    av = (store.load_ticket(root, sid) if sid != t["id"] else t)["spec"]["approved_version"]
+    where = f"in {sid} spec v{av}" if av is not None else f"({sid} has no approved spec)"
+    patterns = [g for globs in (cfg.get("protected_paths") or {}).values()
+                for g in ([globs] if isinstance(globs, str) else list(globs or []))]
+    repo = gitops.repo_root(cfg)
+    integ = gitops.integration_branch(cfg, repo)
+    changed = gitops.changed_files(repo, integ, head, _in_repo(patterns))
+    if not changed:
+        return [], where
+    spec = root / "specs" / sid / f"v{av}.md"
+    declared = declared_paths(spec.read_text(encoding="utf-8")) if av is not None and spec.exists() else []
+    ok = set(gitops.changed_files(repo, integ, head, declared)) | set(t.get("accepted_paths") or [])
+    return sorted(p for p in changed if p not in ok), where
+
+
+def _branch_tip(repo: Path, t: dict) -> str:
+    """The ticket's head, refused unless it is the tip of its branch."""
+    head = t.get("head")
+    if not head or gitops.rev(repo, t["branch"]) != head:
+        raise Refused(f"{t['id']} head {head} is not the branch tip; run ticket head")
+    return head
+
+
 def merge_cmd(a, root, cfg):
     """Rule-4 checks (part G) in the local stand-in: ci PASS + APPROVE + VERIFIED on the current
-    head, head contains the integration branch; then a local --no-ff merge. Exit 2 names the
-    first failing condition; 'head does not contain main' is the conflict-run signal."""
+    head, every changed protected path declared by the pinned spec (piece 8), head contains the
+    integration branch; then a local --no-ff merge. Exit 2 names the first failing condition;
+    'BLOCKED from merge gate' parks for a human; 'head does not contain main' is the conflict-run
+    signal."""
     t = store.load_ticket(root, a.id)
     if t["status"] not in ("ready-for-merge", "checks-in-flight"):
         raise Refused(f"{t['id']} is {t['status']}, not ready-for-merge")
     repo = gitops.repo_root(cfg)
     integ = gitops.integration_branch(cfg, repo)
-    head = t.get("head")
-    if not head or gitops.rev(repo, t["branch"]) != head:
-        raise Refused(f"{t['id']} head {head} is not the branch tip; run ticket head")
+    head = _branch_tip(repo, t)
     rows = store.results_for(root, head)
     for role, want in (("ci", "PASS"), ("reviewer", "APPROVE"), ("verifier", "VERIFIED")):
         got = (rows.get(role) or {}).get("status")
         if got != want:
             raise Refused(f"{role} is {got or 'missing'} for {head[:9]}, need {want}")
+    undeclared, where = undeclared_protected(root, cfg, t, head)
+    if undeclared:
+        store.log_event(root, "merge.refused", ticket=t["id"], head=head, reason="protected paths not declared",
+                        paths=undeclared)
+        raise Refused(f"BLOCKED from merge gate: protected paths not declared {where}: {', '.join(undeclared)}")
     with gitops.MergeLock(repo):
         if not gitops.head_contains(repo, head, integ):
             t["merge_refused"] = "head does not contain main"
@@ -839,7 +896,7 @@ def request_changes(a, root, cfg):
 def resolve(a, root, cfg):
     if a.decision is not None:  # refuse before anything is written, so a decision is never dropped
         # the branch below that will run: --answer wins, and --close runs only with no other mode
-        if not (a.answer or (a.close and not (a.ruling or a.to or a.redispatch or a.replan))):
+        if not (a.answer or (a.close and not (a.ruling or a.accept_paths or a.to or a.redispatch or a.replan))):
             raise Refused("--decision applies only with --answer or --close")
         specstore.decision_text(a.decision)
     t = store.load_ticket(root, a.id)
@@ -882,13 +939,35 @@ def resolve(a, root, cfg):
             if st == "parked" and (reason.startswith("NEEDS-HUMAN") or "CLARIFY" in reason):
                 raise Refused("use --answer")
             raise Refused(f"--ruling applies to an ESCALATE or BLOCKED park; {t['id']} is {st} ({reason or 'no park'})")
-        if reason.startswith("BLOCKED"):  # an implementer's BLOCKED: back to it, same round, ruling in its input
+        if reason.startswith("ESCALATE from reviewer"):
+            # Back to its checks, same round: the reviewer runs again with the ruling in its input.
+            head, moved = t.get("head"), _set_aside_failed_rows(root, t)
+            store.log_event(root, "results.superseded", ticket=t["id"], head=head, roles=moved)
+            dest = d / f"ruling-{_next_n(d, 'ruling')}.md"
+            shutil.copyfile(a.ruling, dest)
+            move("checks-in-flight", "ruling", {"ruling": _rel(root, dest), "head": head, "superseded": moved})
+            return
+        if reason.startswith("BLOCKED"):  # an implementer's or the gate's BLOCKED: back to the implementer, same round
             to = "ready-for-implementer"
         else:
             to = "ready-for-planner" if "planner" in reason else "ready-for-critic"
         dest = d / f"ruling-{_next_n(d, 'ruling')}.md"
         shutil.copyfile(a.ruling, dest)
         move(to, "ruling", {"ruling": _rel(root, dest)})
+    elif a.accept_paths:
+        # The merge gate refused a protected path the pinned spec does not declare; the human accepts
+        # it under the approved design for this sub-ticket. Its results stand, so the build merges it.
+        if st != "parked" or not reason.startswith("BLOCKED from merge gate:"):
+            raise Refused("--accept-paths applies to a merge gate park (BLOCKED from merge gate); "
+                          f"{t['id']} is {st} ({reason or 'no park'})")
+        head = _branch_tip(gitops.repo_root(cfg), t)
+        paths, _ = undeclared_protected(root, cfg, t, head)
+        if not paths:
+            raise Refused(f"nothing to accept: {t['id']} has no undeclared protected path at {head[:9]}")
+        dest = d / f"ruling-{_next_n(d, 'ruling')}.md"
+        shutil.copyfile(a.accept_paths, dest)
+        t["accepted_paths"] = sorted(set(t.get("accepted_paths") or []) | set(paths))
+        move("checks-in-flight", "accept-paths", {"ruling": _rel(root, dest), "head": head, "accepted": paths})
     elif a.to:
         if a.to != "spec-gate":
             raise Refused("--to accepts only spec-gate")
@@ -897,28 +976,10 @@ def resolve(a, root, cfg):
         move("awaiting-spec-gate", "to-spec-gate", {})
     elif a.redispatch:
         # Re-run the checkers on the same head after the cause of the park is fixed outside the ticket
-        # (a harness or gate defect, a killed checker). Round unchanged. The head's rows that did not
-        # pass are set aside under results/<head>/superseded-<n>/ so the join cannot read them as
-        # current; the build then runs only the checkers with no row. The reviewer row stays when it
-        # is APPROVE; the verifier and ci rows, written by one verifier run, stay together when they
-        # are VERIFIED and PASS.
+        # (a harness or gate defect, a killed checker). Round unchanged.
         if st != "parked" or parked.get("from") not in ("checks-in-flight", "ready-for-merge"):
             raise Refused(f"--redispatch applies to a sub-ticket parked from its checks; {t['id']} is {st} (from {parked.get('from')})")
-        head = t.get("head")
-        moved = []
-        if head:
-            rows = {k: v.get("status") for k, v in store.results_for(root, head).items()}
-            stale = [] if rows.get("reviewer") == "APPROVE" else ["reviewer"]
-            if not (rows.get("verifier") == "VERIFIED" and rows.get("ci") == "PASS"):
-                stale += ["verifier", "ci"]
-            rd = root / "results" / head
-            todo = [store.result_path(root, head, r) for r in stale if r in rows]
-            if todo:
-                dest = rd / f"superseded-{len(list(rd.glob('superseded-*'))) + 1}"
-                dest.mkdir(parents=True, exist_ok=True)
-                for f in todo:
-                    f.rename(dest / f.name)
-                    moved.append(f.stem)
+        head, moved = t.get("head"), _set_aside_failed_rows(root, t)
         store.log_event(root, "results.superseded", ticket=t["id"], head=head, roles=moved)
         move("checks-in-flight", "redispatch", {"head": head, "superseded": moved})
     elif a.replan:
@@ -940,7 +1001,31 @@ def resolve(a, root, cfg):
             raise Refused(f"{t['id']} is already closed")
         move("closed", "close", decided("resolve --close"))
     else:
-        raise Refused("resolve needs one of --answer F | --ruling F | --to spec-gate | --redispatch | --replan F | --close")
+        raise Refused("resolve needs one of --answer F | --ruling F | --accept-paths F | --to spec-gate | --redispatch | "
+                      "--replan F | --close")
+
+
+def _set_aside_failed_rows(root: Path, t: dict) -> list[str]:
+    """Move the head's rows that did not pass under results/<head>/superseded-<n>/, so the join cannot
+    read them as current and the build runs only the checkers with no row. The reviewer row stays
+    when it is APPROVE; the verifier and ci rows, written by one verifier run, stay together when
+    they are VERIFIED and PASS. Returns the roles moved."""
+    head = t.get("head")
+    moved: list[str] = []
+    if head:
+        rows = {k: v.get("status") for k, v in store.results_for(root, head).items()}
+        stale = [] if rows.get("reviewer") == "APPROVE" else ["reviewer"]
+        if not (rows.get("verifier") == "VERIFIED" and rows.get("ci") == "PASS"):
+            stale += ["verifier", "ci"]
+        rd = root / "results" / head
+        todo = [store.result_path(root, head, r) for r in stale if r in rows]
+        if todo:
+            dest = rd / f"superseded-{len(list(rd.glob('superseded-*'))) + 1}"
+            dest.mkdir(parents=True, exist_ok=True)
+            for f in todo:
+                f.rename(dest / f.name)
+                moved.append(f.stem)
+    return moved
 
 
 def decision_add(a, root, cfg):
@@ -1546,6 +1631,7 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("id")
     p.add_argument("--answer")
     p.add_argument("--ruling")
+    p.add_argument("--accept-paths", metavar="F", help="a sub-ticket the merge gate refused for undeclared protected paths: accept them under the approved design and return it to its reviewer and verifier")
     p.add_argument("--to")
     p.add_argument("--redispatch", action="store_true")
     p.add_argument("--replan", metavar="F", help="a parked parent whose sub-tickets all merged: back to the planner with F as a ruling")
