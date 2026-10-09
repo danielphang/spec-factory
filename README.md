@@ -948,6 +948,9 @@ agent host".
 | `docs/design.md` | The design document: roles, harness pieces, routing, gates, and the intended end state. The source of truth for the prompts |
 | `docs/changelog.md` | The design document's changelog |
 | `docs/prompts/` | Each role's prompt block, copied verbatim from the design doc by hand; `00-preamble.md` goes at the top of every role |
+| `docs/north-star.md` | What the factory is for, what it will not trade away, and where it is heading; changes to it are the operator's decision |
+| `docs/principles.md` | The fourteen learned principles, each with its incident, citation and implementing mechanism |
+| `docs/decided-against.md` | Approaches tried or offered and dropped, with the evidence and what would reopen each |
 | `docs/writing.md` | The writing standard for every section a person reads; the preamble names the runtime's copy |
 | `docs/coding.md` | The coding standard for the implementer and code reviewer; their prompts name the runtime's copy |
 | `dev/` | Working documents from building the factory: the build spec, its plan, the P0 walking skeleton, the issue index (`dev/issues.md`) |

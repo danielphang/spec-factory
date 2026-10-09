@@ -30,7 +30,7 @@ Three wiring rules matter more than any wording:
 
 This document's changelog is `docs/changelog.md`, and `docs/prompts/` holds a verbatim copy of each prompt block in it, changed only by re-copying that block.
 
-This document is the intended design. How the system runs today is in `README.md`: the store and target layout, what each role reads and writes, both workflows step by step, and how the harness uses git.
+The factory's goals, non-negotiables and direction are in `docs/north-star.md`, and what was tried and dropped is in `docs/decided-against.md`. This document is the intended design. How the system runs today is in `README.md`: the store and target layout, what each role reads and writes, both workflows step by step, and how the harness uses git.
 
 ## Harness: functional pieces
 
