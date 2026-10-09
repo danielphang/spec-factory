@@ -1,16 +1,14 @@
 # Principles
 
-Twelve rules the spec factory has learned about where effort pays, each from an incident in its own
+Fourteen rules the spec factory has learned about where effort pays, each from an incident in its own
 record. This page is for the operator and for anyone writing a ticket that changes the factory. It is
 not for role prompts: no role reads it. Read it before proposing a change, and name any principle the
 change weakens under the spec's Decisions.
 
 Each principle states the rule, the incident that taught it, the outside research that tested it, and
 the mechanism that implements it today. Issue numbers refer to this repository's GitHub issues; their
-changelog entries are in `docs/changelog.md`. Counts are from both factory stores on 2026-10-07. The
-research note behind this page is Discussion 71
-(https://github.com/danielphang/spec-factory/discussions/71). All twelve held under that test; two were
-sharpened, and the sharpened forms are the ones below.
+changelog entries are in `docs/changelog.md`. Counts are from both factory stores on 2026-10-07 and
+10-08. The research notes are Discussions 71 and 82 (github.com/danielphang/spec-factory/discussions).
 
 ## Where checking pays
 
@@ -43,9 +41,6 @@ the gate skips it when the diff touches none of them (#48, `gate_commands` in `i
 reviewer's WHAT YOU RUN section and its input, which says the verifier runs the gate commands (#41,
 `factory/prompts/reviewer.md`, `factory/compose.py`); the critic's PROCESS section, which runs no test
 suite (#73, kept by #74, `factory/prompts/critic.md`).
-Status of #72 part B.2 (reader roles run no suites): done by #41 for the code reviewer and by #73 for
-the critic. The code reviewer is the only reader role that was given gate commands; the critic and
-triage never were, but the critic ran suites on its own initiative until #73.
 
 ### 3. Deterministic before judgment.
 
@@ -66,8 +61,12 @@ code reviewer changed the outcome in 4 of 94 runs, with 1 BLOCKING finding in to
 External test: 14% of human code-review comments address defects (Bacchelli and Bird, ICSE 2013,
 https://www.microsoft.com/en-us/research/wp-content/uploads/2016/02/ICSE202013-codereview.pdf).
 Automated reviewers recall 20 to 57% of defects (https://arxiv.org/html/2603.23448v2).
-Implemented by: nothing yet beyond `factory/cost.py`, which reports cost only and double-counts
-(#61). Planned: `factory stats`, catch rate and cost by role (#70).
+A field every run fills the same way is not a signal: every recorded CONFIDENCE is `high` or null. Its
+replacement must vary in practice: the evidence ladder (#79 C) says whether a finding was stated,
+pointed at, shown, run or reproduced. An unenforced claim, like the retro's "mandatory" status with zero
+runs (#83 B), is a documentation defect, not a rule.
+Implemented by: nothing yet beyond `factory/cost.py`, which reports cost only and double-counts.
+Planned: `factory stats`, catch rate and cost by role (#70); the evidence ladder (#79).
 
 ## Separation and record
 
@@ -105,8 +104,8 @@ External test: reasoning-based guardrails fall to simple attacks (https://arxiv.
 Enforcement belongs between the decision to call a tool and the call
 (https://arxiv.org/pdf/2607.08028).
 Implemented by: the routing table (`routing` in `instance.yaml`) and the guards in `factory/cli.py`:
-`ticket transition`, `run start`, `merge`. Planned: the merge gate checks protected paths against the
-approved spec (#57).
+`ticket transition`, `run start`, `merge`; the merge gate refuses a changed protected path the approved
+spec does not declare (#57, merged, live at the next runtime move).
 
 ### 8. Every stop is a logged state with a reason.
 
@@ -138,9 +137,8 @@ An approved spec's Problem section needed a translation before the operator coul
 Most of the critic's BLOCKING findings are now about readability: 14 of 16 on this repository. The
 writing standard is the fix, not more rounds.
 External test: most human review comments are about readability and knowledge transfer, not defects
-(Bacchelli and Bird, above). The critic behaves like a human reviewer. The open question is whether a
-readability pass earns its cost on the most expensive model, beside a lint and the implementer's
-BLOCKED.
+(Bacchelli and Bird, above). Open question: does a readability pass earn its cost on the most
+expensive model, beside a lint and the implementer's BLOCKED?
 Implemented by: `docs/writing.md`; critic rubric item 6 (`factory/prompts/critic.md`). Planned: a
 readability-pass experiment on the bounded path, measured by #70 (#72 part B.4).
 
@@ -159,27 +157,43 @@ receives a diff from the previous version when it is smaller (#24 part C, `facto
 ### 12. A role never waits on background work, and an empty run parks.
 
 A role that ends its turn while its own command still runs returns nothing (#41). A run's empty
-output used to be recorded as a budget kill, wrongly (#18, #41). Every production agent harness has a
-stuck detector. The harness enforces no time or token budget today; "budget kill" now means only a run
-a person recorded as killed.
+output used to be recorded as a budget kill, wrongly (#18, #41): the harness enforces no time or token
+budget, so "budget kill" now means only a run a person recorded as killed.
 Implemented by: the preamble's rule to run every command in the foreground and wait for it
 (`factory/prompts/preamble.md`); `run finish` records an empty output as EMPTY-OUTPUT, retried once,
 then parked, with the agent's last message kept (#41, `factory/cli.py`, both workflow scripts).
 
+### 13. Bounded, on-demand context beats complete context.
+
+A role gets what the ticket touches and an index of the rest, and opens more by path. The writer's
+input averaged 102 KB on Nanobot (max 416 KB), re-sent on a median 45 calls; it read 111 whole files.
+External test: SWE-agent (Yang et al., NeurIPS 2024): a 100-line window scored 18.0% against 12.7% for
+the whole file; a search capped at 50 results, 18.0% against 12.0%. The refusal is part of the
+interface. The limit: a cross-cutting rule must never be filtered out (#78).
+Implemented by: trimmed downstream inputs (#24 C); reading rules (#73); capability-scoped inputs with
+the whole decision log (#75, #78, live at the next runtime move). Planned: an enforcing hook (#76, #65).
+
+### 14. One source per artifact; a copy is generated and checked, or deleted.
+
+Each role prompt lives in three hand-synced places (`factory/prompts/`, `docs/prompts/`, the design
+doc's role blocks), and two already differ (`round 2` against `round {2}`). pstack's design red flags
+name it: keep one and derive the others, or fail the build when they disagree (principle 3).
+Implemented by: the harness lock, for the runtime checkout. Planned: one prompt source (#83 C).
+
 ## Spiking: who vets an approach
 
-Grounding a claim the spec makes, for example that a path exists or that an acceptance command fails
-on the base, is the critic's job. Its prompt sets a floor, two cited paths and one acceptance command,
-and no ceiling. To confirm a finding, the critic may run a small scratch check, such as a few git
-commands in a throwaway repository; it runs no test suite (principle 2). Vetting whether a whole
-approach works is implementation. A critic that builds the change duplicates work the implementer
-redoes, in a disposable checkout, and the result survives only as a sentence in a finding. Principle 1
-is the reason: a critic's trial of an approach is self-repair's weak signal, and an implementer's is
-execution feedback. So vetting a whole approach belongs to the spec writer during investigation, with
+Grounding a claim the spec makes (a path exists, an acceptance command fails on the base) is the
+critic's job, with a floor of two cited paths and one acceptance command and no ceiling. It may run a
+small scratch check to confirm a finding, never a test suite (principle 2). Vetting whether a whole
+approach works is implementation: a critic's trial is self-repair's weak signal, an implementer's is
+execution feedback (principle 1). So vetting a whole approach belongs to the spec writer during investigation, with
 its output in Evidence, or to a spike ticket on #64's spike path, run by an implementer and recorded
-as a decision. #73 capped the critic at two paths and one command for any one claim and forbade any
-build. The replay that accepted #73, three past intakes (#49, #51, #57) with the same inputs, found
-that the critic then used about the same tokens (0.71M to 0.72M, 1.0M to 0.93M, 1.67M to 1.63M),
-checked less, and missed a real finding on two of the three, one of which the earlier prompt had
-confirmed with a scratch git test. #74 removed the cap and the no-build rule and kept the no-suite
-rule.
+as a decision. A cap of two paths and one command per claim with no builds (#73) saved the critic no
+tokens on a three-ticket replay and missed real findings, so #74 removed it.
+
+## Candidates
+
+**A question a run can answer by running something is not the human's to answer.** From pstack's
+router: 30 of 82 parks were NEEDS-HUMAN from triage, but how many were observable facts is not yet
+measured. #79 A applies it and records each question's kind; when `factory stats` (#70) shows the
+NEEDS-HUMAN share before and after, it becomes principle 15 or is dropped.
