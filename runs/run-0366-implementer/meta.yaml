@@ -1,0 +1,33 @@
+run_id: run-0366-implementer
+role: implementer
+ticket: T-0031.1
+model: opus
+round: 0
+spec_version: 2
+started: '2026-10-09T14:52:24+00:00'
+finished: '2026-10-09T15:06:23+00:00'
+wall_s: 839
+status: BLOCKED
+input_sources:
+- specs/T-0031.1/subticket.md
+- specs/T-0031/v2.md
+gate_skipped: []
+branch: factory/T-0031.1
+base: b002c95b18b3cd1dad4329cdc4e13b6fe71b18af
+head: b002c95b18b3cd1dad4329cdc4e13b6fe71b18af
+worktree: /Users/dphang/dev/spec-factory/.factory/store/worktrees/T-0031.1
+resolution: null
+environment_files: []
+confidence: medium. The code meets every acceptance scenario and its own tests, but the test-suite gate
+  fails one unlisted existing test case that this change breaks by design.
+escalations:
+- 'The test-suite gate cannot pass without editing an existing test the spec does not list.** `tests/factory/test_gate_paths.py`
+  line 217, in `test_a_null_absent_or_unscoped_mapping_gate_runs_as_a_string_list_does`, builds its expected
+  gate line from the old wrapper text, `(export HOME="$(cd "$(mktemp -d)" && pwd -P)"; …)`. Part A adds
+  the prefix to every wrapped gate command, so one case fails, and passes again with the base code (`26
+  passed`). The spec''s Tests to change lists only the `WRAP` constant in `tests/factory/test_run_isolation.py`.
+  This file was added after the spec''s prototype base, so the spec''s "only edit needed" claim no longer
+  holds on `b002c95`. Decide: allow the one-line edit, adding the part A prefix to `want` on line 217
+  with no assertion removed, by amending the spec''s Tests to change or by a ruling. The fix round then
+  makes that edit, and the gate is expected to go to `424 passed`, though that run has not happened yet.'
+escalations_note: null

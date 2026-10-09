@@ -1,0 +1,18 @@
+run_id: run-0376-planner
+role: planner
+ticket: T-0027
+model: opus
+round: 1
+spec_version: 3
+started: '2026-10-09T16:12:03+00:00'
+finished: '2026-10-09T16:15:38+00:00'
+wall_s: 215
+status: PLANNED
+input_sources:
+- specs/T-0027/v3.md
+- decisions.md
+confidence: medium. The split follows the spec's own seams and every named helper exists on `main`. ST-3's
+  "no existing test breaks" rests on the spec's prototype suite run, which predates T-0033, T-0038 and
+  T-0039 landing on `main`, and I did not re-run the suite.
+escalations: []
+escalations_note: null

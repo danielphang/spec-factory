@@ -1,0 +1,27 @@
+run_id: run-0384-implementer
+role: implementer
+ticket: T-0027.3
+model: opus
+round: 0
+spec_version: 3
+started: '2026-10-09T16:41:11+00:00'
+finished: '2026-10-09T17:00:46+00:00'
+wall_s: 1175
+status: READY-FOR-REVIEW
+input_sources:
+- specs/T-0027.3/subticket.md
+- specs/T-0027/v3.md
+gate_skipped: []
+branch: factory/T-0027.3
+base: 8dfc64b61f9d927e9f82fa9704f382cffefa60cf
+head: 8dfc64b61f9d927e9f82fa9704f382cffefa60cf
+worktree: /Users/dphang/dev/spec-factory/.factory/store/worktrees/T-0027.3
+resolution: null
+environment_files: []
+confidence: high. Every acceptance command printed its expected lines after the change and its "fails
+  today" lines before it, and both gates passed on the committed head.
+escalations:
+- none
+- 'Protected paths touched, all declared by the sub-ticket: `factory/cli.py`, `factory/subtickets.py`.
+  `factory/gitops.py` was not touched.'
+escalations_note: null

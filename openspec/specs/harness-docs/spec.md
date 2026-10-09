@@ -298,3 +298,71 @@ Every copy of the code reviewer prompt (the `docs/design.md` §6 block, `docs/pr
 #### Scenario: The protected-path change adds no whitespace errors
 - WHEN `(git diff --check main...HEAD; echo "exit=$?")`
 - THEN it prints only `exit=0`
+
+### Requirement: The implementer, verifier, code reviewer, planner and triage carry the reading rules
+Every copy of the implementer, verifier, code reviewer, planner and triage prompts (the `docs/design.md` block, its `docs/prompts/` file and the `factory/prompts/` run copy) SHALL carry the Turn economy paragraph in the critic's words, and MUST NOT carry the spec writer's `as few writes as you can`. Each design block MUST stay byte-identical to its `docs/prompts/` file, and each run copy SHALL differ from it only as it did on `main`.
+
+#### Scenario: The five role prompts carry the critic's reading paragraph in every copy
+Run every command in this change from the repository root of the checkout under test, after `uv sync --frozen`. Each WHEN runs in a subshell.
+- WHEN `(T=$(mktemp -d); Q=$(printf '\140\140\140'); P='Turn economy: every turn re-sends everything read so far, so a wasted turn or a long printout costs again on every later turn. Put independent reads and commands in one turn. Once grep has found the lines you need, read that line range, not the whole file. Send long output to a file in your scratch directory and grep or tail it, rather than printing it in full.'; for r in "1. Triage|01-triage.md|triage" "4. Planner / decomposer|04-planner.md|planner" "5. Implementer|05-implementer.md|implementer" "6. Code reviewer|06-code-reviewer.md|reviewer" "7. Verifier|07-verifier.md|verifier"; do h=${r%%|*}; x=${r#*|}; c=${x%%|*}; f=${x#*|}; git show main:factory/prompts/$f.md > $T/a; git show main:docs/prompts/$c > $T/b; echo "$f copy=$(awk -v h="## $h" -v q="$Q" '$0==h{s=1;next} s&&$0==q"text"{p=1;next} p&&$0==q{exit} p' docs/design.md | cmp -s - docs/prompts/$c && echo SAME || echo DIFF) doc=$(tr '\n' ' ' < docs/prompts/$c | tr -s ' ' | grep -oF "$P" | grep -c .) run=$(tr '\n' ' ' < factory/prompts/$f.md | tr -s ' ' | grep -oF "$P" | grep -c .) writes=$(cat docs/prompts/$c factory/prompts/$f.md | tr '\n' ' ' | tr -s ' ' | grep -c 'as few writes as you can') fill=$([ "$(diff factory/prompts/$f.md docs/prompts/$c | grep '^[<>]')" = "$(diff $T/a $T/b | grep '^[<>]')" ] && echo unchanged || echo changed)"; done)`
+- THEN it prints exactly five lines: `triage copy=SAME doc=1 run=1 writes=0 fill=unchanged`, then the same for `planner`, `implementer`, `reviewer` and `verifier`. `copy=SAME`: the design block equals its `docs/prompts/` file. `doc` and `run`: the documented copy and the run copy each carry the whole paragraph once, joined into one line so it may wrap. `writes=0`: neither carries the spec writer's one-write sentence. `fill=unchanged`: the run copy differs from the documented copy only where it did on `main`.
+
+### Requirement: The reading rules are the only change to the role prompts
+In the ten `docs/prompts/` and `factory/prompts/` files of the five roles, the lines this change adds SHALL be the paragraph and nothing else, and no existing line SHALL be removed or changed, nor any line of `docs/design.md`. No other file under `docs/prompts/`, `factory/prompts/` or `agents/` SHALL change.
+
+#### Scenario: Only the paragraph is added, and no other prompt changes
+- WHEN `(P='Turn economy: every turn re-sends everything read so far, so a wasted turn or a long printout costs again on every later turn. Put independent reads and commands in one turn. Once grep has found the lines you need, read that line range, not the whole file. Send long output to a file in your scratch directory and grep or tail it, rather than printing it in full.'; F="docs/prompts/01-triage.md docs/prompts/04-planner.md docs/prompts/05-implementer.md docs/prompts/06-code-reviewer.md docs/prompts/07-verifier.md factory/prompts/triage.md factory/prompts/planner.md factory/prompts/implementer.md factory/prompts/reviewer.md factory/prompts/verifier.md"; extra=0; for f in $F; do A=$(git diff -U0 main...HEAD -- $f | grep '^+' | grep -v '^+++' | cut -c2- | tr '\n' ' ' | tr -s ' ' | sed 's/^ //; s/^- //; s/ $//'); [ -z "$A" ] || [ "$A" = "$P" ] || extra=$((extra+1)); done; deleted=$(git diff -U0 main...HEAD -- $F docs/design.md | grep '^-' | grep -vc '^---'); others=$(git diff --name-only main...HEAD -- docs/prompts factory/prompts agents | grep -vxF $(for f in $F; do printf -- '-e %s ' $f; done) | grep -c .); echo "extra=$extra deleted=$deleted others=$others")`
+- THEN it prints exactly `extra=0 deleted=0 others=0`. `extra` counts the ten files whose added text is anything other than the paragraph. `deleted` counts removed lines in those files and the design doc. `others` counts changed prompt or agent files outside the ten.
+
+### Requirement: Runs of the five roles receive the reading rules
+The system prompt that `run start` writes for an implementer, code reviewer, verifier, triage and planner run SHALL contain the Turn economy paragraph once, and MUST NOT contain `as few writes as you can`.
+
+#### Scenario: Implementer, reviewer and verifier runs receive the reading paragraph
+Needs the GIVEN block of "Implementer and verifier run prompts carry the declared-path rule" (current truth, role-escalations) run once.
+- WHEN `(. ${TMPDIR:-/tmp}/t0029-prompt.sh && P='Turn economy: every turn re-sends everything read so far, so a wasted turn or a long printout costs again on every later turn. Put independent reads and commands in one turn. Once grep has found the lines you need, read that line range, not the whole file. Send long output to a file in your scratch directory and grep or tail it, rather than printing it in full.'; for r in implementer reviewer verifier; do X=$(prompt $r); echo "$r preamble=$(echo "$X" | grep -c "UNTRUSTED INPUT") economy=$(echo "$X" | grep -cF "$P") writes=$(echo "$X" | grep -c 'as few writes as you can')"; done)`
+- THEN it prints exactly `implementer preamble=1 economy=1 writes=0`, `reviewer preamble=1 economy=1 writes=0`, `verifier preamble=1 economy=1 writes=0`, one per line. `preamble=1` shows the run started and its prompt was read.
+
+#### Scenario: Triage and planner runs receive the reading paragraph
+- WHEN `(T=$(mktemp -d); export FACTORY_STATE=$T/s; P='Turn economy: every turn re-sends everything read so far, so a wasted turn or a long printout costs again on every later turn. Put independent reads and commands in one turn. Once grep has found the lines you need, read that line range, not the whole file. Send long output to a file in your scratch directory and grep or tail it, rather than printing it in full.'; for i in 1 2; do printf "# F$i\n\nDo x.\n" > $T/req$i.md; bin/factory ticket new --file $T/req$i.md >/dev/null; done; bin/factory ticket set T-0001 status=ready-for-triage >/dev/null; bin/factory ticket set T-0002 status=ready-for-planner >/dev/null; bin/factory run start --role triage --ticket T-0001 >/dev/null 2>&1; bin/factory run start --role planner --ticket T-0002 >/dev/null 2>&1; for r in triage planner; do X=$(tr '\n' ' ' < $(ls $FACTORY_STATE/runs/*-$r/system-prompt.txt) | tr -s ' '); echo "$r preamble=$(printf '%s' "$X" | grep -c 'UNTRUSTED INPUT') economy=$(printf '%s' "$X" | grep -cF "$P") writes=$(printf '%s' "$X" | grep -c 'as few writes as you can')"; done)`
+- THEN it prints exactly `triage preamble=1 economy=1 writes=0`, then `planner preamble=1 economy=1 writes=0`
+
+### Requirement: The documents record the reading rules for the five roles
+`docs/changelog.md` SHALL gain one entry for issue #76 as its last numbered entry, numbered without a gap, placed before the closing "Declined:" line, naming the five roles and the operator's replay. The change MUST add no whitespace errors.
+
+#### Scenario: The changelog records the reading rules for the five roles as its last entry
+- WHEN `(awk '/^[0-9]+\. /{n++; if (index($0, n ". ") != 1) bad=1} END{print n, (bad ? "GAPPED" : "CONTIGUOUS")}' docs/changelog.md; echo "terms=$(grep '^[0-9]*\. ' docs/changelog.md | tail -1 | grep -oiF -e '#76' -e implementer -e verifier -e 'code reviewer' -e planner -e triage -e replay | tr A-Z a-z | sort -u | grep -c .) footer=$(tail -1 docs/changelog.md | grep -c '^Declined: a dedicated merge agent')")`
+- THEN it prints `64 CONTIGUOUS`, then `terms=7 footer=1`
+
+#### Scenario: The reading-rules change adds no whitespace errors
+- WHEN `(git diff --check main...HEAD; echo "exit=$?")`
+- THEN it prints only `exit=0`
+
+### Requirement: The critic's rubric asks about cross-ticket dependencies
+The critic's system prompt MUST tell it to check each scenario against approved changes not yet archived and to require the scenario's setup to hold whichever of the two merges first, and the runtime critic prompt SHALL stay a copy of `docs/prompts/03-spec-critic.md` with its round placeholder filled.
+
+#### Scenario: A critic run's system prompt carries the cross-ticket rule
+- WHEN `(T=$(cd "$(mktemp -d)" && pwd -P); export FACTORY_STATE=$T/s; printf '# F\n\nDo x.\n' > $T/req.md; bin/factory ticket new --file $T/req.md >/dev/null; bin/factory ticket transition T-0001 --to ready-for-spec-writer --by t >/dev/null; bin/factory ticket transition T-0001 --to ready-for-critic --by t >/dev/null; R=$(bin/factory run start --role critic --ticket T-0001 2>/dev/null | tail -1 | sed -n 's/.*"run_id": "\([^"]*\)".*/\1/p'); echo "rule=$(grep -c 'whichever of the two merges first' $FACTORY_STATE/runs/${R:-none}/system-prompt.txt 2>/dev/null)")`
+- THEN it prints exactly `rule=1`
+
+#### Scenario: The runtime critic prompt stays a copy of the documented one
+- WHEN `(diff <(sed 's/{2}/2/' docs/prompts/03-spec-critic.md) factory/prompts/critic.md >/dev/null && echo copies=same || echo copies=differ)`
+- THEN it prints exactly `copies=same`
+
+### Requirement: The documents record spec amendment, spec drift and the cross-ticket check
+`docs/changelog.md` SHALL gain one entry, numbered without a gap, covering the amend command with its intent flag, the drift check and the critic's cross-ticket check; `docs/design.md` SHALL name `factory spec amend` and `--intent unchanged`, carry a Spec drift paragraph and give the critic the approved changes not yet archived in its routing row; `dev/build-harness.spec.md` SHALL name `factory spec amend` and spec drift; README SHALL list the command under "Where a human decides" and the feature under Built; and the change MUST add no whitespace errors.
+
+#### Scenario: The changelog records the change in one contiguous entry
+- WHEN `(awk '/^[0-9]+\. /{n++; if (index($0, n ". ") != 1) bad=1} END{print (bad ? "GAPPED" : "CONTIGUOUS")}' docs/changelog.md; E=$(grep '^[0-9]*\. ' docs/changelog.md | grep -F 'factory spec amend'); echo "$E" | grep -c .; echo "$E" | grep -oF -e '--intent' -e 'in flight' -e tasks.md -e 'spec drift' -e 'not yet archived' -e whichever | sort -u | grep -c .)`
+- THEN it prints `CONTIGUOUS`, then `1`, then `6`
+
+#### Scenario: The design doc and build spec name the amend command, its intent flag, spec drift and the critic's new input
+- WHEN `(echo "amend=$(grep -c 'factory spec amend' docs/design.md | awk '{print ($1 > 0)}') intent=$(grep -c -- '--intent unchanged' docs/design.md | awk '{print ($1 > 0)}') drift=$(grep -c '^\*\*Spec drift\.\*\*' docs/design.md) row=$(grep '^| Spec writer | READY-FOR-CRITIC' docs/design.md | grep -c 'not yet archived') build=$(grep -c 'factory spec amend' dev/build-harness.spec.md | awk '{print ($1 > 0)}') build_drift=$(grep -ci 'spec drift' dev/build-harness.spec.md | awk '{print ($1 > 0)}')")`
+- THEN it prints exactly `amend=1 intent=1 drift=1 row=1 build=1 build_drift=1`
+
+#### Scenario: README lists the amend command and the drift check
+- WHEN `(H=$(sed -n '/^## Where a human decides/,/^### What you read at each stop/p' README.md); B=$(sed -n '/^\*\*Built\*\*/,/^\*\*Not built\*\*/p' README.md); echo "amend=$(echo "$H" | grep -c 'factory spec amend' | awk '{print ($1 > 0)}') intent=$(echo "$H" | grep -c -- '--intent' | awk '{print ($1 > 0)}') built=$(echo "$B" | grep -c '^- \*\*Spec amendment and drift\.\*\*')")`
+- THEN it prints exactly `amend=1 intent=1 built=1`
+
+#### Scenario: The change adds no whitespace errors
+- WHEN `(git diff --check main...HEAD; echo "exit=$?")`
+- THEN it prints only `exit=0`

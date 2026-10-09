@@ -1,0 +1,29 @@
+run_id: run-0383-reviewer
+role: reviewer
+ticket: T-0027.1
+model: fable
+round: 1
+spec_version: 3
+started: '2026-10-09T16:31:19+00:00'
+finished: '2026-10-09T16:35:14+00:00'
+wall_s: 235
+status: APPROVE
+input_sources:
+- specs/T-0027.1/subticket.md
+- specs/T-0027/v3.md
+- runs/run-0378-implementer/output.md
+- runs/run-0383-reviewer/diff.patch
+gate_skipped: []
+environment_files: []
+branch: factory/T-0027.1
+base: 89290547a33a6091860c850fdda7ff285b409fa0
+head: 9a99851bd15fe781c814231bb952513d1b597438
+worktree: /Users/dphang/dev/spec-factory/.factory/store/runs/run-0383-reviewer/wt
+confidence: high. I read every changed line against the spec's part A and the helpers it names in the
+  worktree, confirmed the refusal order and write order line by line, and confirmed no existing test or
+  function changed; the verifier runs the suite and the acceptance commands on this head.
+escalations:
+- 'protected paths touched, both declared by the sub-ticket and the parent spec''s Risk section: `factory/cli.py`
+  (new `spec amend` subparser and `spec_amend`, `_restart_note`), `factory/specstore.py` (new `scenario_blocks`,
+  `intent_of`, `intent_changes`). No further approval needed at the merge gate.'
+escalations_note: null

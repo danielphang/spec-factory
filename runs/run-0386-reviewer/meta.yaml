@@ -1,0 +1,26 @@
+run_id: run-0386-reviewer
+role: reviewer
+ticket: T-0027.3
+model: fable
+round: 1
+spec_version: 3
+started: '2026-10-09T17:01:28+00:00'
+finished: '2026-10-09T17:04:57+00:00'
+wall_s: 209
+status: APPROVE
+input_sources:
+- specs/T-0027.3/subticket.md
+- specs/T-0027/v3.md
+- runs/run-0384-implementer/output.md
+- runs/run-0386-reviewer/diff.patch
+gate_skipped: []
+environment_files: []
+branch: factory/T-0027.3
+base: 8dfc64b61f9d927e9f82fa9704f382cffefa60cf
+head: 49cc429424c1eb02708268bf4ecb0f251bfe8ae7
+worktree: /Users/dphang/dev/spec-factory/.factory/store/runs/run-0386-reviewer/wt
+confidence: high. I read every changed line against part D and confirmed each helper signature it relies
+  on (`_runs_for`, `gitops.git` with `check=False`, `read_yaml`, `lines_outside_fences`, `_heading`, label
+  pattern, ruling file names) in the worktree; the only finding is a cost nit.
+escalations: []
+escalations_note: 'none. Protected paths touched, all declared by the sub-ticket: `factory/cli.py`, `factory/subtickets.py`.'

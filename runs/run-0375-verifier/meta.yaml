@@ -1,0 +1,32 @@
+run_id: run-0375-verifier
+role: verifier
+ticket: T-0039.1
+model: opus
+round: 1
+spec_version: 2
+started: '2026-10-09T16:02:31+00:00'
+finished: '2026-10-09T16:09:33+00:00'
+wall_s: 422
+status: VERIFIED
+input_sources:
+- specs/T-0039.1/subticket.md
+- specs/T-0039/v2.md
+- runs/run-0373-implementer/output.md
+- runs/run-0375-verifier/diff.patch
+gate_skipped: []
+environment_files: []
+branch: factory/T-0039.1
+base: b002c95b18b3cd1dad4329cdc4e13b6fe71b18af
+head: a86d154a75c6545d91f87cc79a007d2fe16e5df3
+worktree: /Users/dphang/dev/spec-factory/.factory/store/runs/run-0375-verifier/wt
+confidence: high, because every acceptance command matched its predicted base and PR output exactly, both
+  gates passed on a86d154, and the mutation probe shows the new test tracks the property rather than fixed
+  inputs.
+escalations:
+- 'The acceptance commands in spec v2 assume a POSIX shell, but the spec does not say so. Run under zsh,
+  this machine''s default shell, the "Only the paragraph is added" command prints `others=538` instead
+  of `others=0`, because zsh does not word-split the unquoted `$F`. Under bash it passes. It is a false
+  failure, not a false pass, but a verifier or operator who pastes the command into zsh will see a failure
+  the change did not cause. A possible fix, for a later ticket: state "run under bash" in the spec template''s
+  command preamble.'
+escalations_note: null

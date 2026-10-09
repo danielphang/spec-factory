@@ -1,0 +1,22 @@
+run_id: run-0369-spec_writer
+role: spec_writer
+ticket: T-0039
+model: opus
+round: 2
+spec_version: 1
+started: '2026-10-09T15:08:51+00:00'
+finished: '2026-10-09T15:11:18+00:00'
+wall_s: 147
+status: READY-FOR-CRITIC
+input_sources:
+- runs/run-0364-triage/output.md
+- requests/T-0039.md
+- openspec/specs/harness-docs/spec.md
+- openspec/specs/role-escalations/spec.md
+- decisions.md
+- runs/run-0368-critic/output.md
+- specs/T-0039/v1.md
+confidence: high, both findings are text changes to Problem, Evidence and Risk; the base is unchanged
+  at `b002c95`, and no design part, scenario or acceptance line changed from v1, which the critic ran.
+escalations: []
+escalations_note: null

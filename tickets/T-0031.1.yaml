@@ -1,0 +1,39 @@
+id: T-0031.1
+type: sub-ticket
+title: Role commands drop an inherited VIRTUAL_ENV, and build checkouts start with a synced environment
+request: requests/T-0031.md
+source: plan:whole-spec
+status: parked
+round:
+  spec: 0
+  pr: 0
+spec:
+  version: 2
+  approved_version: 2
+plan: null
+in_flight: []
+parked:
+  reason: BLOCKED from implementer
+  since: '2026-10-09T15:06:38+00:00'
+  from: ready-for-implementer
+  outputs:
+  - run-0366-implementer
+  question: null
+created: '2026-10-09T14:51:46+00:00'
+history:
+- ts: '2026-10-09T15:06:38+00:00'
+  from: ready-for-implementer
+  to: parked
+  by: park
+  reason: BLOCKED from implementer
+parent: T-0031
+depends_on: []
+parallel_safe: true
+branch: factory/T-0031.1
+head: null
+merge:
+  base_before: null
+  main_after: null
+parent_base: null
+label: whole-spec
+planned_from: 2

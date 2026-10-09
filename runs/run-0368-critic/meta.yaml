@@ -1,0 +1,19 @@
+run_id: run-0368-critic
+role: critic
+ticket: T-0039
+model: fable
+round: 1
+spec_version: 1
+started: '2026-10-09T15:04:19+00:00'
+finished: '2026-10-09T15:08:32+00:00'
+wall_s: 253
+status: REVISE
+input_sources:
+- specs/T-0039/v1.md
+- openspec/specs/harness-docs/spec.md
+- openspec/specs/role-escalations/spec.md
+- decisions.md
+confidence: high, every cited path, line and base output I checked matched the spec, and the one blocking
+  item is a one-sentence reorder.
+escalations: []
+escalations_note: null

@@ -1,0 +1,30 @@
+run_id: run-0372-spec_writer
+role: spec_writer
+ticket: T-0031
+model: opus
+round: 0
+spec_version: 2
+started: '2026-10-09T15:52:01+00:00'
+finished: '2026-10-09T16:17:09+00:00'
+wall_s: 1508
+status: READY-FOR-CRITIC
+input_sources:
+- runs/run-0274-triage/output.md
+- requests/T-0031.md
+- openspec/specs/build-dispatch/spec.md
+- openspec/specs/gate-commands/spec.md
+- openspec/specs/harness-docs/spec.md
+- openspec/specs/harness-suite/spec.md
+- openspec/specs/human-resolution/spec.md
+- openspec/specs/live-store-guard/spec.md
+- openspec/specs/merge-gate/spec.md
+- openspec/specs/role-escalations/spec.md
+- openspec/specs/role-inputs/spec.md
+- openspec/specs/store-setup/spec.md
+- openspec/specs/sub-ticket-planning/spec.md
+- decisions.md
+- approvals/T-0031/changes-1.md
+confidence: high. The prototype printed every non-document THEN under bash and zsh, and the full suite
+  ran 408 passed with exactly the two listed test edits.
+escalations: []
+escalations_note: null

@@ -1,0 +1,555 @@
+diff --git a/factory/cli.py b/factory/cli.py
+index 759811b..7137b8f 100644
+--- a/factory/cli.py
++++ b/factory/cli.py
+@@ -7,6 +7,7 @@ from __future__ import annotations
+ 
+ import argparse
+ import datetime as dt
++import difflib
+ import getpass
+ import json
+ import os
+@@ -408,6 +409,95 @@ def spec_add(a, root, cfg):
+     out({"ok": True, "id": t["id"], "version": n, "path": f"specs/{t['id']}/v{n}.md"})
+ 
+ 
++def _restart_note(root: Path, t: dict) -> str:
++    """What a restart keeps (merged sub-tickets) and discards (the rest not closed), and its two routes."""
++    subs = store.subtickets_of(root, t["id"])
++    kept = [f"{s['id']} / {s['title']} (merge {((s.get('merge') or {}).get('main_after') or '')[:9] or 'not recorded'})"
++            for s in subs if s["status"] == "merged"]
++    lost = [f"{s['id']} / {s['title']}: {s['status']}" + (f", branch {s['branch']}" if s.get("branch") else "")
++            for s in subs if s["status"] not in ("merged", "closed")]
++    tid = t["id"]
++    return (f"Restart instead of amending. Merged, and their merge commits stay on the integration branch: "
++            f"{'; '.join(kept) or 'none'}. Not merged, which a restart discards: {'; '.join(lost) or 'none'}. "
++            f"To re-spec and re-plan: `factory ticket park {tid} --reason \"<why>\"`, `factory resolve {tid} "
++            f"--to spec-gate`, then `factory approve-spec {tid} --edit F`; the new plan supersedes the unmerged "
++            f"sub-tickets. To close and re-file: `factory resolve {tid} --close`, then `factory ticket new --file F`. "
++            "The factory never restarts by itself.")
++
++
++def spec_amend(a, root, cfg):
++    """`spec amend PARENT --file F --reason LINE --intent unchanged`: a human writes F as the next spec
++    version and makes it the approved one, re-pinning the change folder and keeping its tasks.md.
++    Doc §Harness, Spec store. Every refusal comes before the first write."""
++    t = store.load_ticket(root, a.id)
++    tid, av = t["id"], t["spec"]["approved_version"]
++    if t.get("parent"):
++        raise Refused(f"{tid} is a sub-ticket; amend its parent's spec: spec amend {t['parent']}")
++    if t["status"] == "awaiting-spec-gate":
++        raise Refused(f"{tid} is awaiting-spec-gate; amend it at the gate with approve-spec {tid} --edit F")
++    if av is None:
++        raise Refused(f"{tid} has no approved spec to amend")
++    if t["status"] == "closed":
++        raise Refused(f"{tid} is closed")
++    reason = (a.reason or "").strip()
++    if not reason or len(reason.splitlines()) > 1:
++        raise Refused("--reason is one non-blank line of text")
++    subs = store.subtickets_of(root, tid)
++    runs = [r for x in (t, *subs) for r in x.get("in_flight") or []]
++    if runs:
++        raise Refused(f"{tid} has runs in flight on it or its sub-tickets: {', '.join(runs)}; amend once they finish")
++    if a.intent == "changed":
++        raise Refused(f"intent changed: an amendment keeps the spec's intent, so --intent changed is never "
++                      f"applied. {_restart_note(root, t)}")
++    old = (root / "specs" / tid / f"v{av}.md").read_text(encoding="utf-8")
++    text = Path(a.file).read_text(encoding="utf-8")
++    changes = specstore.intent_changes(old, text)
++    if changes:
++        raise Refused(f"intent changed ({'; '.join(changes)}). --intent unchanged keeps the Problem section, "
++                      "every Decisions line, and each requirement's name, operation and statement; scenarios, "
++                      f"their setup, Evidence, design text and Tests to change may change. {_restart_note(root, t)}")
++    if specstore.is_active(root):
++        if not specstore.change_dir(root, tid).exists():
++            raise Refused(f"{tid} has no change folder ({_rel(root, specstore.change_dir(root, tid))}): "
++                          "it was archived, so its spec can no longer be amended")
++        _, deltas, errors = specstore.validate(text)
++        errors += specstore.applies(root, deltas) if not errors else []
++        if errors:
++            raise Refused("spec not amended: " + "; ".join(errors))
++    n = _add_spec_version(root, t, text, f"amend {a.file}")
++    if specstore.is_active(root):
++        tasks = specstore.change_dir(root, tid) / "tasks.md"
++        kept = tasks.read_text(encoding="utf-8") if tasks.exists() else None
++        specstore.pin(root, tid, text)
++        if kept is not None:
++            store.write_text(tasks, kept)
++    t["spec"]["approved_version"] = n
++    store.save_ticket(root, t)
++    for s in subs:
++        if s["status"] not in ("merged", "closed"):
++            s["spec"] = {"version": n, "approved_version": n}  # planned_from stays: no plan is superseded
++            store.save_ticket(root, s)
++    ob, nb = specstore.scenario_blocks(old), specstore.scenario_blocks(text)
++    scen = ([f"- changed: {k}" for k in nb if k in ob and ob[k] != nb[k]] + [f"- added: {k}" for k in nb if k not in ob]
++            + [f"- removed: {k}" for k in ob if k not in nb])
++    merged = [f"- {s['id']} / {s['title']}: merged" for s in subs if s["status"] == "merged"]
++    diff = "".join(difflib.unified_diff(old.splitlines(keepends=True), text.splitlines(keepends=True),
++                                        f"specs/{tid}/v{av}.md", f"specs/{tid}/v{n}.md")).rstrip("\n")
++    fence = "```"
++    while fence in diff:  # the spec's own fences must not close the record's
++        fence += "`"
++    d = _approval_dir(root, tid)
++    rec = d / f"amendment-{_next_n(d, 'amendment')}.md"
++    store.write_text(rec, "\n\n".join([
++        f"# {tid}: spec amended, v{av} to v{n}", f"By {_by()} at {store.now()}.", f"Reason: {reason}",
++        "Intent: unchanged", "## Scenarios changed", "\n".join(scen) or "none",
++        "## Sub-tickets merged before this amendment", "\n".join(merged) or "none",
++        "## Diff", f"{fence}diff\n{diff}\n{fence}"]) + "\n")
++    store.log_event(root, "spec.amended", ticket=tid, by=_by(), previous=av, version=n, reason=reason,
++                    record=_rel(root, rec))
++    out({"ok": True, "id": tid, "version": n, "record": _rel(root, rec)})
++
++
+ def plan_add(a, root, cfg):
+     t = store.load_ticket(root, a.id)
+     text = _text_from(a, root)
+@@ -1567,6 +1657,13 @@ def build_parser() -> argparse.ArgumentParser:
+     p.add_argument("--from-run")
+     p.add_argument("--file")
+     p.set_defaults(fn=spec_add)
++    p = sc.add_parser("amend", help="a human amends PARENT's pinned spec when its intent is unchanged: F becomes "
++                                    "the next and approved version, re-pinned with tasks.md kept")
++    p.add_argument("id")
++    p.add_argument("--file", required=True)
++    p.add_argument("--reason", required=True, help="one line: why the spec is amended")
++    p.add_argument("--intent", required=True, choices=("unchanged", "changed"))
++    p.set_defaults(fn=spec_amend)
+     pl = sp.add_parser("plan").add_subparsers(dest="sub", required=True)
+     p = pl.add_parser("add")
+     p.add_argument("id")
+diff --git a/factory/specstore.py b/factory/specstore.py
+index 6c457d1..05f1ea7 100644
+--- a/factory/specstore.py
++++ b/factory/specstore.py
+@@ -320,6 +320,76 @@ def decisions_of(proposal: str) -> list[str]:
+     return out
+ 
+ 
++# ----- what an amendment may change (`factory spec amend`) ------------------------------------
++
++def scenario_blocks(text: str) -> dict[str, str]:
++    """`#### Scenario: <name>` → its block (the heading through the line before the next `##`,
++    `###` or `####` heading outside fences), over every delta part of a spec version."""
++    out: dict[str, str] = {}
++    for path, body in split_parts(text):
++        if not DELTA_RE.match(path):
++            continue
++        name, buf = None, []
++        for line, in_fence in lines_outside_fences(body):
++            if _heading(line, in_fence):
++                if name is not None:
++                    out[name] = "\n".join(buf).rstrip()
++                m = SCEN_RE.match(line)
++                name, buf = (m.group(1), [line]) if m else (None, [])
++                continue
++            if name is not None:
++                buf.append(line)
++        if name is not None:
++            out[name] = "\n".join(buf).rstrip()
++    return out
++
++
++def _collapsed(s: str) -> str:
++    return " ".join(s.split())
++
++
++def intent_of(text: str) -> tuple[str, list[str], dict[tuple[str, str, str], str]]:
++    """A spec version's intent: the `## Problem` body of proposal.md; its Decisions lines; and per
++    (capability, op, requirement name), the requirement block up to its first `#### Scenario:` line
++    outside fences. Each with whitespace runs collapsed."""
++    parts = dict(split_parts(text))
++    problem, inside = [], False
++    for line, in_fence in lines_outside_fences(parts.get("proposal.md", "")):
++        if not in_fence and line.startswith("## "):
++            inside = line.startswith("## Problem")
++            continue
++        if inside:
++            problem.append(line)
++    decisions = [_collapsed(d) for d in decisions_of(parts.get("proposal.md", ""))]
++    reqs: dict[tuple[str, str, str], str] = {}
++    for path, body in parts.items():
++        m = DELTA_RE.match(path)
++        if not m:
++            continue
++        for op, blocks in parse_delta(body)[0].items():
++            for name, block in blocks.items():
++                statement = []
++                for line, in_fence in lines_outside_fences(block):
++                    if not in_fence and SCEN_RE.match(line):
++                        break
++                    statement.append(line)
++                reqs[(m.group(1), op, name)] = _collapsed("\n".join(statement))
++    return _collapsed("\n".join(problem)), decisions, reqs
++
++
++def intent_changes(old: str, new: str) -> list[str]:
++    """Each way `new` changes `old`'s intent (`intent_of`); empty when the intent is unchanged."""
++    (op_, od, orq), (np_, nd, nrq) = intent_of(old), intent_of(new)
++    changes = ["the Problem section"] if op_ != np_ else []
++    changes += [f"Decisions line removed: {d}" for d in od if d not in nd]
++    changes += [f"Decisions line added: {d}" for d in nd if d not in od]
++    changes += [f"requirement removed: {c} {o} {n}" for (c, o, n) in orq if (c, o, n) not in nrq]
++    changes += [f"requirement added: {c} {o} {n}" for (c, o, n) in nrq if (c, o, n) not in orq]
++    changes += [f"requirement restated: {c} {o} {n}" for (c, o, n), s in orq.items()
++                if (c, o, n) in nrq and nrq[(c, o, n)] != s]
++    return changes
++
++
+ def apply_delta(truth: str, capability: str, ops: dict[str, dict[str, str]]) -> str:
+     if not truth.strip():
+         truth = f"# {capability}\n\n## Requirements\n"
+diff --git a/tests/factory/test_spec_amend.py b/tests/factory/test_spec_amend.py
+new file mode 100644
+index 0000000..c7332f0
+--- /dev/null
++++ b/tests/factory/test_spec_amend.py
+@@ -0,0 +1,346 @@
++"""`factory spec amend` (T-0027 part A): a human amends a pinned spec whose intent is unchanged.
++The amended version becomes the approved one, the change folder is re-pinned with the planner's
++tasks.md kept, sub-tickets neither merged nor closed move to it, and the amendment is recorded under
++approvals/ and logged. Each refusal exits 2 and writes nothing.
++
++Each case builds the spec's t0027-amend.sh fixture: a throwaway store with a spec store
++(FACTORY_STATE) and a scratch target repository (FACTORY_REPO). T-0001's v1 is approved; its one
++requirement "Greets" has one scenario, "Greeting is printed", running `echo hi`. v2 changes only that
++scenario; v3 also changes the Decisions line.
++"""
++from __future__ import annotations
++
++import json
++import os
++import subprocess
++from pathlib import Path
++
++import pytest
++import yaml
++
++REPO = Path(__file__).resolve().parents[2]
++BIN = REPO / "bin" / "factory"
++
++SPEC = """=== proposal.md
++## Problem
++{problem}
++## Decisions
++- {decision}
++=== design.md
++## Proposed change
++Edit `src/greet.py`.
++## Tests to change
++none
++=== specs/demo/spec.md
++## ADDED Requirements
++### Requirement: Greets
++{statement}
++
++#### Scenario: Greeting is printed
++- WHEN `{cmd}`
++- THEN it prints `{out}`
++{extra}=== verification.md
++## Acceptance
++- Greeting is printed → NEW
++{labels}"""
++
++TWO = "ST-1 / First\nDepends on: none\nParallel-safe: yes\n\nST-2 / Second\nDepends on: none\nParallel-safe: yes\n"
++
++
++def spec(decision="Greet by default.", cmd="echo hi", out="hi", problem="x", statement="The tool SHALL greet.",
++         extra="", labels="") -> str:
++    return SPEC.format(decision=decision, cmd=cmd, out=out, problem=problem, statement=statement, extra=extra,
++                       labels=labels)
++
++
++V1, V2 = spec(), spec(cmd="echo hello", out="hello")
++
++
++class Fixture:
++    def __init__(self, tmp_path: Path):
++        self.tmp = tmp_path
++        self.store = tmp_path / "store"
++        self.target = tmp_path / "t"
++        self.env = {**os.environ, "FACTORY_STATE": str(self.store), "FACTORY_REPO": str(self.target),
++                    "FACTORY_INTEGRATION_BRANCH": "main", "PYTHONDONTWRITEBYTECODE": "1"}
++
++    def cli(self, *argv: str) -> subprocess.CompletedProcess:
++        return subprocess.run([str(BIN), *argv], capture_output=True, text=True, env=self.env, cwd=REPO)
++
++    def ok(self, *argv: str) -> dict:
++        cp = self.cli(*argv)
++        assert cp.returncode == 0, cp.stderr
++        return json.loads(cp.stdout.strip().splitlines()[-1])
++
++    def file(self, name: str, text: str) -> str:
++        p = self.tmp / name
++        p.write_text(text)
++        return str(p)
++
++    def ticket(self, tid: str) -> dict:
++        return yaml.safe_load((self.store / "tickets" / f"{tid}.yaml").read_text())
++
++    def plan(self, text: str = TWO) -> None:
++        self.ok("subticket", "add", "T-0001", "--file", self.file("plan.md", text))
++        self.ok("ticket", "transition", "T-0001", "--to", "planned", "--by", "t")
++
++    def amend(self, text: str, reason: str = "Seed the greeting.", intent: str = "unchanged",
++              tid: str = "T-0001") -> subprocess.CompletedProcess:
++        return self.cli("spec", "amend", tid, "--file", self.file("amend.md", text), "--reason", reason,
++                        "--intent", intent)
++
++    def snapshot(self) -> dict[str, bytes]:
++        return {str(p.relative_to(self.store)): p.read_bytes() for p in sorted(self.store.rglob("*")) if p.is_file()}
++
++    def change(self, rel: str) -> Path:
++        return self.store / "openspec" / "changes" / "T-0001" / rel
++
++
++@pytest.fixture
++def f(tmp_path: Path) -> Fixture:
++    f = Fixture(tmp_path)
++    subprocess.run(["git", "init", "-q", "-b", "main", str(f.target)], check=True)
++    for rel in ("src/greet.py", "src/other.py"):
++        (f.target / rel).parent.mkdir(parents=True, exist_ok=True)
++        (f.target / rel).write_text(f"# {rel}\n")
++    subprocess.run(["git", "-C", str(f.target), "add", "-A"], check=True)
++    subprocess.run(["git", "-C", str(f.target), "-c", "user.email=f@x", "-c", "user.name=f", "commit", "-qm", "land"],
++                   check=True)
++    f.ok("init")
++    f.ok("ticket", "new", "--file", f.file("req.md", "# Fixture\n\nGreet.\n"))
++    f.ok("ticket", "transition", "T-0001", "--to", "ready-for-spec-writer", "--by", "t")
++    f.ok("spec", "add", "T-0001", "--file", f.file("v1.md", V1))
++    f.ok("ticket", "transition", "T-0001", "--to", "ready-for-critic", "--by", "t", "--round", "spec:init")
++    f.ok("ticket", "transition", "T-0001", "--to", "awaiting-spec-gate", "--by", "t")
++    f.ok("approve-spec", "T-0001")
++    return f
++
++
++def refused(f: Fixture, cp: subprocess.CompletedProcess, before: dict[str, bytes]) -> str:
++    """Assert a refusal that wrote nothing; return its error."""
++    assert cp.returncode == 2, cp.stdout + cp.stderr
++    res = json.loads(cp.stdout.strip().splitlines()[-1])
++    assert res["ok"] is False
++    assert f.snapshot() == before
++    return res["error"]
++
++
++# ----- the writes ---------------------------------------------------------------------------
++
++def test_amendment_repins_keeps_tasks_and_moves_unmerged_subtickets(f):
++    f.plan()
++    f.ok("ticket", "set", "T-0001.1", "status=merged")
++    f.change("tasks.md").write_text("planner tasks\n")
++    cp = f.amend(V2)
++    assert cp.returncode == 0, cp.stderr
++    assert json.loads(cp.stdout.strip().splitlines()[-1]) == {
++        "ok": True, "id": "T-0001", "version": 2, "record": "approvals/T-0001/amendment-1.md"}
++    parent = f.ticket("T-0001")
++    assert parent["spec"] == {"version": 2, "approved_version": 2}
++    assert parent["status"] == "planned"  # an amendment changes no ticket state
++    assert (f.store / "specs" / "T-0001" / "v2.md").read_text() == V2
++    assert "echo hello" in f.change("specs/demo/spec.md").read_text()
++    assert f.change("tasks.md").read_text() == "planner tasks\n"
++    assert "## Critic rounds" in f.change("verification.md").read_text()  # re-pinned as the gate pins
++    first, second = f.ticket("T-0001.1"), f.ticket("T-0001.2")
++    assert first["status"] == "merged" and first["spec"] == {"version": 1, "approved_version": 1}
++    assert second["spec"] == {"version": 2, "approved_version": 2}
++    assert first["planned_from"] == second["planned_from"] == 1
++    assert not list((f.store / "approvals" / "T-0001").glob("spec-v2*"))  # no gate approval file
++
++
++def test_amendment_without_tasks_md_writes_none(f):
++    assert f.amend(V2).returncode == 0
++    assert not f.change("tasks.md").exists()
++
++
++def test_record_lists_changed_scenarios_merged_subtickets_reason_and_diff(f):
++    f.plan()
++    f.ok("ticket", "set", "T-0001.1", "status=merged")
++    v = spec(cmd="echo hello", out="hello",
++             extra="\n#### Scenario: Waves\n- WHEN `echo wave`\n- THEN it prints `wave`\n",
++             labels="- Waves → NEW\n")
++    assert f.amend(v).returncode == 0
++    rec = (f.store / "approvals" / "T-0001" / "amendment-1.md").read_text()
++    lines = rec.splitlines()
++    assert lines[0] == "# T-0001: spec amended, v1 to v2"
++    assert lines[2].startswith("By ") and "Reason: Seed the greeting." in lines and "Intent: unchanged" in lines
++    scen = rec.split("## Scenarios changed\n\n")[1].split("\n\n")[0]
++    assert scen == "- changed: Greeting is printed\n- added: Waves"
++    merged = rec.split("## Sub-tickets merged before this amendment\n\n")[1].split("\n\n")[0]
++    assert merged == "- T-0001.1 / First: merged"
++    diff = rec.split("## Diff\n\n")[1]
++    assert diff.startswith("```diff\n--- specs/T-0001/v1.md\n+++ specs/T-0001/v2.md\n")
++    assert "-- WHEN `echo hi`" in diff and "+- WHEN `echo hello`" in diff and diff.endswith("\n```\n")
++    ev = [json.loads(ln) for ln in f.cli("log", "tail", "--event", "spec.amended").stdout.splitlines()]
++    assert len(ev) == 1
++    assert {k: ev[0][k] for k in ("ticket", "previous", "version", "reason", "record")} == {
++        "ticket": "T-0001", "previous": 1, "version": 2, "reason": "Seed the greeting.",
++        "record": "approvals/T-0001/amendment-1.md"}
++    assert ev[0]["by"]
++
++
++def test_record_with_no_merged_subtickets_and_removed_scenario_says_so(f):
++    f.amend(spec(extra="\n#### Scenario: Waves\n- WHEN `echo wave`\n- THEN it prints `wave`\n",
++                 labels="- Waves → NEW\n"))
++    assert f.amend(V1, reason="Drop the wave.").returncode == 0
++    rec = (f.store / "approvals" / "T-0001" / "amendment-2.md").read_text()
++    assert "## Scenarios changed\n\n- removed: Waves\n\n" in rec
++    assert "## Sub-tickets merged before this amendment\n\nnone\n\n" in rec
++
++
++def test_record_number_follows_a_hand_written_amendment(f):
++    (f.store / "approvals" / "T-0001" / "amendment-1.md").write_text("hand-written\n")
++    assert json.loads(f.amend(V2).stdout.strip().splitlines()[-1])["record"] == "approvals/T-0001/amendment-2.md"
++    assert (f.store / "approvals" / "T-0001" / "amendment-1.md").read_text() == "hand-written\n"
++
++
++def test_later_implementer_run_receives_the_amended_spec(f):
++    f.plan()
++    assert f.amend(V2).returncode == 0
++    rid = f.ok("run", "start", "--role", "implementer", "--ticket", "T-0001.2")["run_id"]
++    f.ok("run", "compose", rid)
++    text = (f.store / "runs" / rid / "input.md").read_text()
++    assert "Parent spec (v2, pinned)" in text and "echo hello" in text and "`echo hi`" not in text
++    assert yaml.safe_load((f.store / "runs" / rid / "meta.yaml").read_text())["spec_version"] == 2
++
++
++def test_archive_after_amendment_writes_the_amended_scenario(f):
++    assert f.amend(V2).returncode == 0
++    f.ok("archive", "T-0001")
++    truth = (f.store / "openspec" / "specs" / "demo" / "spec.md").read_text()
++    assert "echo hello" in truth and "`echo hi`" not in truth
++
++
++# ----- the refusals, in order -----------------------------------------------------------------
++
++def test_subticket_is_refused_naming_the_parent(f):
++    f.plan()
++    before = f.snapshot()
++    assert "spec amend T-0001" in refused(f, f.amend(V2, tid="T-0001.1"), before)
++
++
++def test_ticket_with_no_approved_version_is_refused(f):
++    f.ok("ticket", "new", "--file", f.file("req2.md", "# Second\n\nWave.\n"))
++    before = f.snapshot()
++    assert "no approved spec" in refused(f, f.amend(V2, tid="T-0002"), before)
++
++
++def test_ticket_at_the_gate_is_pointed_to_approve_spec_edit(f):
++    f.ok("ticket", "park", "T-0001", "--reason", "x")
++    f.ok("resolve", "T-0001", "--to", "spec-gate")
++    before = f.snapshot()
++    assert "approve-spec T-0001 --edit" in refused(f, f.amend(V2), before)
++
++
++def test_closed_ticket_is_refused(f):
++    f.ok("ticket", "set", "T-0001", "status=closed")
++    before = f.snapshot()
++    assert "closed" in refused(f, f.amend(V2), before)
++
++
++@pytest.mark.parametrize("reason", ["", "   ", "two\nlines"])
++def test_reason_that_is_not_one_line_is_refused(f, reason):
++    before = f.snapshot()
++    assert "--reason" in refused(f, f.amend(V2, reason=reason), before)
++
++
++def test_run_in_flight_on_a_subticket_is_refused_naming_it(f):
++    f.plan("ST-1 / First\nDepends on: none\nParallel-safe: yes\n")
++    rid = f.ok("run", "start", "--role", "implementer", "--ticket", "T-0001.1")["run_id"]
++    before = f.snapshot()
++    assert rid in refused(f, f.amend(V2), before)
++
++
++def test_run_in_flight_on_the_parent_is_refused_naming_it(f):
++    rid = f.ok("run", "start", "--role", "planner", "--ticket", "T-0001")["run_id"]
++    before = f.snapshot()
++    assert rid in refused(f, f.amend(V2), before)
++
++
++def test_intent_changed_is_refused_with_the_restart_note(f):
++    f.plan()
++    f.ok("ticket", "set", "T-0001.1", "status=merged", "merge.main_after=0123456789abcdef")
++    f.ok("ticket", "set", "T-0001.2", "branch=factory/T-0001.2")
++    before = f.snapshot()
++    err = refused(f, f.amend(V2, intent="changed"), before)
++    assert err.startswith("intent changed: ") and "Decisions line" not in err
++    assert "Restart instead of amending." in err
++    assert "T-0001.1 / First (merge 012345678)" in err
++    assert "T-0001.2 / Second: ready-for-implementer, branch factory/T-0001.2" in err
++    for cmd in ("factory ticket park T-0001", "factory resolve T-0001 --to spec-gate",
++                "factory approve-spec T-0001 --edit F", "factory resolve T-0001 --close", "factory ticket new"):
++        assert cmd in err
++
++
++def test_restart_note_with_no_subtickets_says_none(f):
++    err = refused(f, f.amend(V2, intent="changed"), f.snapshot())
++    assert "integration branch: none." in err and "a restart discards: none." in err
++
++
++def test_closed_subticket_is_left_out_of_the_restart_note(f):
++    f.plan()
++    f.ok("ticket", "set", "T-0001.2", "status=closed")
++    err = refused(f, f.amend(V2, intent="changed"), f.snapshot())
++    assert "T-0001.2" not in err and "T-0001.1 / First: ready-for-implementer" in err
++
++
++@pytest.mark.parametrize("version, change", [
++    (spec(decision="Greet only when asked."), "Decisions line removed: Greet by default.; "
++                                              "Decisions line added: Greet only when asked."),
++    (spec(problem="y"), "the Problem section"),
++    (spec(statement="The tool SHALL wave."), "requirement restated: demo ADDED Greets"),
++])
++def test_intent_found_changed_is_refused_naming_each_change(f, version, change):
++    before = f.snapshot()
++    err = refused(f, f.amend(version), before)
++    assert err.startswith(f"intent changed ({change}). --intent unchanged keeps")
++    assert "Restart instead of amending." in err
++
++
++def test_archived_change_is_refused(f):
++    assert f.amend(V2).returncode == 0
++    f.ok("archive", "T-0001")
++    before = f.snapshot()
++    assert "archived" in refused(f, f.amend(V1, reason="Too late."), before)
++
++
++def test_malformed_amendment_is_refused_with_the_validator_error(f):
++    before = f.snapshot()
++    err = refused(f, f.amend(V2.replace("- Greeting is printed → NEW\n", "")), before)
++    assert err.startswith("spec not amended: ") and "has no NEW/REGRESSION label" in err
++
++
++def test_amendment_whose_delta_does_not_apply_is_refused(f):
++    truth = f.store / "openspec" / "specs" / "demo" / "spec.md"
++    truth.parent.mkdir(parents=True)
++    truth.write_text("# demo\n\n## Requirements\n\n### Requirement: Greets\nOld.\n")
++    before = f.snapshot()
++    err = refused(f, f.amend(V2), before)
++    assert "ADDED 'Greets' is already in current truth (demo)" in err
++
++
++# ----- the intent check -----------------------------------------------------------------------
++
++def test_scenarios_whitespace_design_and_tests_to_change_keep_intent(f):
++    v = V1.replace("Edit `src/greet.py`.", "Edit `src/greet.py` and `src/other.py`.").replace(
++        "## Tests to change\nnone", "## Tests to change\n- `tests/test_greet.py`").replace(
++        "The tool SHALL greet.", "The   tool\nSHALL greet.  ").replace("echo hi", "echo hello")
++    cp = f.amend(v)
++    assert cp.returncode == 0, cp.stdout
++
++
++def test_requirement_added_removed_and_operation_changed_are_named(f):
++    renamed = V1.replace("### Requirement: Greets", "### Requirement: Says hello")
++    assert "intent changed (requirement removed: demo ADDED Greets; requirement added: demo ADDED Says hello)" \
++        in refused(f, f.amend(renamed), f.snapshot())
++    moved = V1.replace("## ADDED Requirements", "## MODIFIED Requirements")
++    assert "intent changed (requirement removed: demo ADDED Greets; requirement added: demo MODIFIED Greets)" \
++        in refused(f, f.amend(moved), f.snapshot())
++
++
++def test_scenario_heading_inside_a_fence_is_not_a_scenario(f):
++    assert f.amend(spec(extra="\n```\n#### Scenario: Not one\n```\n")).returncode == 0
++    rec = (f.store / "approvals" / "T-0001" / "amendment-1.md").read_text()
++    assert "## Scenarios changed\n\n- changed: Greeting is printed\n\n" in rec
++    assert "## Diff\n\n````diff\n" in rec and rec.endswith("\n````\n")  # the spec's own ``` stays inside

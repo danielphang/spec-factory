@@ -1,0 +1,49 @@
+id: T-0039.1
+type: sub-ticket
+title: Give the implementer, verifier, code reviewer, planner and triage the reading rules the spec writer
+  and critic already have (#76, prompt part)
+request: requests/T-0039.md
+source: plan:whole-spec
+status: merged
+round:
+  spec: 0
+  pr: 1
+spec:
+  version: 2
+  approved_version: 2
+plan: null
+in_flight: []
+parked: null
+created: '2026-10-09T15:52:00+00:00'
+history:
+- ts: '2026-10-09T16:02:14+00:00'
+  from: ready-for-implementer
+  to: checks-in-flight
+  by: workflow
+  round:
+    spec: 0
+    pr: 1
+- ts: '2026-10-09T16:10:15+00:00'
+  from: checks-in-flight
+  to: ready-for-merge
+  by: workflow
+  round:
+    spec: 0
+    pr: 1
+- ts: '2026-10-09T16:10:27+00:00'
+  from: ready-for-merge
+  to: merged
+  by: merge
+  head: a86d154a75c6545d91f87cc79a007d2fe16e5df3
+parent: T-0039
+depends_on: []
+parallel_safe: true
+branch: factory/T-0039.1
+head: a86d154a75c6545d91f87cc79a007d2fe16e5df3
+merge:
+  base_before: b002c95b18b3cd1dad4329cdc4e13b6fe71b18af
+  main_after: 89290547a33a6091860c850fdda7ff285b409fa0
+parent_base: null
+label: whole-spec
+planned_from: 2
+merge_refused: null

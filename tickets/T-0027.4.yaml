@@ -1,0 +1,55 @@
+id: T-0027.4
+type: sub-ticket
+title: The documents record spec amendment, spec drift and the cross-ticket check (part E)
+request: requests/T-0027.md
+source: plan:run-0376-planner
+status: merged
+round:
+  spec: 0
+  pr: 1
+spec:
+  version: 3
+  approved_version: 3
+plan: null
+in_flight: []
+parked: null
+created: '2026-10-09T16:16:05+00:00'
+history:
+- ts: '2026-10-09T17:35:23+00:00'
+  from: waiting-dependencies
+  to: ready-for-implementer
+  by: merge
+- ts: '2026-10-09T17:48:09+00:00'
+  from: ready-for-implementer
+  to: checks-in-flight
+  by: workflow
+  round:
+    spec: 0
+    pr: 1
+- ts: '2026-10-09T17:58:07+00:00'
+  from: checks-in-flight
+  to: ready-for-merge
+  by: workflow
+  round:
+    spec: 0
+    pr: 1
+- ts: '2026-10-09T17:58:15+00:00'
+  from: ready-for-merge
+  to: merged
+  by: merge
+  head: d9c8a4d40544b62dd11214a9fc41887b28c3e778
+parent: T-0027
+depends_on:
+- T-0027.1
+- T-0027.2
+- T-0027.3
+parallel_safe: true
+branch: factory/T-0027.4
+head: d9c8a4d40544b62dd11214a9fc41887b28c3e778
+merge:
+  base_before: bfc764cd4f533b6909678da16564f5f8e2359bc0
+  main_after: a922a4426c6b6a5416fbb2305e72abbc726451cb
+parent_base: null
+label: ST-4
+planned_from: 3
+merge_refused: null

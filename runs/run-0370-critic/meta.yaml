@@ -1,0 +1,21 @@
+run_id: run-0370-critic
+role: critic
+ticket: T-0039
+model: fable
+round: 2
+spec_version: 2
+started: '2026-10-09T15:11:45+00:00'
+finished: '2026-10-09T15:13:03+00:00'
+wall_s: 78
+status: APPROVE
+input_sources:
+- specs/T-0039/v2.md
+- openspec/specs/harness-docs/spec.md
+- openspec/specs/role-escalations/spec.md
+- decisions.md
+- runs/run-0368-critic/output.md
+- specs/T-0039/v1.md
+confidence: high, both round-1 findings are fixed with text that matches the cited changelog entry word
+  for word, and nothing else in the spec changed.
+escalations: []
+escalations_note: null

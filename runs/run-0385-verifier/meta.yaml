@@ -1,0 +1,26 @@
+run_id: run-0385-verifier
+role: verifier
+ticket: T-0027.3
+model: opus
+round: 1
+spec_version: 3
+started: '2026-10-09T17:01:27+00:00'
+finished: '2026-10-09T17:09:36+00:00'
+wall_s: 489
+status: VERIFIED
+input_sources:
+- specs/T-0027.3/subticket.md
+- specs/T-0027/v3.md
+- runs/run-0384-implementer/output.md
+- runs/run-0385-verifier/diff.patch
+gate_skipped: []
+environment_files: []
+branch: factory/T-0027.3
+base: 8dfc64b61f9d927e9f82fa9704f382cffefa60cf
+head: 49cc429424c1eb02708268bf4ecb0f251bfe8ae7
+worktree: /Users/dphang/dev/spec-factory/.factory/store/runs/run-0385-verifier/wt
+confidence: high. Every acceptance command printed its expected lines on the PR, both NEW criteria and
+  the intermediate record check failed on base for the reason the spec states, both gates passed on 49cc429,
+  and five off-test probes behaved as the design describes.
+escalations: []
+escalations_note: null

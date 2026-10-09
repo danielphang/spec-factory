@@ -1,0 +1,28 @@
+run_id: run-0390-reviewer
+role: reviewer
+ticket: T-0027.2
+model: fable
+round: 1
+spec_version: 3
+started: '2026-10-09T17:26:35+00:00'
+finished: '2026-10-09T17:28:47+00:00'
+wall_s: 132
+status: APPROVE
+input_sources:
+- specs/T-0027.2/subticket.md
+- specs/T-0027/v3.md
+- runs/run-0388-implementer/output.md
+- runs/run-0390-reviewer/diff.patch
+gate_skipped: []
+environment_files: []
+branch: factory/T-0027.2
+base: 92e7038939a9c970bfad690709bfef996a80f788
+head: 7c21daea30f6dd1d79a3c78ad92c5d40b383522b
+worktree: /Users/dphang/dev/spec-factory/.factory/store/runs/run-0390-reviewer/wt
+confidence: high. The merge commit's branch-side diff is byte-identical to the twice-approved `d085ca0`
+  diff, the merge touched none of the branch's five files, and the part C copy and rule checks printed
+  `copies=same` and `1` per file on this head.
+escalations:
+- 'Protected paths touched, all declared in the sub-ticket and the approved spec''s Risk section: `factory/compose.py`,
+  `factory/prompts/critic.md`, `docs/prompts/03-spec-critic.md`. For the record only; no approval needed.'
+escalations_note: null

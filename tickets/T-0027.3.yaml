@@ -1,0 +1,53 @@
+id: T-0027.3
+type: sub-ticket
+title: Spec drift parks a sub-ticket before its first implementer run (part D)
+request: requests/T-0027.md
+source: plan:run-0376-planner
+status: merged
+round:
+  spec: 0
+  pr: 1
+spec:
+  version: 3
+  approved_version: 3
+plan: null
+in_flight: []
+parked: null
+created: '2026-10-09T16:16:05+00:00'
+history:
+- ts: '2026-10-09T16:40:40+00:00'
+  from: waiting-dependencies
+  to: ready-for-implementer
+  by: merge
+- ts: '2026-10-09T17:01:07+00:00'
+  from: ready-for-implementer
+  to: checks-in-flight
+  by: workflow
+  round:
+    spec: 0
+    pr: 1
+- ts: '2026-10-09T17:10:16+00:00'
+  from: checks-in-flight
+  to: ready-for-merge
+  by: workflow
+  round:
+    spec: 0
+    pr: 1
+- ts: '2026-10-09T17:10:30+00:00'
+  from: ready-for-merge
+  to: merged
+  by: merge
+  head: 49cc429424c1eb02708268bf4ecb0f251bfe8ae7
+parent: T-0027
+depends_on:
+- T-0027.1
+parallel_safe: true
+branch: factory/T-0027.3
+head: 49cc429424c1eb02708268bf4ecb0f251bfe8ae7
+merge:
+  base_before: 8dfc64b61f9d927e9f82fa9704f382cffefa60cf
+  main_after: 92e7038939a9c970bfad690709bfef996a80f788
+parent_base: null
+label: ST-3
+planned_from: 3
+merge_refused: null

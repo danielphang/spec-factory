@@ -1,0 +1,23 @@
+run_id: run-0394-verifier
+role: verifier
+ticket: T-0027
+model: opus
+round: 0
+spec_version: 3
+started: '2026-10-09T17:58:50+00:00'
+finished: '2026-10-09T18:07:08+00:00'
+wall_s: 498
+status: VERIFIED
+input_sources:
+- specs/T-0027/v3.md
+gate_skipped: []
+environment_files: []
+branch: null
+base: 89290547a33a6091860c850fdda7ff285b409fa0
+head: a922a4426c6b6a5416fbb2305e72abbc726451cb
+worktree: /Users/dphang/dev/spec-factory/.factory/store/runs/run-0394-verifier/wt
+confidence: high. All 18 scenarios gave their exact expected output on the head, every NEW scenario failed
+  on base exactly as the spec states, the full suite passed (486), and the boundary probes show the logic
+  is general, not fitted to the tested inputs.
+escalations: []
+escalations_note: null

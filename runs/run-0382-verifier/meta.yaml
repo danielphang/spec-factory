@@ -1,0 +1,26 @@
+run_id: run-0382-verifier
+role: verifier
+ticket: T-0027.1
+model: opus
+round: 1
+spec_version: 3
+started: '2026-10-09T16:31:18+00:00'
+finished: '2026-10-09T16:39:51+00:00'
+wall_s: 513
+status: VERIFIED
+input_sources:
+- specs/T-0027.1/subticket.md
+- specs/T-0027/v3.md
+- runs/run-0378-implementer/output.md
+- runs/run-0382-verifier/diff.patch
+gate_skipped: []
+environment_files: []
+branch: factory/T-0027.1
+base: 89290547a33a6091860c850fdda7ff285b409fa0
+head: 9a99851bd15fe781c814231bb952513d1b597438
+worktree: /Users/dphang/dev/spec-factory/.factory/store/runs/run-0382-verifier/wt
+confidence: high. All seven NEW commands print the exact expected lines on the PR and the spec's stated
+  "today" lines on base, both gates pass (446 = 418 + 28), and probes outside the tested inputs behave
+  as the spec says.
+escalations: []
+escalations_note: null

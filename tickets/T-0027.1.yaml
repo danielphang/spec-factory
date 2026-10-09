@@ -1,0 +1,48 @@
+id: T-0027.1
+type: sub-ticket
+title: '`factory spec amend`: amend a pinned spec whose intent is unchanged (part A)'
+request: requests/T-0027.md
+source: plan:run-0376-planner
+status: merged
+round:
+  spec: 0
+  pr: 1
+spec:
+  version: 3
+  approved_version: 3
+plan: null
+in_flight: []
+parked: null
+created: '2026-10-09T16:16:05+00:00'
+history:
+- ts: '2026-10-09T16:31:01+00:00'
+  from: ready-for-implementer
+  to: checks-in-flight
+  by: workflow
+  round:
+    spec: 0
+    pr: 1
+- ts: '2026-10-09T16:40:31+00:00'
+  from: checks-in-flight
+  to: ready-for-merge
+  by: workflow
+  round:
+    spec: 0
+    pr: 1
+- ts: '2026-10-09T16:40:40+00:00'
+  from: ready-for-merge
+  to: merged
+  by: merge
+  head: 9a99851bd15fe781c814231bb952513d1b597438
+parent: T-0027
+depends_on: []
+parallel_safe: true
+branch: factory/T-0027.1
+head: 9a99851bd15fe781c814231bb952513d1b597438
+merge:
+  base_before: 89290547a33a6091860c850fdda7ff285b409fa0
+  main_after: 8dfc64b61f9d927e9f82fa9704f382cffefa60cf
+parent_base: null
+label: ST-1
+planned_from: 3
+merge_refused: null

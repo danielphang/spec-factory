@@ -1,0 +1,19 @@
+run_id: run-0367-spec_writer
+role: spec_writer
+ticket: T-0039
+model: opus
+round: 0
+spec_version: 0
+started: '2026-10-09T14:53:41+00:00'
+finished: '2026-10-09T15:03:51+00:00'
+wall_s: 610
+status: READY-FOR-CRITIC
+input_sources:
+- runs/run-0364-triage/output.md
+- requests/T-0039.md
+- openspec/specs/harness-docs/spec.md
+- decisions.md
+confidence: high. Every scenario was run on base and on a prototype of the change in a scratch clone,
+  with the outputs above, and the scope check was mutation-tested.
+escalations: []
+escalations_note: null

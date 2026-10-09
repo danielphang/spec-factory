@@ -1,0 +1,83 @@
+id: T-0027.2
+type: sub-ticket
+title: The critic sees approved changes not yet archived, and its rubric asks about them (parts B and
+  C)
+request: requests/T-0027.md
+source: plan:run-0376-planner
+status: merged
+round:
+  spec: 0
+  pr: 1
+spec:
+  version: 3
+  approved_version: 3
+plan: null
+in_flight: []
+parked: null
+created: '2026-10-09T16:16:05+00:00'
+history:
+- ts: '2026-10-09T16:26:32+00:00'
+  from: ready-for-implementer
+  to: checks-in-flight
+  by: workflow
+  round:
+    spec: 0
+    pr: 1
+- ts: '2026-10-09T16:30:40+00:00'
+  from: checks-in-flight
+  to: parked
+  by: park
+  reason: 'harness-bug: run finish reviewer: '
+- ts: '2026-10-09T17:11:16+00:00'
+  from: parked
+  to: checks-in-flight
+  by: dphang
+  resolve: redispatch
+  head: d085ca0b1cd5f084c4065c186c5467d6fd82b9ae
+  superseded: []
+- ts: '2026-10-09T17:17:04+00:00'
+  from: checks-in-flight
+  to: ready-for-merge
+  by: workflow
+  round:
+    spec: 0
+    pr: 1
+- ts: '2026-10-09T17:17:38+00:00'
+  from: ready-for-merge
+  to: ready-for-implementer
+  by: workflow
+  round:
+    spec: 0
+    pr: 1
+- ts: '2026-10-09T17:26:17+00:00'
+  from: ready-for-implementer
+  to: checks-in-flight
+  by: workflow
+  round:
+    spec: 0
+    pr: 1
+- ts: '2026-10-09T17:35:06+00:00'
+  from: checks-in-flight
+  to: ready-for-merge
+  by: workflow
+  round:
+    spec: 0
+    pr: 1
+- ts: '2026-10-09T17:35:23+00:00'
+  from: ready-for-merge
+  to: merged
+  by: merge
+  head: 7c21daea30f6dd1d79a3c78ad92c5d40b383522b
+parent: T-0027
+depends_on: []
+parallel_safe: true
+branch: factory/T-0027.2
+head: 7c21daea30f6dd1d79a3c78ad92c5d40b383522b
+merge:
+  base_before: 92e7038939a9c970bfad690709bfef996a80f788
+  main_after: bfc764cd4f533b6909678da16564f5f8e2359bc0
+parent_base: null
+label: ST-2
+planned_from: 3
+merge_refused: null
+conflict_runs: 0

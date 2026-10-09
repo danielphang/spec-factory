@@ -1,0 +1,37 @@
+run_id: run-0365-spec_writer
+role: spec_writer
+ticket: T-0027
+model: opus
+round: 0
+spec_version: 2
+started: '2026-10-09T14:51:46+00:00'
+finished: '2026-10-09T15:36:06+00:00'
+wall_s: 2660
+status: NEEDS-SPLIT
+input_sources:
+- runs/run-0245-triage/output.md
+- requests/T-0027.md
+- openspec/specs/build-dispatch/spec.md
+- openspec/specs/gate-commands/spec.md
+- openspec/specs/harness-docs/spec.md
+- openspec/specs/harness-suite/spec.md
+- openspec/specs/human-resolution/spec.md
+- openspec/specs/live-store-guard/spec.md
+- openspec/specs/merge-gate/spec.md
+- openspec/specs/role-escalations/spec.md
+- openspec/specs/role-inputs/spec.md
+- openspec/specs/store-setup/spec.md
+- openspec/specs/sub-ticket-planning/spec.md
+- decisions.md
+- approvals/T-0027/changes-1.md
+confidence: medium. A prototype on `main` at `b002c95` printed every THEN line and passed the full suite
+  (408), and an unmodified clone printed each stated failure. The drift test rule's precision is measured
+  only retroactively on two stores, and it is a heuristic.
+escalations:
+- 'The drift check''s test rule will park often. Replayed on both stores'' history, it would have parked
+  17 of 36 sub-tickets here and 29 of 43 on Nanobot, and caught 9 of the 10 known breaks. Each park costs
+  one ruling or amendment before the implementer starts. The operator asked for parks on drift, and this
+  spec follows that. The gate for this ticket was pre-approved on 2026-10-04, so this trade-off may pass
+  without a human reading it. Decide at the gate: accept the park rate, or ask for a narrower rule, such
+  as one that hands the candidate tests to the implementer instead of parking.'
+escalations_note: null

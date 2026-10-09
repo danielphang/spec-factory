@@ -1,0 +1,25 @@
+run_id: run-0392-verifier
+role: verifier
+ticket: T-0027.4
+model: opus
+round: 1
+spec_version: 3
+started: '2026-10-09T17:48:27+00:00'
+finished: '2026-10-09T17:57:27+00:00'
+wall_s: 540
+status: VERIFIED
+input_sources:
+- specs/T-0027.4/subticket.md
+- specs/T-0027/v3.md
+- runs/run-0391-implementer/output.md
+- runs/run-0392-verifier/diff.patch
+gate_skipped: []
+environment_files: []
+branch: factory/T-0027.4
+base: bfc764cd4f533b6909678da16564f5f8e2359bc0
+head: d9c8a4d40544b62dd11214a9fc41887b28c3e778
+worktree: /Users/dphang/dev/spec-factory/.factory/store/runs/run-0392-verifier/wt
+confidence: high. All six criteria and both gates ran on d9c8a4d, the NEW ones fail on base bfc764c as
+  the spec states, and I checked every documented behaviour against the merged code.
+escalations: []
+escalations_note: null
