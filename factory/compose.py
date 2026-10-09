@@ -138,8 +138,8 @@ def without_evidence(text: str) -> str:
 CAPABILITY_INDEX_NOTE = (
     "This list is complete: every current-truth capability not given in full above has one line here. Open a "
     "capability at its path before you rely on it. A spec that cites a capability's path, as "
-    "`openspec/specs/<name>/spec.md`, sends that capability in full to the critic, and the decisions that name it "
-    "to the critic and the planner, so cite under Evidence each capability you open.")
+    "`openspec/specs/<name>/spec.md`, sends that capability in full to the critic, so cite under Evidence each "
+    "capability you open.")
 
 _ENV_NAME = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
 
@@ -223,36 +223,13 @@ def compose(root: Path, cfg: dict, meta: dict, t: dict) -> tuple[str, list[str]]
             parts.append("\n## Capability index: current truth not given in full above\n\n" + CAPABILITY_INDEX_NOTE
                          + "\n\n" + capability_index(rest))
 
-    def add_decisions(sel: set[str] | None) -> None:
-        # an empty log (the one `factory init` creates) carries nothing, so it is no input
+    def add_decisions() -> None:
+        # the whole log, whatever capabilities the ticket names: a standing decision often names no
+        # capability, yet every ticket must follow it (#78). An empty log (the one `factory init`
+        # creates) carries nothing, so it is no input.
         p = root / "decisions.md"
-        text = p.read_text(encoding="utf-8") if p.exists() else ""
-        if not text.strip():
-            return
-        if sel is None:
+        if p.exists() and p.read_text(encoding="utf-8").strip():
             add("decisions.md", "Decision log (decisions.md): standing decisions, read-only")
-            return
-        named = [re.compile(rf"(?<![A-Za-z0-9_-]){re.escape(c)}(?![A-Za-z0-9_-])") for c in sel]
-        kept, rest = [], {}
-        for line in filter(str.strip, text.splitlines()):
-            f = line.split(maxsplit=2)
-            # a line without a date and a ticket id cannot be indexed, so it is kept
-            if len(f) < 3 or f[1] == tid or any(r.search(f[2]) for r in named):
-                kept.append(line)
-            else:
-                rest.setdefault(f[1], []).append(f[0])
-        if kept:
-            add("decisions.md", "Decision log (decisions.md): the standing decisions logged against this ticket "
-                f"or naming a capability given in full, read-only. The full log is `{p}`", lambda _: "\n".join(kept))
-        if rest:
-            def title(t_id: str) -> str:
-                tp = store.ticket_path(root, t_id)
-                return str(store.read_yaml(tp).get("title") or "") if tp.exists() else ""
-            parts.append("\n## Decision index: decisions not given in full above\n\nThis list is complete: every "
-                         "ticket with a decision not given in full above has one line here. Read a ticket's decisions "
-                         f"with `grep ' <ticket id> ' {p}`.\n\n"
-                         + "".join(f"- {k} ({len(d)} decision{'s' * (len(d) > 1)}, {min(d)} to {max(d)}): "
-                                   f"{title(k)}".rstrip() + "\n" for k, d in rest.items()))
     if role == "triage":
         add(t["request"], "Request (raw, with any answers appended)")
         every = current_truth(root)
@@ -270,7 +247,7 @@ def compose(root: Path, cfg: dict, meta: dict, t: dict) -> tuple[str, list[str]]
         add(t["request"], "Request (raw)")
         sel = selected(f"specs/{tid}/v{version}.md" if version >= 1 else None)
         add_truth(sel)
-        add_decisions(sel)
+        add_decisions()
         if rnd >= 1 and version >= 1:
             crit = _runs_for(root, tid, "critic", run_id)
             if crit:
@@ -289,7 +266,7 @@ def compose(root: Path, cfg: dict, meta: dict, t: dict) -> tuple[str, list[str]]
         add(f"specs/{tid}/v{version}.md", f"Spec under review (v{version})")
         sel = selected(f"specs/{tid}/v{version}.md")
         add_truth(sel)
-        add_decisions(sel)
+        add_decisions()
         if rnd >= 2 and version >= 2:
             crit = _runs_for(root, tid, "critic", run_id)
             if crit:
@@ -312,7 +289,7 @@ def compose(root: Path, cfg: dict, meta: dict, t: dict) -> tuple[str, list[str]]
         if av is None:
             raise store.Refused(f"{tid} has no approved spec version")
         add_spec(f"specs/{tid}/v{av}.md", f"Approved spec (v{av}, pinned)")
-        add_decisions(selected(f"specs/{tid}/v{av}.md"))  # no current truth for the planner, so no index
+        add_decisions()  # no current truth for the planner, and the whole log
         for p in _approvals(root, tid, "ruling"):
             add(str(p.relative_to(root)), "Human ruling")
         subs = store.subtickets_of(root, tid)
