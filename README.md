@@ -83,7 +83,7 @@ directories and `models` entries use.
 |---|---|---|---|
 | Triage (`triage`) | the request; the capability index, one line per current-truth capability with its spec's path and requirement names; after a human answer, its own earlier output | ACCEPT · CLARIFY · NEEDS-HUMAN · REJECT | the title and type, copied onto the ticket |
 | Spec writer (`spec_writer`) | triage's output, the request; current truth in full for the capabilities triage named, and the capability index for the rest; the whole decision log; after a revision request, the critic's findings and its own previous spec; the human's change requests from the gate; any human answer or ruling | READY-FOR-CRITIC · NEEDS-SPLIT · NEEDS-HUMAN | the spec, saved as its next version, `specs/<ticket>/v<n>.md` |
-| Spec critic (`critic`) | the spec version; current truth in full for the capabilities triage named or the spec cites, and the capability index for the rest; the whole decision log; from round 2, its own earlier findings and the previous version; any ruling | APPROVE · REVISE · ESCALATE | the verdict; its findings are attached to the spec when it is pinned |
+| Spec critic (`critic`) | the spec version; current truth in full for the capabilities triage named or the spec cites, and the capability index for the rest; the whole decision log; every other approved spec not yet archived, with its decisions; from round 2, its own earlier findings and the previous version; any ruling | APPROVE · REVISE · ESCALATE | the verdict; its findings are attached to the spec when it is pinned |
 | Planner (`planner`) | the approved spec; the whole decision log; rulings; any sub-tickets that already exist | PLANNED · ESCALATE | the plan, `plans/<ticket>.md`, and one sub-ticket per piece, with its dependencies |
 | Implementer (`implementer`) | where it works (its worktree, branch, base commit and the wrapped gate commands), the sub-ticket, the pinned spec; on a revision, both checkers' findings and the gate result | READY-FOR-REVIEW · BLOCKED | its commits on branch `factory/<sub-ticket>` and the head commit; the message itself is the PR description |
 | Code reviewer (`reviewer`) | the sub-ticket, the pinned spec, the PR description, the diff; from round 2, both checkers' findings from the previous round; any ruling | APPROVE · REQUEST-CHANGES · ESCALATE | a verdict for that commit, `results/<commit>/reviewer.yaml` |
@@ -428,7 +428,8 @@ git ignores them.
 │       │                          the path is state_dir in instance.yaml
 │       ├── requests/<T>.md        each request as filed; requests/index.yaml records its source file
 │       ├── tickets/<T>.yaml       state, rounds, park reason, head commit; sub-tickets are <T>.<k>.yaml
-│       ├── specs/<T>/v<n>.md      every spec version; specs/<T>.<k>/subticket.md for each sub-ticket
+│       ├── specs/<T>/v<n>.md      every spec version, with v<n>.yaml: the integration head it was
+│       │                          written against; specs/<T>.<k>/subticket.md for each sub-ticket
 │       ├── plans/<T>.md           the planner's plan
 │       ├── runs/run-NNNN-<role>/  one per role run: system-prompt.txt, input.md, output.md,
 │       │   │                      meta.yaml (status, model, base, head), diff.patch for checkers
@@ -437,7 +438,8 @@ git ignores them.
 │       ├── results/<commit>/      reviewer.yaml, verifier.yaml, ci.yaml: the verdicts on that commit;
 │       │                          superseded-<n>/ holds rows set aside by a re-check
 │       ├── approvals/<T>/         spec-v<n>.yaml (approve-spec), changes-<n>.md (request-changes),
-│       │                          ruling-<n>.md and resolve-<n>.yaml (resolve)
+│       │                          ruling-<n>.md and resolve-<n>.yaml (resolve), amendment-<n>.md
+│       │                          (spec amend)
 │       ├── openspec/specs/<cap>/  current truth: one spec per capability
 │       ├── openspec/changes/<T>/  a pinned spec as changes to current truth;
 │       │                          moved to openspec/changes/archive/<date>-<T>/ when it closes
@@ -794,7 +796,8 @@ FACTORY_DISPATCH=1 $RUNTIME/bin/factory run finish <run> --status-override KILLE
 |---|---|---|
 | **File** | `factory ticket new --file <abs path>` | that this request is worth a ticket |
 | **Gate** | `factory approve-spec T-n [--edit F]` · `factory request-changes T-n F` · close | the spec's intent, risk declarations, operator steps, "tests to change"; a gate edit becomes a new spec version and is what gets pinned |
-| **Unstick** | `factory resolve T-n --answer F` (a role asked a question) · `--ruling F` (a role escalated, an implementer reported itself blocked, or the harness blocked an implementer whose sub-ticket lists a test no merged sibling added; a ruling on the code reviewer's escalation re-runs the checks, with the ruling in their input) · `--accept-paths F` (the merge gate refused a protected path the approved spec does not declare: accept it under the approved design, and the sub-ticket returns to its checks; `--ruling F` sends the sub-ticket back to its implementer instead) · `--redispatch` (re-run the checks on the same commit after an outside fix, or after a checker ended without output twice) · `--replan F` (the final check failed after every sub-ticket merged: back to the planner with a note; new sub-tickets take the next free ids) · `--to spec-gate` · `--close`; with `--answer` or `--close`, add `--decision "<line>"` to also record the answer as a standing decision | an answer, a ruling, an accepted protected path, a re-check, a re-plan, a re-scope, or closing |
+| **Amend** | `factory spec amend T-n --file F --reason "<line>" --intent unchanged`, on an approved spec before archive, while no run is in flight on the ticket or its sub-tickets | that the approved spec must change after the gate, because another ticket merged first, a checker found a scenario that cannot pass as written, or you changed your mind. Amend only when the Problem, the Decisions and every requirement's statement stay as approved; otherwise restart, by re-spec and re-plan or by close and re-file. `--intent changed` prints what a restart keeps and discards. Later runs receive the amended version, but the amendment moves no ticket: resume it as usual, for example with `--ruling F` |
+| **Unstick** | `factory resolve T-n --answer F` (a role asked a question) · `--ruling F` (a role escalated, an implementer reported itself blocked, the harness blocked an implementer whose sub-ticket lists a test no merged sibling added, or the harness parked a sub-ticket for spec drift; a ruling on the code reviewer's escalation re-runs the checks, with the ruling in their input) · `--accept-paths F` (the merge gate refused a protected path the approved spec does not declare: accept it under the approved design, and the sub-ticket returns to its checks; `--ruling F` sends the sub-ticket back to its implementer instead) · `--redispatch` (re-run the checks on the same commit after an outside fix, or after a checker ended without output twice) · `--replan F` (the final check failed after every sub-ticket merged: back to the planner with a note; new sub-tickets take the next free ids) · `--to spec-gate` · `--close`; with `--answer` or `--close`, add `--decision "<line>"` to also record the answer as a standing decision | an answer, a ruling, an accepted protected path, a re-check, a re-plan, a re-scope, or closing |
 | **Record** | `factory decision add T-n "<line>"`, at any ticket state, closed included. It appends one dated line to the target's decision log, `decisions.md`, which the spec writer, critic and planner receive with their input | that a decision binds later tickets |
 | **Upgrade** | `factory --accept-harness <sha> <command>` | that this target adopts a new harness revision |
 
@@ -860,6 +863,18 @@ path above is relative to the store.
   sub-ticket added the file. If none did, the sub-ticket parks as blocked, and the human rules on it
   as on any blocked build ("Where a human decides"). Any other existing test still changes only if
   the approved spec lists it. It is tested, and has not yet fired on a real ticket.
+- **Spec amendment and drift.** An approved spec can go stale while its sub-tickets are built:
+  another ticket merges first, or a scenario turns out unable to pass as written.
+  `factory spec amend` replaces the approved spec with a corrected version, when the correction
+  keeps what the ticket is for ("Where a human decides"). Later runs receive the corrected version,
+  and archive writes its scenarios into current truth. Spec drift is a change since the spec was
+  written that the spec did not plan for. Before a sub-ticket's first implementer run, the harness
+  checks for two kinds: the sub-ticket's acceptance checks name another sub-ticket of the same
+  spec that has not merged and is not one of its dependencies, or a test changed beside a file the
+  spec names, and no "Tests to change" list names it. On drift the sub-ticket parks as blocked,
+  and the human amends the spec or rules on it. The critic also receives every other approved spec
+  not yet archived, and blocks a scenario whose setup would not hold whichever of the two tickets
+  merges first. It is tested, and has not yet fired on a real ticket.
 - **Re-plan after a re-spec.** When the human sends a planned parent back to the spec gate and
   approves a new spec version, the planner splits it again under the same parent. Each sub-ticket
   records the approved version it was planned from. The new plan supersedes the old plan's
