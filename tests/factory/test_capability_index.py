@@ -1,11 +1,11 @@
-"""The capability index and the decision index (spec-factory T-0036, issue #75).
+"""The capability index (spec-factory T-0036, issue #75) and the whole decision log (T-0037, #78).
 
 Triage names the capabilities a request touches on a `Capabilities:` line, from a capability index
 in its input. The spec writer and critic then receive those capabilities in full, plus the ones
-their spec cites by `specs/<name>/spec.md`, and one index line for every other capability. The
-writer, critic and planner receive the decision-log lines of their ticket and those capabilities,
-and one index line per other ticket. A ticket whose triage output has no `Capabilities:` line keeps
-the whole of both. Black-box through `bin/factory`.
+their spec cites by `specs/<name>/spec.md`, and one index line for every other capability. A ticket
+whose triage output has no `Capabilities:` line gets every capability in full. The writer, critic
+and planner receive the whole decision log whatever capabilities their ticket names: a standing
+decision often names no capability. Black-box through `bin/factory`.
 """
 from __future__ import annotations
 
@@ -19,7 +19,6 @@ import yaml
 REPO = Path(__file__).resolve().parents[2]
 BIN = REPO / "bin" / "factory"
 CAPS = ("alpha", "beta", "gamma")
-CITES = "the decisions that name it to the critic and the planner"
 SPEC = "\n".join([
     "=== proposal.md", "## Problem", "Beta is lax.", "## Evidence", "Read `openspec/specs/gamma/spec.md`.",
     "## Decisions", "none", "## Risk", "none", "=== design.md", "## Proposed change", "A. Tighten beta.",
@@ -122,8 +121,7 @@ def test_writer_gets_the_named_capability_in_full_and_an_index_line_for_each_oth
     head = ("\n## Capability index: current truth not given in full above\n\nThis list is complete: every "
             "current-truth capability not given in full above has one line here. Open a capability at its path "
             "before you rely on it. A spec that cites a capability's path, as `openspec/specs/<name>/spec.md`, "
-            "sends that capability in full to the critic, and " + CITES + ", so cite under Evidence each "
-            "capability you open.\n\n")
+            "sends that capability in full to the critic, so cite under Evidence each capability you open.\n\n")
     assert head + index_line(s, "alpha") + index_line(s, "gamma") in text
     assert sources(s, r["spec_writer"]) == [f"runs/{r['triage']}/output.md", "requests/T-0001.md",
                                             "openspec/specs/beta/spec.md", "decisions.md"]
@@ -189,53 +187,19 @@ def test_the_latest_finished_triage_run_decides(tmp_path):
     assert "ALPHA-BODY" in text and "BETA-BODY" not in text
 
 
-# ----- part B6: decision lines of this ticket and its capabilities, an index line per other ticket -
+# ----- the whole decision log, whatever capabilities the ticket names (T-0037) --------------------
 
-def decision_block(store: Path, lines: list[str]) -> str:
-    return ("\n## Decision log (decisions.md): the standing decisions logged against this ticket or naming a "
-            f"capability given in full, read-only. The full log is `{store / 'decisions.md'}`\n\n"
-            + "\n".join(lines) + "\n")
+WHOLE_LOG = "\n## Decision log (decisions.md): standing decisions, read-only\n\n"
 
 
-def decision_index(store: Path, lines: list[str]) -> str:
-    return ("\n## Decision index: decisions not given in full above\n\nThis list is complete: every ticket with "
-            "a decision not given in full above has one line here. Read a ticket's decisions with "
-            f"`grep ' <ticket id> ' {store / 'decisions.md'}`.\n\n" + "".join(f"{x}\n" for x in lines))
-
-
-def test_each_role_gets_its_ticket_s_and_its_capabilities_decisions_and_an_index_of_the_rest(tmp_path):
-    s, r = build(tmp_path, "Capabilities: beta")
-    w = text_of(s, r["spec_writer"])
-    assert decision_block(s, DECISIONS[:2]) in w
-    assert decision_index(s, ["- T-0008 (1 decision, 2026-10-03 to 2026-10-03):",
-                              "- T-0009 (2 decisions, 2026-10-04 to 2026-10-06):"]) in w
-    for role in ("critic", "planner"):
-        text = text_of(s, r[role])
-        assert decision_block(s, DECISIONS[:3]) in text, role
-        assert decision_index(s, ["- T-0009 (2 decisions, 2026-10-04 to 2026-10-06):"]) in text, role
+@pytest.mark.parametrize("caps_line", ["Capabilities: beta", "Capabilities: none"])
+def test_each_role_gets_the_whole_decision_log_and_no_decision_index(tmp_path, caps_line):
+    s, r = build(tmp_path, caps_line)
     for role in ("spec_writer", "critic", "planner"):
-        assert "OTHER-LINE" not in text_of(s, r[role]) and "OTHER2-LINE" not in text_of(s, r[role]), role
-
-
-def test_a_decision_index_line_carries_the_ticket_s_title(tmp_path):
-    s, r = build(tmp_path, "Capabilities: beta", ["2026-10-05 T-0002 later", "2026-10-04 T-0002 earlier"],
-                 others=("Rotate the logs",))
-    assert decision_index(s, ["- T-0002 (2 decisions, 2026-10-04 to 2026-10-05): Rotate the logs"]) \
-        in text_of(s, r["spec_writer"])
-
-
-def test_no_kept_line_leaves_only_the_index_and_no_decisions_source(tmp_path):
-    s, r = build(tmp_path, "Capabilities: none", ["2026-10-04 T-0009 OTHER-LINE logs rotate weekly."])
-    text = text_of(s, r["spec_writer"])
-    assert "## Decision log" not in text and "OTHER-LINE" not in text
-    assert decision_index(s, ["- T-0009 (1 decision, 2026-10-04 to 2026-10-04):"]) in text
-    assert "decisions.md" not in sources(s, r["spec_writer"])
-
-
-def test_every_line_kept_leaves_no_decision_index(tmp_path):
-    s, r = build(tmp_path, "Capabilities: beta", DECISIONS[:2])
-    text = text_of(s, r["spec_writer"])
-    assert decision_block(s, DECISIONS[:2]) in text and "Decision index" not in text
+        text = text_of(s, r[role])
+        assert WHOLE_LOG + "\n".join(DECISIONS) + "\n" in text, role
+        assert "Decision index" not in text and "<ticket id>" not in text, role
+        assert "decisions.md" in sources(s, r[role]), role
 
 
 def test_a_whitespace_only_log_still_adds_nothing(tmp_path):
