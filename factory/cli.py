@@ -215,6 +215,7 @@ def run_start(a, root, cfg):
         _check_sibling_tests(root, cfg, t)
     if a.role in BUILD_ROLES:
         compose.gate_entries(cfg)  # a malformed gate entry refuses here, before a run id is reserved
+        compose.environment_sync(cfg)  # so does a malformed environment_sync
     baseline = tripwire.baseline(cfg)  # hashed before the run id is reserved: a refusal writes nothing
     rid = store.next_run_id(root, a.role)
     model = a.model or cfg["models"][a.role]
@@ -361,7 +362,9 @@ def _tests_to_change_section(design_text: str) -> str:
 def _start_build_run(root: Path, cfg: dict, t: dict, meta: dict, d: Path, parent_close: bool) -> None:
     """Worktrees for the build roles (build spec I.3, local stand-in): the implementer gets the
     ticket's branch (created from the integration branch at first dispatch); each checker gets a
-    detached checkout of the head it checks, plus the diff written as runs/<id>/diff.patch."""
+    detached checkout of the head it checks, plus the diff written as runs/<id>/diff.patch. Each
+    checkout then runs the instance's `environment_sync`, if set (`_sync_environment`)."""
+    sync = compose.environment_sync(cfg)
     repo = gitops.repo_root(cfg)
     integ = gitops.integration_branch(cfg, repo)
     store.ensure_gitignore(root)
@@ -376,6 +379,7 @@ def _start_build_run(root: Path, cfg: dict, t: dict, meta: dict, d: Path, parent
         meta.update({"branch": branch, "base": gitops.rev(repo, integ), "head": gitops.rev(repo, branch),
                      "worktree": str(wt), "resolution": "conflict" if t.get("merge_refused") else None,
                      "environment_files": gitops.copy_environment_files(cfg, repo, wt)})
+        _sync_environment(cfg, sync, meta, repo, wt, d, checker=False)
     else:
         head = gitops.rev(repo, integ) if parent_close else t.get("head")
         base = (t.get("parent_base") or head) if parent_close else gitops.rev(repo, integ)
@@ -386,9 +390,27 @@ def _start_build_run(root: Path, cfg: dict, t: dict, meta: dict, d: Path, parent
         wt = d / "wt"
         gitops.add_detached_worktree(repo, wt, head)
         meta["environment_files"] = gitops.copy_environment_files(cfg, repo, wt)
+        _sync_environment(cfg, sync, meta, repo, wt, d, checker=True)
         if not parent_close:
             store.write_text(d / "diff.patch", gitops.diff(repo, base, head))
         meta.update({"branch": t.get("branch"), "base": base, "head": head, "worktree": str(wt)})
+
+
+def _sync_environment(cfg: dict, sync: str | None, meta: dict, repo: Path, wt: Path, d: Path, checker: bool) -> None:
+    """Run the instance's `environment_sync` in the checkout `wt` through the running-code wrapper and
+    record it in `meta`. A failure writes runs/<id>/environment-sync.log, removes a checker's checkout,
+    and refuses the run start with one line that carries neither the command nor its output."""
+    if sync is None:
+        return
+    cp = subprocess.run(["sh", "-c", compose.wrap(sync, compose.run_env(cfg))], cwd=wt, capture_output=True, text=True)
+    if cp.returncode == 0:
+        meta["environment_sync"] = sync
+        return
+    log = d / "environment-sync.log"
+    store.write_text(log, f"command: {sync}\nexit: {cp.returncode}\n--- stdout\n{cp.stdout}--- stderr\n{cp.stderr}")
+    if checker:
+        gitops.remove_worktree(repo, wt)
+    raise Refused(f"environment_sync failed (exit {cp.returncode}) in {wt}; its command and output are in {log}")
 
 
 def run_last_message(a, root, cfg):

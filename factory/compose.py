@@ -161,11 +161,29 @@ def run_env(cfg: dict) -> dict:
     return env
 
 
+def environment_sync(cfg: dict) -> str | None:
+    """The instance's `environment_sync`: one shell command `run start` runs in each build checkout,
+    through the running-code wrapper. Absent or null is None; anything but a non-empty string is refused."""
+    cmd = cfg.get("environment_sync")
+    if cmd is None:
+        return None
+    if not isinstance(cmd, str) or not cmd.strip():
+        raise store.Refused(f"environment_sync must be one shell command as a non-empty string, or null, not {cmd!r}")
+    return cmd
+
+
+# Deactivates a virtual environment inherited from the launching shell: its bin/ off PATH, then
+# VIRTUAL_ENV and PYTHONHOME unset. Shown inside backticks in role input, so it holds no backtick.
+_DROP_VENV = ('[ -z "${VIRTUAL_ENV:-}" ] || PATH=$(printf %s "$PATH" | tr : \'\\n\' | grep -vxF "$VIRTUAL_ENV/bin" '
+              '| paste -sd: -); unset VIRTUAL_ENV PYTHONHOME; ')
+
+
 def wrap(command: str, env: dict) -> str:
-    """`command` in a subshell with HOME set to a fresh temporary directory, then each `run_env`
-    variable exported in file order. A subshell, so the export covers every part of `a && b`."""
+    """`command` in a subshell that first drops an inherited virtual environment (`_DROP_VENV`), then
+    sets HOME to a fresh temporary directory, then exports each `run_env` variable in file order. A
+    subshell, so the export covers every part of `a && b`."""
     exports = "".join(f" {k}={shlex.quote(str(v))}" for k, v in env.items())
-    return f'(export HOME="$(cd "$(mktemp -d)" && pwd -P)"{exports}; {command})'
+    return f'({_DROP_VENV}export HOME="$(cd "$(mktemp -d)" && pwd -P)"{exports}; {command})'
 
 
 def compose(root: Path, cfg: dict, meta: dict, t: dict) -> tuple[str, list[str]]:
@@ -351,6 +369,10 @@ def compose(root: Path, cfg: dict, meta: dict, t: dict) -> tuple[str, list[str]]
                          else "none (every gate command is skipped below)") + "\n")
         where += "".join(f"SKIPPED by the harness for this diff, do not run: `{s['command']}`: {s['reason']}\n"
                          for s in skipped)
+        if meta.get("environment_sync"):
+            where += (f"Environment: the harness ran this instance's environment sync, `{meta['environment_sync']}`, "
+                      "in this checkout through the running-code wrapper before you started, so the environment is "
+                      "already synced. Do not sync it again unless your change alters the files it is built from.\n")
         parts.append(where)
         if role == "implementer":
             if t.get("merge_refused"):

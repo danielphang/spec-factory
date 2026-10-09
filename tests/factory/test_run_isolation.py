@@ -19,7 +19,8 @@ import pytest
 REPO = Path(__file__).resolve().parents[2]
 BIN = REPO / "bin" / "factory"
 FIXTURE_INSTANCE = Path(__file__).resolve().parent / "fixtures" / "instance"
-WRAP = '(export HOME="$(cd "$(mktemp -d)" && pwd -P)"{vars}; {cmd})'
+WRAP = ('([ -z "${{VIRTUAL_ENV:-}}" ] || PATH=$(printf %s "$PATH" | tr : \'\\n\' | grep -vxF "$VIRTUAL_ENV/bin" | paste -sd: -); '
+        'unset VIRTUAL_ENV PYTHONHOME; export HOME="$(cd "$(mktemp -d)" && pwd -P)"{vars}; {cmd})')
 SECTION = ("\n## Running code\nRun every test, script or prototype through this wrapper, which gives it a "
            "fresh temporary HOME so it cannot write the operator's real home directory: `{wrapper}`. Put your "
            "command in place of <command>. This includes every test or check command the briefing above gives. "
