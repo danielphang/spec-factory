@@ -91,7 +91,7 @@ The prompts say what each role does. The harness enforces the wiring rules: fres
 | `tasks.md` | The sub-tickets and coverage map | Planner, or the harness when it skips the planner |
 | `verification.md` (the artifact the fork adds) | The NEW or REGRESSION label of each scenario and the writer's Responses; every critic round's output; at archive, every verifier result recorded per head for the parent and its sub-tickets | Spec writer (labels, Responses), critic, verifier |
 
-`decisions.md`, one per repo beside `openspec/`, is the decision log: one line per decision, with its ticket id. Roles return text and never write the tree; the harness writes it. The spec writer returns one document in parts (§2 FORMAT), and the store keeps every version. The human spec gate pins one version: it refuses a delta that does not apply to current truth, and writes the pinned version as the change folder, so the planner, implementer and verifier work from the delta the human approved. Labels and round-to-round churn stay in `verification.md`, out of the delta. **Archive** is the parent-close step. After the parent-close run returns VERIFIED, or a sub-ticket's VERIFIED run stands in for it (routing table, Merge gate row), the harness applies each delta to current truth (ADDED appends the requirement, MODIFIED replaces the requirement of that name whole, REMOVED deletes it), moves the folder to `openspec/changes/archive/<YYYY-MM-DD>-<ticket id>/`, and appends each line of the proposal's Decisions to `decisions.md` with the date and ticket id; then the parent closes. An archive refusal writes nothing and parks the parent. There are three: a delta that no longer applies (an ADDED name already in current truth, a MODIFIED or REMOVED name missing); no change folder, because the spec was pinned before the repo had an `openspec/` tree; and no spec store at all (no `openspec/` tree). Only the archive step writes current truth. `decisions.md` has three writers: archive; `factory decision add <ticket id> "<line>"`, which a human runs at any ticket state, closed included; and `resolve --answer` or `resolve --close` with `--decision "<line>"`. Each appends `<YYYY-MM-DD> <ticket id> <line>`, with the UTC date. The spec writer and the critic receive every current-truth spec with their input (routing table). They and the planner also receive `decisions.md` when it holds any text.
+`decisions.md`, one per repo beside `openspec/`, is the decision log: one line per decision, with its ticket id. Roles return text and never write the tree; the harness writes it. The spec writer returns one document in parts (§2 FORMAT), and the store keeps every version. The human spec gate pins one version: it refuses a delta that does not apply to current truth, and writes the pinned version as the change folder, so the planner, implementer and verifier work from the delta the human approved. Labels and round-to-round churn stay in `verification.md`, out of the delta. **Archive** is the parent-close step. After the parent-close run returns VERIFIED, or a sub-ticket's VERIFIED run stands in for it (routing table, Merge gate row), the harness applies each delta to current truth (ADDED appends the requirement, MODIFIED replaces the requirement of that name whole, REMOVED deletes it), moves the folder to `openspec/changes/archive/<YYYY-MM-DD>-<ticket id>/`, and appends each line of the proposal's Decisions to `decisions.md` with the date and ticket id; then the parent closes. An archive refusal writes nothing and parks the parent. There are three: a delta that no longer applies (an ADDED name already in current truth, a MODIFIED or REMOVED name missing); no change folder, because the spec was pinned before the repo had an `openspec/` tree; and no spec store at all (no `openspec/` tree). Only the archive step writes current truth. `decisions.md` has three writers: archive; `factory decision add <ticket id> "<line>"`, which a human runs at any ticket state, closed included; and `resolve --answer` or `resolve --close` with `--decision "<line>"`. Each appends `<YYYY-MM-DD> <ticket id> <line>`, with the UTC date. Triage receives the capability index: one line per current-truth capability, with its size, the absolute path of its spec and its requirement names. Triage names the capabilities the request touches on its `Capabilities:` line. The spec writer and the critic receive those capabilities in full, plus each one whose `specs/<name>/spec.md` path the spec they work from cites, and the capability index for the rest (routing table). They and the planner receive the decision log's lines logged against the ticket or naming one of those capabilities, and a decision index for the rest: one line per other ticket, with the `grep` command that reads its lines from `decisions.md`. A ticket whose latest triage output has no `Capabilities:` line gets the whole of both: every current-truth spec, and `decisions.md` when it holds any text.
 
 **Routing table.** The dispatcher (piece 2) is this table and nothing else. Each row: a STATUS a role emits, what runs next, and what it receives. "Receives" adds to the INPUT the role prompt already declares. Both follow the role-context block (above).
 
@@ -112,12 +112,12 @@ Rules the table relies on:
 
 | From | STATUS | Next | Receives |
 |---|---|---|---|
-| New request | — | Triage | The request, ticket search |
-| Triage | ACCEPT | Spec writer | The ticket; current truth (Spec store) and the decision log, read-only |
+| New request | — | Triage | The request, the capability index, ticket search |
+| Triage | ACCEPT | Spec writer | The ticket; current truth and the decision log, as the Spec store paragraph describes, read-only |
 | Triage | NEEDS-HUMAN | Human queue | The question |
 | Triage | CLARIFY | Requester, via piece 9; ticket parks until answered | The missing-info list |
 | Triage | REJECT | Closed | — |
-| Spec writer | READY-FOR-CRITIC / NEEDS-SPLIT | Critic | Spec, repo, current truth and the decision log read-only; round 2+: prior findings, the writer's responses, previous spec version |
+| Spec writer | READY-FOR-CRITIC / NEEDS-SPLIT | Critic | Spec, repo, current truth and the decision log, as the Spec store paragraph describes, read-only; round 2+: prior findings, the writer's responses, previous spec version |
 | Spec writer | NEEDS-HUMAN | Human queue | Open questions |
 | Critic | APPROVE | Human spec gate | Spec + critic output |
 | Critic | REVISE | Spec writer (round +1) if round < {2}, else Human queue | Findings, the spec version they apply to |
@@ -273,8 +273,8 @@ ESCALATIONS: none | <list>
 ROLE: Triage. You turn raw requests (issues, Slack threads, bug reports,
 ideas) into candidate tickets, or you reject or route them.
 
-INPUT: One raw request, plus search access to open and recently closed
-tickets.
+INPUT: One raw request, the capability index (one line per current-truth
+capability), plus search access to open and recently closed tickets.
 
 FOR EACH REQUEST
 1. Search for duplicates. If one exists, link it and stop.
@@ -287,7 +287,9 @@ FOR EACH REQUEST
    - CLARIFY: key facts are missing. List exactly what's missing.
    - REJECT: duplicate, out of scope, or not actionable. One-line reason.
 4. For ACCEPT: write a title and a 2-5 sentence summary of what the
-   requester needs, in their terms, plus any evidence they gave.
+   requester needs, in their terms, plus any evidence they gave. Name
+   the current-truth capabilities the request touches, from the
+   capability index.
 
 RULES
 - Never add requirements the requester didn't state or clearly imply.
@@ -302,6 +304,8 @@ Type:
 Title:
 Summary:
 Evidence: (links, logs, quotes from the request)
+Capabilities: (names from the capability index, comma-separated; none
+  if the request touches none)
 Assumptions:
 Question for human / Missing info / Reason: (whichever applies)
 STATUS: ACCEPT | NEEDS-HUMAN | CLARIFY | REJECT
