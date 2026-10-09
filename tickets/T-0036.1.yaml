@@ -1,0 +1,48 @@
+id: T-0036.1
+type: sub-ticket
+title: Send the spec writer, critic and planner only the specs and decisions their ticket touches, with
+  a complete index of the rest and a command to open any of it
+request: requests/T-0036.md
+source: plan:whole-spec
+status: merged
+round:
+  spec: 0
+  pr: 1
+spec:
+  version: 2
+  approved_version: 2
+plan: null
+in_flight: []
+parked: null
+created: '2026-10-09T00:58:08+00:00'
+history:
+- ts: '2026-10-09T01:17:22+00:00'
+  from: ready-for-implementer
+  to: checks-in-flight
+  by: workflow
+  round:
+    spec: 0
+    pr: 1
+- ts: '2026-10-09T01:33:18+00:00'
+  from: checks-in-flight
+  to: ready-for-merge
+  by: workflow
+  round:
+    spec: 0
+    pr: 1
+- ts: '2026-10-09T01:33:30+00:00'
+  from: ready-for-merge
+  to: merged
+  by: merge
+  head: 15c9d2f6498f40909e4a6fc270cd5639772997c8
+parent: T-0036
+depends_on: []
+parallel_safe: true
+branch: factory/T-0036.1
+head: 15c9d2f6498f40909e4a6fc270cd5639772997c8
+merge:
+  base_before: 9a258097a5eb3feea060eca2cf3f5c7b8c65c072
+  main_after: deedbb9fb2ad532becc73a894fa5d9ae8ded7613
+parent_base: null
+label: whole-spec
+merge_refused: null

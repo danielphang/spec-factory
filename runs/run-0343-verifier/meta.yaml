@@ -1,0 +1,30 @@
+run_id: run-0343-verifier
+role: verifier
+ticket: T-0036.1
+model: opus
+round: 1
+spec_version: 2
+started: '2026-10-09T01:17:39+00:00'
+finished: '2026-10-09T01:32:39+00:00'
+wall_s: 900
+status: VERIFIED
+input_sources:
+- specs/T-0036.1/subticket.md
+- specs/T-0036/v2.md
+- runs/run-0341-implementer/output.md
+- runs/run-0343-verifier/diff.patch
+gate_skipped: []
+environment_files: []
+branch: factory/T-0036.1
+base: 9a258097a5eb3feea060eca2cf3f5c7b8c65c072
+head: 15c9d2f6498f40909e4a6fc270cd5639772997c8
+worktree: /Users/dphang/dev/spec-factory/.factory/store/runs/run-0343-verifier/wt
+confidence: high, every acceptance command printed its exact expected output on the PR and its stated
+  "today" output on base, both gates pass as written, and a probe on real store data behaves as specified.
+escalations:
+- A triage `Capabilities:` line written as `(beta, alpha)` or ending in `;` names no capability, so that
+  ticket's writer gets every capability on the index and none in full. B1 strips only backticks and periods,
+  and the triage OUTPUT template itself shows the field in parentheses. Nothing is hidden, since the index
+  is complete, but the cut is wrong for such a ticket. The operator should decide whether B1 should also
+  strip parentheses and semicolons, or whether operator step 1 should check real triage outputs for this.
+escalations_note: null

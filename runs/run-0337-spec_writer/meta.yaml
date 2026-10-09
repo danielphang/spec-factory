@@ -1,0 +1,29 @@
+run_id: run-0337-spec_writer
+role: spec_writer
+ticket: T-0036
+model: opus
+round: 0
+spec_version: 0
+started: '2026-10-09T00:13:52+00:00'
+finished: '2026-10-09T00:28:07+00:00'
+wall_s: 855
+status: READY-FOR-CRITIC
+input_sources:
+- runs/run-0336-triage/output.md
+- requests/T-0036.md
+- openspec/specs/build-dispatch/spec.md
+- openspec/specs/gate-commands/spec.md
+- openspec/specs/harness-docs/spec.md
+- openspec/specs/harness-suite/spec.md
+- openspec/specs/human-resolution/spec.md
+- openspec/specs/live-store-guard/spec.md
+- openspec/specs/merge-gate/spec.md
+- openspec/specs/role-escalations/spec.md
+- openspec/specs/store-setup/spec.md
+- openspec/specs/sub-ticket-planning/spec.md
+- decisions.md
+confidence: medium. Every scenario was run on `main` and its output captured, and the suite passed. The
+  size figures are a projection from recorded inputs, not a measured run, and the request's 40 kB / 100
+  kB targets are not met (stated under Decisions for the gate).
+escalations: []
+escalations_note: null

@@ -1,0 +1,28 @@
+run_id: run-0342-reviewer
+role: reviewer
+ticket: T-0036.1
+model: fable
+round: 1
+spec_version: 2
+started: '2026-10-09T01:17:38+00:00'
+finished: '2026-10-09T01:21:44+00:00'
+wall_s: 246
+status: APPROVE
+input_sources:
+- specs/T-0036.1/subticket.md
+- specs/T-0036/v2.md
+- runs/run-0341-implementer/output.md
+- runs/run-0342-reviewer/diff.patch
+gate_skipped: []
+environment_files: []
+branch: factory/T-0036.1
+base: 9a258097a5eb3feea060eca2cf3f5c7b8c65c072
+head: 15c9d2f6498f40909e4a6fc270cd5639772997c8
+worktree: /Users/dphang/dev/spec-factory/.factory/store/runs/run-0342-reviewer/wt
+confidence: high, every part of B is traceable to a line in the diff, the fallback path is byte-for-byte
+  the old code, no existing test moved, and the three tests I ran pass on this head.
+escalations:
+- 'protected paths touched, all declared in the parent spec''s Risk list: harness `factory/compose.py`
+  and `factory/prompts/triage.md`; generated `docs/prompts/01-triage.md`, re-copied identically to the
+  edited `docs/design.md` §1 block (diff printed nothing). The merge gate needs a human approval for these.'
+escalations_note: null

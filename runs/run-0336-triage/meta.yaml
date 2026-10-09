@@ -1,0 +1,16 @@
+run_id: run-0336-triage
+role: triage
+ticket: T-0036
+model: opus
+round: 0
+spec_version: 0
+started: '2026-10-09T00:11:49+00:00'
+finished: '2026-10-09T00:13:26+00:00'
+wall_s: 97
+status: ACCEPT
+input_sources:
+- requests/T-0036.md
+confidence: high, the size figures and the compose wiring were re-measured on both stores and read in
+  `factory/compose.py`, and no duplicate ticket exists
+escalations: []
+escalations_note: null

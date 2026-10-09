@@ -1,0 +1,27 @@
+run_id: run-0338-critic
+role: critic
+ticket: T-0036
+model: fable
+round: 1
+spec_version: 1
+started: '2026-10-09T00:28:33+00:00'
+finished: '2026-10-09T00:35:28+00:00'
+wall_s: 415
+status: APPROVE
+input_sources:
+- specs/T-0036/v1.md
+- openspec/specs/build-dispatch/spec.md
+- openspec/specs/gate-commands/spec.md
+- openspec/specs/harness-docs/spec.md
+- openspec/specs/harness-suite/spec.md
+- openspec/specs/human-resolution/spec.md
+- openspec/specs/live-store-guard/spec.md
+- openspec/specs/merge-gate/spec.md
+- openspec/specs/role-escalations/spec.md
+- openspec/specs/store-setup/spec.md
+- openspec/specs/sub-ticket-planning/spec.md
+- decisions.md
+confidence: high, the cited lines, the fixture and both NEW "today" outputs were checked on `main`; the
+  projection and the call count were not checkable and acceptance does not rest on them.
+escalations: []
+escalations_note: null

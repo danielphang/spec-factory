@@ -1,0 +1,91 @@
+id: T-0036
+type: feature
+title: Send the spec writer, critic and planner only the specs and decisions their ticket touches, with
+  a complete index of the rest and a command to open any of it
+request: requests/T-0036.md
+source: /private/tmp/claude-501/-Users-dphang-dev-nanobot/c69bfd1d-97a6-43e3-9d5a-a517c28d382c/scratchpad/req-75.md
+status: closed
+round:
+  spec: 1
+  pr: 0
+spec:
+  version: 2
+  approved_version: 2
+plan: plans/T-0036.md
+in_flight: []
+parked: null
+created: '2026-10-09T00:11:18+00:00'
+history:
+- ts: '2026-10-09T00:13:43+00:00'
+  from: ready-for-triage
+  to: ready-for-spec-writer
+  by: workflow
+  round:
+    spec: 0
+    pr: 0
+- ts: '2026-10-09T00:28:26+00:00'
+  from: ready-for-spec-writer
+  to: ready-for-critic
+  by: workflow
+  round:
+    spec: 1
+    pr: 0
+- ts: '2026-10-09T00:35:37+00:00'
+  from: ready-for-critic
+  to: awaiting-spec-gate
+  by: workflow
+  round:
+    spec: 1
+    pr: 0
+- ts: '2026-10-09T00:47:03+00:00'
+  from: awaiting-spec-gate
+  to: ready-for-spec-writer
+  by: dphang
+  notes: approvals/T-0036/changes-1.md
+- ts: '2026-10-09T00:51:58+00:00'
+  from: ready-for-spec-writer
+  to: ready-for-critic
+  by: workflow
+  round:
+    spec: 1
+    pr: 0
+- ts: '2026-10-09T00:55:00+00:00'
+  from: ready-for-critic
+  to: awaiting-spec-gate
+  by: workflow
+  round:
+    spec: 1
+    pr: 0
+- ts: '2026-10-09T00:57:44+00:00'
+  from: awaiting-spec-gate
+  to: ready-for-planner
+  by: dphang
+  approved_version: 2
+- ts: '2026-10-09T00:58:17+00:00'
+  from: ready-for-planner
+  to: planned
+  by: workflow
+  round:
+    spec: 1
+    pr: 0
+- ts: '2026-10-09T01:33:55+00:00'
+  from: planned
+  to: ready-for-parent-verify
+  by: parent-check
+- ts: '2026-10-09T01:34:29+00:00'
+  from: ready-for-parent-verify
+  to: closed
+  by: workflow
+  round:
+    spec: 1
+    pr: 0
+  verified_by: run-0343-verifier
+parent: null
+depends_on: []
+parallel_safe: true
+branch: null
+head: null
+merge:
+  base_before: null
+  main_after: null
+parent_base: 9a258097a5eb3feea060eca2cf3f5c7b8c65c072
