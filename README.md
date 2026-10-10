@@ -6,7 +6,7 @@ table, and human gates. This page is the system as it runs today; install and us
 
 | | |
 |---|---|
-| **Status** | Current state as of 2026-10-09. Intake works end to end. Build works, in local-only mode. |
+| **Status** | Current state as of 2026-10-10. Intake works end to end. Build works, in local-only mode. |
 | **Reader** | Technical, seeing this project for the first time. Terms specific to this system are defined in "Terms used on this page" or at first use. |
 | **Scope** | What runs now. The intended design and its reasoning are in `docs/design.md`; where the two disagree, this page is right about what runs and the design is amended. |
 | **Internal references** | Ticket ids, issue numbers and who did what are in "Related work and history" near the end. |
@@ -96,7 +96,7 @@ entry but no prompt and no way to run yet.
 
 ### What depends on Claude Code
 
-Most of the factory is plain files and a Python program. Four pieces assume Claude Code.
+Most of the factory is plain files and a Python program. Five pieces assume Claude Code.
 
 | Piece | Claude Code only? | Why |
 |---|---|---|
@@ -104,6 +104,7 @@ Most of the factory is plain files and a Python program. Four pieces assume Clau
 | Role prompts, the spec format, the store's files | no | Markdown, YAML and JSONL |
 | The workflow scripts (`factory/workflows/*.js`) | yes | written for Claude Code's Workflow tool: `agent()` with a JSON schema for each clerk reply, `parallel()` for the two checkers, `phase()` for the progress view |
 | Role agents (`agents/`, copied into a target's `.claude/agents/`) | yes | Claude Code agent definitions, with a tool list per role; Claude Code registers them only when a session starts |
+| Role processes of `factory drive` (`factory/drive.py`) | yes | each role runs as one headless `claude -p` process with `--output-format json` and `--permission-mode auto`, its role's prompt file, model and optional `--effort`, and its tool limits given by `--tools` and `--allowedTools` |
 | Model names (`models` in `instance.yaml`) | yes | Claude model aliases |
 | Token cost per role (`factory/cost.py`) | yes | reads the Workflow tool's transcript files |
 
@@ -433,7 +434,8 @@ git ignores them.
 │       │                          written against; specs/<T>.<k>/subticket.md for each sub-ticket
 │       ├── plans/<T>.md           the planner's plan
 │       ├── runs/run-NNNN-<role>/  one per role run: system-prompt.txt, input.md, output.md,
-│       │   │                      meta.yaml (status, model, base, head), diff.patch for checkers
+│       │   │                      meta.yaml (status, model, base, head), diff.patch for checkers,
+│       │   │                      reply.json for a role `factory drive` ran
 │       │   ├── scratch/           ignored: the run's temporary files
 │       │   └── wt/                ignored: a checker's detached checkout of the judged commit
 │       ├── results/<commit>/      reviewer.yaml, verifier.yaml, ci.yaml: the verdicts on that commit;
@@ -446,6 +448,7 @@ git ignores them.
 │       │                          moved to openspec/changes/archive/<date>-<T>/ when it closes
 │       ├── decisions.md           standing decisions; the spec writer, critic and planner read it
 │       ├── log/<YYYY-MM>.jsonl    one event per state change, run and decision, appended
+│       ├── drive/<T>.yaml         ignored: the live status of `factory drive` on that ticket
 │       └── worktrees/<T>.<k>/     ignored: the implementer's checkout, on branch factory/<T>.<k>
 └── .claude/agents/factory-*.md    role agent definitions, where the target registers them
 ```
@@ -460,8 +463,9 @@ The store's path is `state_dir` in `instance.yaml`. `factory init` creates a new
 | `instance.yaml`, `context.md` | integration | `factory init`, then edited by the operator | the operator | durable |
 | `harness.lock` | integration | `factory init`; `--accept-harness` rewrites it | the operator | durable |
 | `.claude/agents/factory-*.md` | integration | `factory init`, when they are missing | the operator, if the target keeps them | durable |
-| Store records: requests, tickets, specs, plans, runs, results, approvals, current truth, changes, decisions, log | `factory-store` | the harness, through the workflows' clerk and the operator's commands | the operator, with `git -C <store> commit`; the harness commits the store once, the first commit `store migrate` makes | durable |
+| Store records: requests, tickets, specs, plans, runs, results, approvals, current truth, changes, decisions, log | `factory-store` | the harness, through the workflows' clerk or `factory drive`, and the operator's commands | the operator, with `git -C <store> commit`; the harness commits the store once, the first commit `store migrate` makes | durable |
 | `runs/*/scratch/`, `runs/*/wt/`, `worktrees/` | none; git ignores them | `run start` | never | scratch until the ticket moves on (kept while parked); checker checkouts until `run cleanup`; implementer checkouts until the merge |
+| `drive/<ticket>.yaml` | none; git ignores it | `factory drive` | never | a live view of one driver process, rewritten at each step; kept until the next drive of that ticket |
 | Sub-ticket branches, `factory/<T>.<k>` | their own | the implementer's commits | the implementer | kept after the merge |
 | Merges of sub-tickets | integration | `merge` | the harness | durable |
 
@@ -709,6 +713,50 @@ shows each agent as it runs. When the workflow ends, the session receives its re
 `{"ticket": "T-0032", "state": "awaiting-spec-gate", "rounds": 1}`, and the ticket's record shows the
 same state.
 
+### Driving a ticket from a shell with `factory drive`
+
+`factory drive` does the workflow scripts' job as an ordinary command, without the Workflow tool.
+It takes a ticket through the same routes as the scripts, with the same round limits and park
+reasons, and writes the same records. It calls the harness in its own process, so no clerk agent
+relays store commands. Each role runs as its own headless `claude -p` process, with that role's
+prompt, model and tool limits. The driver is tested, and has not yet run a real ticket. Until it
+has, the Workflow tool remains the tested route.
+
+1. From the target repo, start it on one ticket:
+
+   ```
+   $RUNTIME/bin/factory drive T-0032                  # the phase follows the stored state
+   $RUNTIME/bin/factory drive T-0032 --phase build --parallel 1
+   ```
+
+   Without `--phase`, a ticket in `ready-for-triage`, `ready-for-spec-writer` or `ready-for-critic`
+   goes through intake. A ticket in `ready-for-planner`, `planned` or `ready-for-parent-verify` goes
+   through the build. From any other state it prints "nothing to dispatch from this state" and ends.
+   Like the intake script, it stops at the spec gate: after you approve the spec, run it again.
+2. If any run is in flight on the target, put `FACTORY_DISPATCH=1` in front of the command, as for
+   any store write during a run ("Where a human decides"). Without it the live-store fence refuses
+   the command with exit 2. Once started, the driver marks its own store calls. Its role processes
+   never carry the marker.
+3. `--parallel N` sets how many sub-tickets build at once; the default is 2. A commit's reviewer
+   and verifier always run at the same time. Use `--parallel 1` if role processes running at once
+   conflict.
+4. Read the progress. It prints one line per step, such as
+   `T-0032.1 "Add the flag": start implementer run-0120-implementer`. Each line names the ticket or
+   sub-ticket the step concerns, with its title. The last line is the result as one JSON object:
+   what the matching script returns, with `"ok": true` added. The store's `drive/<ticket>.yaml`
+   shows the same while it runs: the role processes still running, the last step line, and the
+   result under `ended` once it stops. Git ignores that file.
+5. To stop it, press Ctrl-C or send SIGTERM. It ends its role processes, records their runs as
+   `KILLED`, parks nothing, and exits with 128 plus the signal number. Run the same command again to
+   resume from the stored state.
+
+Each role process's reply is kept as `reply.json` in its run directory. Its session id, cost in
+dollars, turn count and token usage are recorded under `claude:` in the run's `meta.yaml`. To give a
+role an effort level, add an `effort:` map to `.factory/instance.yaml`, such as
+`effort: {critic: high}`. The workflow scripts ignore it. `--prompt-mode replace` passes the role
+prompt as Claude Code's whole system prompt instead of appending it to Claude Code's own; it exists
+to measure which starts a role with less context.
+
 ### Filing a request from an issue tracker
 
 The harness has no tracker integration. A request is a Markdown file, and the link to an issue is
@@ -855,7 +903,8 @@ path above is relative to the store.
   for the operator and the run goes on. Neither prints a file's contents. It is tested, and has not
   yet fired on a real ticket.
 - **Live-store fence.** While a run is in flight on a target, a write to its store without the
-  `FACTORY_DISPATCH=1` marker is refused. The workflow scripts mark their own commands, and the
+  `FACTORY_DISPATCH=1` marker is refused. The workflow scripts and `factory drive` mark their own
+  commands, the driver's role processes are never marked, and the
   operator marks one command at a time ("Where a human decides"). A write run from inside the
   store's `runs/` or `worktrees/` is refused even with the marker. The fence stops a role's tools,
   such as its test suite, from changing the live records by accident; it is not isolation. It has
@@ -900,6 +949,20 @@ path above is relative to the store.
   `resolve --accept-paths F`, which accepts the paths for that sub-ticket and returns it to its
   checks, whose passing results stand, or with `resolve --ruling F`, which sends it back to its
   implementer. It is tested, and has not yet fired on a real ticket.
+- **The driver, `factory drive`.** An ordinary command that takes a ticket through intake, or
+  through the build after the spec gate, on the same routes as the workflow scripts: the same round
+  limits, refusals and park reasons, and the same records. It calls the harness in its own process,
+  so no clerk agent relays store commands. Each role runs as one `claude -p` process with its
+  role's prompt and model, under Claude Code's `auto` permission mode. Its file tools may edit only
+  the run's output file, its scratch directory and the temporary directory; the implementer may
+  also edit its own worktree. Shell commands are not limited. Each process's reply and cost are
+  recorded with its run. A commit's two checkers run at once, and ready sub-tickets build at once
+  up to `--parallel N`. The workflow scripts are unchanged beside it. It is tested, and has not yet
+  run a real ticket.
+- **Per-role effort, for driver runs only.** An optional `effort:` map in `instance.yaml` gives a
+  role an effort level, which `factory drive` passes to that role's process. A role not listed gets
+  Claude Code's default. The workflow scripts ignore the map, so a role they run has a model and no
+  effort level. Neither target sets it yet.
 
 **Not built**
 
@@ -910,7 +973,6 @@ path above is relative to the store.
   for one operator and not for a team.
 - **The retro role.** Reads the log and proposes changes to the prompts and rules from what went
   wrong. No run has produced one yet.
-- **Per-role effort settings.** Each role has a model; none has an effort level.
 - **A status page.** `factory report TICKET` would render where a ticket is from the store alone.
   Today you read the store's YAML or ask the session running it.
 - **Current truth for the factory itself.** The spec store holds only the capabilities that
@@ -943,7 +1005,8 @@ format and the store carry over unchanged. Only the pieces in "What depends on C
 counterpart. Neither OpenAI Codex nor Google Antigravity has a scripted orchestrator inside the
 agent session like Claude Code's Workflow tool. On either host, the workflow logic would move into
 an ordinary script that starts one headless agent run per role and reads its JSON reply. That
-script can call `bin/factory` itself, so the clerk role goes away.
+script can call `bin/factory` itself, so the clerk role goes away. On Claude Code that script
+exists: `factory drive`, described under "Starting a run".
 
 | Need | Claude Code (today) | OpenAI Codex | Google Antigravity |
 |---|---|---|---|
@@ -990,13 +1053,15 @@ their store branch on 2026-10-04. The architecture subsections (what each role r
 ticket states, both workflows step by step, what the factory keeps in a target, how it uses git,
 filing from an issue tracker, what you read at each stop, other agent hosts) were added on
 2026-10-04 at the operator's request; the target layout answers issue #55. Open work named above:
-`factory report` (#17); current-truth seeding (#21); per-role effort (#22); registered agents for
+`factory report` (#17); current-truth seeding (#21); registered agents for
 the build roles, which `inlineRoles` works around today (#24); a stopped run that stays in flight
-(#53). Earlier sources: prompt changes borrowed from the ponytail project (#20); the documentation
+(#53). The driver, `factory drive`, answers #65 and absorbs per-role effort (#22), the operator's
+latest chat message reaching every role agent (#28), titles beside ticket ids in progress output
+(#47) and the checkers' tool limits (#24 part A); retiring the workflow scripts is a later ticket. Earlier sources: prompt changes borrowed from the ponytail project (#20); the documentation
 standard this page follows (#23); each run's scratch directory (#35); the store branch (#46). The
 design document is `docs/design.md`, its changelog `docs/changelog.md`; the working documents from
-building the harness are under `dev/`; the issue index is `dev/issues.md`. The store holds 32
-tickets and 26 sub-tickets at `.factory/store/`; the runtime is at `~/dev/spec-factory-harness`,
+building the harness are under `dev/`; the issue index is `dev/issues.md`. The store holds 40
+tickets and 47 sub-tickets at `.factory/store/`; the runtime is at `~/dev/spec-factory-harness`,
 commit `639fcb5`, and its harness revision `da50576` equals this repo's `harness.lock`.
 
 ## Maintaining this page
