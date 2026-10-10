@@ -1,0 +1,39 @@
+id: T-0040.1
+type: sub-ticket
+title: The driver core and the intake phase
+request: requests/T-0040.md
+source: plan:run-0404-planner
+status: ready-for-implementer
+round:
+  spec: 0
+  pr: 0
+spec:
+  version: 4
+  approved_version: 4
+plan: null
+in_flight: []
+parked: null
+created: '2026-10-10T04:58:15+00:00'
+history:
+- ts: '2026-10-10T05:15:48+00:00'
+  from: ready-for-implementer
+  to: parked
+  by: park
+  reason: BLOCKED from implementer
+- ts: '2026-10-10T06:17:22+00:00'
+  from: parked
+  to: ready-for-implementer
+  by: dphang
+  resolve: ruling
+  ruling: approvals/T-0040.1/ruling-1.md
+parent: T-0040
+depends_on: []
+parallel_safe: false
+branch: factory/T-0040.1
+head: null
+merge:
+  base_before: null
+  main_after: null
+parent_base: null
+label: T-0040.A
+planned_from: 3

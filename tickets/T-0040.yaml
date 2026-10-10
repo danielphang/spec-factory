@@ -4,14 +4,14 @@ title: '`factory drive TICKET`: a Python driver runs intake and build, with each
   -p` process; the clerk agent and the Workflow scripts retire'
 request: requests/T-0040.md
 source: /private/tmp/claude-501/-Users-dphang-dev-nanobot/c69bfd1d-97a6-43e3-9d5a-a517c28d382c/scratchpad/req-65.md
-status: ready-for-planner
+status: planned
 round:
   spec: 2
   pr: 0
 spec:
-  version: 3
-  approved_version: 3
-plan: null
+  version: 4
+  approved_version: 4
+plan: plans/T-0040.md
 in_flight: []
 parked: null
 created: '2026-10-09T18:49:01+00:00'
@@ -56,6 +56,13 @@ history:
   to: ready-for-planner
   by: dphang
   approved_version: 3
+- ts: '2026-10-10T04:58:23+00:00'
+  from: ready-for-planner
+  to: planned
+  by: workflow
+  round:
+    spec: 2
+    pr: 0
 parent: null
 depends_on: []
 parallel_safe: true

@@ -2105,3 +2105,19 @@
 {"ts": "2026-10-10T04:54:08+00:00", "event": "approval.recorded", "ticket": "T-0040", "kind": "spec", "version": 3, "by": "dphang"}
 {"ts": "2026-10-10T04:54:08+00:00", "event": "change.pinned", "ticket": "T-0040", "version": 3, "files": ["openspec/changes/T-0040/proposal.md", "openspec/changes/T-0040/design.md", "openspec/changes/T-0040/specs/build-dispatch/spec.md", "openspec/changes/T-0040/specs/harness-docs/spec.md", "openspec/changes/T-0040/verification.md"]}
 {"ts": "2026-10-10T04:54:08+00:00", "event": "ticket.transition", "ticket": "T-0040", "from": "awaiting-spec-gate", "to": "ready-for-planner", "by": "dphang"}
+{"ts": "2026-10-10T04:55:14+00:00", "event": "run.started", "ticket": "T-0040", "run": "run-0404-planner", "role": "planner", "model": "opus"}
+{"ts": "2026-10-10T04:57:49+00:00", "event": "run.finished", "ticket": "T-0040", "run": "run-0404-planner", "role": "planner", "status": "PLANNED", "wall_s": 155}
+{"ts": "2026-10-10T04:57:59+00:00", "event": "tasks.written", "ticket": "T-0040", "run": "run-0404-planner"}
+{"ts": "2026-10-10T04:58:07+00:00", "event": "plan.added", "ticket": "T-0040", "source": "run-0404-planner"}
+{"ts": "2026-10-10T04:58:15+00:00", "event": "ticket.created", "ticket": "T-0040.1", "parent": "T-0040", "status": "ready-for-implementer"}
+{"ts": "2026-10-10T04:58:15+00:00", "event": "ticket.created", "ticket": "T-0040.2", "parent": "T-0040", "status": "waiting-dependencies"}
+{"ts": "2026-10-10T04:58:15+00:00", "event": "ticket.created", "ticket": "T-0040.3", "parent": "T-0040", "status": "waiting-dependencies"}
+{"ts": "2026-10-10T04:58:23+00:00", "event": "ticket.transition", "ticket": "T-0040", "from": "ready-for-planner", "to": "planned", "by": "workflow", "round": {"spec": 2, "pr": 0}}
+{"ts": "2026-10-10T04:58:49+00:00", "event": "run.started", "ticket": "T-0040.1", "run": "run-0405-implementer", "role": "implementer", "model": "opus"}
+{"ts": "2026-10-10T05:15:34+00:00", "event": "run.finished", "ticket": "T-0040.1", "run": "run-0405-implementer", "role": "implementer", "status": "BLOCKED", "wall_s": 1005}
+{"ts": "2026-10-10T05:15:34+00:00", "event": "escalation.queued", "ticket": "T-0040.1", "run": "run-0405-implementer", "items": ["The NEW criterion \"A stopped driver ends its role process, records the run as killed and resumes from the stored state\" expects `running=1`. With the approved design it prints `running=2`. Design.md A.7 makes `last` the start step line `… start triage run-0001-triage`, and the `running` list also names that run, so the command's `grep -c 'run-0001-triage'` counts both lines. A ruling is needed. I recommend amending the scenario to count only the `running` list, for example `grep -c '^- run: run-0001-triage'`. The alternative is to change A.7 so that `last` or the start step leaves out the run id. The implementation is complete at 656c179 and needs no further change under the recommended amendment."]}
+{"ts": "2026-10-10T05:15:48+00:00", "event": "ticket.parked", "ticket": "T-0040.1", "from": "ready-for-implementer", "reason": "BLOCKED from implementer"}
+{"ts": "2026-10-10T05:15:48+00:00", "event": "escalation.queued", "ticket": "T-0040.1", "items": ["BLOCKED from implementer"]}
+{"ts": "2026-10-10T06:17:22+00:00", "event": "spec.added", "ticket": "T-0040", "version": 4, "source": "amend /private/tmp/claude-501/-Users-dphang-dev-nanobot/c69bfd1d-97a6-43e3-9d5a-a517c28d382c/scratchpad/T-0040-v4.md"}
+{"ts": "2026-10-10T06:17:22+00:00", "event": "spec.amended", "ticket": "T-0040", "by": "dphang", "previous": 3, "version": 4, "reason": "stopped-driver check counted the run id on the last: line too; count only the running list's entry (operator ruling on run-0405)", "record": "approvals/T-0040/amendment-1.md"}
+{"ts": "2026-10-10T06:17:22+00:00", "event": "human.resolved", "ticket": "T-0040.1", "kind": "ruling", "by": "dphang", "from": "parked", "to": "ready-for-implementer"}

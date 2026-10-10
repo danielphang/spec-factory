@@ -1,0 +1,18 @@
+run_id: run-0404-planner
+role: planner
+ticket: T-0040
+model: opus
+round: 2
+spec_version: 3
+started: '2026-10-10T04:55:14+00:00'
+finished: '2026-10-10T04:57:49+00:00'
+wall_s: 155
+status: PLANNED
+input_sources:
+- specs/T-0040/v3.md
+- decisions.md
+confidence: high. The approved spec names these three parts, their order and which part owns each scenario,
+  and I confirmed on `main` that every file, test, anchor and line the plan relies on exists and that
+  the change is not yet applied.
+escalations: []
+escalations_note: null

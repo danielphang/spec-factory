@@ -1,3 +1,151 @@
+## Context for this run (composed by the harness, not part of the request)
+
+Repository: `spec-factory`, the design repo at `~/dev/spec-factory` (branch `main`). It holds the
+design and the harness that runs it:
+- `docs/design.md`, the design document and the source of truth, with its changelog in
+  `docs/changelog.md`;
+- `docs/prompts/`, each file a verbatim copy of one prompt block in the design doc; it changes only
+  by re-copying that block;
+- `dev/`, the working documents for building the factory itself: `dev/build-harness.spec.md` (the
+  spec for building the harness), `dev/build-harness.plan.md` (the Planner's decomposition of it),
+  `dev/P0-intake-skeleton.md` (the walking skeleton) and `dev/issues.md` (this repo's issue index);
+- the harness, as code in this repo: `factory/` (the package, its role prompts and its workflow
+  scripts), `bin/factory` (the entry point), `agents/` (the agent definition templates) and
+  `tests/factory/` (its suite). Install with `uv sync --frozen`; test with
+  `uv run --frozen pytest -q -p no:cacheprovider tests/factory`;
+- `.factory/`, this repo's own instance of the factory: `instance.yaml`, this briefing,
+  `harness.lock`, closed records (`answers/`, `green-pilot/`) and the live store, `store/`.
+  The store is a checkout of its own branch, `factory-store`; the operator commits it there, so a
+  store commit never moves `main`.
+
+Two checkouts. Tickets are built and merged in the dev checkout, `~/dev/spec-factory` on `main`.
+The factory runs from the runtime checkout, `~/dev/spec-factory-harness`, a detached worktree of
+this repo at the harness revision `.factory/harness.lock` has accepted. A merge into `main` never
+changes the running code; only the upgrade step moves the runtime, after which the instance
+refuses its store until `--accept-harness`. Your shell may start in another directory: use
+absolute paths, or `cd ~/dev/spec-factory && <cmd>`.
+
+The Nanobot fork at `~/dev/nanobot-upstream` (branch `feat/lionbot-v3.5`) is instance A: a target
+with only `.factory/`, run from the same runtime by its own Driver session. This repo's harness was
+imported from its retired `feat/lionbot-v3` branch. Read it only to observe what a fix does there; never write there, and never copy its test names,
+line numbers or commit SHAs into a spec. Never read or write `~/.nanobot/` (live credentials).
+
+Acceptance commands must be runnable as written from `~/dev/spec-factory` (grep, sed, diff,
+`git diff --check` against the documents, the harness suite). A change to the design doc keeps its
+own conventions: its changelog entry in `docs/changelog.md`, `dev/build-harness.spec.md`
+consistent with the new text, and any `docs/prompts/` file whose block changed re-copied from it.
+
+The request is an issue draft, written from a real pipeline run: where in the documents,
+what happened (the evidence), why it matters, a proposed fix, and the Nanobot-side commit
+where a harness fix already exists. The evidence is the requirement; the proposed fix is the
+requester's suggestion, not a requirement. Verify the as-built fix in the reference harness
+before relying on it; a NEW criterion that already passes on this checkout proves nothing.
+
+Output: write your complete output, in your role's required format and ending with the
+STATUS / CONFIDENCE / ESCALATIONS trailer, to the file named under "Output file" below. For
+every role but the implementer that is the only file you may create or modify. The implementer
+also changes files in its own worktree and commits there, and nowhere else. Then return the same
+text as your final message.
+
+This repo's current-state page is the top-level `README.md`. A change to a command, state, stop or
+path updates it in the same ticket; read its "Maintaining this page" section before editing it.
+
+Who reads what the roles write here: the operator at the spec gate, and a technical reader new to this project reading the README or a PR description. Gloss every term specific to the factory at first use (docs/writing.md).
+## Output file
+`/Users/dphang/dev/spec-factory/.factory/store/runs/run-0405-implementer/output.md`
+
+## Running code
+Run every test, script or prototype through this wrapper, which gives it a fresh temporary HOME so it cannot write the operator's real home directory: `([ -z "${VIRTUAL_ENV:-}" ] || PATH=$(printf %s "$PATH" | tr : '\n' | grep -vxF "$VIRTUAL_ENV/bin" | paste -sd: -); unset VIRTUAL_ENV PYTHONHOME; export HOME="$(cd "$(mktemp -d)" && pwd -P)"; <command>)`. Put your command in place of <command>. This includes every test or check command the briefing above gives. A throwaway HOME does not stop a write to an absolute path: never run anything that could write a protected path outside the repository.
+
+## Scratch directory
+Put every file you make for your own use in this run under `/Users/dphang/dev/spec-factory/.factory/store/runs/run-0405-implementer/scratch`: no other run uses it. The harness clears it when the ticket moves on, and keeps it while the ticket is parked.
+
+## Where you work
+Worktree: `/Users/dphang/dev/spec-factory/.factory/store/worktrees/T-0040.1` (branch `factory/T-0040.1`, base `37848dbb04f29c63d5d684a3b4c033ed41ede13e`, head `37848dbb04f29c63d5d684a3b4c033ed41ede13e`). There is no remote: commit on the branch; the PR is the branch plus the description you return. Gate commands (run each from your worktree, exactly as written; each is already wrapped): `([ -z "${VIRTUAL_ENV:-}" ] || PATH=$(printf %s "$PATH" | tr : '\n' | grep -vxF "$VIRTUAL_ENV/bin" | paste -sd: -); unset VIRTUAL_ENV PYTHONHOME; export HOME="$(cd "$(mktemp -d)" && pwd -P)"; git diff --check main...HEAD)`; `([ -z "${VIRTUAL_ENV:-}" ] || PATH=$(printf %s "$PATH" | tr : '\n' | grep -vxF "$VIRTUAL_ENV/bin" | paste -sd: -); unset VIRTUAL_ENV PYTHONHOME; export HOME="$(cd "$(mktemp -d)" && pwd -P)"; uv run --frozen pytest -q -p no:cacheprovider tests/factory)`
+
+## Sub-ticket T-0040.1
+
+### T-0040.A / The driver core and the intake phase
+Depends on: none
+Parallel-safe: no (B and C build on it, and B edits the same `factory/drive.py`)
+
+Parent: T-0040 (`/Users/dphang/dev/spec-factory/.factory/store/specs/T-0040/v3.md`). Read it for context. Do NOT implement parts outside this sub-ticket.
+
+Scope: part A, items 1 to 10 of design.md:
+- the `drive` subparser, with `--phase`, `--parallel` and `--prompt-mode`;
+- `call()` through `factory.cli.main`;
+- `run_role()` and the `claude -p` argv;
+- `run finish --reply`;
+- the intake routing ported from `intake.js`;
+- phase selection from the stored state;
+- progress lines, `drive/<parent id>.yaml`, and `drive/` added to `STORE_GITIGNORE`;
+- the SIGINT/SIGTERM stop sequence;
+- the commented `effort:` example in `factory/instance.template.yaml`;
+- `tests/factory/test_drive.py`, plus the three tests listed under Tests to change.
+
+Interim behaviour: until B lands, the build phase does not exist. If `--phase build` is given, or the stored state selects build, the driver must refuse with a non-zero exit and an error saying the build phase is not built yet, and it must write nothing to the store. It must not try to route those states. Do not add a suite test that pins this refusal, because B replaces it.
+
+Acceptance:
+- NEW. "The driver takes the intake fixtures through the same routes as the intake script".
+  - WHEN `(for P in '{"triage": [{"write": "ACCEPT"}], "spec_writer": [{"write": "READY-FOR-CRITIC"}], "critic": [{"write": "REVISE"}, {"write": "APPROVE"}]}' '{"triage": [{"write": "ACCEPT"}], "spec_writer": [{"write": "READY-FOR-CRITIC"}], "critic": [{"write": "REVISE"}]}' '{"triage": [{"say": "still waiting on my commands"}]}' '{"triage": [{"fail": "usage limit reached"}]}'; do (PHASE=intake; . ${TMPDIR:-/tmp}/t0040-parity.sh); done)`
+  - THEN it prints exactly these four lines: `awaiting-spec-gate script=5/5 drive=5/5 same`, `parked script=5/5 drive=5/5 same`, `parked script=2/2 drive=2/2 same`, `parked script=1/1 drive=1/1 same`.
+- NEW. "Each role run records its process's reply".
+  - WHEN the parent's command for that scenario is run (an intake parity run, then the inline Python check of `claude:` in `meta.yaml` and of `reply.json`).
+  - THEN it prints exactly `triage=ok spec_writer=ok critic=ok`.
+- NEW. "Every intake step line names its ticket and title, and the status file shows the end".
+  - WHEN the parent's command for that scenario is run.
+  - THEN it prints exactly `steps=yes untagged=0 last=1 status=T-0001 Fixture awaiting-spec-gate 0 ignored=1`.
+- NEW. "A stopped driver ends its role process, records the run as killed and resumes from the stored state". It runs with no `--phase`, so it also checks that a `ready-for-triage` state selects intake.
+  - WHEN the parent's command for that scenario is run.
+  - THEN it prints exactly `stop: exit=143 running=1 run=KILLED ready-for-triage in_flight: [] child=gone last=1`, then `resumed: exit=0 closed calls=2`.
+- NEW. "The driver marks its own store calls, never its roles', and passes a configured effort".
+  - WHEN the parent's command for that scenario is run, after the `t0024-inflight.sh` GIVEN block.
+  - THEN it prints exactly `unmarked=2 marked=0 closed calls=1 effort=1 dispatch=1 inside=2`.
+- NEW, an intermediate check: the intake half of "Each role runs as one claude process with its prompt, model and tool limits". This checks the argv, the prompt, the tool lists, the `Edit` rules and the dropped marker for the three intake roles. The full scenario needs B.
+  - WHEN `(P='{"triage": [{"write": "ACCEPT"}], "spec_writer": [{"write": "READY-FOR-CRITIC"}], "critic": [{"write": "APPROVE"}]}'; PHASE=intake; . ${TMPDIR:-/tmp}/t0040-parity.sh >/dev/null; .venv/bin/python ${TMPDIR:-/tmp}/t0040-calls.py $D/drive.log)`
+  - THEN it prints exactly `critic ok`, `spec_writer ok`, `triage ok`, one per line.
+- REGRESSION. "The Workflow scripts still take both fixtures to the end of their routes".
+  - WHEN the parent's command for that scenario is run.
+  - THEN it prints exactly `T-0001.1 merged T-0001 parked`, then `T-0001 awaiting-spec-gate`.
+- Intermediate check: the harness suite passes, including the new `tests/factory/test_drive.py` and the three changed `test_run_scratch.py` tests.
+  - WHEN `uv run --frozen pytest -q -p no:cacheprovider tests/factory`, run through the running-code wrapper.
+  - THEN it exits 0.
+
+Before any of these scenarios, run their GIVEN blocks once: the six fixture files written by the first scenario's block, `t0023-parent.sh` (from the human-resolution scenario of current truth), and `t0024-inflight.sh` (from live-store-guard).
+
+Interim tests: none. A must not pin the interim build-phase refusal in a test.
+
+Tests to change:
+- `tests/factory/test_run_scratch.py::test_a_new_store_gitignore_is_the_full_commented_block_once`: the block now has 4 comment lines, not 3, and the loop over entries also counts `drive/` once.
+- `tests/factory/test_run_scratch.py::test_an_existing_store_gitignore_gains_only_the_missing_lines`: the expected line list now ends `"runs/*/scratch/", "drive/"`.
+- `tests/factory/test_run_scratch.py::test_an_existing_store_gitignore_without_a_final_newline_keeps_its_last_line`: the same change, so its list now ends with `"drive/"`.
+
+Protected paths: `factory/**` (`factory/drive.py`, `factory/cli.py`, `factory/store.py`, `factory/instance.template.yaml`)
+
+Out of scope:
+- part B: build routing, the checkers' concurrency, the `--parallel` semaphore, and sub-ticket progress lines;
+- part C: README, `docs/design.md`, `dev/build-harness.spec.md` and `docs/changelog.md`;
+- everything under the parent's Out of scope, including any change to `factory/workflows/*.js`, `agents/`, `docs/prompts/` or either instance's `.factory/` files.
+
+---
+
+## Shared plan context (from the plan; applies to every sub-ticket)
+
+The approved spec (v3) already divides the change into three lettered parts, A, B and C, and states their order: B depends on A, and C depends on A and B (design.md, "Size and seams"). It also maps each scenario to a part. This plan keeps that split. Nothing smaller is worth splitting: A and B both edit `factory/drive.py`, and C documents what A and B build. Each of the three runs alone, one after another.
+
+What I checked on `main` at `37848db`: `factory/drive.py` and `tests/factory/test_drive.py` do not exist, and `factory/cli.py` has no `drive`. So the change is not already applied. These things the spec names do exist:
+- `STORE_GITIGNORE` at `factory/store.py:49`;
+- the three tests to change, at `tests/factory/test_run_scratch.py:121`, `:132` and `:142`;
+- the `// --- start` markers at `factory/workflows/intake.js:138` and `factory/workflows/build.js:217`;
+- `run_finish` at `factory/cli.py:446`;
+- the README anchors the documents scenario reads: "What depends on Claude Code" (line 97), "Terms used on this page" (117), "Starting a run" (690), "Filing a request from an issue tracker" (712), **Built** (828), **Not built** (904), and the "Per-role effort settings" bullet (913);
+- R6's "nor `dontAsk`" at `dev/build-harness.spec.md:118`;
+- `docs/changelog.md` entries up to 66, then "Declined:" at line 72.
+
+---
+
+## Parent spec (v3, pinned). Its Evidence and Responses sections are left out; the full spec is `/Users/dphang/dev/spec-factory/.factory/store/specs/T-0040/v3.md`
+
 === proposal.md
 ## Problem
 
@@ -8,36 +156,6 @@ The spec factory takes a feature request through a fixed sequence of AI agent jo
 The scripts have two further limits. They cannot give a role its own tool limits or effort level. And every role agent the Workflow tool starts receives the operator's latest chat message, marked as overriding its task.
 
 This change adds `factory drive TICKET`, an ordinary Python command that does the scripts' job. It routes exactly as the scripts do, with the same round limits, refusals and park reasons. It calls the harness directly, with no clerk. It starts each role as its own non-interactive Claude Code process (`claude -p`), with that role's prompt, model, effort and tool limits, and records each process's cost and session id with the run. It prints one line per step and keeps a status file. Like the intake script, it stops at the spec gate, where the operator approves a spec before any code is written. The Workflow scripts stay as they are until the operator has taken one real ticket through each half with the driver. Retiring them is a later ticket.
-
-## Evidence
-
-- Requester's measurement, issue #65, 2026-10-05: "the clerk was 2,236 agents and 4,476 calls, and 143M of 866M workflow context tokens (17%)". Not re-derived here.
-- Clerk failure, T-0027.2, 2026-10-09 (issue comment): the reviewer's `run finish` succeeded (log `run.finished APPROVE`). The clerk returned the JSON pretty-printed across lines. The script parked the piece as `harness-bug: run finish reviewer:` with empty stderr.
-- Every store access in the scripts is a clerk agent call: `grep -c 'clerk(' factory/workflows/intake.js factory/workflows/build.js` prints `factory/workflows/intake.js:12` and `factory/workflows/build.js:31`, each count including the `clerk` function's own definition (`intake.js:50`, `build.js:41`). The limit is design piece 2, limit (1): "The script has no filesystem or clock, so store reads and writes go through a clerk agent" (`docs/design.md:44`).
-- Today `factory drive` does not exist. In every parity fixture below, the drive side printed `usage: factory [-h] [--accept-harness SHA] {ticket,run,spec,plan,subticket,results,merge,init,store,paths,archive,approve-spec,request-changes,resolve,decision,config,status,log}` and the store was left unchanged.
-- Both scripts were run on throwaway fixtures under node, from this checkout (`bb410c0`). Clerk commands ran for real, and each role was played by a stand-in `claude` (the GIVEN block of the first scenario). Every route ended where the routing table says, and the number of role calls equalled the number of runs in the store:
-
-  | Fixture, role plays | End state of T-0001 | Calls / runs |
-  |---|---|---|
-  | intake: ACCEPT, READY-FOR-CRITIC, REVISE then APPROVE | `awaiting-spec-gate`, spec round 2 | 5 / 5 |
-  | intake: critic always REVISE | `parked`, `max rounds` | 5 / 5 |
-  | intake: triage replies but writes no output | `parked`, `EMPTY-OUTPUT from triage` | 2 / 2 |
-  | intake: triage call fails ("usage limit reached") | `parked`, `agent call failed: triage: usage limit reached`, run `KILLED` | 1 / 1 |
-  | build from `ready-for-planner`: implementer, APPROVE, VERIFIED | T-0001.1 `merged`; T-0001 `parked`, `archive: no spec store (factory init not run)` | 4 / 4 |
-  | build: reviewer always REQUEST-CHANGES | T-0001.1 `parked`, `max-round cutoff (reviewer REQUEST-CHANGES at round 2)` | 6 / 6 |
-  | build: reviewer replies but writes nothing; verifier SPEC-DEFECT | T-0001.1 `parked`, `EMPTY-OUTPUT from reviewer` | 4 / 4 |
-  | build: implementer BLOCKED | T-0001.1 `parked`, `BLOCKED from implementer` | 1 / 1 |
-
-  `EMPTY-OUTPUT` is the park reason for a role that replied twice in a row without writing its output file. `KILLED` marks a run whose agent call failed. The whole-spec step lets a spec small enough to build in one piece skip the planner. It did so on the build fixture (log event `plan.skipped`), so the build route covers implementer, both checkers, the merge, the parent's final verifier run and archive.
-- Claude Code 2.1.289, `claude --help` under a throwaway HOME: lists `--allowedTools`, `--tools`, `--effort <level>` ("low, medium, high, xhigh, max"), `--output-format` ("json (single result)"), `--add-dir`, `--model`, `--resume`, `--bare` and `--permission-mode` (choices "acceptEdits", "auto", "bypassPermissions", "manual", "dontAsk", "plan"). `--system-prompt-file` and `--append-system-prompt-file` are not listed, but both are accepted: `claude -p --append-system-prompt-file /nonexistent/sp.txt …` printed `Error: Append system prompt file not found: /nonexistent/sp.txt`, `--system-prompt-file` printed `Error: System prompt file not found: …`, and an unknown flag printed `error: unknown option '--bogus-flag-xyz'`. No model was called.
-- Permission mode `dontAsk` is the strict mode, not a loose one. Claude Code's permissions page: "`dontAsk` | Auto-denies every call that would otherwise prompt; file reads in your working directories and other actions that need no approval still run, as do tools pre-approved via `/permissions` or `permissions.allow` rules." The build spec has it backwards: "Never `bypassPermissions` (nor `dontAsk`)" (`dev/build-harness.spec.md:118`, row R6).
-- Rule forms (same page): "`Edit` rules apply to all built-in tools that edit files", so one `Edit(...)` rule also covers `Write`; `//path` is "Absolute path from filesystem root"; an output redirect in a Bash command is checked against `Edit` rules and the working directories.
-- Headless mode (Claude Code docs, "Run Claude Code programmatically"): a run exits non-zero on failure, and "When a failure happens inside the run, such as missing authentication, Claude Code prints the failure as the result on stdout". `--bare` "doesn't use your subscription login". With `--output-format json` "the response payload includes `total_cost_usd`". "If you stop a `claude -p` run with SIGTERM … Claude Code exits with code 143 … and records no result".
-- A checker's checkout lies inside its run directory: `_start_build_run` sets `wt = d / "wt"` (`factory/cli.py:390`), where `d` is `runs/<run id>`. A tool limit that allowed edits anywhere in the run directory would therefore let the reviewer or verifier edit the code it judges.
-- An instance is one target repository's factory setup, with its own store. The live-store fence (current truth `live-store-guard`, `factory/cli.py` `fence`, lines 1898–1913) refuses a write to an instance's own store while any run is in flight, unless the command carries the dispatcher marker, `FACTORY_DISPATCH=1`. A standing decision (2026-10-04, T-0024) is that a runner session, the operator's Claude Code session that starts pipeline runs, puts the marker in front of each command it runs while a run is in flight. The fixtures this change's scenarios reuse are in `openspec/specs/human-resolution/spec.md` (`t0023-parent.sh`) and in current truth `live-store-guard` (`t0024-inflight.sh`).
-- In this run, Claude Code's auto-mode permission check refused one plain `bin/factory drive T-0001 --phase intake` command as "Create Unsafe Agents". The parity fixture runs, which call the same command with a stand-in `claude` first on `PATH`, were not refused.
-- The store's `.gitignore` block (`STORE_GITIGNORE`, `factory/store.py:49–52`) lists `worktrees/`, `runs/*/wt/`, `runs/*/tripwire.yaml` and `runs/*/scratch/`, each under a comment line. Every `run start` writes it (`ensure_gitignore`, `_ensure_block`, lines 55–84). Three tests in `tests/factory/test_run_scratch.py` (lines 121–147) pin that block exactly: its three comment lines and its four entries in order. `store migrate` finds ignored files with `git ls-files --others --ignored` (`factory/cli.py:1446–1453`), not from that list, so a new ignored directory moves with the store.
-- Not verified here, because each needs real model runs on the operator's login: whether concurrent `claude -p` processes conflict; whether the model alias `fable` is accepted by `claude --model`; which project settings and hooks load when the working directory is a run directory inside the store checkout; the start-up context with `--append-system-prompt-file` against `--system-prompt-file` (#24 part A's baseline is 44k tokens per call); and whether each role completes its work within the allowlists below. These are Operator steps.
 
 ## Root cause
 
@@ -351,7 +469,7 @@ On SIGTERM or SIGINT the driver MUST end every role process it started, record e
 
 #### Scenario: A stopped driver ends its role process, records the run as killed and resumes from the stored state
 Needs the GIVEN block of "The driver takes the intake fixtures through the same routes as the intake script" run once.
-- WHEN `(T40=$(mktemp -d); export FACTORY_STATE=$T40/store T40_LOG=$T40/claude.log PATH=${TMPDIR:-/tmp}/t0040-bin:$PATH; printf '# Fixture\n\nThe bot should do the thing.\n' > $T40/req.md && bin/factory ticket new --file $T40/req.md >/dev/null; T40_PLAYS='{"triage": [{"sleep": 60, "write": "ACCEPT"}]}' bin/factory drive T-0001 > $T40/out 2>/dev/null & p=$!; for i in $(seq 50); do [ -s $T40_LOG ] && break; sleep 0.2; done; sleep 1; r=$(grep -c '^- run: run-0001-triage' $FACTORY_STATE/drive/T-0001.yaml 2>/dev/null); kill -TERM $p 2>/dev/null; wait $p; x=$?; c=$(sed -n 's/.*"pid":\([0-9]*\).*/\1/p' $T40_LOG 2>/dev/null); echo "stop: exit=$x running=${r:-0} run=$(sed -n 's/^status: //p' $FACTORY_STATE/runs/run-0001-triage/meta.yaml 2>/dev/null) $(sed -n 's/^status: //p' $FACTORY_STATE/tickets/T-0001.yaml) $(grep '^in_flight' $FACTORY_STATE/tickets/T-0001.yaml) child=$(kill -0 ${c:-999999} 2>/dev/null && echo alive || echo gone) last=$(tail -1 $T40/out | grep -c '"stopped": "SIGTERM"')"; T40_PLAYS='{"triage": [{"write": "REJECT"}]}' bin/factory drive T-0001 >/dev/null 2>&1; echo "resumed: exit=$? $(sed -n 's/^status: //p' $FACTORY_STATE/tickets/T-0001.yaml) calls=$(grep -c . $T40_LOG 2>/dev/null)")`
+- WHEN `(T40=$(mktemp -d); export FACTORY_STATE=$T40/store T40_LOG=$T40/claude.log PATH=${TMPDIR:-/tmp}/t0040-bin:$PATH; printf '# Fixture\n\nThe bot should do the thing.\n' > $T40/req.md && bin/factory ticket new --file $T40/req.md >/dev/null; T40_PLAYS='{"triage": [{"sleep": 60, "write": "ACCEPT"}]}' bin/factory drive T-0001 > $T40/out 2>/dev/null & p=$!; for i in $(seq 50); do [ -s $T40_LOG ] && break; sleep 0.2; done; sleep 1; r=$(grep -c 'run-0001-triage' $FACTORY_STATE/drive/T-0001.yaml 2>/dev/null); kill -TERM $p 2>/dev/null; wait $p; x=$?; c=$(sed -n 's/.*"pid":\([0-9]*\).*/\1/p' $T40_LOG 2>/dev/null); echo "stop: exit=$x running=${r:-0} run=$(sed -n 's/^status: //p' $FACTORY_STATE/runs/run-0001-triage/meta.yaml 2>/dev/null) $(sed -n 's/^status: //p' $FACTORY_STATE/tickets/T-0001.yaml) $(grep '^in_flight' $FACTORY_STATE/tickets/T-0001.yaml) child=$(kill -0 ${c:-999999} 2>/dev/null && echo alive || echo gone) last=$(tail -1 $T40/out | grep -c '"stopped": "SIGTERM"')"; T40_PLAYS='{"triage": [{"write": "REJECT"}]}' bin/factory drive T-0001 >/dev/null 2>&1; echo "resumed: exit=$? $(sed -n 's/^status: //p' $FACTORY_STATE/tickets/T-0001.yaml) calls=$(grep -c . $T40_LOG 2>/dev/null)")`
 - THEN it prints exactly `stop: exit=143 running=1 run=KILLED ready-for-triage in_flight: [] child=gone last=1`, then `resumed: exit=0 closed calls=2`
 
 ### Requirement: The driver marks its own store calls, never its role processes, and passes a configured effort
@@ -394,12 +512,3 @@ Needs the GIVEN blocks of "A ruling on a BLOCKED park returns the sub-ticket to 
 - The driver marks its own store calls, never its roles', and passes a configured effort → NEW. Today it prints `unmarked=2 marked=2 ready-for-triage calls=0 effort=0 dispatch=0 inside=2` (observed). `marked=2` is argparse's refusal.
 - The Workflow scripts still take both fixtures to the end of their routes → REGRESSION. It prints `T-0001.1 merged T-0001 parked`, then `T-0001 awaiting-spec-gate` today (observed), and must after each part.
 - The documents describe the driver → NEW. Today it prints `starting=no depends=no built=no effort-gap=yes drive-row=no design=no changelog=no buildspec=no dontask-ban=yes whitespace=clean` (observed).
-
-## Responses
-
-- [BLOCKING] Problem, first paragraph → FIXED. The Problem now opens with who has the problem and what it is: the operator pays a relay cost on every step, because the scripts cannot run a command and start a clerk agent for each store call, with the measured cost and the 2026-10-09 failure. The glossary of roles, harness, store, checkers, sub-tickets and the Workflow tool moved to the second paragraph.
-- [BLOCKING] Unglossed terms in Decisions and Operator steps → FIXED. "Runner session", "instance" and the dispatcher marker are glossed at first use in the Evidence fence bullet, which precedes Decisions. "Spec gate" is glossed in the Problem's last paragraph. Operator step 1 glosses the runtime and says what `--accept-harness` does and why it is needed. I also glossed "park", "checkers", "sub-ticket", `EMPTY-OUTPUT`, `KILLED` and the whole-spec step, which had the same gap.
-- [SHOULD-FIX] Status file committed or ignored → FIXED. New Decision: `drive/` joins the store's `.gitignore` block under its own comment line, with both alternatives rejected. The block's exact text is pinned by three tests in `tests/factory/test_run_scratch.py`, now listed under Tests to change for part A. No live-store-guard test pins it. Evidence states that `store migrate` finds ignored files through git, so the new directory moves with the store. The status-file scenario now also checks `ignored=1`, and today prints `ignored=0` (run in this round). Part C adds the status file to the README's store file table, checked by `drive-row` in the documents scenario, which prints `drive-row=no` today (run in this round).
-- [NIT] Clerk line numbers → FIXED. `intake.js:50`, `build.js:41`. The ranges are now 50–67 and 41–58, checked with `grep -n 'async function clerk'` and by reading each function's closing brace.
-- [NIT] Withheld tools unstated → FIXED. The tool-limits Decision now says every other tool the session offers is withheld, and that no role prompt asks for one. `grep -lE '\b(Task|TodoWrite|NotebookEdit|sub-?agent|Agent tool)\b' factory/prompts/*` matched no file.
-- Unprompted: "tool fences" became "tool limits" in the Decisions, the Risk section, one requirement and one scenario name, and the Scenario to part list. The live-store fence keeps the name "fence", so two different mechanisms no longer share it (`docs/writing.md` rule 9).

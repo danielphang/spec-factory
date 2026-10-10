@@ -1,0 +1,31 @@
+run_id: run-0405-implementer
+role: implementer
+ticket: T-0040.1
+model: opus
+round: 0
+spec_version: 3
+started: '2026-10-10T04:58:49+00:00'
+finished: '2026-10-10T05:15:34+00:00'
+wall_s: 1005
+status: BLOCKED
+input_sources:
+- specs/T-0040.1/subticket.md
+- specs/T-0040/v3.md
+gate_skipped: []
+branch: factory/T-0040.1
+base: 37848dbb04f29c63d5d684a3b4c033ed41ede13e
+head: 37848dbb04f29c63d5d684a3b4c033ed41ede13e
+worktree: /Users/dphang/dev/spec-factory/.factory/store/worktrees/T-0040.1
+resolution: null
+environment_files: []
+confidence: high. Every other criterion and both gates passed on 656c179, and the one failure is reproduced
+  and traced to the two design lines that cause it.
+escalations:
+- 'The NEW criterion "A stopped driver ends its role process, records the run as killed and resumes from
+  the stored state" expects `running=1`. With the approved design it prints `running=2`. Design.md A.7
+  makes `last` the start step line `… start triage run-0001-triage`, and the `running` list also names
+  that run, so the command''s `grep -c ''run-0001-triage''` counts both lines. A ruling is needed. I recommend
+  amending the scenario to count only the `running` list, for example `grep -c ''^- run: run-0001-triage''`.
+  The alternative is to change A.7 so that `last` or the start step leaves out the run id. The implementation
+  is complete at 656c179 and needs no further change under the recommended amendment.'
+escalations_note: null
