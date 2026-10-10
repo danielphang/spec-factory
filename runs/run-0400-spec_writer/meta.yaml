@@ -1,0 +1,30 @@
+run_id: run-0400-spec_writer
+role: spec_writer
+ticket: T-0040
+model: opus
+round: 0
+spec_version: 0
+started: '2026-10-09T18:51:26+00:00'
+finished: '2026-10-09T19:15:27+00:00'
+wall_s: 1441
+status: NEEDS-SPLIT
+input_sources:
+- runs/run-0399-triage/output.md
+- requests/T-0040.md
+- openspec/specs/build-dispatch/spec.md
+- openspec/specs/harness-docs/spec.md
+- openspec/specs/live-store-guard/spec.md
+- openspec/specs/role-inputs/spec.md
+- openspec/specs/run-environment/spec.md
+- decisions.md
+confidence: medium. The routing is pinned by side-by-side records against the scripts, and every fixture
+  and check was run on this checkout. How real roles behave under `dontAsk` and the allowlists, and whether
+  concurrent `claude -p` processes conflict, can only be shown by the operator's first real runs.
+escalations:
+- Claude Code's auto-mode permission check in this session refused one plain `bin/factory drive T-0001
+  --phase intake` command as "Create Unsafe Agents". The implementer's and verifier's sessions may meet
+  the same refusal when they run this change's scenarios or suite tests, as T-0030.1 did ("Code from External").
+  If the build parks on it, the operator needs to allow the command for those runs.
+- This spec overturns build spec row R6's "Never `bypassPermissions` (nor `dontAsk`)". The Decisions line
+  gives the reason and the documentation evidence. The operator approves the change at the spec gate.
+escalations_note: null

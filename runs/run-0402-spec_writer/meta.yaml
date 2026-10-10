@@ -1,0 +1,27 @@
+run_id: run-0402-spec_writer
+role: spec_writer
+ticket: T-0040
+model: opus
+round: 2
+spec_version: 1
+started: '2026-10-09T19:22:14+00:00'
+finished: '2026-10-09T19:29:08+00:00'
+wall_s: 414
+status: NEEDS-SPLIT
+input_sources:
+- runs/run-0399-triage/output.md
+- requests/T-0040.md
+- openspec/specs/build-dispatch/spec.md
+- openspec/specs/harness-docs/spec.md
+- openspec/specs/human-resolution/spec.md
+- openspec/specs/live-store-guard/spec.md
+- openspec/specs/role-inputs/spec.md
+- openspec/specs/run-environment/spec.md
+- decisions.md
+- runs/run-0401-critic/output.md
+- specs/T-0040/v1.md
+confidence: medium, the routes, argv checks and baselines were run against this checkout and every critic
+  finding is addressed; behaviour under real `claude -p` runs (concurrency, `dontAsk` denials, prompt
+  mode) can only be checked by the operator steps.
+escalations: []
+escalations_note: null

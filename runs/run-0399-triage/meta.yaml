@@ -1,0 +1,16 @@
+run_id: run-0399-triage
+role: triage
+ticket: T-0040
+model: opus
+round: 0
+spec_version: 0
+started: '2026-10-09T18:49:34+00:00'
+finished: '2026-10-09T18:51:07+00:00'
+wall_s: 93
+status: ACCEPT
+input_sources:
+- requests/T-0040.md
+confidence: medium. The intent and the operator's choice are clear, but the request has grown through
+  four absorbed issues and one superseded mechanism, so the spec must state which version it builds.
+escalations: []
+escalations_note: null
