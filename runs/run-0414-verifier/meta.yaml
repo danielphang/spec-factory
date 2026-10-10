@@ -1,0 +1,36 @@
+run_id: run-0414-verifier
+role: verifier
+ticket: T-0040.3
+model: opus
+round: 1
+spec_version: 4
+started: '2026-10-10T17:32:54+00:00'
+finished: '2026-10-10T17:42:37+00:00'
+wall_s: 583
+status: VERIFIED
+input_sources:
+- specs/T-0040.3/subticket.md
+- specs/T-0040/v4.md
+- runs/run-0412-implementer/output.md
+- runs/run-0414-verifier/diff.patch
+- approvals/T-0040.3/ruling-1.md
+gate_skipped: []
+environment_files: []
+branch: factory/T-0040.3
+base: 18fbe88ba88be7f2ae2dbebca09586bd25caf50d
+head: 0e99ddad7eb10387369fac62286f8520fd6a1a67
+worktree: /Users/dphang/dev/spec-factory/.factory/store/runs/run-0414-verifier/wt
+confidence: high, because the NEW criterion fails on base exactly as the spec says and passes exactly
+  on the PR, all ten regression scenarios printed their THEN lines on this head, both gates passed, and
+  the probes found the documents' claims match the code. The one thing not checked is the driver's behaviour
+  under a real `claude`, which Operator step 1 covers.
+escalations:
+- none
+- 'Out-of-scope observations:'
+- The sub-ticket's REGRESSION line says "nine" scenarios, but it names ten and the spec has ten WHENs.
+  All ten were run. The miscount is in the plan text and changes nothing.
+- 'The implementer made four README edits the sub-ticket does not list: the directory tree, the fence
+  bullet, the "Running on another agent host" sentence, and "Related work and history". Each fixes a sentence
+  this change would otherwise have left stale. Whether they are in scope is for the code reviewer to judge,
+  not something the acceptance criteria decide.'
+escalations_note: null

@@ -1,0 +1,22 @@
+run_id: run-0415-verifier
+role: verifier
+ticket: T-0040
+model: opus
+round: 0
+spec_version: 4
+started: '2026-10-10T17:44:06+00:00'
+finished: '2026-10-10T17:55:18+00:00'
+wall_s: 672
+status: VERIFIED
+input_sources:
+- specs/T-0040/v4.md
+gate_skipped: []
+environment_files: []
+branch: null
+base: 37848dbb04f29c63d5d684a3b4c033ed41ede13e
+head: ae19b1a0a3e7a085da3986d8737542672a60d007
+worktree: /Users/dphang/dev/spec-factory/.factory/store/runs/run-0415-verifier/wt
+confidence: high, every scenario ran verbatim on head and base with the exact expected outputs, the full
+  suite passed, and 14 off-script probes gave the same routes as the scripts
+escalations: []
+escalations_note: null

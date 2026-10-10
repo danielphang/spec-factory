@@ -97,3 +97,9 @@ Prior findings (round 1):
 - [NIT] 4 Withheld tools unstated → RESOLVED. The tool-limits Decision now states that every other tool is withheld and why that is safe.
 
 Everything that held in round 1 still holds: the parity scenarios compare order-free records byte for byte, the NEW items fail today for the stated reasons (one re-run by me), protected path `factory/**` is declared, the design respects the T-0024 fence decisions, and the A/B/C split has natural seams. I would bet on this spec producing a correct PR.
+
+## Verifier results
+
+0e99ddad7eb10387369fac62286f8520fd6a1a67 · T-0040.3 · VERIFIED · run-0414-verifier
+4bfedc74920c11f0b8ccdde14ec02d6b04a74ab8 · T-0040.2 · VERIFIED · run-0410-verifier
+656c179f4a4f4631b8fa61e037c7f871f36cd26d · T-0040.1 · VERIFIED · run-0407-verifier

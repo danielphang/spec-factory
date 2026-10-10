@@ -3,10 +3,10 @@ type: sub-ticket
 title: Documents
 request: requests/T-0040.md
 source: plan:run-0404-planner
-status: ready-for-implementer
+status: merged
 round:
   spec: 0
-  pr: 0
+  pr: 1
 spec:
   version: 4
   approved_version: 4
@@ -38,16 +38,36 @@ history:
   by: dphang
   resolve: ruling
   ruling: approvals/T-0040.3/ruling-1.md
+- ts: '2026-10-10T17:32:36+00:00'
+  from: ready-for-implementer
+  to: checks-in-flight
+  by: workflow
+  round:
+    spec: 0
+    pr: 1
+- ts: '2026-10-10T17:43:22+00:00'
+  from: checks-in-flight
+  to: ready-for-merge
+  by: workflow
+  round:
+    spec: 0
+    pr: 1
+- ts: '2026-10-10T17:43:31+00:00'
+  from: ready-for-merge
+  to: merged
+  by: merge
+  head: 0e99ddad7eb10387369fac62286f8520fd6a1a67
 parent: T-0040
 depends_on:
 - T-0040.1
 - T-0040.2
 parallel_safe: false
-branch: null
-head: null
+branch: factory/T-0040.3
+head: 0e99ddad7eb10387369fac62286f8520fd6a1a67
 merge:
-  base_before: null
-  main_after: null
+  base_before: 18fbe88ba88be7f2ae2dbebca09586bd25caf50d
+  main_after: ae19b1a0a3e7a085da3986d8737542672a60d007
 parent_base: null
 label: T-0040.C
 planned_from: 3
+merge_refused: null

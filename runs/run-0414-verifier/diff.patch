@@ -1,0 +1,255 @@
+diff --git a/README.md b/README.md
+index dcfcc58..b52dbc4 100644
+--- a/README.md
++++ b/README.md
+@@ -6,7 +6,7 @@ table, and human gates. This page is the system as it runs today; install and us
+ 
+ | | |
+ |---|---|
+-| **Status** | Current state as of 2026-10-09. Intake works end to end. Build works, in local-only mode. |
++| **Status** | Current state as of 2026-10-10. Intake works end to end. Build works, in local-only mode. |
+ | **Reader** | Technical, seeing this project for the first time. Terms specific to this system are defined in "Terms used on this page" or at first use. |
+ | **Scope** | What runs now. The intended design and its reasoning are in `docs/design.md`; where the two disagree, this page is right about what runs and the design is amended. |
+ | **Internal references** | Ticket ids, issue numbers and who did what are in "Related work and history" near the end. |
+@@ -96,7 +96,7 @@ entry but no prompt and no way to run yet.
+ 
+ ### What depends on Claude Code
+ 
+-Most of the factory is plain files and a Python program. Four pieces assume Claude Code.
++Most of the factory is plain files and a Python program. Five pieces assume Claude Code.
+ 
+ | Piece | Claude Code only? | Why |
+ |---|---|---|
+@@ -104,6 +104,7 @@ Most of the factory is plain files and a Python program. Four pieces assume Clau
+ | Role prompts, the spec format, the store's files | no | Markdown, YAML and JSONL |
+ | The workflow scripts (`factory/workflows/*.js`) | yes | written for Claude Code's Workflow tool: `agent()` with a JSON schema for each clerk reply, `parallel()` for the two checkers, `phase()` for the progress view |
+ | Role agents (`agents/`, copied into a target's `.claude/agents/`) | yes | Claude Code agent definitions, with a tool list per role; Claude Code registers them only when a session starts |
++| Role processes of `factory drive` (`factory/drive.py`) | yes | each role runs as one headless `claude -p` process with `--output-format json` and `--permission-mode auto`, its role's prompt file, model and optional `--effort`, and its tool limits given by `--tools` and `--allowedTools` |
+ | Model names (`models` in `instance.yaml`) | yes | Claude model aliases |
+ | Token cost per role (`factory/cost.py`) | yes | reads the Workflow tool's transcript files |
+ 
+@@ -433,7 +434,8 @@ git ignores them.
+ │       │                          written against; specs/<T>.<k>/subticket.md for each sub-ticket
+ │       ├── plans/<T>.md           the planner's plan
+ │       ├── runs/run-NNNN-<role>/  one per role run: system-prompt.txt, input.md, output.md,
+-│       │   │                      meta.yaml (status, model, base, head), diff.patch for checkers
++│       │   │                      meta.yaml (status, model, base, head), diff.patch for checkers,
++│       │   │                      reply.json for a role `factory drive` ran
+ │       │   ├── scratch/           ignored: the run's temporary files
+ │       │   └── wt/                ignored: a checker's detached checkout of the judged commit
+ │       ├── results/<commit>/      reviewer.yaml, verifier.yaml, ci.yaml: the verdicts on that commit;
+@@ -446,6 +448,7 @@ git ignores them.
+ │       │                          moved to openspec/changes/archive/<date>-<T>/ when it closes
+ │       ├── decisions.md           standing decisions; the spec writer, critic and planner read it
+ │       ├── log/<YYYY-MM>.jsonl    one event per state change, run and decision, appended
++│       ├── drive/<T>.yaml         ignored: the live status of `factory drive` on that ticket
+ │       └── worktrees/<T>.<k>/     ignored: the implementer's checkout, on branch factory/<T>.<k>
+ └── .claude/agents/factory-*.md    role agent definitions, where the target registers them
+ ```
+@@ -460,8 +463,9 @@ The store's path is `state_dir` in `instance.yaml`. `factory init` creates a new
+ | `instance.yaml`, `context.md` | integration | `factory init`, then edited by the operator | the operator | durable |
+ | `harness.lock` | integration | `factory init`; `--accept-harness` rewrites it | the operator | durable |
+ | `.claude/agents/factory-*.md` | integration | `factory init`, when they are missing | the operator, if the target keeps them | durable |
+-| Store records: requests, tickets, specs, plans, runs, results, approvals, current truth, changes, decisions, log | `factory-store` | the harness, through the workflows' clerk and the operator's commands | the operator, with `git -C <store> commit`; the harness commits the store once, the first commit `store migrate` makes | durable |
++| Store records: requests, tickets, specs, plans, runs, results, approvals, current truth, changes, decisions, log | `factory-store` | the harness, through the workflows' clerk or `factory drive`, and the operator's commands | the operator, with `git -C <store> commit`; the harness commits the store once, the first commit `store migrate` makes | durable |
+ | `runs/*/scratch/`, `runs/*/wt/`, `worktrees/` | none; git ignores them | `run start` | never | scratch until the ticket moves on (kept while parked); checker checkouts until `run cleanup`; implementer checkouts until the merge |
++| `drive/<ticket>.yaml` | none; git ignores it | `factory drive` | never | a live view of one driver process, rewritten at each step; kept until the next drive of that ticket |
+ | Sub-ticket branches, `factory/<T>.<k>` | their own | the implementer's commits | the implementer | kept after the merge |
+ | Merges of sub-tickets | integration | `merge` | the harness | durable |
+ 
+@@ -709,6 +713,50 @@ shows each agent as it runs. When the workflow ends, the session receives its re
+ `{"ticket": "T-0032", "state": "awaiting-spec-gate", "rounds": 1}`, and the ticket's record shows the
+ same state.
+ 
++### Driving a ticket from a shell with `factory drive`
++
++`factory drive` does the workflow scripts' job as an ordinary command, without the Workflow tool.
++It takes a ticket through the same routes as the scripts, with the same round limits and park
++reasons, and writes the same records. It calls the harness in its own process, so no clerk agent
++relays store commands. Each role runs as its own headless `claude -p` process, with that role's
++prompt, model and tool limits. The driver is tested, and has not yet run a real ticket. Until it
++has, the Workflow tool remains the tested route.
++
++1. From the target repo, start it on one ticket:
++
++   ```
++   $RUNTIME/bin/factory drive T-0032                  # the phase follows the stored state
++   $RUNTIME/bin/factory drive T-0032 --phase build --parallel 1
++   ```
++
++   Without `--phase`, a ticket in `ready-for-triage`, `ready-for-spec-writer` or `ready-for-critic`
++   goes through intake. A ticket in `ready-for-planner`, `planned` or `ready-for-parent-verify` goes
++   through the build. From any other state it prints "nothing to dispatch from this state" and ends.
++   Like the intake script, it stops at the spec gate: after you approve the spec, run it again.
++2. If any run is in flight on the target, put `FACTORY_DISPATCH=1` in front of the command, as for
++   any store write during a run ("Where a human decides"). Without it the live-store fence refuses
++   the command with exit 2. Once started, the driver marks its own store calls. Its role processes
++   never carry the marker.
++3. `--parallel N` sets how many sub-tickets build at once; the default is 2. A commit's reviewer
++   and verifier always run at the same time. Use `--parallel 1` if role processes running at once
++   conflict.
++4. Read the progress. It prints one line per step, such as
++   `T-0032.1 "Add the flag": start implementer run-0120-implementer`. Each line names the ticket or
++   sub-ticket the step concerns, with its title. The last line is the result as one JSON object:
++   what the matching script returns, with `"ok": true` added. The store's `drive/<ticket>.yaml`
++   shows the same while it runs: the role processes still running, the last step line, and the
++   result under `ended` once it stops. Git ignores that file.
++5. To stop it, press Ctrl-C or send SIGTERM. It ends its role processes, records their runs as
++   `KILLED`, parks nothing, and exits with 128 plus the signal number. Run the same command again to
++   resume from the stored state.
++
++Each role process's reply is kept as `reply.json` in its run directory. Its session id, cost in
++dollars, turn count and token usage are recorded under `claude:` in the run's `meta.yaml`. To give a
++role an effort level, add an `effort:` map to `.factory/instance.yaml`, such as
++`effort: {critic: high}`. The workflow scripts ignore it. `--prompt-mode replace` passes the role
++prompt as Claude Code's whole system prompt instead of appending it to Claude Code's own; it exists
++to measure which starts a role with less context.
++
+ ### Filing a request from an issue tracker
+ 
+ The harness has no tracker integration. A request is a Markdown file, and the link to an issue is
+@@ -855,7 +903,8 @@ path above is relative to the store.
+   for the operator and the run goes on. Neither prints a file's contents. It is tested, and has not
+   yet fired on a real ticket.
+ - **Live-store fence.** While a run is in flight on a target, a write to its store without the
+-  `FACTORY_DISPATCH=1` marker is refused. The workflow scripts mark their own commands, and the
++  `FACTORY_DISPATCH=1` marker is refused. The workflow scripts and `factory drive` mark their own
++  commands, the driver's role processes are never marked, and the
+   operator marks one command at a time ("Where a human decides"). A write run from inside the
+   store's `runs/` or `worktrees/` is refused even with the marker. The fence stops a role's tools,
+   such as its test suite, from changing the live records by accident; it is not isolation. It has
+@@ -900,6 +949,20 @@ path above is relative to the store.
+   `resolve --accept-paths F`, which accepts the paths for that sub-ticket and returns it to its
+   checks, whose passing results stand, or with `resolve --ruling F`, which sends it back to its
+   implementer. It is tested, and has not yet fired on a real ticket.
++- **The driver, `factory drive`.** An ordinary command that takes a ticket through intake, or
++  through the build after the spec gate, on the same routes as the workflow scripts: the same round
++  limits, refusals and park reasons, and the same records. It calls the harness in its own process,
++  so no clerk agent relays store commands. Each role runs as one `claude -p` process with its
++  role's prompt and model, under Claude Code's `auto` permission mode. Its file tools may edit only
++  the run's output file, its scratch directory and the temporary directory; the implementer may
++  also edit its own worktree. Shell commands are not limited. Each process's reply and cost are
++  recorded with its run. A commit's two checkers run at once, and ready sub-tickets build at once
++  up to `--parallel N`. The workflow scripts are unchanged beside it. It is tested, and has not yet
++  run a real ticket.
++- **Per-role effort, for driver runs only.** An optional `effort:` map in `instance.yaml` gives a
++  role an effort level, which `factory drive` passes to that role's process. A role not listed gets
++  Claude Code's default. The workflow scripts ignore the map, so a role they run has a model and no
++  effort level. Neither target sets it yet.
+ 
+ **Not built**
+ 
+@@ -910,7 +973,6 @@ path above is relative to the store.
+   for one operator and not for a team.
+ - **The retro role.** Reads the log and proposes changes to the prompts and rules from what went
+   wrong. No run has produced one yet.
+-- **Per-role effort settings.** Each role has a model; none has an effort level.
+ - **A status page.** `factory report TICKET` would render where a ticket is from the store alone.
+   Today you read the store's YAML or ask the session running it.
+ - **Current truth for the factory itself.** The spec store holds only the capabilities that
+@@ -943,7 +1005,8 @@ format and the store carry over unchanged. Only the pieces in "What depends on C
+ counterpart. Neither OpenAI Codex nor Google Antigravity has a scripted orchestrator inside the
+ agent session like Claude Code's Workflow tool. On either host, the workflow logic would move into
+ an ordinary script that starts one headless agent run per role and reads its JSON reply. That
+-script can call `bin/factory` itself, so the clerk role goes away.
++script can call `bin/factory` itself, so the clerk role goes away. On Claude Code that script
++exists: `factory drive`, described under "Starting a run".
+ 
+ | Need | Claude Code (today) | OpenAI Codex | Google Antigravity |
+ |---|---|---|---|
+@@ -990,13 +1053,15 @@ their store branch on 2026-10-04. The architecture subsections (what each role r
+ ticket states, both workflows step by step, what the factory keeps in a target, how it uses git,
+ filing from an issue tracker, what you read at each stop, other agent hosts) were added on
+ 2026-10-04 at the operator's request; the target layout answers issue #55. Open work named above:
+-`factory report` (#17); current-truth seeding (#21); per-role effort (#22); registered agents for
++`factory report` (#17); current-truth seeding (#21); registered agents for
+ the build roles, which `inlineRoles` works around today (#24); a stopped run that stays in flight
+-(#53). Earlier sources: prompt changes borrowed from the ponytail project (#20); the documentation
++(#53). The driver, `factory drive`, answers #65 and absorbs per-role effort (#22), the operator's
++latest chat message reaching every role agent (#28), titles beside ticket ids in progress output
++(#47) and the checkers' tool limits (#24 part A); retiring the workflow scripts is a later ticket. Earlier sources: prompt changes borrowed from the ponytail project (#20); the documentation
+ standard this page follows (#23); each run's scratch directory (#35); the store branch (#46). The
+ design document is `docs/design.md`, its changelog `docs/changelog.md`; the working documents from
+-building the harness are under `dev/`; the issue index is `dev/issues.md`. The store holds 32
+-tickets and 26 sub-tickets at `.factory/store/`; the runtime is at `~/dev/spec-factory-harness`,
++building the harness are under `dev/`; the issue index is `dev/issues.md`. The store holds 40
++tickets and 47 sub-tickets at `.factory/store/`; the runtime is at `~/dev/spec-factory-harness`,
+ commit `639fcb5`, and its harness revision `da50576` equals this repo's `harness.lock`.
+ 
+ ## Maintaining this page
+diff --git a/dev/build-harness.spec.md b/dev/build-harness.spec.md
+index 814042c..d7988d4 100644
+--- a/dev/build-harness.spec.md
++++ b/dev/build-harness.spec.md
+@@ -112,10 +112,10 @@ Rows marked "ruling" are decided; rows marked "default" are mine and repeat unde
+ |---|---|---|---|
+ | R1 | Target and shape | `~/dev/nanobot-upstream`, branch `feat/lionbot-v3`; skills/agent definitions under `.claude/` + `factory/` package + `/factory` entry skill | ruling + addendum 2 |
+ | R2 | Git server | Bare repo `~/factory-remote/nanobot.git`, pre-receive hook, one deploy key per role; GitHub remote untouched | ruling + addendum 1 |
+-| R3 | **Dispatcher** | Claude Code **Workflow tool**: `factory/workflows/intake.js` and `factory/workflows/build.js`; fresh context per `agent()`; join, round counters and routing are plain code in the script. The three v0 limits of doc §Harness table piece 2 apply: (1) no filesystem or clock, so the clerk calls the store CLI and the guards live in the CLI (B); (2) the piece-3 kill is post-hoc (I.5); (3) fresh context, not isolation: every `agent()` call shares the session's checkout, credentials and git identity (Risk R1, R6). The cron/`factory loop` dispatcher of v1 is **deferred to a later ticket** | addendum 1 |
++| R3 | **Dispatcher** | Claude Code **Workflow tool**: `factory/workflows/intake.js` and `factory/workflows/build.js`; fresh context per `agent()`; join, round counters and routing are plain code in the script. The three v0 limits of doc §Harness table piece 2 apply: (1) no filesystem or clock, so the clerk calls the store CLI and the guards live in the CLI (B); (2) the piece-3 kill is post-hoc (I.5); (3) fresh context, not isolation: every `agent()` call shares the session's checkout, credentials and git identity (Risk R1, R6). The cron/`factory loop` dispatcher of v1 is **deferred to a later ticket**. Beside the scripts, `factory drive TICKET` (`factory/drive.py`) does the same routing as an ordinary Python process: it calls the store CLI in its own process, so it has no clerk and limit (1) does not apply, and it starts each role as one `claude -p` process (part H) | addendum 1; driver: issue #65 |
+ | R4 | Isolated run | Implementer and retro: `agent(..., {isolation: 'worktree'})` on `~/factory/clone`; checkers: fresh context, read + shell, checkout of the head made by the clerk in `~/factory/runs/<run_id>/wt`; Docker deferred | ruling + E7 |
+ | R5 | Tracker / human surface | `tickets/` YAML + `queue.md` on branch `factory-store` of the bare repo (v3 called it `factory/state`; same checkout `~/factory/state`); approved specs also exported to `knowledge_vault/sanitized_specs/<ID>.md` | ruling + addendum 2 (location: default) |
+-| R6 | Permissions | Never `bypassPermissions` (nor `dontAsk`). Role agent definitions carry `tools:` allowlists: checkers and read-only authors Read/Grep/Glob/Bash, no Edit/Write; implementer and retro add Edit/Write; clerk Bash only, allowed `Bash(factory *)`, `Bash(git *)`. Real runs: the operator's session runs `/factory` with `--permission-mode acceptEdits` and `--allowedTools "Bash(factory *)" "Bash(git *)" "Bash(pytest *)" "Bash(ruff *)" "Bash(mypy *)" Read Grep Glob Edit Write Skill Workflow`; anything outside that list prompts the operator (the session is attended in v0). With the per-role keys (E) this is the fence for v0 limit (3), shared identity and credentials. See Risk R6 | ruling; mode/allowlist: default (critic S3) |
++| R6 | Permissions | Never `bypassPermissions` (nor `dontAsk`). Under `factory drive`, roles run under `--permission-mode auto` plus allowlists instead: `--tools` is Read, Grep, Glob, Bash, Write, WebFetch and WebSearch, with Edit added for the implementer, and `--allowedTools` allows Read, Grep, Glob, Bash, WebFetch and WebSearch, plus `Edit` rules, which also cover Write, for only the run's `output.md`, its `scratch/`, the temporary directory and, for the implementer, its worktree; Bash is not restricted. Role agent definitions carry `tools:` allowlists: checkers and read-only authors Read/Grep/Glob/Bash, no Edit/Write; implementer and retro add Edit/Write; clerk Bash only, allowed `Bash(factory *)`, `Bash(git *)`. Real runs: the operator's session runs `/factory` with `--permission-mode acceptEdits` and `--allowedTools "Bash(factory *)" "Bash(git *)" "Bash(pytest *)" "Bash(ruff *)" "Bash(mypy *)" Read Grep Glob Edit Write Skill Workflow`; anything outside that list prompts the operator (the session is attended in v0). With the per-role keys (E) this is the fence for v0 limit (3), shared identity and credentials. See Risk R6 | ruling; mode/allowlist: default (critic S3) |
+ | R7 | Faux-SPEC input / sanitized output | `knowledge_vault/specs/*.md` → `knowledge_vault/sanitized_specs/` | addendum 2 |
+ | D1 | Trunk | The bare repo's `main`, seeded once from `feat/lionbot-v3` by `factory init` | default |
+ | D2 | Language, deps, gates | Python 3.11+, `pyyaml`; factory gates `ruff check factory tests/factory && mypy factory && pytest -q tests/factory`; repo `{gate commands}` default `pytest -q` | default; Nanobot's own commands unknown |
+@@ -292,13 +292,15 @@ Common step `runRole(role, ticket, head)` in both scripts: clerk `factory run st
+ 
+ Resumption after a human decision: the `/factory` skill re-runs `build.js` for the parent; the clerk's `ready-implementers` returns the sub-ticket the human moved to `ready-for-implementer` (`resolve --ruling`, `--redispatch`), and `buildOne` starts from the state the store holds (round from the store; for `--redispatch` after a checker kill, only the missing checker runs: `ready-checkers ST` lists roles without a row on the current head; a `--ruling` on BLOCKED re-runs the implementer at the same round with the ruling in its input, K).
+ 
++**`factory drive`** (`factory/drive.py`) does the same routing outside the Workflow tool. It ports both scripts from `// --- start`, `build.js` with its `buildOne`, branch for branch, with the same commands, transitions, round limits and park reasons, so a ticket it drives leaves the records the scripts leave. In place of the clerk it calls `factory.cli.main` in its own process, one call at a time, so every guard, the fence and the harness lock run as for `bin/factory`. Each role runs as one `claude -p` process from the run's directory; its reply is kept as `runs/<run_id>/reply.json` and recorded by `run finish --reply`. A head's two checkers run at once, ready sub-tickets build at once up to `--parallel N`, and the driver stops at the spec gate. Its permissions are in R6 and I.4.
++
+ ### I. Isolated run per role (piece 3) — worktree v0
+ 
+ 1. System prompt = the agent definition (`factory/prompts/preamble.md` is read by its first instruction); the clerk records it in `runs/<run_id>/system-prompt.txt`.
+ 2. Input composed by `factory run compose RUN` (B): the role-context block (doc §Harness), then exactly the declared sources (H), written as `runs/<run_id>/input.md` with `input_sources:` in `meta.yaml` **before** the role runs; the role's prompt is a pointer to that file, so what the role saw is auditable and no second composition path exists.
+ 3. Mutating roles get `isolation: 'worktree'` (E7), which the Workflow tool creates and removes; the implementer's `git push` uses the implementer key via `GIT_SSH_COMMAND` set in its agent definition's `env:` (not verified: whether agent-definition frontmatter supports `env:`; fallback: a `factory git-push ticket/<ID>` wrapper the implementer is allowed to run, which supplies the key). Checkers run read+shell in a checkout the clerk made; they have no key, so a push fails at authentication.
+    - Environment sync: when the instance sets `environment_sync`, `run start` runs that command in each build checkout (the implementer's worktree at every dispatch, and each checker's checkout) through the running-code wrapper, after the environment files are copied and before the role starts. A failure refuses the run, with the command and its output in `runs/<id>/environment-sync.log`.
+-4. Tool restriction is the agent definition's `tools:` (R6); no `bypassPermissions` anywhere; `--restricted` applies to `claude -p` test drivers (E6).
++4. Tool restriction is the agent definition's `tools:` (R6); no `bypassPermissions` anywhere; `--restricted` applies to `claude -p` test drivers (E6). Under `factory drive`, the tool restriction is the role process's `--tools` and `--allowedTools` instead (R6).
+ 5. Empty output (doc §Routing rules): no time or token budget is enforced, and `agent()` reports no reason a run stopped, so no empty output is a budget kill. A run that ends without its output file, or with a blank one, is `EMPTY-OUTPUT` in `run finish`, whether `agent()` returned text, blank text or `null` (a user skip or a terminal error). When the returned text is non-blank, the script keeps its last 4000 characters with `run last-message`. The same role is re-dispatched once, on the same inputs and in the same round; a second `EMPTY-OUTPUT` in a row parks `EMPTY-OUTPUT from <role>` with both runs as outputs and records no result row for it, so `resolve --redispatch` re-runs only that role. A thrown `agent()` stays `KILLED`, parked `agent call failed: <role>: <error>`, with no re-dispatch. Until a run returns, a hung agent blocks `parallel()` and every sibling in that join; the user skipping the agent is the one manual stop (E7; Open question 4).
+ 6. After each run: `meta.yaml` complete, the checker worktree removed by the clerk (`factory run cleanup RUN`). The run's `runs/<run_id>/scratch/` stays until its ticket's next state change other than `parked`, which removes it (`store.save_ticket`).
+ 
+diff --git a/docs/changelog.md b/docs/changelog.md
+index d90de0a..6d55447 100644
+--- a/docs/changelog.md
++++ b/docs/changelog.md
+@@ -68,5 +68,6 @@ Six review rounds ran on this doc, using the reviewer prompt in the appendix. Ro
+ 64. After issue #76 (2026-10-09), where five of the seven role prompts, triage, planner, implementer, code reviewer and verifier, lacked the reading rules that #73 gave the spec writer and critic, though the implementer and verifier run test suites and other long commands, and every later turn re-sends what a run has read. Each of the five prompts gains the critic's Turn economy bullet, word for word: put independent reads and commands in one turn, read a line range once grep has found it, and send long output to a file in the run's scratch directory and grep or tail it. The spec writer's sentence on writing the spec in as few writes as possible stays out. The bullet goes directly before the declared-path rule in the implementer's and verifier's RULES, last in the code reviewer's WHAT YOU RUN, and last in the planner's and triage's RULES. #74's replay (entry 59) found that these rules cut the spec writer's tokens by about 37% at the same quality, but it tested the critic's reading rules only together with a cap on checking, and that pair saved nothing and made the critic check less. Nothing else in the five prompts changes, and the hook that would refuse whole-file reads and uncapped searches stays with #65. The runtime moves to these prompts only after the operator's replay of past implementer and verifier runs, with the old and the new prompts, holds quality. Rejected: a shared preamble line, which would also reach the spec writer and critic, which already carry the rules.
+ 65. After issues #44 and #50 (2026-10-04), where scenarios approved at the spec gate could not pass once another ticket merged first, and nothing could correct the pinned spec: on the Nanobot target, two scenarios of its ticket T-0008 created no policy file after a merged ticket made one mandatory, rulings let the build go on, and archive would still have written the unamended scenarios into current truth; here, T-0012's pinned spec was edited in place by hand, and a test that merged after T-0032's spec was written blocked T-0032.1's implementer. A human now amends a pinned spec with `factory spec amend <ticket id> --file F --reason "<line>" --intent unchanged`. It writes F as the next version and makes it the approved one, which every later role run receives. It re-pins the change folder but keeps the planner's `tasks.md`, so archive writes the amended scenarios. `--intent` is required: the harness checks that the Problem, every Decisions line, and each requirement's name, operation and statement are unchanged. It refuses `--intent changed`, or any such difference, with a restart note that names the merged sub-tickets a restart keeps, the unmerged ones it discards, and the commands to re-spec and re-plan or to close and re-file. It also refuses, writing nothing, while any run is in flight on the ticket or its sub-tickets, on a sub-ticket, at the gate, on a closed or archived ticket, and for a version that fails the gate's checks. Each amendment is recorded in `approvals/<ticket id>/amendment-<n>.md`, logged as `spec.amended`, and changes no ticket state. Every stored spec version now records the integration branch's head in `specs/<ticket id>/v<n>.yaml`. Before a sub-ticket's first implementer run, `run start` checks for spec drift: its Acceptance names an unmerged sibling it does not depend on, or a test file changed since its parent's approved version was written, in a commit that also changed a file the design names, and no Tests to change list names it. Drift refuses the run with an error that starts `BLOCKED from harness: spec drift:`, and the build parks the sub-ticket; the human amends, rules, or both, and a ruling on file stops the check. Measured on both stores' history, the test rule would have caught 9 of 10 known breaks and parks about half of all sub-tickets. The critic now receives every other approved change not yet archived, with the requirements it changes and its decisions, and its rubric item 5 makes a scenario BLOCKING when its setup would not hold whichever of the two tickets merges first. Rejected: the build spec's unbuilt `resolve --amend-spec`, because an amendment may be needed while the ticket is not stopped; a critic run on every amendment, which needs a new route; running each scenario at build start, whose expected failure is prose a program cannot compare; and a new park status for drift, which needs a new `resolve` route.
+ 66. After issue #51 (2026-10-04), where every build role lost its first attempt to a broken Python environment: a role's shell inherited the virtual environment activated in the session that launched the factory, which on this machine belongs to another repository's checkout, and each fresh build checkout had no `.venv`, so a `uv run --no-sync` check failed on its first import until the implementer, then the reviewer, then the verifier each installed the environment themselves. The running-code wrapper, around every role command and every gate command, now first removes the exact `$VIRTUAL_ENV/bin` entry from `PATH` and unsets `VIRTUAL_ENV` and `PYTHONHOME`, then sets the fresh HOME and the `run_env` exports as before. An instance may name one shell command, `environment_sync`, in `instance.yaml`. `run start` runs it through that wrapper in the run's checkout, the implementer's worktree at every dispatch and each checker's checkout, including the parent-close verifier's, after the environment files are copied and before the role starts. On success the run's `meta.yaml` records the command and the role's input ends its "Where you work" section with a line saying the environment is already synced and should not be synced again unless the change alters the files it is built from. A failed sync refuses the run start with exit 2 and one line naming the exit code and the run's `environment-sync.log`, which holds the command and its full output; no run is recorded or put in flight, and a checker's checkout is removed while the implementer's worktree is kept. Without the key nothing runs and the input is as before. Rejected: unsetting only the two variables, which leaves the environment's `python` first on `PATH`; an opt-in way to unset variables through `run_env`, which would leave the deactivation off by default; syncing only when the implementer's worktree is first created, because the environment files and a conflict run's merge can change the lock file at a later dispatch; and quoting the command or its output in the refusal, because the build workflow expands backticks and `$` in a park reason.
++67. After issue #65 (2026-10-05), where the dispatcher, a Workflow-tool script that can run no command and read no file, sent every store read and write through a clerk agent: the requester counted 2,236 clerk agents and 4,476 calls over 97 runs, 143M of 866M workflow context tokens (17%), and the clerk was most of the wait between steps. On 2026-10-09 the clerk also returned a correct `run finish` reply pretty-printed across lines, so T-0027.2's build parked as `harness-bug: run finish reviewer:` although the reviewer's run had succeeded. `factory drive TICKET [--phase intake|build] [--parallel N] [--prompt-mode append|replace]` (`factory/drive.py`) now does the scripts' job as an ordinary Python process. It ports both scripts branch for branch, with the same routes, round limits, refusals and park reasons, and stops at the spec gate. It calls the store CLI's entry point in its own process, one call at a time, so it has no clerk and every guard, the fence and the lock run as for `bin/factory`. It marks its own store calls with `FACTORY_DISPATCH=1` once started and never its role processes. Each role runs as one `claude -p` process from its run directory, with `--output-format json`, `--permission-mode auto`, the role's prompt file, model and an optional `--effort` from a new `effort:` map in `instance.yaml`, and `--tools`/`--allowedTools` lists whose `Edit` rules cover only the run's output file, its scratch directory and the temporary directory, plus the implementer's worktree. The reply is kept as `reply.json`, and `run finish --reply` records its session id, cost, turns and usage under `claude:` in `meta.yaml`. Progress is one line per step naming the ticket or sub-ticket and its title, and a status file, `drive/<ticket>.yaml`, which the store's `.gitignore` excludes. SIGINT or SIGTERM ends the role processes, records their runs `KILLED`, parks nothing, and a second run resumes. Absorbed: #22 (per-role effort), #28 (the operator's latest chat message reaching every role agent as overriding its task), #47 (a title beside every ticket id in progress output) and #24 part A (the checkers' tool limits). The workflow scripts stay unchanged until the driver has taken a real ticket through each half; retiring them and the clerk is a later ticket. Rejected: `dontAsk`, which removes the permission classifier while roles have no operating-system isolation (#37); the build spec's "nor `dontAsk`" stays. Rejected: a `bin/factory` subprocess per store call, and calling store functions below the CLI's entry point, which would skip the fence and the lock.
+ 
+ Declined: a dedicated merge agent (merging is gate config plus human gates, not a judgment call).
+diff --git a/docs/design.md b/docs/design.md
+index 4c1fdb0..5844e4f 100644
+--- a/docs/design.md
++++ b/docs/design.md
+@@ -41,7 +41,7 @@ The prompts say what each role does. The harness enforces the wiring rules: fres
+ | # | Piece | What it must do | GitHub gives you | Minimum portable substitute |
+ |---|---|---|---|---|
+ | 1 | Ticket store | One record per ticket and sub-ticket: status, type, spec text and version, PR link, round counter, history. The spec gate pins the version the human approved, including any edits made at the gate. This is the state machine's memory. A store CLI (read, transition, record) fronts it: the dispatcher chooses the transition, the CLI rejects any not in the routing table and any round past the cutoff, and the clerk goes through it too | Issues + labels | Any tracker (Jira, Linear) or a table in a DB. A `factory-store` branch of YAML works to start: the pre-receive hook restricts it to harness and human identities and exempts it from the merge gate |
+-| 2 | Event dispatcher | Notice a state change and start the right role with the right inputs. Routes on the `STATUS:` line of the last output, per the routing table | Webhooks + Actions `on:` events | A loop (cron, every 1–5 min) that queries the store for tickets in a "ready for X" state and launches X. Polling is fine; nothing here is latency-sensitive. For a v0 inside one Claude Code session, a Workflow script: each agent() call is a fresh context, the fan-out, join, and round counters are plain code, and the same routing table lifts into the loop later. Three v0 limits. (1) The script has no filesystem or clock, so store reads and writes go through a clerk agent calling the CLI; the guards live in the CLI, not the clerk. The clerk never restates a command's output: it returns stdout verbatim with the exit code and stderr, and the script parses the JSON itself, since a schema shaped like the command's output lets the clerk re-type the answer and still validate. A non-zero exit is a refusal and no JSON on stdout is a failed store call; neither is ever read as an answer. (2) A hung agent blocks the join until a human skips it, so the piece-3 kill is post-hoc. (3) v0 gives fresh context, not isolation: every agent() call shares the session's checkout, credentials, and git identity. Use a worktree per call, run the clerk's CLI under a harness identity that has no verb for approval rows (humans write those directly), and treat v0 as exercising the routing table, not as producing trusted merges |
++| 2 | Event dispatcher | Notice a state change and start the right role with the right inputs. Routes on the `STATUS:` line of the last output, per the routing table | Webhooks + Actions `on:` events | A loop (cron, every 1–5 min) that queries the store for tickets in a "ready for X" state and launches X. Polling is fine; nothing here is latency-sensitive. For a v0 inside one Claude Code session, a Workflow script: each agent() call is a fresh context, the fan-out, join, and round counters are plain code, and the same routing table lifts into the loop later. Three v0 limits. (1) The script has no filesystem or clock, so store reads and writes go through a clerk agent calling the CLI; the guards live in the CLI, not the clerk. The clerk never restates a command's output: it returns stdout verbatim with the exit code and stderr, and the script parses the JSON itself, since a schema shaped like the command's output lets the clerk re-type the answer and still validate. A non-zero exit is a refusal and no JSON on stdout is a failed store call; neither is ever read as an answer. (2) A hung agent blocks the join until a human skips it, so the piece-3 kill is post-hoc. (3) v0 gives fresh context, not isolation: every agent() call shares the session's checkout, credentials, and git identity. Use a worktree per call, run the clerk's CLI under a harness identity that has no verb for approval rows (humans write those directly), and treat v0 as exercising the routing table, not as producing trusted merges. `factory drive TICKET` is the external dispatcher, outside the Workflow tool: an ordinary Python process that routes as the two scripts do and calls the store CLI's own entry point in its own process, one call at a time. It has no clerk, so limit (1) does not apply to it. It starts each role as one headless `claude -p` process from the run's directory, with the role's prompt, model, effort and tool limits, and stops at the spec gate. Limits (2) and (3) still hold: no role process has a time limit, and every role process runs under the operator's own login and settings |
+ | 3 | Isolated run per role | Every role invocation starts in a clean checkout with no memory of earlier runs and only its declared inputs. This is what "fresh context per checker" means in practice | Actions job on a fresh runner | A container or VM per run (Docker, Firecracker, K8s Job). Run `claude -p` with the preamble + role prompt as the system prompt and the inputs on stdin. Destroy the environment after. A run that exceeds {time budget, token budget} is killed, recorded as a result row for that head and role so no join waits on it, and its ticket parked |
+ | 4 | Scoped credentials | Each role gets only the access its rules allow. Implementer: push to its own branch. Triage, spec writer, critic, planner, reviewer, verifier, and gate runner: read-only clone plus a shell, with no secrets in the environment, since they run PR code before any security check has passed (model access through a proxy sidecar that holds the key, so the container has none to leak; no git write token; restricted egress). Retro: push a branch and open a PR, nothing else. No role can push to main. Only the harness identity and humans write the ticket store; role outputs enter it through the dispatcher, and the merge gate accepts an approval row only if a human identity pushed it, judged by the server's pusher identity, not the commit author | Job-level `permissions:` on a per-job `GITHUB_TOKEN` | One git user or deploy key per role, with server-side rights set on the git host. Secrets injected per job from a vault or env, never baked into the image |
+ | 5 | Change proposal | A unit of review: a branch, its base, its head commit, and a place for the PR description and findings. Approvals attach to the head commit. Fix rounds push to the same branch, which is the ticket's identity | Pull requests | A branch naming convention (`ticket/<id>`) plus a record in the ticket store holding base, head SHA, and the description. GitLab MRs or Gerrit changes are direct equivalents |
+@@ -61,7 +61,7 @@ The prompts say what each role does. The harness enforces the wiring rules: fres
+ 
+ **Spec drift.** Between the writing of a spec and the build of one of its sub-tickets, other tickets merge, and a sibling that the sub-ticket's checks rely on may not have merged yet. The harness checks for this before the implementer spends a run on it. Every spec version the store keeps, from `spec add`, a gate edit or `spec amend`, records the integration branch's head when it was stored, as `integration_head` in `specs/<ticket id>/v<n>.yaml`; the value is null when the target repo or branch does not resolve. Before a sub-ticket's implementer run, `run start` checks for drift, ahead of the sibling-tests check. It checks only while the sub-ticket has no finished implementer run and no ruling on file. Two rules find drift. The sibling rule: the sub-ticket's Acceptance field names, by id or by plan label as a whole token, a sibling of the current plan that has not merged and that the sub-ticket does not depend on, directly or through other siblings. Nothing makes such a sibling merge first. The test rule counts from the head recorded with the parent's approved version. It is skipped when that version has no record, because it was stored before the record existed, or when the head is null or not a commit in the target repo. For each first-parent commit on the integration branch since that head that changed a file the version's design part names, each test file the commit changed is a finding, unless the design's `## Tests to change` or the sub-ticket's "Tests to change" lists it. Named files are the design part's backticked paths that exist at the integration branch's head, other than test files and `.md` documents, which nearly every ticket edits. A test file's name starts with `test_`, ends `_test.<ext>`, or contains `.test.`. The test rule approximates "a test pins behaviour the spec changes". Measured on two stores' history, it would have caught 9 of 10 known breaks, and it parks about half of all sub-tickets. On drift, `run start` refuses with exit 2, writes nothing, and gives an error that starts `BLOCKED from harness: spec drift:` and names each finding. The build parks the sub-ticket with that error as the reason. The human amends the spec (`factory spec amend`, Spec store below), rules, or both; `resolve --ruling` returns the sub-ticket to its implementer, and the ruling on file stops the check from repeating.
+ 
+-**Only the dispatcher writes a live store during a run.** The store CLI fences an instance's own store; a throwaway store (`FACTORY_STATE` naming another) is never fenced. The fence applies to every command except the read-only ones: `ticket show`, `ticket join`, `results show`, `config`, `status parse`, `log tail` and `paths`. A command given `--accept-harness` is always fenced, because it rewrites the lock. The location rule is checked first: a write run from inside the own store's `runs/` or `worktrees/`, where roles do their work, is refused, with or without `FACTORY_DISPATCH=1` and with or without a run in flight. Then the in-flight rule: while any run is in flight on any ticket of the store, a write is refused unless its environment carries `FACTORY_DISPATCH=1`. Both workflow scripts put that marker in front of every clerk command. The operator, or a runner session, puts it in front of one command that must write during a run, and never exports it. A refusal exits 2, writes nothing, and tells the caller to use a throwaway `FACTORY_STATE`; it never names the marker. The fence is checked before the harness lock, so a fenced command never reaches the lock and a fenced `--accept-harness` rewrites nothing. A marked command still meets the lock and its uncommitted-edit refusal unchanged. The fence guards against accidents, such as a role's test suite running `init` from its scratch directory. It is not isolation: a role that copies the marker and writes from outside the store still gets through.
++**Only the dispatcher writes a live store during a run.** The store CLI fences an instance's own store; a throwaway store (`FACTORY_STATE` naming another) is never fenced. The fence applies to every command except the read-only ones: `ticket show`, `ticket join`, `results show`, `config`, `status parse`, `log tail` and `paths`. A command given `--accept-harness` is always fenced, because it rewrites the lock. The location rule is checked first: a write run from inside the own store's `runs/` or `worktrees/`, where roles do their work, is refused, with or without `FACTORY_DISPATCH=1` and with or without a run in flight. Then the in-flight rule: while any run is in flight on any ticket of the store, a write is refused unless its environment carries `FACTORY_DISPATCH=1`. Both workflow scripts put that marker in front of every clerk command. `factory drive` meets the fence and the lock like any write when it starts; once past them, it sets the marker in its own environment, so its own store calls are marked whether or not it was started marked. It removes the marker from the environment of every role process it starts, so a role's commands are never marked. The operator, or a runner session, puts it in front of one command that must write during a run, and never exports it. A refusal exits 2, writes nothing, and tells the caller to use a throwaway `FACTORY_STATE`; it never names the marker. The fence is checked before the harness lock, so a fenced command never reaches the lock and a fenced `--accept-harness` rewrites nothing. A marked command still meets the lock and its uncommitted-edit refusal unchanged. The fence guards against accidents, such as a role's test suite running `init` from its scratch directory. It is not isolation: a role that copies the marker and writes from outside the store still gets through.
+ 
+ **Scratch directory per run.** Every run gets its own directory for temporary files, `runs/<run id>/scratch/` in the store, so runs that happen at the same time never write into one shared place and no run leaves files in a repository checkout. `run start` creates it for every role, after every guard has passed, and makes sure the store's `.gitignore` excludes `runs/*/scratch/`: an absent or empty `.gitignore` gets the harness's commented block, and an existing one keeps its own lines and gains only the lines it lacks. The composer names the directory's absolute path in a "Scratch directory" section of the run's input, directly after "Running code", and the shared preamble's SCRATCH FILES rule tells every role to put its own temporary files there and nowhere else, taking precedence over any other instruction to use a session scratchpad. When a ticket's status changes to anything other than `parked`, the harness removes the scratch directory of each finished run of that ticket; runs still in flight, other tickets' runs and every path outside `runs/*/scratch` are left alone. A park keeps the files because a human who answers a parked ticket may need to see what the run built; they are removed once the human sends the ticket on or closes it. So a role that wants a later reader to see what a prototype showed puts that in its output, since the directory is gone by the time the ticket's next role reads it.
+ 
+@@ -871,7 +871,7 @@ Intended, not built. The factory should run on any agent host that can start a r
+ 
+ Most of the factory is already host-neutral: the store CLI and its guards (a Python program run from a shell), the role prompts (plain text), the spec format, and the store's files (YAML, Markdown, JSONL on a git branch). The pieces written for Claude Code are the two workflow scripts, which use its Workflow tool, and the role agent definitions in `.claude/agents/`; the model names and the token-cost report also assume it (README, "What depends on Claude Code").
+ 
+-A port replaces those two pieces with one adapter whose only primitive is "run role R in directory D, with model M and reply schema S, and return the reply". The workflow logic moves into an ordinary script, in Node or Python, that calls that primitive and calls `bin/factory` directly. The clerk role then goes away: it exists only because a Workflow script cannot run a command itself. Each host's role files are generated from the one prompt source, as `docs/prompts/` will be by `factory render`.
++A port replaces those two pieces with one adapter whose only primitive is "run role R in directory D, with model M and reply schema S, and return the reply". The workflow logic moves into an ordinary script, in Node or Python, that calls that primitive and calls `bin/factory` directly. The clerk role then goes away: it exists only because a Workflow script cannot run a command itself. On Claude Code, `factory drive` is that adapter's form: it routes as the workflow scripts do, calls the store CLI in its own process, and runs each role as one `claude -p --output-format json` process whose JSON reply it reads. The workflow scripts stay beside it until it has taken a real ticket through each half. Each host's role files are generated from the one prompt source, as `docs/prompts/` will be by `factory render`.
+ 
+ | Need | Claude Code (today) | OpenAI Codex | Google Antigravity |
+ |---|---|---|---|
