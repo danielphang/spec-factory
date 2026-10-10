@@ -6,16 +6,17 @@ fence and the harness lock run as they do for `bin/factory`. Every role runs as 
 `claude -p` process from its run directory, with its role's prompt, model, effort and tool limits;
 its reply is kept as `runs/<id>/reply.json` and its cost recorded by `run finish --reply`.
 
-The routing is a port of factory/workflows/intake.js from `// --- start`, branch for branch: the
-same commands, transitions, round operations and park reasons, so a ticket driven here leaves the
-same records the script leaves. Like the script, the driver stops at the spec gate.
+The routing is a port of factory/workflows/intake.js and factory/workflows/build.js from
+`// --- start` (build.js with its buildOne), branch for branch: the same commands, transitions,
+round operations and park reasons, so a ticket driven here leaves the same records the script
+leaves. Like the intake script, the driver stops at the spec gate. A head's two checkers run at
+once, and ready sub-tickets build at once up to `--parallel N`.
 
-One stdout line per step, `<ticket id> "<title>": <step>`, then the result as one JSON object. The
-store's `drive/<ticket>.yaml` is a live view of this process (git ignores it). SIGINT or SIGTERM
-ends the role processes, records their runs KILLED and parks nothing: running `factory drive`
-again resumes from the stored state.
-
-Part A of T-0040 builds the intake phase only: the build phase (build.js) is refused.
+One stdout line per step, `<ticket id> "<title>": <step>`, naming the ticket the step concerns (a
+sub-ticket's steps name the sub-ticket), then the result as one JSON object. The store's
+`drive/<ticket>.yaml` is a live view of this process (git ignores it). SIGINT or SIGTERM ends the
+role processes, records their runs KILLED and parks nothing: running `factory drive` again
+resumes from the stored state.
 """
 from __future__ import annotations
 
@@ -24,12 +25,12 @@ import contextlib
 import io
 import json
 import os
+import re
 import signal
 import tempfile
 from pathlib import Path
 
 from factory import cli, store
-from factory.store import Refused
 
 INTAKE_STATES = ("ready-for-triage", "ready-for-spec-writer", "ready-for-critic")
 BUILD_STATES = ("ready-for-planner", "planned", "ready-for-parent-verify")
@@ -116,12 +117,14 @@ class Driver:
     def __init__(self, a, root: Path, cfg: dict):
         self.ticket = a.ticket
         self.phase = a.phase
+        self.parallel = a.parallel
         self.prompt_mode = a.prompt_mode
         self.root = root
         self.effort = cfg.get("effort") or {}
         self.models: dict = {}
         self.max_spec = 2
         self.title = ""
+        self.titles: dict[str, str] = {}  # sub-ticket id -> title, read by build_one
         self.running: dict[str, dict] = {}  # run id -> {run, role, ticket, pid}: this driver's runs in flight
         self.procs: dict[str, asyncio.subprocess.Process] = {}
         self.stopped: signal.Signals | None = None
@@ -136,7 +139,9 @@ class Driver:
         store.write_yaml(self.status_path, self.status)
 
     def step(self, text: str, ticket: str | None = None) -> None:
-        line = f'{ticket or self.ticket} "{self.title}": {text}'
+        ticket = ticket or self.ticket
+        text = " ".join(ln.strip() for ln in text.strip().splitlines())  # a park reason may end in stderr's newline
+        line = f'{ticket} "{self.titles.get(ticket, self.title)}": {text}'
         print(line, flush=True)
         self.write_status(last=line)
 
@@ -149,10 +154,11 @@ class Driver:
         call(*argv)
         self.step(f"parked: {reason}", ticket)
 
-    def transition(self, to: str, round_op: str | None = None) -> dict:
-        argv = ["ticket", "transition", self.ticket, "--to", to, "--by", "workflow"]
+    def transition(self, to: str, round_op: str | None = None, ticket: str | None = None) -> dict:
+        ticket = ticket or self.ticket
+        argv = ["ticket", "transition", ticket, "--to", to, "--by", "workflow"]
         res = call(*argv, *(["--round", round_op] if round_op else []))
-        self.step(f"-> {to}" if res["ok"] else f"-> {to} refused: {res.get('stderr', '').strip()}")
+        self.step(f"-> {to}" if res["ok"] else f"-> {to} refused: {res.get('stderr', '').strip()}", ticket)
         return res
 
     # ----- role runs ----------------------------------------------------------------------
@@ -232,7 +238,7 @@ class Driver:
             call("run", "last-message", rid, "--text=" + said[-4000:])
         esc = fin.get("escalations") or []
         self.step(f"{role} {rid}: {fin['status']}" + (f" (+{len(esc)} escalations)" if esc else ""), ticket)
-        return {"runId": rid, "status": fin["status"], "escalations": esc}
+        return {"runId": rid, "status": fin["status"], "escalations": esc, "outputPath": os.path.join(run, "output.md")}
 
     # ----- intake: factory/workflows/intake.js from `// --- start` ---------------------------
 
@@ -310,11 +316,218 @@ class Driver:
             self.park(T, "max rounds", [c["runId"]])
             return {**parked, "rounds": rnd, "reason": "max rounds"}
 
+    # ----- build: factory/workflows/build.js from `// --- start` ----------------------------
+
+    async def build(self, state: str) -> dict:
+        T = self.ticket
+        parked = {"ticket": T, "state": "parked"}
+        if state == "ready-for-planner":  # phase 1: Plan
+            # A spec that needs one sub-ticket becomes it without a planner run; the harness decides which.
+            whole = call("plan", "whole-spec", T)
+            if not whole["ok"]:
+                self.park(T, f"harness-bug: plan whole-spec: {whole.get('stderr') or ''}", [])
+                return parked
+            if whole.get("planner") == "skipped":
+                self.step(f"planner skipped ({whole.get('reason')}); one sub-ticket from the whole spec")
+            else:
+                p = await self.run_role("planner", T)
+                if not p:
+                    return parked
+                if p["status"] == "ESCALATE":
+                    self.park(T, "ESCALATE from planner", [p["runId"]])
+                    return parked
+                if p["status"] != "PLANNED":
+                    self.park(T, f"harness-bug: unknown STATUS {p['status']} from planner", [p["runId"]])
+                    return parked
+                for what, argv in (("spec tasks", ("spec", "tasks", T, "--run", p["runId"])),
+                                   ("plan add", ("plan", "add", T, "--from-run", p["runId"])),
+                                   ("subticket add", ("subticket", "add", T, "--run", p["runId"]))):
+                    res = call(*argv)
+                    if not res["ok"]:
+                        self.park(T, f"harness-bug: {what}: {res.get('stderr') or ''}", [p["runId"]])
+                        return parked
+            self.transition("planned")
+            state = "planned"
+        if state == "planned":  # phase 2: Build, while any sub-ticket is not merged, parked or closed
+            sem = asyncio.Semaphore(self.parallel)
+
+            async def bounded(st: str) -> None:
+                async with sem:
+                    await self.build_one(st)
+
+            first = True
+            while True:
+                ready = call("ticket", "ready-implementers", T)
+                if not ready["ok"]:
+                    self.park(T, f"harness-bug: ready-implementers: {ready.get('stderr') or ''}", [])
+                    return parked
+                # A parent planned with no sub-tickets (e.g. by an older intake): create them once from
+                # the planner run its recorded plan names, or park the parent saying why.
+                if first and ready.get("subtickets") == []:
+                    first = False
+                    made = call("subticket", "add", T)
+                    if not made["ok"]:
+                        self.park(T, "no sub-tickets, and none could be created from the recorded plan: "
+                                     f"{made.get('stderr') or ''}", [])
+                        return parked
+                    self.step(f"created {len(made.get('subtickets') or [])} sub-ticket(s) from the recorded plan")
+                    continue
+                first = False
+                # A sub-ticket the human closed parks the parent: amend the spec and re-plan, or close.
+                if ready.get("closed"):
+                    self.park(T, f"sub-ticket closed by a human: {', '.join(ready['closed'])}", [])
+                    return parked
+                todo = ready["ready"] + (ready.get("resumable") or [])
+                if not todo:
+                    if ready["remaining"]:
+                        self.step(f"{len(ready['remaining'])} sub-ticket(s) parked or waiting on a human")
+                        return {"ticket": T, "state": "planned", "remaining": ready["remaining"]}
+                    break
+                if ready.get("resumable"):
+                    self.step(f"resuming {', '.join(ready['resumable'])} from its stored state")
+                await _all(bounded(st) for st in todo)
+            pc = call("ticket", "parent-check", T)
+            if not pc["ok"]:
+                self.park(T, f"parent-check refused: {pc.get('stderr') or ''}", [])
+                return parked
+            if pc.get("state") != "ready-for-parent-verify":
+                return {"ticket": T, "state": pc.get("state") or "planned"}
+            state = "ready-for-parent-verify"
+        if state == "ready-for-parent-verify":  # phase 3: Close
+            # Asked again here: a resumed build may arrive already in ready-for-parent-verify. `reuse`
+            # names a single sub-ticket's VERIFIED run that stands for the parent-close run.
+            pc = call("ticket", "parent-check", T)
+            rid = pc.get("reuse") if pc["ok"] else None
+            if rid:
+                self.step(f"sub-ticket verifier run {rid} stands for the parent-close run; no new verifier run")
+            else:
+                v = await self.run_role("verifier", T)
+                if not v:
+                    return parked
+                if v["status"] != "VERIFIED":
+                    self.park(T, f"{v['status']} from parent-close verifier", [v["runId"]])
+                    return parked
+                rid = v["runId"]
+            arch = call("archive", T)
+            if not arch["ok"]:
+                self.park(T, f"archive: {arch.get('stderr') or ''}", [rid])
+                return parked
+            self.transition("closed")
+            return {"ticket": T, "state": "closed", "archived_to": arch.get("archived_to")}
+        return {"ticket": T, "state": state, "note": "nothing to dispatch from this state"}
+
+    async def build_one(self, st: str) -> None:
+        """buildOne: one sub-ticket through the PR loop. The routing after the checkers is `ticket
+        join`'s decision: merge, revise, conflict, wait or park; this only carries it out."""
+        while True:
+            show = call("ticket", "show", st, "--json")
+            if not show["ok"]:
+                return
+            self.titles[st] = show["title"]
+            implemented = show["state"] == "ready-for-implementer"
+            if implemented:
+                impl = await self.run_role("implementer", st)
+                if not impl:
+                    return
+                if impl["status"] == "BLOCKED":
+                    self.park(st, "BLOCKED from implementer", [impl["runId"]])
+                    return
+                if impl["status"] != "READY-FOR-REVIEW":
+                    self.park(st, f"harness-bug: unknown STATUS {impl['status']} from implementer", [impl["runId"]])
+                    return
+                moved = call("ticket", "head", st)
+                if not moved["ok"]:
+                    self.park(st, f"harness-bug: ticket head: {moved.get('stderr') or ''}", [impl["runId"]])
+                    return
+                if moved.get("merge_refused"):
+                    # A conflict run that did not merge the integration branch in: no point checking that head.
+                    j = call("ticket", "join", st)
+                    if j["ok"] and j.get("decision") == "conflict":
+                        continue
+                    self.park(st, (j.get("reason") or "") if j["ok"] else f"harness-bug: join: {j.get('stderr') or ''}",
+                              [impl["runId"]])
+                    return
+                tr = self.transition("checks-in-flight", "pr:init", st)
+                if not tr["ok"]:
+                    self.park(st, f"harness-bug: transition to checks: {tr.get('stderr') or ''}", [impl["runId"]])
+                    return
+            elif show["state"] != "checks-in-flight":
+                return  # parked, merged, closed or waiting: nothing for this loop to do
+            # The checkers on the same head, at once; each result recorded against that head. After an
+            # implementer run both run. Entered at checks-in-flight (a redispatch or a resumed
+            # sub-ticket), only the checkers with no row on this head run; the verifier writes the ci row too.
+            head_now = call("ticket", "head", st)
+            sha = head_now.get("head") if head_now["ok"] else None
+            if not isinstance(sha, str) or not re.fullmatch(r"[0-9a-f]{40}", sha):
+                self.park(st, f"harness-bug: no head for the checkers: {head_now.get('stderr') or ''}", [])
+                return
+            roles = list(CHECKERS)
+            if not implemented:
+                rows = call("results", "show", st)
+                if not rows["ok"]:
+                    self.park(st, f"harness-bug: results show: {rows.get('stderr') or ''}", [])
+                    return
+                missing = rows.get("missing") or []
+                roles = [r for r in roles if r in missing or (r == "verifier" and "ci" in missing)]
+
+            async def check(role: str) -> dict | None:
+                r = await self.run_role(role, st)
+                if not r:
+                    return None
+                rec = call("results", "record", st, "--head", sha, "--role", role, "--output", r["outputPath"],
+                           "--run", r["runId"], *(["--killed"] if r["status"] == "KILLED" else []))
+                if not rec["ok"]:
+                    self.park(st, f"harness-bug: results record {role}: {rec.get('stderr') or ''}", [r["runId"]])
+                    return None
+                return r
+
+            checked = await _all(check(role) for role in roles)
+            if any(r is None for r in checked):
+                return
+            outs = [r["runId"] for r in checked]
+            join = call("ticket", "join", st)
+            if not join["ok"]:
+                self.park(st, f"harness-bug: join: {join.get('stderr') or ''}", outs)
+                return
+            decision, reason = join.get("decision"), join.get("reason") or ""
+            self.step(f"join: {decision} ({reason})", st)
+            if decision == "merge":
+                self.transition("ready-for-merge", None, st)
+                m = call("merge", st)
+                if m["ok"]:
+                    self.step(f"merged: {m.get('main_after')}", st)
+                    return
+                # A refusal that starts `BLOCKED ` is the merge gate blocking the merge (an undeclared
+                # protected path): parked verbatim, for `resolve --accept-paths` or `resolve --ruling`.
+                if isinstance(m.get("error"), str) and m["error"].startswith("BLOCKED "):
+                    self.park(st, m["error"], outs)
+                    return
+                # The gate refused. Ask the join again: a moved integration branch is a conflict run.
+                again = call("ticket", "join", st)
+                if again["ok"] and again.get("decision") == "conflict":
+                    self.transition("ready-for-implementer", None, st)
+                    continue
+                self.park(st, (again.get("reason") or "") if again["ok"] and again.get("decision") == "park"
+                          else f"harness-bug: merge: {m.get('stderr') or ''}", outs)
+                return
+            if decision == "revise":
+                tr = self.transition("ready-for-implementer", join.get("round_op"), st)
+                if not tr["ok"]:
+                    self.park(st, f"harness-bug: round increment refused: {tr.get('stderr') or ''}", outs)
+                    return
+                continue
+            if decision == "conflict":
+                self.transition("ready-for-implementer", None, st)
+                continue
+            # 'park', or 'wait' (a row is missing after both checkers reported: a harness bug, not a red round)
+            self.park(st, f"harness-bug: {reason}" if decision == "wait" else reason, outs)
+            return
+
     # ----- start, stop, end ------------------------------------------------------------------
 
     async def run(self, state: str, rnd: int) -> int:
         loop = asyncio.get_running_loop()
-        route = asyncio.ensure_future(self.intake(state, rnd))
+        route = asyncio.ensure_future(self.build(state) if self.phase == "build" else self.intake(state, rnd))
         for sig in (signal.SIGINT, signal.SIGTERM):
             loop.add_signal_handler(sig, self._on_signal, sig, route)
         try:
@@ -366,6 +579,20 @@ class Driver:
         print(json.dumps(result, ensure_ascii=False), flush=True)
 
 
+async def _all(aws) -> list:
+    """asyncio.gather, as the scripts' parallel(): every awaitable finishes before it returns. If
+    one raises, the rest are cancelled and waited for before the error goes on, so no role run is
+    still being routed while the stop sequence runs."""
+    tasks = [asyncio.ensure_future(a) for a in aws]
+    try:
+        return await asyncio.gather(*tasks)
+    except BaseException:
+        for t in tasks:
+            t.cancel()
+        await asyncio.gather(*tasks, return_exceptions=True)
+        raise
+
+
 def _spec_round(tr: dict, rnd: int) -> int:
     spec = (tr.get("round") or {}).get("spec")
     return spec if isinstance(spec, int) and not isinstance(spec, bool) else rnd
@@ -385,13 +612,9 @@ def drive(a, root: Path, cfg: dict) -> None:
     if not show["ok"]:
         _fail({"ticket": d.ticket, "error": f"no such ticket: {show.get('stderr') or ''}"})
     state = show["state"]
-    phase = d.phase or ("intake" if state in INTAKE_STATES else "build" if state in BUILD_STATES else None)
-    if phase == "build":
-        # factory: interim until T-0040 part B ports build.js; refused before anything is written.
-        raise Refused(f"{d.ticket} is {state}: the build phase of factory drive is not built yet; "
-                      "run the build Workflow script")
+    d.phase = d.phase or ("intake" if state in INTAKE_STATES else "build" if state in BUILD_STATES else None)
     d.title = show["title"]
-    d.status = {"ticket": d.ticket, "title": d.title, "phase": phase, "pid": os.getpid(), "started": store.now(),
+    d.status = {"ticket": d.ticket, "title": d.title, "phase": d.phase, "pid": os.getpid(), "started": store.now(),
                 "updated": None, "running": [], "last": None, "ended": None}
     d.write_status()
     code = asyncio.run(d.run(state, (show.get("round") or {}).get("spec") or 0))
