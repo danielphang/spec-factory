@@ -1,0 +1,27 @@
+run_id: run-0407-verifier
+role: verifier
+ticket: T-0040.1
+model: opus
+round: 1
+spec_version: 4
+started: '2026-10-10T06:26:06+00:00'
+finished: '2026-10-10T06:35:41+00:00'
+wall_s: 575
+status: VERIFIED
+input_sources:
+- specs/T-0040.1/subticket.md
+- specs/T-0040/v4.md
+- runs/run-0406-implementer/output.md
+- runs/run-0407-verifier/diff.patch
+- approvals/T-0040.1/ruling-1.md
+gate_skipped: []
+environment_files: []
+branch: factory/T-0040.1
+base: 37848dbb04f29c63d5d684a3b4c033ed41ede13e
+head: 656c179f4a4f4631b8fa61e037c7f871f36cd26d
+worktree: /Users/dphang/dev/spec-factory/.factory/store/runs/run-0407-verifier/wt
+confidence: high. Every acceptance command and both gates were run as written on 656c179. Every NEW command
+  was also run on base, where it failed for the stated reason. Twelve probe cases across intake routes,
+  stops, refusals and failure handling behaved as specified.
+escalations: []
+escalations_note: null

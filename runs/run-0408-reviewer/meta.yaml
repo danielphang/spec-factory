@@ -1,0 +1,31 @@
+run_id: run-0408-reviewer
+role: reviewer
+ticket: T-0040.1
+model: fable
+round: 1
+spec_version: 4
+started: '2026-10-10T06:26:07+00:00'
+finished: '2026-10-10T06:31:24+00:00'
+wall_s: 317
+status: APPROVE
+input_sources:
+- specs/T-0040.1/subticket.md
+- specs/T-0040/v4.md
+- runs/run-0406-implementer/output.md
+- runs/run-0408-reviewer/diff.patch
+- approvals/T-0040.1/ruling-1.md
+gate_skipped: []
+environment_files: []
+branch: factory/T-0040.1
+base: 37848dbb04f29c63d5d684a3b4c033ed41ede13e
+head: 656c179f4a4f4631b8fa61e037c7f871f36cd26d
+worktree: /Users/dphang/dev/spec-factory/.factory/store/runs/run-0408-reviewer/wt
+confidence: high. I read the whole diff against the spec's design items 1-10 and against `intake.js` line
+  by line, and confirmed every store-command key and parser option the driver relies on in `factory/cli.py`
+  and `factory/store.py`; I did not run the suite or the acceptance commands, which the verifier runs
+  on this head.
+escalations:
+- 'Protected paths touched, for the record: `factory/drive.py` (new), `factory/cli.py`, `factory/store.py`,
+  `factory/instance.template.yaml`. All are under `factory/**`, which the sub-ticket and the approved
+  spec''s Risk section declare, so the merge gate needs no further approval for them.'
+escalations_note: null
