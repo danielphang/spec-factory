@@ -591,7 +591,8 @@ From inside the target repo, with `R` the runtime (`~/dev/spec-factory-harness`)
    `.factory/instance.yaml`. A `gate_commands` entry may declare `paths`, the git pathspecs the
    command covers: `{command: "<command>", paths: [":(exclude)dev/"]}`. A sub-ticket whose changes
    touch none of them skips that command. Prefer exclude pathspecs, so a new file still runs the
-   command. Set `run_env` for any tool whose cache lives under HOME,
+   command. A command with no `paths` runs on every sub-ticket, so an instance that declares none gets
+   no skips. Set `run_env` for any tool whose cache lives under HOME,
    so it still finds that cache from inside the fresh temporary HOME. Set `environment_sync` to the
    command that installs the repo's environment (for example `uv sync --frozen`), so each build
    checkout starts synced: `run start` runs it in the checkout before the role starts, and refuses
