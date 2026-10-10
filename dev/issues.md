@@ -89,6 +89,7 @@ A fix closes its issue through a reviewed change on `main`; the merge column is 
 | [85](https://github.com/danielphang/spec-factory/issues/85) | Spec drift check parks a sub-ticket for its own sibling's merge; no resolve route for a harness-bug park before an implementer run (found building #65) | not in intake (p1, bug) | — | — |
 | [86](https://github.com/danielphang/spec-factory/issues/86) | `factory drive` is refused while any other ticket has a run in flight: exempt drive from the fence's in-flight check, add a same-ticket guard (found by the Driver) | not in intake (p1, bug) | — | — |
 | [87](https://github.com/danielphang/spec-factory/issues/87) | `factory fast-track`: a verify-only path for operator-approved changes (merge gate plus touched capabilities' current-truth scenarios; records the current-truth debt) (operator-approved, from the Driver after Nanobot T-0034) | not in intake (p1) | — | — |
+| [88](https://github.com/danielphang/spec-factory/issues/88) | `factory drive`: Claude Code's attribution footer after the trailer is parsed as escalations (false `escalation.queued`; no routing impact) (found by the Driver) | not in intake (p2, bug) | — | — |
 
 Issues 1–10 are applied and can be closed against their merge; 11 applied (`9168ce1`); 13 and 14 fold into #21 (checklists until it archives); 15 closed as superseded. #12 was a duplicate of #11.
 New findings go straight to GitHub issues; this file is the index.
