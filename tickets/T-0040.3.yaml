@@ -3,7 +3,7 @@ type: sub-ticket
 title: Documents
 request: requests/T-0040.md
 source: plan:run-0404-planner
-status: waiting-dependencies
+status: ready-for-implementer
 round:
   spec: 0
   pr: 0
@@ -14,7 +14,30 @@ plan: null
 in_flight: []
 parked: null
 created: '2026-10-10T04:58:15+00:00'
-history: []
+history:
+- ts: '2026-10-10T07:11:18+00:00'
+  from: waiting-dependencies
+  to: ready-for-implementer
+  by: merge
+- ts: '2026-10-10T07:12:26+00:00'
+  from: ready-for-implementer
+  to: parked
+  by: park
+  reason: 'harness-bug: run start implementer: BLOCKED from harness: spec drift: tests/factory/test_drive.py
+    changed by 2ad4d8c52 since spec v4 was written at 37848dbb0; tests/factory/test_drive_build.py changed
+    by 18fbe88ba since spec v4 was written at 37848dbb0. Amend the spec (`spec amend T-0040`) or rule
+    (`resolve T-0040.3 --ruling F`)
+
+    {''ok'': false, ''error'': ''BLOCKED from harness: spec drift: tests/factory/test_drive.py changed
+    by 2ad4d8c52 since spec v4 was written at 37848dbb0; tests/factory/test_drive_build.py changed by
+    18fbe88ba since spec v4 was written at 37848dbb0. Amend the spec (`spec amend T-0040`) or rule (`resolve
+    T-0040.3 --ruling F`)''}'
+- ts: '2026-10-10T17:18:37+00:00'
+  from: parked
+  to: ready-for-implementer
+  by: dphang
+  resolve: ruling
+  ruling: approvals/T-0040.3/ruling-1.md
 parent: T-0040
 depends_on:
 - T-0040.1

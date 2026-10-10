@@ -1,0 +1,603 @@
+diff --git a/factory/drive.py b/factory/drive.py
+index d8168f8..cd08f8d 100644
+--- a/factory/drive.py
++++ b/factory/drive.py
+@@ -6,16 +6,17 @@ fence and the harness lock run as they do for `bin/factory`. Every role runs as
+ `claude -p` process from its run directory, with its role's prompt, model, effort and tool limits;
+ its reply is kept as `runs/<id>/reply.json` and its cost recorded by `run finish --reply`.
+ 
+-The routing is a port of factory/workflows/intake.js from `// --- start`, branch for branch: the
+-same commands, transitions, round operations and park reasons, so a ticket driven here leaves the
+-same records the script leaves. Like the script, the driver stops at the spec gate.
+-
+-One stdout line per step, `<ticket id> "<title>": <step>`, then the result as one JSON object. The
+-store's `drive/<ticket>.yaml` is a live view of this process (git ignores it). SIGINT or SIGTERM
+-ends the role processes, records their runs KILLED and parks nothing: running `factory drive`
+-again resumes from the stored state.
+-
+-Part A of T-0040 builds the intake phase only: the build phase (build.js) is refused.
++The routing is a port of factory/workflows/intake.js and factory/workflows/build.js from
++`// --- start` (build.js with its buildOne), branch for branch: the same commands, transitions,
++round operations and park reasons, so a ticket driven here leaves the same records the script
++leaves. Like the intake script, the driver stops at the spec gate. A head's two checkers run at
++once, and ready sub-tickets build at once up to `--parallel N`.
++
++One stdout line per step, `<ticket id> "<title>": <step>`, naming the ticket the step concerns (a
++sub-ticket's steps name the sub-ticket), then the result as one JSON object. The store's
++`drive/<ticket>.yaml` is a live view of this process (git ignores it). SIGINT or SIGTERM ends the
++role processes, records their runs KILLED and parks nothing: running `factory drive` again
++resumes from the stored state.
+ """
+ from __future__ import annotations
+ 
+@@ -24,12 +25,12 @@ import contextlib
+ import io
+ import json
+ import os
++import re
+ import signal
+ import tempfile
+ from pathlib import Path
+ 
+ from factory import cli, store
+-from factory.store import Refused
+ 
+ INTAKE_STATES = ("ready-for-triage", "ready-for-spec-writer", "ready-for-critic")
+ BUILD_STATES = ("ready-for-planner", "planned", "ready-for-parent-verify")
+@@ -116,12 +117,14 @@ class Driver:
+     def __init__(self, a, root: Path, cfg: dict):
+         self.ticket = a.ticket
+         self.phase = a.phase
++        self.parallel = a.parallel
+         self.prompt_mode = a.prompt_mode
+         self.root = root
+         self.effort = cfg.get("effort") or {}
+         self.models: dict = {}
+         self.max_spec = 2
+         self.title = ""
++        self.titles: dict[str, str] = {}  # sub-ticket id -> title, read by build_one
+         self.running: dict[str, dict] = {}  # run id -> {run, role, ticket, pid}: this driver's runs in flight
+         self.procs: dict[str, asyncio.subprocess.Process] = {}
+         self.stopped: signal.Signals | None = None
+@@ -136,7 +139,9 @@ class Driver:
+         store.write_yaml(self.status_path, self.status)
+ 
+     def step(self, text: str, ticket: str | None = None) -> None:
+-        line = f'{ticket or self.ticket} "{self.title}": {text}'
++        ticket = ticket or self.ticket
++        text = " ".join(ln.strip() for ln in text.strip().splitlines())  # a park reason may end in stderr's newline
++        line = f'{ticket} "{self.titles.get(ticket, self.title)}": {text}'
+         print(line, flush=True)
+         self.write_status(last=line)
+ 
+@@ -149,10 +154,11 @@ class Driver:
+         call(*argv)
+         self.step(f"parked: {reason}", ticket)
+ 
+-    def transition(self, to: str, round_op: str | None = None) -> dict:
+-        argv = ["ticket", "transition", self.ticket, "--to", to, "--by", "workflow"]
++    def transition(self, to: str, round_op: str | None = None, ticket: str | None = None) -> dict:
++        ticket = ticket or self.ticket
++        argv = ["ticket", "transition", ticket, "--to", to, "--by", "workflow"]
+         res = call(*argv, *(["--round", round_op] if round_op else []))
+-        self.step(f"-> {to}" if res["ok"] else f"-> {to} refused: {res.get('stderr', '').strip()}")
++        self.step(f"-> {to}" if res["ok"] else f"-> {to} refused: {res.get('stderr', '').strip()}", ticket)
+         return res
+ 
+     # ----- role runs ----------------------------------------------------------------------
+@@ -232,7 +238,7 @@ class Driver:
+             call("run", "last-message", rid, "--text=" + said[-4000:])
+         esc = fin.get("escalations") or []
+         self.step(f"{role} {rid}: {fin['status']}" + (f" (+{len(esc)} escalations)" if esc else ""), ticket)
+-        return {"runId": rid, "status": fin["status"], "escalations": esc}
++        return {"runId": rid, "status": fin["status"], "escalations": esc, "outputPath": os.path.join(run, "output.md")}
+ 
+     # ----- intake: factory/workflows/intake.js from `// --- start` ---------------------------
+ 
+@@ -310,11 +316,218 @@ class Driver:
+             self.park(T, "max rounds", [c["runId"]])
+             return {**parked, "rounds": rnd, "reason": "max rounds"}
+ 
++    # ----- build: factory/workflows/build.js from `// --- start` ----------------------------
++
++    async def build(self, state: str) -> dict:
++        T = self.ticket
++        parked = {"ticket": T, "state": "parked"}
++        if state == "ready-for-planner":  # phase 1: Plan
++            # A spec that needs one sub-ticket becomes it without a planner run; the harness decides which.
++            whole = call("plan", "whole-spec", T)
++            if not whole["ok"]:
++                self.park(T, f"harness-bug: plan whole-spec: {whole.get('stderr') or ''}", [])
++                return parked
++            if whole.get("planner") == "skipped":
++                self.step(f"planner skipped ({whole.get('reason')}); one sub-ticket from the whole spec")
++            else:
++                p = await self.run_role("planner", T)
++                if not p:
++                    return parked
++                if p["status"] == "ESCALATE":
++                    self.park(T, "ESCALATE from planner", [p["runId"]])
++                    return parked
++                if p["status"] != "PLANNED":
++                    self.park(T, f"harness-bug: unknown STATUS {p['status']} from planner", [p["runId"]])
++                    return parked
++                for what, argv in (("spec tasks", ("spec", "tasks", T, "--run", p["runId"])),
++                                   ("plan add", ("plan", "add", T, "--from-run", p["runId"])),
++                                   ("subticket add", ("subticket", "add", T, "--run", p["runId"]))):
++                    res = call(*argv)
++                    if not res["ok"]:
++                        self.park(T, f"harness-bug: {what}: {res.get('stderr') or ''}", [p["runId"]])
++                        return parked
++            self.transition("planned")
++            state = "planned"
++        if state == "planned":  # phase 2: Build, while any sub-ticket is not merged, parked or closed
++            sem = asyncio.Semaphore(self.parallel)
++
++            async def bounded(st: str) -> None:
++                async with sem:
++                    await self.build_one(st)
++
++            first = True
++            while True:
++                ready = call("ticket", "ready-implementers", T)
++                if not ready["ok"]:
++                    self.park(T, f"harness-bug: ready-implementers: {ready.get('stderr') or ''}", [])
++                    return parked
++                # A parent planned with no sub-tickets (e.g. by an older intake): create them once from
++                # the planner run its recorded plan names, or park the parent saying why.
++                if first and ready.get("subtickets") == []:
++                    first = False
++                    made = call("subticket", "add", T)
++                    if not made["ok"]:
++                        self.park(T, "no sub-tickets, and none could be created from the recorded plan: "
++                                     f"{made.get('stderr') or ''}", [])
++                        return parked
++                    self.step(f"created {len(made.get('subtickets') or [])} sub-ticket(s) from the recorded plan")
++                    continue
++                first = False
++                # A sub-ticket the human closed parks the parent: amend the spec and re-plan, or close.
++                if ready.get("closed"):
++                    self.park(T, f"sub-ticket closed by a human: {', '.join(ready['closed'])}", [])
++                    return parked
++                todo = ready["ready"] + (ready.get("resumable") or [])
++                if not todo:
++                    if ready["remaining"]:
++                        self.step(f"{len(ready['remaining'])} sub-ticket(s) parked or waiting on a human")
++                        return {"ticket": T, "state": "planned", "remaining": ready["remaining"]}
++                    break
++                if ready.get("resumable"):
++                    self.step(f"resuming {', '.join(ready['resumable'])} from its stored state")
++                await _all(bounded(st) for st in todo)
++            pc = call("ticket", "parent-check", T)
++            if not pc["ok"]:
++                self.park(T, f"parent-check refused: {pc.get('stderr') or ''}", [])
++                return parked
++            if pc.get("state") != "ready-for-parent-verify":
++                return {"ticket": T, "state": pc.get("state") or "planned"}
++            state = "ready-for-parent-verify"
++        if state == "ready-for-parent-verify":  # phase 3: Close
++            # Asked again here: a resumed build may arrive already in ready-for-parent-verify. `reuse`
++            # names a single sub-ticket's VERIFIED run that stands for the parent-close run.
++            pc = call("ticket", "parent-check", T)
++            rid = pc.get("reuse") if pc["ok"] else None
++            if rid:
++                self.step(f"sub-ticket verifier run {rid} stands for the parent-close run; no new verifier run")
++            else:
++                v = await self.run_role("verifier", T)
++                if not v:
++                    return parked
++                if v["status"] != "VERIFIED":
++                    self.park(T, f"{v['status']} from parent-close verifier", [v["runId"]])
++                    return parked
++                rid = v["runId"]
++            arch = call("archive", T)
++            if not arch["ok"]:
++                self.park(T, f"archive: {arch.get('stderr') or ''}", [rid])
++                return parked
++            self.transition("closed")
++            return {"ticket": T, "state": "closed", "archived_to": arch.get("archived_to")}
++        return {"ticket": T, "state": state, "note": "nothing to dispatch from this state"}
++
++    async def build_one(self, st: str) -> None:
++        """buildOne: one sub-ticket through the PR loop. The routing after the checkers is `ticket
++        join`'s decision: merge, revise, conflict, wait or park; this only carries it out."""
++        while True:
++            show = call("ticket", "show", st, "--json")
++            if not show["ok"]:
++                return
++            self.titles[st] = show["title"]
++            implemented = show["state"] == "ready-for-implementer"
++            if implemented:
++                impl = await self.run_role("implementer", st)
++                if not impl:
++                    return
++                if impl["status"] == "BLOCKED":
++                    self.park(st, "BLOCKED from implementer", [impl["runId"]])
++                    return
++                if impl["status"] != "READY-FOR-REVIEW":
++                    self.park(st, f"harness-bug: unknown STATUS {impl['status']} from implementer", [impl["runId"]])
++                    return
++                moved = call("ticket", "head", st)
++                if not moved["ok"]:
++                    self.park(st, f"harness-bug: ticket head: {moved.get('stderr') or ''}", [impl["runId"]])
++                    return
++                if moved.get("merge_refused"):
++                    # A conflict run that did not merge the integration branch in: no point checking that head.
++                    j = call("ticket", "join", st)
++                    if j["ok"] and j.get("decision") == "conflict":
++                        continue
++                    self.park(st, (j.get("reason") or "") if j["ok"] else f"harness-bug: join: {j.get('stderr') or ''}",
++                              [impl["runId"]])
++                    return
++                tr = self.transition("checks-in-flight", "pr:init", st)
++                if not tr["ok"]:
++                    self.park(st, f"harness-bug: transition to checks: {tr.get('stderr') or ''}", [impl["runId"]])
++                    return
++            elif show["state"] != "checks-in-flight":
++                return  # parked, merged, closed or waiting: nothing for this loop to do
++            # The checkers on the same head, at once; each result recorded against that head. After an
++            # implementer run both run. Entered at checks-in-flight (a redispatch or a resumed
++            # sub-ticket), only the checkers with no row on this head run; the verifier writes the ci row too.
++            head_now = call("ticket", "head", st)
++            sha = head_now.get("head") if head_now["ok"] else None
++            if not isinstance(sha, str) or not re.fullmatch(r"[0-9a-f]{40}", sha):
++                self.park(st, f"harness-bug: no head for the checkers: {head_now.get('stderr') or ''}", [])
++                return
++            roles = list(CHECKERS)
++            if not implemented:
++                rows = call("results", "show", st)
++                if not rows["ok"]:
++                    self.park(st, f"harness-bug: results show: {rows.get('stderr') or ''}", [])
++                    return
++                missing = rows.get("missing") or []
++                roles = [r for r in roles if r in missing or (r == "verifier" and "ci" in missing)]
++
++            async def check(role: str) -> dict | None:
++                r = await self.run_role(role, st)
++                if not r:
++                    return None
++                rec = call("results", "record", st, "--head", sha, "--role", role, "--output", r["outputPath"],
++                           "--run", r["runId"], *(["--killed"] if r["status"] == "KILLED" else []))
++                if not rec["ok"]:
++                    self.park(st, f"harness-bug: results record {role}: {rec.get('stderr') or ''}", [r["runId"]])
++                    return None
++                return r
++
++            checked = await _all(check(role) for role in roles)
++            if any(r is None for r in checked):
++                return
++            outs = [r["runId"] for r in checked]
++            join = call("ticket", "join", st)
++            if not join["ok"]:
++                self.park(st, f"harness-bug: join: {join.get('stderr') or ''}", outs)
++                return
++            decision, reason = join.get("decision"), join.get("reason") or ""
++            self.step(f"join: {decision} ({reason})", st)
++            if decision == "merge":
++                self.transition("ready-for-merge", None, st)
++                m = call("merge", st)
++                if m["ok"]:
++                    self.step(f"merged: {m.get('main_after')}", st)
++                    return
++                # A refusal that starts `BLOCKED ` is the merge gate blocking the merge (an undeclared
++                # protected path): parked verbatim, for `resolve --accept-paths` or `resolve --ruling`.
++                if isinstance(m.get("error"), str) and m["error"].startswith("BLOCKED "):
++                    self.park(st, m["error"], outs)
++                    return
++                # The gate refused. Ask the join again: a moved integration branch is a conflict run.
++                again = call("ticket", "join", st)
++                if again["ok"] and again.get("decision") == "conflict":
++                    self.transition("ready-for-implementer", None, st)
++                    continue
++                self.park(st, (again.get("reason") or "") if again["ok"] and again.get("decision") == "park"
++                          else f"harness-bug: merge: {m.get('stderr') or ''}", outs)
++                return
++            if decision == "revise":
++                tr = self.transition("ready-for-implementer", join.get("round_op"), st)
++                if not tr["ok"]:
++                    self.park(st, f"harness-bug: round increment refused: {tr.get('stderr') or ''}", outs)
++                    return
++                continue
++            if decision == "conflict":
++                self.transition("ready-for-implementer", None, st)
++                continue
++            # 'park', or 'wait' (a row is missing after both checkers reported: a harness bug, not a red round)
++            self.park(st, f"harness-bug: {reason}" if decision == "wait" else reason, outs)
++            return
++
+     # ----- start, stop, end ------------------------------------------------------------------
+ 
+     async def run(self, state: str, rnd: int) -> int:
+         loop = asyncio.get_running_loop()
+-        route = asyncio.ensure_future(self.intake(state, rnd))
++        route = asyncio.ensure_future(self.build(state) if self.phase == "build" else self.intake(state, rnd))
+         for sig in (signal.SIGINT, signal.SIGTERM):
+             loop.add_signal_handler(sig, self._on_signal, sig, route)
+         try:
+@@ -366,6 +579,20 @@ class Driver:
+         print(json.dumps(result, ensure_ascii=False), flush=True)
+ 
+ 
++async def _all(aws) -> list:
++    """asyncio.gather, as the scripts' parallel(): every awaitable finishes before it returns. If
++    one raises, the rest are cancelled and waited for before the error goes on, so no role run is
++    still being routed while the stop sequence runs."""
++    tasks = [asyncio.ensure_future(a) for a in aws]
++    try:
++        return await asyncio.gather(*tasks)
++    except BaseException:
++        for t in tasks:
++            t.cancel()
++        await asyncio.gather(*tasks, return_exceptions=True)
++        raise
++
++
+ def _spec_round(tr: dict, rnd: int) -> int:
+     spec = (tr.get("round") or {}).get("spec")
+     return spec if isinstance(spec, int) and not isinstance(spec, bool) else rnd
+@@ -385,13 +612,9 @@ def drive(a, root: Path, cfg: dict) -> None:
+     if not show["ok"]:
+         _fail({"ticket": d.ticket, "error": f"no such ticket: {show.get('stderr') or ''}"})
+     state = show["state"]
+-    phase = d.phase or ("intake" if state in INTAKE_STATES else "build" if state in BUILD_STATES else None)
+-    if phase == "build":
+-        # factory: interim until T-0040 part B ports build.js; refused before anything is written.
+-        raise Refused(f"{d.ticket} is {state}: the build phase of factory drive is not built yet; "
+-                      "run the build Workflow script")
++    d.phase = d.phase or ("intake" if state in INTAKE_STATES else "build" if state in BUILD_STATES else None)
+     d.title = show["title"]
+-    d.status = {"ticket": d.ticket, "title": d.title, "phase": phase, "pid": os.getpid(), "started": store.now(),
++    d.status = {"ticket": d.ticket, "title": d.title, "phase": d.phase, "pid": os.getpid(), "started": store.now(),
+                 "updated": None, "running": [], "last": None, "ended": None}
+     d.write_status()
+     code = asyncio.run(d.run(state, (show.get("round") or {}).get("spec") or 0))
+diff --git a/tests/factory/test_drive_build.py b/tests/factory/test_drive_build.py
+new file mode 100644
+index 0000000..240c6f0
+--- /dev/null
++++ b/tests/factory/test_drive_build.py
+@@ -0,0 +1,244 @@
++"""`factory drive`, part B (T-0040): the build phase, a port of factory/workflows/build.js.
++
++Black-box through `bin/factory`, on part A's throwaway store (test_drive.Store) taken past the spec
++gate, with a scratch git repository as the target. The stand-in `claude` here extends part A's: a
++written output carries a `Commit:` line naming the run's head, and a verifier's a passing gate
++suite, so the checkers' results can be recorded; each call also appends "<start> <end>" to
++<log>.times, so a test can count the role processes that ran at once.
++"""
++from __future__ import annotations
++
++import json
++import os
++import signal
++import subprocess
++import sys
++import tempfile
++import time
++
++import yaml
++
++from .test_drive import BIN, REPO, Store
++
++STANDIN = '''#!{python}
++import json, os, pathlib, re, sys, time
++t0 = time.time()
++cwd = pathlib.Path.cwd(); log = pathlib.Path(os.environ["STANDIN_LOG"])
++with log.open("a") as f:
++    f.write(json.dumps({{"argv": sys.argv[1:], "cwd": str(cwd), "pid": os.getpid(),
++                        "dispatch": os.environ.get("FACTORY_DISPATCH")}}) + "\\n")
++role = cwd.name.split("-", 2)[2]
++plays = json.loads(os.environ.get("STANDIN_PLAYS") or "{{}}").get(role) or [{{"say": ""}}]
++nf = log.with_name(log.name + ".n-" + role); n = int(nf.read_text()) + 1 if nf.exists() else 1
++nf.write_text(str(n)); p = plays[min(n, len(plays)) - 1]
++time.sleep(p.get("sleep", 0))
++text, err = p.get("say", ""), "fail" in p
++if "write" in p:
++    head = re.search(r"^head: '?([0-9a-f]{{40}})", (cwd / "meta.yaml").read_text(), re.M)
++    text = (("Commit: %s\\n" % head[1]) if head else "") + ("Gate suite: PASS\\n" if role == "verifier" else "")
++    text += "STATUS: %s\\nCONFIDENCE: high, stand-in\\nESCALATIONS: none\\n" % p["write"]
++    (cwd / "output.md").write_text(text)
++elif err:
++    text = p["fail"]
++with log.with_name(log.name + ".times").open("a") as f:
++    f.write("%f %f\\n" % (t0, time.time()))
++print(json.dumps({{"type": "result", "is_error": err, "result": text, "session_id": "s-" + cwd.name,
++                  "total_cost_usd": 0.5, "num_turns": 3, "usage": {{"output_tokens": 7}}}}))
++sys.exit(1 if err else 0)
++'''
++
++OK_PLAYS = {"implementer": [{"write": "READY-FOR-REVIEW"}], "reviewer": [{"write": "APPROVE"}],
++            "verifier": [{"write": "VERIFIED"}]}
++
++
++class BuildStore(Store):
++    """Part A's store, with T-0001 approved at the spec gate (ready for its planner; a one-section
++    spec, so the planner is skipped), a scratch git repository as the target, and this file's
++    stand-in `claude`."""
++
++    def __init__(self, tmp_path):
++        super().__init__(tmp_path)
++        (tmp_path / "bin" / "claude").write_text(STANDIN.format(python=sys.executable))
++        spec = tmp_path / "spec.md"
++        spec.write_text("## Problem\nx\n")
++        self.ok("ticket", "transition", "T-0001", "--to", "ready-for-spec-writer", "--by", "t")
++        self.ok("spec", "add", "T-0001", "--file", str(spec))
++        self.ok("ticket", "transition", "T-0001", "--to", "ready-for-critic", "--by", "t", "--round", "spec:init")
++        self.ok("ticket", "transition", "T-0001", "--to", "awaiting-spec-gate", "--by", "t")
++        self.ok("approve-spec", "T-0001")
++        self.target = tmp_path / "target"
++        self.git("init", "-q", "-b", "main", str(self.target), cwd=tmp_path)
++        self.git("commit", "-q", "--allow-empty", "-m", "init")
++        self.env.update(FACTORY_REPO=str(self.target), FACTORY_INTEGRATION_BRANCH="main")
++
++    def git(self, *argv: str, cwd=None) -> str:
++        cp = subprocess.run(["git", "-c", "user.email=f@x", "-c", "user.name=f", *argv], cwd=cwd or self.target,
++                            capture_output=True, text=True, check=True)
++        return cp.stdout.strip()
++
++    def two_subtickets_at_checks(self) -> None:
++        """T-0001 planned into T-0001.1 and T-0001.2, independent, each at checks-in-flight on its own commit."""
++        plan = self.tmp / "plan.md"
++        plan.write_text("ST-1 / One\nDepends on: none\nParallel-safe: yes\n\n"
++                        "ST-2 / Two\nDepends on: none\nParallel-safe: yes\n")
++        self.ok("subticket", "add", "T-0001", "--file", str(plan))
++        self.ok("ticket", "transition", "T-0001", "--to", "planned", "--by", "t")
++        for i in (1, 2):
++            self.git("checkout", "-qb", f"factory/T-0001.{i}", "main")
++            (self.target / f"f{i}.txt").write_text(f"{i}\n")
++            self.git("add", f"f{i}.txt")
++            self.git("commit", "-qm", f"w{i}")
++            self.git("checkout", "-q", "main")
++            head = self.git("rev-parse", f"factory/T-0001.{i}")
++            self.ok("ticket", "set", f"T-0001.{i}", "status=checks-in-flight", f"branch=factory/T-0001.{i}",
++                    f"head={head}")
++
++    def most_at_once(self) -> int:
++        spans = [tuple(map(float, ln.split())) for ln in (self.log.parent / (self.log.name + ".times"))
++                 .read_text().splitlines()]
++        return max([sum(a <= s < b for a, b in spans) for s, _ in spans] or [0])
++
++
++def roles_and_statuses(s: Store) -> list[tuple[str, str, str]]:
++    return [(m["role"], m["ticket"], m["status"]) for m in s.runs()]
++
++
++def test_an_approved_head_merges_then_the_parent_close_verifier_runs(tmp_path):
++    s = BuildStore(tmp_path)
++    cp, res = s.drive(OK_PLAYS, "--phase", "build")
++    assert cp.returncode == 0, cp.stderr
++    assert s.ticket("T-0001.1")["status"] == "merged"
++    assert roles_and_statuses(s) == [("implementer", "T-0001.1", "READY-FOR-REVIEW"),
++                                     ("reviewer", "T-0001.1", "APPROVE"), ("verifier", "T-0001.1", "VERIFIED"),
++                                     ("verifier", "T-0001", "VERIFIED")]
++    # The fixture has no spec store, so the archive is refused and the parent parks, as under build.js.
++    assert res == {"ticket": "T-0001", "state": "parked", "ok": True}
++    assert s.ticket()["parked"]["reason"].startswith("archive: ")
++
++
++def test_a_reviewer_still_asking_for_changes_at_the_round_limit_parks_the_subticket(tmp_path):
++    s = BuildStore(tmp_path)
++    cp, res = s.drive({**OK_PLAYS, "reviewer": [{"write": "REQUEST-CHANGES"}]}, "--phase", "build")
++    assert cp.returncode == 0, cp.stderr
++    assert res == {"ticket": "T-0001", "state": "planned", "ok": True}
++    assert s.ticket("T-0001.1")["status"] == "parked"
++    assert [r for r, _, _ in roles_and_statuses(s)] == ["implementer", "reviewer", "verifier"] * 2
++    assert s.ticket("T-0001.1")["round"]["pr"] == 2
++
++
++def test_two_empty_reviews_park_the_subticket_after_the_verifier_has_recorded(tmp_path):
++    s = BuildStore(tmp_path)
++    cp, res = s.drive({**OK_PLAYS, "reviewer": [{"say": ""}], "verifier": [{"write": "SPEC-DEFECT"}]},
++                      "--phase", "build")
++    assert cp.returncode == 0, cp.stderr
++    assert res["state"] == "planned"
++    assert s.ticket("T-0001.1")["parked"]["reason"] == "EMPTY-OUTPUT from reviewer"
++    assert sorted(roles_and_statuses(s)) == sorted([
++        ("implementer", "T-0001.1", "READY-FOR-REVIEW"), ("reviewer", "T-0001.1", "EMPTY-OUTPUT"),
++        ("reviewer", "T-0001.1", "EMPTY-OUTPUT"), ("verifier", "T-0001.1", "SPEC-DEFECT")])
++
++
++def test_a_blocked_implementer_parks_its_subticket(tmp_path):
++    s = BuildStore(tmp_path)
++    cp, res = s.drive({"implementer": [{"write": "BLOCKED"}]})  # no --phase: ready-for-planner selects build
++    assert cp.returncode == 0, cp.stderr
++    assert res == {"ticket": "T-0001", "state": "planned", "ok": True}
++    assert s.ticket("T-0001.1")["parked"]["reason"] == "BLOCKED from implementer"
++    assert len(s.calls()) == 1
++
++
++def test_a_failed_checker_ends_the_pass_only_after_the_other_has_recorded(tmp_path):
++    s = BuildStore(tmp_path)
++    cp, res = s.drive({**OK_PLAYS, "reviewer": [{"fail": "usage limit reached"}],
++                       "verifier": [{"sleep": 1, "write": "VERIFIED"}]}, "--phase", "build")
++    assert cp.returncode == 0, cp.stderr
++    assert s.ticket("T-0001.1")["parked"]["reason"] == "agent call failed: reviewer: usage limit reached"
++    assert sorted(roles_and_statuses(s)) == sorted([
++        ("implementer", "T-0001.1", "READY-FOR-REVIEW"), ("reviewer", "T-0001.1", "KILLED"),
++        ("verifier", "T-0001.1", "VERIFIED")])
++    rows = [yaml.safe_load(p.read_text()) for p in s.root.glob("results/*/*.yaml")]
++    assert ("verifier", "VERIFIED") in [(r.get("role"), r.get("status")) for r in rows]
++    assert s.ticket("T-0001.1")["in_flight"] == []
++
++
++def test_the_implementer_gets_edit_and_its_worktree_and_the_checkers_only_their_run(tmp_path):
++    s = BuildStore(tmp_path)
++    cp, _ = s.drive(OK_PLAYS, "--phase", "build")
++    assert cp.returncode == 0, cp.stderr
++    tmp = os.path.realpath(tempfile.gettempdir())
++    metas = {m["run_id"]: m for m in s.runs()}
++    assert len(s.calls()) == 4
++    for c in s.calls():
++        run = os.path.realpath(c["cwd"])
++        m = metas[os.path.basename(run)]
++        opts = dict(zip(c["argv"][2::2], c["argv"][3::2]))
++        assert c["dispatch"] is None and opts["--model"] == m["model"] and opts["--permission-mode"] == "auto"
++        rules = [f"Edit(/{run}/output.md)", f"Edit(/{run}/scratch/**)", f"Edit(/{tmp}/**)"]
++        if m["role"] == "implementer":
++            wt = os.path.realpath(m["worktree"])
++            assert opts["--tools"].split(",")[-1] == "Edit" and opts["--add-dir"] == wt
++            rules.append(f"Edit(/{wt}/**)")
++        else:
++            assert "Edit" not in opts["--tools"].split(",") and "--add-dir" not in opts
++        assert [r for r in opts["--allowedTools"].split(",") if r.startswith("Edit")] == rules
++
++
++def test_the_checkers_run_at_once_and_subtickets_up_to_the_parallel_limit(tmp_path):
++    plays = {"reviewer": [{"sleep": 1.5, "write": "APPROVE"}], "verifier": [{"sleep": 1.5, "write": "SPEC-DEFECT"}]}
++    for name, extra, most in (("one", ("--parallel", "1"), 2), ("default", (), 4)):
++        (tmp_path / name).mkdir()
++        s = BuildStore(tmp_path / name)
++        s.two_subtickets_at_checks()
++        cp, res = s.drive(plays, "--phase", "build", *extra)
++        assert cp.returncode == 0, cp.stderr
++        assert len(s.calls()) == 4 and s.most_at_once() == most, name
++        assert [s.ticket(f"T-0001.{i}")["parked"]["reason"] for i in (1, 2)] == ["SPEC-DEFECT from verifier"] * 2
++
++
++def test_build_step_lines_and_the_status_file_name_the_subticket_in_flight(tmp_path):
++    s = BuildStore(tmp_path)
++    s.two_subtickets_at_checks()
++    env = {**s.env, "STANDIN_PLAYS": json.dumps({"reviewer": [{"sleep": 2, "write": "APPROVE"}],
++                                                 "verifier": [{"sleep": 2, "write": "SPEC-DEFECT"}]})}
++    p = subprocess.Popen([str(BIN), "drive", "T-0001"], stdout=subprocess.PIPE,
++                         stderr=subprocess.PIPE, text=True, env=env, cwd=REPO)
++    status = s.root / "drive" / "T-0001.yaml"
++    seen: list[tuple[str, str]] = []
++    deadline = time.monotonic() + 30
++    while p.poll() is None and time.monotonic() < deadline:
++        if status.exists():
++            running = (yaml.safe_load(status.read_text()) or {}).get("running") or []
++            if len(running) > len(seen):
++                seen = sorted((r["ticket"], r["role"]) for r in running)
++        time.sleep(0.05)
++    out, _ = p.communicate(timeout=30)
++    assert p.returncode == 0
++    assert seen == [("T-0001.1", "reviewer"), ("T-0001.1", "verifier"),
++                    ("T-0001.2", "reviewer"), ("T-0001.2", "verifier")]
++    lines = out.strip().splitlines()
++    assert all(ln.startswith(('T-0001 "Fixture": ', 'T-0001.1 "One": ', 'T-0001.2 "Two": ')) for ln in lines[:-1])
++    assert 'T-0001.2 "Two": parked: SPEC-DEFECT from verifier' in lines
++    assert json.loads(lines[-1])["state"] == "planned"
++    assert yaml.safe_load(status.read_text())["running"] == []
++
++
++def test_a_stop_during_the_checkers_kills_both_and_a_rerun_resumes_the_subticket(tmp_path):
++    s = BuildStore(tmp_path)
++    env = {**s.env, "STANDIN_PLAYS": json.dumps({**OK_PLAYS, "reviewer": [{"sleep": 60, "write": "APPROVE"}],
++                                                 "verifier": [{"sleep": 60, "write": "VERIFIED"}]})}
++    p = subprocess.Popen([str(BIN), "drive", "T-0001"], stdout=subprocess.PIPE, stderr=subprocess.PIPE,
++                         text=True, env=env, cwd=REPO)
++    deadline = time.monotonic() + 30
++    while time.monotonic() < deadline and len(s.calls()) < 3:
++        time.sleep(0.05)
++    time.sleep(0.5)
++    p.send_signal(signal.SIGTERM)
++    out, _ = p.communicate(timeout=30)
++    assert p.returncode == 128 + signal.SIGTERM
++    assert json.loads(out.strip().splitlines()[-1]) == {"ok": False, "ticket": "T-0001", "stopped": "SIGTERM"}
++    assert sorted(roles_and_statuses(s))[1:] == [("reviewer", "T-0001.1", "KILLED"), ("verifier", "T-0001.1", "KILLED")]
++    sub = s.ticket("T-0001.1")
++    assert (sub["status"], sub["in_flight"], sub["parked"]) == ("checks-in-flight", [], None)
++    cp, res = s.drive(OK_PLAYS)  # no --phase: planned selects build; both checkers re-run on the same head
++    assert cp.returncode == 0, cp.stderr
++    assert s.ticket("T-0001.1")["status"] == "merged" and len(s.calls()) == 6

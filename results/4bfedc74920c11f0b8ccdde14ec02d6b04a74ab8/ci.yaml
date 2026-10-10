@@ -1,0 +1,6 @@
+ticket: T-0040.2
+head: 4bfedc74920c11f0b8ccdde14ec02d6b04a74ab8
+role: ci
+status: PASS
+run_id: run-0410-verifier
+at: '2026-10-10T07:10:50+00:00'

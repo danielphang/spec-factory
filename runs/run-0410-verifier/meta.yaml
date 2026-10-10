@@ -1,0 +1,33 @@
+run_id: run-0410-verifier
+role: verifier
+ticket: T-0040.2
+model: opus
+round: 1
+spec_version: 4
+started: '2026-10-10T06:57:38+00:00'
+finished: '2026-10-10T07:10:30+00:00'
+wall_s: 772
+status: VERIFIED
+input_sources:
+- specs/T-0040.2/subticket.md
+- specs/T-0040/v4.md
+- runs/run-0409-implementer/output.md
+- runs/run-0410-verifier/diff.patch
+- approvals/T-0040.2/ruling-1.md
+gate_skipped: []
+environment_files: []
+branch: factory/T-0040.2
+base: 2ad4d8c5288474b823d4571ba03de82a706eabdf
+head: 4bfedc74920c11f0b8ccdde14ec02d6b04a74ab8
+worktree: /Users/dphang/dev/spec-factory/.factory/store/runs/run-0410-verifier/wt
+confidence: high. Every acceptance command was run as written on both heads and printed exactly the expected
+  lines on the PR. Both gates passed. The probes reached five build branches the fixtures do not reach,
+  and only one showed a difference, which comes from the script.
+escalations:
+- On the planner route where `subticket add` is refused, the driver's park reason does not match the script's.
+  The script drops every backticked span from the reason, because its clerk runs the park command through
+  `sh -c`. The driver records the harness's message intact. This breaks the parent's Decision that park
+  reasons match the scripts byte for byte, but here the script is the one in error. No acceptance fixture
+  reaches this route. Someone should decide whether to file it against the Workflow script's `park()`
+  quoting, or to leave it until the retirement ticket.
+escalations_note: null

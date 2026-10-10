@@ -3,10 +3,10 @@ type: sub-ticket
 title: The build phase
 request: requests/T-0040.md
 source: plan:run-0404-planner
-status: ready-for-implementer
+status: merged
 round:
   spec: 0
-  pr: 0
+  pr: 1
 spec:
   version: 4
   approved_version: 4
@@ -32,15 +32,35 @@ history:
   by: dphang
   resolve: ruling
   ruling: approvals/T-0040.2/ruling-1.md
+- ts: '2026-10-10T06:57:20+00:00'
+  from: ready-for-implementer
+  to: checks-in-flight
+  by: workflow
+  round:
+    spec: 0
+    pr: 1
+- ts: '2026-10-10T07:11:09+00:00'
+  from: checks-in-flight
+  to: ready-for-merge
+  by: workflow
+  round:
+    spec: 0
+    pr: 1
+- ts: '2026-10-10T07:11:18+00:00'
+  from: ready-for-merge
+  to: merged
+  by: merge
+  head: 4bfedc74920c11f0b8ccdde14ec02d6b04a74ab8
 parent: T-0040
 depends_on:
 - T-0040.1
 parallel_safe: false
-branch: null
-head: null
+branch: factory/T-0040.2
+head: 4bfedc74920c11f0b8ccdde14ec02d6b04a74ab8
 merge:
-  base_before: null
-  main_after: null
+  base_before: 2ad4d8c5288474b823d4571ba03de82a706eabdf
+  main_after: 18fbe88ba88be7f2ae2dbebca09586bd25caf50d
 parent_base: null
 label: T-0040.B
 planned_from: 3
+merge_refused: null
