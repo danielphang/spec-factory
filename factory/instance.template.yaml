@@ -53,6 +53,9 @@ models:
   verifier: opus
   retro: fable
   clerk: haiku
+# Effort level per role for `factory drive`'s role processes (`claude -p --effort`); a role not listed
+# gets Claude Code's default. The Workflow scripts ignore it.
+# effort: {critic: high}
 ready_state:
   triage: ready-for-triage
   spec_writer: ready-for-spec-writer

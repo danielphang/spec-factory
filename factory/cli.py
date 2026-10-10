@@ -468,6 +468,8 @@ def run_finish(a, root, cfg):
                  "status": parsed["status"], "confidence": parsed.get("confidence"),
                  "escalations": parsed.get("escalations", []),
                  "escalations_note": parsed.get("escalations_note")})
+    if a.reply:
+        meta["claude"] = _claude_record(a.reply)
     store.write_yaml(d / "meta.yaml", meta)
     if a.run in t["in_flight"]:
         t["in_flight"].remove(a.run)
@@ -490,6 +492,33 @@ def run_finish(a, root, cfg):
         if tw["parked"]:
             res["parked"] = tw["parked"]
     out(res)
+
+
+def _claude_record(path: str) -> dict | None:
+    """What `run finish --reply FILE` keeps of a role process's reply (`claude -p --output-format
+    json`): its session and cost, or None when FILE is not one JSON object. The reply's `result`
+    text is left out: it repeats output.md."""
+    try:
+        reply = json.loads(Path(path).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    if not isinstance(reply, dict):
+        return None
+    return {k: reply.get(k) for k in ("session_id", "total_cost_usd", "num_turns", "usage")}
+
+
+# ----- driver ---------------------------------------------------------------------
+
+def drive_cmd(a, root, cfg):
+    from factory import drive  # local: the driver calls back into main() for every store call
+    drive.drive(a, root, cfg)
+
+
+def _at_least_one(v: str) -> int:
+    n = int(v)
+    if n < 1:
+        raise argparse.ArgumentTypeError(f"{v} is less than 1")
+    return n
 
 
 # ----- spec / plan ----------------------------------------------------------------
@@ -1767,6 +1796,8 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("run")
     p.add_argument("--output-file")
     p.add_argument("--status-override")
+    p.add_argument("--reply", help="the role process's reply (claude -p --output-format json): its session "
+                                   "id, cost, turns and usage are recorded under claude: in meta.yaml")
     p.set_defaults(fn=run_finish)
     p = rn.add_parser("last-message")
     p.add_argument("run")
@@ -1866,6 +1897,14 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("text")
     p.set_defaults(fn=decision_add)
 
+    p = sp.add_parser("drive", help="route TICKET's roles as the Workflow scripts do, each role one "
+                                    "`claude -p` process; stops at the spec gate")
+    p.add_argument("ticket")
+    p.add_argument("--phase", choices=("intake", "build"), help="default: the one the stored state is in")
+    p.add_argument("--parallel", type=_at_least_one, default=2, help="sub-tickets built at once (default 2)")
+    p.add_argument("--prompt-mode", choices=("append", "replace"), default="append",
+                   help="append the role prompt to Claude Code's system prompt, or replace it")
+    p.set_defaults(fn=drive_cmd)
     p = sp.add_parser("config")
     p.set_defaults(fn=config_cmd)
     st = sp.add_parser("status").add_subparsers(dest="sub", required=True)

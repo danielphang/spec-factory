@@ -49,14 +49,16 @@ def now() -> str:
 STORE_GITIGNORE = ("# git worktrees the build half creates; they are checkouts, never store content\nworktrees/\nruns/*/wt/\n"
                    "# tripwire baselines: digests of the operator's live files, never committed\nruns/*/tripwire.yaml\n"
                    "# each run's scratch directory: its own temporary files, cleared when the ticket moves on\n"
-                   "runs/*/scratch/\n")
+                   "runs/*/scratch/\n"
+                   "# the driver's status files: a live view of one `factory drive` process, never committed\n"
+                   "drive/\n")
 
 
 def ensure_gitignore(root: Path) -> None:
     """The store keeps implementer worktrees under worktrees/ and checker checkouts under runs/<id>/wt/.
     Both are nested git checkouts: a store committed by directory must not pick them up. Nor may it
     pick up a run's tripwire baseline, runs/<id>/tripwire.yaml, which holds digests of live files, or
-    a run's temporary files under runs/<id>/scratch/."""
+    a run's temporary files under runs/<id>/scratch/, nor `factory drive`'s status files under drive/."""
     _ensure_block(root / ".gitignore", STORE_GITIGNORE)
 
 

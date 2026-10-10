@@ -124,9 +124,9 @@ def test_a_new_store_gitignore_is_the_full_commented_block_once(tmp_path):
     s.finish(s.start(tid))
     s.start(tid)
     lines = s.gitignore()
-    for ln in ("worktrees/", "runs/*/wt/", "runs/*/tripwire.yaml", "runs/*/scratch/"):
+    for ln in ("worktrees/", "runs/*/wt/", "runs/*/tripwire.yaml", "runs/*/scratch/", "drive/"):
         assert lines.count(ln) == 1, (ln, lines)
-    assert sum(ln.startswith("#") for ln in lines) == 3
+    assert sum(ln.startswith("#") for ln in lines) == 4
 
 
 def test_an_existing_store_gitignore_gains_only_the_missing_lines(tmp_path):
@@ -136,7 +136,7 @@ def test_an_existing_store_gitignore_gains_only_the_missing_lines(tmp_path):
     s.finish(s.start(tid))
     s.start(tid)
     assert s.gitignore() == ["# kept", "worktrees/", "mine/", "runs/*/wt/", "runs/*/tripwire.yaml",
-                             "runs/*/scratch/"]
+                             "runs/*/scratch/", "drive/"]
 
 
 def test_an_existing_store_gitignore_without_a_final_newline_keeps_its_last_line(tmp_path):
@@ -144,7 +144,7 @@ def test_an_existing_store_gitignore_without_a_final_newline_keeps_its_last_line
     tid = s.request()
     (s.root / ".gitignore").write_text("worktrees/\nruns/*/wt/\nruns/*/tripwire.yaml")
     s.start(tid)
-    assert s.gitignore() == ["worktrees/", "runs/*/wt/", "runs/*/tripwire.yaml", "runs/*/scratch/"]
+    assert s.gitignore() == ["worktrees/", "runs/*/wt/", "runs/*/tripwire.yaml", "runs/*/scratch/", "drive/"]
 
 
 def test_moving_a_ticket_on_clears_its_finished_runs_scratch_only(tmp_path):
