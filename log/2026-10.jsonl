@@ -2227,3 +2227,17 @@
 {"ts": "2026-10-11T20:35:27+00:00", "event": "escalation.queued", "ticket": "T-0042", "items": ["NEEDS-HUMAN from triage"]}
 {"ts": "2026-10-11T20:36:15+00:00", "event": "decision.recorded", "ticket": "T-0042", "by": "dphang", "line": "2026-10-11 T-0042 The dispatcher (factory drive, and any later runner command) is exempt from the live-store fence's in-flight check, keeps the runs/ and worktrees/ refusal, and carries its own same-ticket guard (refuse while the ticket or a sub-ticket has a run in flight, or a live driver is recorded); overturns T-0040's rejection (operator, 2026-10-11, T-0042)", "via": "resolve --answer"}
 {"ts": "2026-10-11T20:36:15+00:00", "event": "human.resolved", "ticket": "T-0042", "kind": "answer", "by": "dphang", "from": "parked", "to": "ready-for-triage"}
+{"ts": "2026-10-11T20:36:48+00:00", "event": "run.started", "ticket": "T-0042", "run": "run-0424-triage", "role": "triage", "model": "opus"}
+{"ts": "2026-10-11T20:37:51+00:00", "event": "run.finished", "ticket": "T-0042", "run": "run-0424-triage", "role": "triage", "status": "ACCEPT", "wall_s": 63}
+{"ts": "2026-10-11T20:38:00+00:00", "event": "ticket.transition", "ticket": "T-0042", "from": "ready-for-triage", "to": "ready-for-spec-writer", "by": "workflow", "round": {"spec": 0, "pr": 0}}
+{"ts": "2026-10-11T20:38:07+00:00", "event": "run.started", "ticket": "T-0042", "run": "run-0425-spec_writer", "role": "spec_writer", "model": "opus"}
+{"ts": "2026-10-11T20:54:10+00:00", "event": "run.finished", "ticket": "T-0042", "run": "run-0425-spec_writer", "role": "spec_writer", "status": "READY-FOR-CRITIC", "wall_s": 963}
+{"ts": "2026-10-11T20:54:19+00:00", "event": "spec.added", "ticket": "T-0042", "version": 1, "source": "run-0425-spec_writer"}
+{"ts": "2026-10-11T20:54:27+00:00", "event": "ticket.transition", "ticket": "T-0042", "from": "ready-for-spec-writer", "to": "ready-for-critic", "by": "workflow", "round": {"spec": 1, "pr": 0}}
+{"ts": "2026-10-11T20:54:36+00:00", "event": "run.started", "ticket": "T-0042", "run": "run-0426-critic", "role": "critic", "model": "fable"}
+{"ts": "2026-10-11T20:59:23+00:00", "event": "run.finished", "ticket": "T-0042", "run": "run-0426-critic", "role": "critic", "status": "APPROVE", "wall_s": 287}
+{"ts": "2026-10-11T20:59:32+00:00", "event": "ticket.transition", "ticket": "T-0042", "from": "ready-for-critic", "to": "awaiting-spec-gate", "by": "workflow", "round": {"spec": 1, "pr": 0}}
+{"ts": "2026-10-11T21:09:24+00:00", "event": "spec.added", "ticket": "T-0042", "version": 2, "source": "gate edit /private/tmp/claude-501/-Users-dphang-dev-nanobot/c69bfd1d-97a6-43e3-9d5a-a517c28d382c/scratchpad/T-0042-gate.md"}
+{"ts": "2026-10-11T21:09:24+00:00", "event": "approval.recorded", "ticket": "T-0042", "kind": "spec", "version": 2, "by": "dphang"}
+{"ts": "2026-10-11T21:09:24+00:00", "event": "change.pinned", "ticket": "T-0042", "version": 2, "files": ["openspec/changes/T-0042/proposal.md", "openspec/changes/T-0042/design.md", "openspec/changes/T-0042/specs/live-store-guard/spec.md", "openspec/changes/T-0042/specs/build-dispatch/spec.md", "openspec/changes/T-0042/specs/harness-docs/spec.md", "openspec/changes/T-0042/verification.md"]}
+{"ts": "2026-10-11T21:09:24+00:00", "event": "ticket.transition", "ticket": "T-0042", "from": "awaiting-spec-gate", "to": "ready-for-planner", "by": "dphang"}

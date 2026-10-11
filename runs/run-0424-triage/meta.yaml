@@ -1,0 +1,17 @@
+run_id: run-0424-triage
+role: triage
+ticket: T-0042
+model: opus
+round: 0
+spec_version: 0
+started: '2026-10-11T20:36:48+00:00'
+finished: '2026-10-11T20:37:51+00:00'
+wall_s: 63
+status: ACCEPT
+input_sources:
+- requests/T-0042.md
+- runs/run-0423-triage/output.md
+confidence: high. The cause is confirmed in code at `cli.py:1976` and `drive.py:605`, and the operator's
+  answer settles the design question.
+escalations: []
+escalations_note: null
