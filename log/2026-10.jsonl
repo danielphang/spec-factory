@@ -2221,3 +2221,9 @@
 {"ts": "2026-10-11T06:56:37+00:00", "event": "harness.accepted", "instance": "/Users/dphang/dev/spec-factory/.factory", "old": "4bfedc74920c11f0b8ccdde14ec02d6b04a74ab8", "new": "654f523b997af69c9896cb06bdd9ac36fc04469c"}
 {"ts": "2026-10-11T17:59:54+00:00", "event": "request.created", "ticket": "T-0042", "source": "/private/tmp/claude-501/-Users-dphang-dev-nanobot/c69bfd1d-97a6-43e3-9d5a-a517c28d382c/scratchpad/req-86.md"}
 {"ts": "2026-10-11T17:59:54+00:00", "event": "ticket.created", "ticket": "T-0042", "status": "ready-for-triage"}
+{"ts": "2026-10-11T20:33:04+00:00", "event": "run.started", "ticket": "T-0042", "run": "run-0423-triage", "role": "triage", "model": "opus"}
+{"ts": "2026-10-11T20:35:18+00:00", "event": "run.finished", "ticket": "T-0042", "run": "run-0423-triage", "role": "triage", "status": "NEEDS-HUMAN", "wall_s": 134}
+{"ts": "2026-10-11T20:35:27+00:00", "event": "ticket.parked", "ticket": "T-0042", "from": "ready-for-triage", "reason": "NEEDS-HUMAN from triage"}
+{"ts": "2026-10-11T20:35:27+00:00", "event": "escalation.queued", "ticket": "T-0042", "items": ["NEEDS-HUMAN from triage"]}
+{"ts": "2026-10-11T20:36:15+00:00", "event": "decision.recorded", "ticket": "T-0042", "by": "dphang", "line": "2026-10-11 T-0042 The dispatcher (factory drive, and any later runner command) is exempt from the live-store fence's in-flight check, keeps the runs/ and worktrees/ refusal, and carries its own same-ticket guard (refuse while the ticket or a sub-ticket has a run in flight, or a live driver is recorded); overturns T-0040's rejection (operator, 2026-10-11, T-0042)", "via": "resolve --answer"}
+{"ts": "2026-10-11T20:36:15+00:00", "event": "human.resolved", "ticket": "T-0042", "kind": "answer", "by": "dphang", "from": "parked", "to": "ready-for-triage"}

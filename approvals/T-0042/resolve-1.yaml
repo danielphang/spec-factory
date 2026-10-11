@@ -1,0 +1,10 @@
+by: dphang
+at: '2026-10-11T20:36:15+00:00'
+kind: answer
+from: parked
+to: ready-for-triage
+answer: 1
+decision: 2026-10-11 T-0042 The dispatcher (factory drive, and any later runner command) is exempt from
+  the live-store fence's in-flight check, keeps the runs/ and worktrees/ refusal, and carries its own
+  same-ticket guard (refuse while the ticket or a sub-ticket has a run in flight, or a live driver is
+  recorded); overturns T-0040's rejection (operator, 2026-10-11, T-0042)
