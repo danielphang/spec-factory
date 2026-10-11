@@ -17,6 +17,12 @@ sub-ticket's steps name the sub-ticket), then the result as one JSON object. The
 `drive/<ticket>.yaml` is a live view of this process (git ignores it). SIGINT or SIGTERM ends the
 role processes, records their runs KILLED and parks nothing: running `factory drive` again
 resumes from the stored state.
+
+The driver is the dispatcher, so the live-store fence exempts it from its in-flight rule: it starts
+with no FACTORY_DISPATCH=1 while other tickets' runs are in flight, and is still refused from inside
+the store's runs/ or worktrees/, or while a run is in flight when given --accept-harness. In place
+of that rule it guards its own ticket: it refuses to start on a ticket that it or one of its
+sub-tickets has a run in flight, or that the status file shows another live driver of (T-0042).
 """
 from __future__ import annotations
 
@@ -598,10 +604,43 @@ def _spec_round(tr: dict, rnd: int) -> int:
     return spec if isinstance(spec, int) and not isinstance(spec, bool) else rnd
 
 
+def _live(pid) -> bool:
+    """A positive integer pid that signal 0 reaches, or is refused permission to reach."""
+    if not isinstance(pid, int) or isinstance(pid, bool) or pid <= 0:
+        return False
+    try:
+        os.kill(pid, 0)
+    except (ProcessLookupError, OverflowError):  # no such process; or past the platform's pid range
+        return False
+    except PermissionError:  # alive, owned by another user
+        return True
+    return True
+
+
+def _same_ticket_guard(root: Path, tid: str) -> None:
+    """Refuse a drive of a ticket already being worked: a run in flight on it or a sub-ticket, or a
+    status file with no `ended` whose pid is live. A missing ticket passes, for drive() to report."""
+    if not store.ticket_path(root, tid).exists():
+        return
+    t = store.load_ticket(root, tid)
+    runs = [r for x in (t, *store.subtickets_of(root, tid)) for r in x.get("in_flight") or []]
+    if runs:
+        raise store.Refused(f"{tid} has runs in flight on it or its sub-tickets: {', '.join(runs)}; "
+                            "drive it again once they finish")
+    path = root / "drive" / f"{tid}.yaml"
+    st = (store.read_yaml(path) or {}) if path.exists() else {}
+    if st.get("ended") is None and _live(st.get("pid")):
+        raise store.Refused(f"{tid} is already being driven by pid {st['pid']} ({path}); "
+                            "stop that driver or wait for it to end")
+
+
 def drive(a, root: Path, cfg: dict) -> None:
-    """`factory drive`, after main() has run the instance refusal, the fence and the harness lock.
-    From here on the driver's own store calls carry the dispatcher marker; its role processes never
-    inherit it."""
+    """`factory drive`, after main() has run the instance refusal, the fence's location rule (the
+    driver is exempt from its in-flight rule unless given --accept-harness) and the harness lock.
+    It first refuses a ticket already being worked (_same_ticket_guard), marked or not, on any
+    store. From there on the driver's own store calls carry the dispatcher marker; its role
+    processes never inherit it."""
+    _same_ticket_guard(root, a.ticket)
     os.environ["FACTORY_DISPATCH"] = "1"
     d = Driver(a, root, cfg)
     conf = call("config")

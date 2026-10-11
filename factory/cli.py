@@ -1946,9 +1946,11 @@ def _in_flight(root: Path) -> list[str]:
             for rid in store.read_yaml(p).get("in_flight") or []]
 
 
-def fence(inst: Path, cfg: dict, root: Path) -> None:
+def fence(inst: Path, cfg: dict, root: Path, *, in_flight: bool = True) -> None:
     """Refuse a write to the instance's own store from inside its runs/ or worktrees/ (marker or
-    not), or while a run is in flight there unless FACTORY_DISPATCH=1. Accidents, not isolation."""
+    not), or while a run is in flight there unless FACTORY_DISPATCH=1. Accidents, not isolation.
+    With in_flight=False only the location rule applies: `factory drive` is the dispatcher, exempt
+    from the in-flight rule, and guards its own ticket instead (drive._same_ticket_guard)."""
     if not instance.is_own_store(inst, cfg, root):
         return
     own, cwd = instance.own_state_root(inst, cfg), instance.caller_cwd()
@@ -1956,7 +1958,7 @@ def fence(inst: Path, cfg: dict, root: Path) -> None:
         if cwd.is_relative_to(own / sub):
             raise Refused(f"role runs may not write the live store ({own}; called from inside its {sub}/); "
                           "use a throwaway FACTORY_STATE")
-    if os.environ.get("FACTORY_DISPATCH") == "1":
+    if not in_flight or os.environ.get("FACTORY_DISPATCH") == "1":
         return
     runs = _in_flight(root)
     if runs:
@@ -1974,7 +1976,9 @@ def main(argv: list[str] | None = None) -> int:
         cfg = instance.load_config(inst)
         root = store.state_root(cfg)
         if (a.cmd, getattr(a, "sub", None)) not in READ_ONLY or a.accept_harness:
-            fence(inst, cfg, root)  # before the lock, so a fenced --accept-harness rewrites nothing
+            # before the lock, so a fenced --accept-harness rewrites nothing; drive keeps only the
+            # location rule unless it accepts a harness
+            fence(inst, cfg, root, in_flight=a.cmd != "drive" or bool(a.accept_harness))
         instance.guard(inst, cfg, root, a.accept_harness)  # the harness lock (design C.2-C.4)
         a.fn(a, root, cfg)
         return 0
