@@ -1,0 +1,16 @@
+run_id: run-0430-triage
+role: triage
+ticket: T-0043
+model: opus
+round: 0
+spec_version: 0
+started: '2026-10-11T21:41:15+00:00'
+finished: '2026-10-11T21:43:08+00:00'
+wall_s: 113
+status: ACCEPT
+input_sources:
+- requests/T-0043.md
+confidence: 'medium. The intent and the data sources are verified, but the retro-input acceptance line
+  cannot run until #42 exists, and I moved it there by inference.'
+escalations: []
+escalations_note: null

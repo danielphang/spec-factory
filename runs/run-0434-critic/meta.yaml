@@ -1,0 +1,23 @@
+run_id: run-0434-critic
+role: critic
+ticket: T-0043
+model: fable
+round: 2
+spec_version: 2
+started: '2026-10-11T22:22:20+00:00'
+finished: '2026-10-11T22:24:54+00:00'
+wall_s: 154
+status: APPROVE
+input_sources:
+- specs/T-0043/v2.md
+- openspec/specs/build-dispatch/spec.md
+- openspec/specs/harness-docs/spec.md
+- openspec/specs/live-store-guard/spec.md
+- decisions.md
+- runs/run-0432-critic/output.md
+- specs/T-0043/v1.md
+confidence: high. Every round-1 finding is addressed in the text; the new correction rule was checked
+  against the one live event and the fixture by hand; two acceptance commands run on main print the stated
+  output. The live figures and the guard scenarios still need the build.
+escalations: []
+escalations_note: null

@@ -1,0 +1,22 @@
+run_id: run-0431-spec_writer
+role: spec_writer
+ticket: T-0043
+model: opus
+round: 0
+spec_version: 0
+started: '2026-10-11T21:43:26+00:00'
+finished: '2026-10-11T22:08:28+00:00'
+wall_s: 1502
+status: NEEDS-SPLIT
+input_sources:
+- runs/run-0430-triage/output.md
+- requests/T-0043.md
+- openspec/specs/build-dispatch/spec.md
+- openspec/specs/harness-docs/spec.md
+- openspec/specs/live-store-guard/spec.md
+- decisions.md
+confidence: medium. The fixture rows, the window row and the live-store rows were printed by a prototype
+  of these exact rules, and every NEW item's base output was captured on `main`. But the transcript matching
+  and the gate-failure count rest on Claude Code's transcript format, which no record in the store pins.
+escalations: []
+escalations_note: null

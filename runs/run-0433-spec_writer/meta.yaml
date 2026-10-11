@@ -1,0 +1,24 @@
+run_id: run-0433-spec_writer
+role: spec_writer
+ticket: T-0043
+model: opus
+round: 2
+spec_version: 1
+started: '2026-10-11T22:15:29+00:00'
+finished: '2026-10-11T22:21:56+00:00'
+wall_s: 387
+status: NEEDS-SPLIT
+input_sources:
+- runs/run-0430-triage/output.md
+- requests/T-0043.md
+- openspec/specs/build-dispatch/spec.md
+- openspec/specs/harness-docs/spec.md
+- openspec/specs/live-store-guard/spec.md
+- decisions.md
+- runs/run-0432-critic/output.md
+- specs/T-0043/v1.md
+confidence: medium. The fixture rows of sections A and B and the live-store rows were printed again this
+  round by a prototype of these rules, and sections C and D by round 1's; the transcript matching and
+  gate-failure count still rest on Claude Code's transcript format, which nothing in the store pins.
+escalations: []
+escalations_note: null

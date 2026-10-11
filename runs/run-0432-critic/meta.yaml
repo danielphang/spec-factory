@@ -1,0 +1,21 @@
+run_id: run-0432-critic
+role: critic
+ticket: T-0043
+model: fable
+round: 1
+spec_version: 1
+started: '2026-10-11T22:08:55+00:00'
+finished: '2026-10-11T22:15:12+00:00'
+wall_s: 377
+status: REVISE
+input_sources:
+- specs/T-0043/v1.md
+- openspec/specs/build-dispatch/spec.md
+- openspec/specs/harness-docs/spec.md
+- openspec/specs/live-store-guard/spec.md
+- decisions.md
+confidence: high. Every cited line and heading checked in the repo, two acceptance commands run on main
+  with the stated output, the fixture tables reproduced by hand; the live figures and the guard scenarios
+  remain unverified by me and need the build.
+escalations: []
+escalations_note: null

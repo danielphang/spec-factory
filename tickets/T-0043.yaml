@@ -1,21 +1,61 @@
 id: T-0043
-type: null
-title: 'factory stats: catch rate and cost by role, parks by reason, gate decisions, read from the store
-  so the retro and the operator see which checks pay (measured: reviewer changed 4 of 94 outcomes)'
+type: feature
+title: '`factory stats`: a read-only report, built from the store, of how often each role changes an outcome,
+  what each role costs, and where tickets stop'
 request: requests/T-0043.md
 source: /private/tmp/claude-501/-Users-dphang-dev-nanobot/c69bfd1d-97a6-43e3-9d5a-a517c28d382c/scratchpad/req-70.md
-status: ready-for-triage
+status: ready-for-planner
 round:
-  spec: 0
+  spec: 2
   pr: 0
 spec:
-  version: 0
-  approved_version: null
+  version: 2
+  approved_version: 2
 plan: null
 in_flight: []
 parked: null
 created: '2026-10-11T21:40:38+00:00'
-history: []
+history:
+- ts: '2026-10-11T21:43:17+00:00'
+  from: ready-for-triage
+  to: ready-for-spec-writer
+  by: workflow
+  round:
+    spec: 0
+    pr: 0
+- ts: '2026-10-11T22:08:47+00:00'
+  from: ready-for-spec-writer
+  to: ready-for-critic
+  by: workflow
+  round:
+    spec: 1
+    pr: 0
+- ts: '2026-10-11T22:15:21+00:00'
+  from: ready-for-critic
+  to: ready-for-spec-writer
+  by: workflow
+  round:
+    spec: 2
+    pr: 0
+- ts: '2026-10-11T22:22:12+00:00'
+  from: ready-for-spec-writer
+  to: ready-for-critic
+  by: workflow
+  round:
+    spec: 2
+    pr: 0
+- ts: '2026-10-11T22:25:04+00:00'
+  from: ready-for-critic
+  to: awaiting-spec-gate
+  by: workflow
+  round:
+    spec: 2
+    pr: 0
+- ts: '2026-10-11T22:26:09+00:00'
+  from: awaiting-spec-gate
+  to: ready-for-planner
+  by: dphang
+  approved_version: 2
 parent: null
 depends_on: []
 parallel_safe: true
