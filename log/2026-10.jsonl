@@ -2261,3 +2261,6 @@
 {"ts": "2026-10-11T21:39:19+00:00", "event": "ticket.transition", "ticket": "T-0042", "from": "planned", "to": "ready-for-parent-verify", "by": "parent-check"}
 {"ts": "2026-10-11T21:39:40+00:00", "event": "change.archived", "ticket": "T-0042", "archived_to": "openspec/changes/archive/2026-10-11-T-0042", "capabilities": ["build-dispatch", "harness-docs", "live-store-guard"], "decisions": 9}
 {"ts": "2026-10-11T21:39:49+00:00", "event": "ticket.transition", "ticket": "T-0042", "from": "ready-for-parent-verify", "to": "closed", "by": "workflow", "round": {"spec": 1, "pr": 0}}
+{"ts": "2026-10-11T21:40:03+00:00", "event": "harness.accepted", "instance": "/Users/dphang/dev/spec-factory/.factory", "old": "654f523b997af69c9896cb06bdd9ac36fc04469c", "new": "8f9c2a96193e4aef8207f6dfd750c334e78f43a5"}
+{"ts": "2026-10-11T21:40:38+00:00", "event": "request.created", "ticket": "T-0043", "source": "/private/tmp/claude-501/-Users-dphang-dev-nanobot/c69bfd1d-97a6-43e3-9d5a-a517c28d382c/scratchpad/req-70.md"}
+{"ts": "2026-10-11T21:40:38+00:00", "event": "ticket.created", "ticket": "T-0043", "status": "ready-for-triage"}
