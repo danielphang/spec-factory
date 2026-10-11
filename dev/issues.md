@@ -92,6 +92,11 @@ A fix closes its issue through a reviewed change on `main`; the merge column is 
 | [88](https://github.com/danielphang/spec-factory/issues/88) | `factory drive`: Claude Code's attribution footer after the trailer is parsed as escalations (false `escalation.queued`; no routing impact) (found by the Driver) | not in intake (p2, bug) | — | — |
 | [89](https://github.com/danielphang/spec-factory/issues/89) | Retire the Workflow scripts and the clerk: `factory drive` becomes the only runner (after #86, #88, a `--parallel` >1 build, and a drive launch path for every session) | not in intake (p1; gated) | — | — |
 | [90](https://github.com/danielphang/spec-factory/issues/90) | Critic defers an unlabelled Evidence claim to the verifier, which checks only `verification.md` labels: nobody checks it (found by the Driver on Nanobot T-0036) | not in intake (p2, bug) | — | — |
+| [91](https://github.com/danielphang/spec-factory/issues/91) | Open questions as options with a recommendation; briefing template warns against invented rules (from the Spec Kit comparison) | not in intake (p2) | — | — |
+| [93](https://github.com/danielphang/spec-factory/issues/93) | Standing glosses in the briefing: the writer opens Operator steps and Decisions with the instance's sentence for runtime, instance and --accept-harness | not in intake (p1) | — | — |
+| [94](https://github.com/danielphang/spec-factory/issues/94) | Eval: does a critic REVISE predict anything downstream (BLOCKED implementers, SPEC-DEFECTs) vs approved-first-time (2026-10-11 retrospective) | not in intake (p2; after #70) | — | — |
+| [95](https://github.com/danielphang/spec-factory/issues/95) | Prompt claims about other components drift: a test that anchors each to the design doc (2026-10-11 retrospective) | not in intake (p2) | — | — |
+| [96](https://github.com/danielphang/spec-factory/issues/96) | Intake list 2026-10-11: efficiency and cleanup, ordered; the record for the sequence (operator, via the Reviewer) | the list itself | — | — |
 
 Issues 1–10 are applied and can be closed against their merge; 11 applied (`9168ce1`); 13 and 14 fold into #21 (checklists until it archives); 15 closed as superseded. #12 was a duplicate of #11.
 New findings go straight to GitHub issues; this file is the index.
