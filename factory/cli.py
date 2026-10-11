@@ -1626,6 +1626,30 @@ def paths_cmd(a):
          "instance": str(inst) if inst is not None else None, "state": state})
 
 
+def stats_cmd(a):
+    """What each role catches and costs, counted from one or more stores (factory/stats.py). Like
+    `paths`, it needs no instance, runs no fence or lock check and writes nothing. With no --store it
+    reads FACTORY_STATE, else the store of the instance found from the caller's directory."""
+    from factory import stats  # local: stats imports ROLES from here
+    since = stats.parse_when(a.since, "--since") if a.since else None
+    until = stats.parse_when(a.until, "--until") if a.until else None
+    cwd = instance.caller_cwd()  # bin/factory runs from the harness checkout: paths are the caller's
+    roots = [(cwd / Path(p).expanduser()).resolve() for p in a.store]
+    if not roots:
+        inst = instance.find()
+        root = instance.env_path("FACTORY_STATE") or (
+            instance.state_root(inst, instance.load_config(inst)) if inst is not None else None)
+        if root is None:
+            raise Refused(f"factory stats: no store found: give --store PATH, set FACTORY_STATE, or run from "
+                          f"inside an instance ({instance.not_found_message()})")
+        roots = [root.resolve()]
+    for r in roots:
+        if not (r / "runs").is_dir() and not (r / "log").is_dir():
+            raise Refused(f"factory stats: {r} is not a store: it has neither runs/ nor log/")
+    print(stats.report([str(r) for r in roots], since, until,
+                       [str((cwd / Path(d).expanduser()).resolve()) for d in a.transcripts]), end="")
+
+
 def spec_tasks(a, root, cfg):
     t = store.load_ticket(root, a.id)
     d = _run_dir(root, a.run)
@@ -1879,6 +1903,16 @@ def build_parser() -> argparse.ArgumentParser:
     p.set_defaults(fn=store_migrate)
     p = sp.add_parser("paths")
     p.set_defaults(fn=paths_cmd)
+    p = sp.add_parser("stats", help="count runs, verdicts, parks, spec catches and cost per role and model; "
+                                    "reads stores, writes nothing")
+    p.add_argument("--store", action="append", default=[], metavar="PATH",
+                   help="a store to read (repeatable); default: FACTORY_STATE, else the instance's own store")
+    p.add_argument("--since", metavar="WHEN", help="ISO date or date-time, UTC when no zone; inclusive")
+    p.add_argument("--until", metavar="WHEN", help="ISO date or date-time, UTC when no zone; exclusive")
+    p.add_argument("--transcripts", action="append", default=[], metavar="DIR",
+                   help="a directory of Claude Code transcripts (*.jsonl at any depth) for runs with no "
+                        "cost record, and for implementer gate failures (repeatable)")
+    p.set_defaults(fn=stats_cmd)
     p = sp.add_parser("archive")
     p.add_argument("id")
     p.set_defaults(fn=archive_cmd)
@@ -1936,8 +1970,10 @@ def build_parser() -> argparse.ArgumentParser:
 
 # ----- live-store fence: only the dispatcher writes a live store during a run ------------------
 
+# `paths` and `stats` never reach the fence (main() runs them before it); they are listed so this set
+# matches the documents' read-only list.
 READ_ONLY = {("ticket", "show"), ("ticket", "join"), ("results", "show"), ("config", None),
-             ("status", "parse"), ("log", "tail"), ("paths", None)}
+             ("status", "parse"), ("log", "tail"), ("paths", None), ("stats", None)}
 
 
 def _in_flight(root: Path) -> list[str]:
@@ -1950,7 +1986,8 @@ def fence(inst: Path, cfg: dict, root: Path, *, in_flight: bool = True) -> None:
     """Refuse a write to the instance's own store from inside its runs/ or worktrees/ (marker or
     not), or while a run is in flight there unless FACTORY_DISPATCH=1. Accidents, not isolation.
     With in_flight=False only the location rule applies: `factory drive` is the dispatcher, exempt
-    from the in-flight rule, and guards its own ticket instead (drive._same_ticket_guard)."""
+    from the in-flight rule, and guards its own ticket instead (drive._same_ticket_guard). Commands in
+    READ_ONLY skip it; `paths` and `stats` never reach it, and `init` calls it itself."""
     if not instance.is_own_store(inst, cfg, root):
         return
     own, cwd = instance.own_state_root(inst, cfg), instance.caller_cwd()
@@ -1969,7 +2006,9 @@ def fence(inst: Path, cfg: dict, root: Path, *, in_flight: bool = True) -> None:
 def main(argv: list[str] | None = None) -> int:
     a = build_parser().parse_args(argv)
     try:
-        if a.cmd in ("init", "paths"):  # exempt from the instance refusal (design B.1)
+        # exempt from the instance refusal (design B.1); `paths` and `stats` only read, so they also
+        # skip the fence and the harness lock and ignore --accept-harness
+        if a.cmd in ("init", "paths", "stats"):
             a.fn(a)
             return 0
         inst = instance.require()  # refused when no instance is found: nothing is written
