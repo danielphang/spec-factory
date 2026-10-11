@@ -43,7 +43,7 @@ decision.
    and the tripwire. It never touches live state.
 8. **Changes to how roles think are proven before they ship.** A prompt or standards change is replayed on
    real past tickets, comparing tokens, turns and output quality, and the operator accepts it before the
-   runtime moves. A harness change passes its own red-green acceptance.
+   runtime moves. The tickets are the fixed golden set in `docs/golden.md`, never a fresh pick. A harness change passes its own red-green acceptance.
 
 ## How it decides where effort goes
 

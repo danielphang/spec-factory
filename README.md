@@ -1037,6 +1037,7 @@ agent host".
 | `docs/north-star.md` | What the factory is for, what it will not trade away, and where it is heading; changes to it are the operator's decision |
 | `docs/principles.md` | The fourteen learned principles, each with its incident, citation and implementing mechanism |
 | `docs/decided-against.md` | Approaches tried or offered and dropped, with the evidence and what would reopen each |
+| `docs/golden.md` | The fixed golden set every prompt-change replay runs, with each entry's base and known catch, the baseline table, and the rule for changing the set |
 | `docs/writing.md` | The writing standard for every section a person reads; the preamble names the runtime's copy |
 | `docs/coding.md` | The coding standard for the implementer and code reviewer; their prompts name the runtime's copy |
 | `dev/` | Working documents from building the factory: the build spec, its plan, the P0 walking skeleton, the issue index (`dev/issues.md`) |
