@@ -123,6 +123,7 @@ def test_a_ruling_on_any_other_state_is_refused_and_names_both_park_kinds(env, t
     cp = run(env, "resolve", "T-0001", "--ruling", str(write_ruling(tmp_path)))
     assert cp.returncode == 2
     state = "parked" if park else "ready-for-critic"
-    assert f"--ruling applies to an ESCALATE or BLOCKED park; T-0001 is {state} ({park or 'no park'})" in cp.stderr
+    assert ("--ruling applies to an ESCALATE or BLOCKED park, or a harness-bug park from an implementer's run "
+            f"start; T-0001 is {state} ({park or 'no park'})") in cp.stderr
     assert ticket(store, "T-0001")["status"] == state
     assert not list((store / "approvals" / "T-0001").glob("ruling-*"))
