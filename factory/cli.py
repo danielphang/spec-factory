@@ -278,7 +278,8 @@ def _check_drift(root: Path, cfg: dict, t: dict) -> None:
     ruling on file), refuse when its Acceptance names an unmerged sibling of the current plan that it
     does not depend on, or when a test file changed on the integration branch since the parent's
     approved version was written, by a first-parent commit that also changed a file the version's
-    design names, and no Tests to change list names it. The build parks the refusal as BLOCKED."""
+    design names, and no Tests to change list names it. A merged sibling's recorded merge is not
+    drift: the plan expects its changes. The build parks the refusal as BLOCKED."""
     tid = t["id"]
     if compose._runs_for(root, tid, "implementer", "") or list((root / "approvals" / tid).glob("ruling-*")):
         return
@@ -316,7 +317,9 @@ def _sibling_drift(root: Path, t: dict, parent: dict, sub_text: str) -> list[str
 def _test_drift(root: Path, cfg: dict, parent: dict, sub_text: str) -> list[str]:
     """The test rule, counted from the integration head recorded with the parent's approved version.
     No record (a version stored before the record existed), a null head or one that is not a commit
-    in the target repo: no findings."""
+    in the target repo: no findings. A first-parent commit that is the recorded merge (`main_after`)
+    of a merged sub-ticket of this parent, from any of its plans, is skipped: it is the parent's own
+    planned work. Other merges still count."""
     n = parent["spec"]["approved_version"]
     rec = root / "specs" / parent["id"] / f"v{n}.yaml"
     base = (store.read_yaml(rec) or {}).get("integration_head") if rec.exists() else None
@@ -335,10 +338,14 @@ def _test_drift(root: Path, cfg: dict, parent: dict, sub_text: str) -> list[str]
         return []
     listed_text = subtickets.field_text(sub_text, "tests to change") + "\n" + _tests_to_change_section(design_text)
     listed = {p.split("::", 1)[0] for p in TICK_RE.findall(listed_text)}
+    siblings = {s["merge"]["main_after"] for s in store.subtickets_of(root, parent["id"])
+                if s["status"] == "merged" and (s.get("merge") or {}).get("main_after")}
     last: dict[str, str] = {}
     # factory: one git diff per first-parent commit since the spec was written; fold into one
     # `git log --diff-merges=first-parent --name-only` call if that range grows to hundreds of commits
     for c in gitops.git(repo, "rev-list", "--first-parent", "--reverse", f"{base}..{tip}").split():
+        if c in siblings:
+            continue
         files = gitops.git(repo, "diff", "--name-only", "--no-renames", f"{c}^1", c, check=False).splitlines()
         if named.intersection(files):
             for f in files:
@@ -1179,10 +1186,15 @@ def resolve(a, root, cfg):
             fh.write(f"\n\n## Answer {n}\n\n{Path(a.answer).read_text(encoding='utf-8').rstrip()}\n")
         move(to, "answer", {"answer": n, **decided("resolve --answer")})
     elif a.ruling:
-        if st != "parked" or not reason.startswith(("ESCALATE", "BLOCKED")):
+        # the harness failed to start an implementer run (e.g. a drift refusal the Workflow clerk
+        # wrapped): routed as BLOCKED. Not a failed compose, which leaves its run in flight.
+        start_bug = (reason.startswith("harness-bug: run start implementer:")
+                     and parked.get("from") == "ready-for-implementer")
+        if st != "parked" or not (reason.startswith(("ESCALATE", "BLOCKED")) or start_bug):
             if st == "parked" and (reason.startswith("NEEDS-HUMAN") or "CLARIFY" in reason):
                 raise Refused("use --answer")
-            raise Refused(f"--ruling applies to an ESCALATE or BLOCKED park; {t['id']} is {st} ({reason or 'no park'})")
+            raise Refused("--ruling applies to an ESCALATE or BLOCKED park, or a harness-bug park from an "
+                          f"implementer's run start; {t['id']} is {st} ({reason or 'no park'})")
         if reason.startswith("ESCALATE from reviewer"):
             # Back to its checks, same round: the reviewer runs again with the ruling in its input.
             head, moved = t.get("head"), _set_aside_failed_rows(root, t)
@@ -1191,7 +1203,7 @@ def resolve(a, root, cfg):
             shutil.copyfile(a.ruling, dest)
             move("checks-in-flight", "ruling", {"ruling": _rel(root, dest), "head": head, "superseded": moved})
             return
-        if reason.startswith("BLOCKED"):  # an implementer's or the gate's BLOCKED: back to the implementer, same round
+        if reason.startswith("BLOCKED") or start_bug:  # an implementer's or the gate's BLOCKED: back to the implementer, same round
             to = "ready-for-implementer"
         else:
             to = "ready-for-planner" if "planner" in reason else "ready-for-critic"
