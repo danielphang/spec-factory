@@ -57,7 +57,7 @@ contract module (#68) and a spec lint run before the critic (#67).
 ### 4. Measure catch beside cost.
 
 A checker that never disagrees with the author is cost, and it stays invisible until counted. The
-code reviewer changed the outcome in 4 of 94 runs, with 1 BLOCKING finding in total.
+code reviewer changed the outcome in 4 of 94 runs, with 3 BLOCKING findings in total.
 External test: 14% of human code-review comments address defects (Bacchelli and Bird, ICSE 2013,
 https://www.microsoft.com/en-us/research/wp-content/uploads/2016/02/ICSE202013-codereview.pdf).
 Automated reviewers recall 20 to 57% of defects (https://arxiv.org/html/2603.23448v2).
@@ -65,8 +65,8 @@ A field every run fills the same way is not a signal: every recorded CONFIDENCE 
 replacement must vary in practice: the evidence ladder (#79 C) says whether a finding was stated,
 pointed at, shown, run or reproduced. An unenforced claim, like the retro's "mandatory" status with zero
 runs (#83 B), is a documentation defect, not a rule.
-Implemented by: nothing yet beyond `factory/cost.py`, which reports cost only and double-counts.
-Planned: `factory stats`, catch rate and cost by role (#70); the evidence ladder (#79).
+Implemented by: `factory stats`, catch rate and cost by role and model, each model call counted once (#70).
+Planned: the evidence ladder (#79).
 
 ## Separation and record
 

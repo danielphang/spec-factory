@@ -107,6 +107,7 @@ Most of the factory is plain files and a Python program. Five pieces assume Clau
 | Role processes of `factory drive` (`factory/drive.py`) | yes | each role runs as one headless `claude -p` process with `--output-format json` and `--permission-mode auto`, its role's prompt file, model and optional `--effort`, and its tool limits given by `--tools` and `--allowedTools` |
 | Model names (`models` in `instance.yaml`) | yes | Claude model aliases |
 | Token cost per role (`factory/cost.py`) | yes | reads the Workflow tool's transcript files |
+| Catch and cost per role (`factory stats`, `factory/stats.py`) | no | reads the store's files with no Claude Code; reads Claude Code's transcript files only when given `--transcripts` |
 
 `inlineRoles: true` in the workflow's arguments skips the registered agents: every role runs as a
 general-purpose agent that reads its prompt from the run's `system-prompt.txt`, with no per-role
@@ -544,7 +545,7 @@ can accept a revision while another stays on the old one.
 The flag cannot clear the other refusal. A runtime with uncommitted edits to the harness code is
 refused outright; commit or discard them first. Both checks apply only when a command uses the
 instance's own store. A throwaway store (`FACTORY_STATE` pointing elsewhere, as every test does)
-skips them.
+skips them. `paths` and `stats` skip both checks on any store, because they write nothing.
 
 ### Upgrading the runtime
 
@@ -832,9 +833,9 @@ runs from the same runtime. Each target's runner then accepts the new revision b
 A run is in flight from `run start` until `run finish` records its result. While any run on a
 target is in flight, the harness refuses every write to that target's store that lacks this
 marker. A write is any command except `ticket show`, `ticket join`, `results show`, `config`,
-`status parse`, `log tail` and `paths`; a command given `--accept-harness` is always a write.
-`factory drive` is exempt from this check and needs no marker, because it is the dispatcher; it
-guards its own ticket instead ("Driving a ticket from a shell with `factory drive`"). The
+`status parse`, `log tail`, `paths` and `stats`; a command given `--accept-harness` is always a
+write. `factory drive` is exempt from this check and needs no marker, because it is the
+dispatcher; it guards its own ticket instead ("Driving a ticket from a shell with `factory drive`"). The
 workflow scripts already put the marker on their own commands. Put it in front of one command at
 a time:
 
@@ -880,6 +881,49 @@ next, how many rounds, what the checkers receive, when a merge is allowed, when 
 
 `factory ticket show <T>` prints a ticket's state, rounds, park reason and runs in flight; every
 path above is relative to the store.
+
+### Counting what each role catches and costs
+
+`factory stats` counts, from the store's records, how often each role's verdict changed what
+happened next and what each role cost. Use it before deciding which model a role runs, or whether
+a check is worth its cost. It reads one or more stores and writes nothing. It needs no marker and
+no `--accept-harness`, so it runs while a build is in flight and from any checkout.
+
+```
+$RUNTIME/bin/factory stats [--store PATH]... [--since WHEN] [--until WHEN] [--transcripts DIR]...
+```
+
+| Option | What it does |
+|---|---|
+| `--store PATH` | a store to read; repeat it to sum several stores. With none, it reads the store `FACTORY_STATE` names, else the store of the instance found from the current directory, and is refused with exit 2 when there is neither |
+| `--since WHEN`, `--until WHEN` | count only runs started, and log events dated, inside the window. WHEN is an ISO date or date-time, taken as UTC when it has no zone. `--since` is inclusive and `--until` exclusive |
+| `--transcripts DIR` | a directory of Claude Code transcripts, searched for `*.jsonl` files at any depth; repeatable |
+
+It prints four Markdown tables. A changed outcome is a verdict that sends work back or stops it:
+REQUEST-CHANGES, ESCALATE, FAILED, SPEC-DEFECT, REVISE or BLOCKED. A BLOCKING finding is a finding
+the critic or the code reviewer says must be fixed.
+
+| Section | One row per | What it shows |
+|---|---|---|
+| A. Runs and verdicts by role and model | role and model | runs, runs killed before they finished, runs with a changed outcome, the verdicts by status, the critic's and reviewer's BLOCKING findings, and the gate commands an implementer saw fail and then fixed before it handed off |
+| B. Where tickets stop | park reason, then gate or merge decision | parks by reason, with run, ticket and commit ids replaced by `<run>`, `<ticket>` and `<sha>`; then spec approvals, requests for spec changes, other human resolutions, merge refusals by reason, and archive refusals |
+| C. Where spec defects were caught and where they came from | verifier SPEC-DEFECT or implementer BLOCKED run | the spec version the run worked from, the run that wrote it, the critic run that last checked it, and the ticket's REVISE count; then how many approved specs, with and without a REVISE, were caught later |
+| D. What each role costs | role and model | runs including killed ones, wall time, context and output tokens, dollars, and how many runs took their cost from a cost record, a transcript or neither |
+
+A run started by `factory drive` carries a cost record: its tokens and dollars, kept in its
+`meta.yaml`. Any other run has its tokens only in the transcript Claude Code kept for its agent.
+Add `--transcripts ~/.claude/projects` to count those runs; reading that directory takes about
+12 seconds on this machine. Each model call is counted once. Context tokens are the input,
+cache-read and cache-creation tokens together. Dollars come only from cost records, because
+transcripts carry none. Without `--transcripts`, such a run counts under `none` in section D, and
+section A lists it as "not recorded" in the gate column.
+
+Give `--until` to make a figure repeatable, because the store keeps growing. A park reason that a
+human corrected later changes the figure only if the correction is dated before `--until`.
+
+The gate column has one known limit. It finds a gate command by its exact text among the
+implementer's shell calls, so a gate command the implementer ran in another form is missed, and
+the column can undercount.
 
 ## What is built and what is not
 
@@ -978,6 +1022,13 @@ path above is relative to the store.
   role an effort level, which `factory drive` passes to that role's process. A role not listed gets
   Claude Code's default. The workflow scripts ignore the map, so a role they run has a model and no
   effort level. Neither target sets it yet.
+- **Counting catch and cost, `factory stats`.** A command that reads one or more stores and
+  prints, per role and model, the runs, verdicts, outcome changes, BLOCKING findings and tokens;
+  where tickets park; and which runs wrote and critiqued each spec a later role found defective
+  ("Counting what each role catches and costs"). It takes a run's tokens from its cost record,
+  else from its Claude Code transcript, and counts each model call once. `factory/cost.py` now
+  counts the same way; it used to count most calls about twice. `factory stats` writes nothing,
+  and it skips the live-store fence and the harness lock. It has run over both targets' stores.
 
 **Not built**
 
@@ -1073,7 +1124,8 @@ filing from an issue tracker, what you read at each stop, other agent hosts) wer
 the build roles, which `inlineRoles` works around today (#24); a stopped run that stays in flight
 (#53). The driver, `factory drive`, answers #65 and absorbs per-role effort (#22), the operator's
 latest chat message reaching every role agent (#28), titles beside ticket ids in progress output
-(#47) and the checkers' tool limits (#24 part A); retiring the workflow scripts is a later ticket. Earlier sources: prompt changes borrowed from the ponytail project (#20); the documentation
+(#47) and the checkers' tool limits (#24 part A); retiring the workflow scripts is a later ticket. `factory stats` answers #70 and absorbs the double count in `factory/cost.py` (#61);
+feeding its figures to the retro is #42. Earlier sources: prompt changes borrowed from the ponytail project (#20); the documentation
 standard this page follows (#23); each run's scratch directory (#35); the store branch (#46). The
 design document is `docs/design.md`, its changelog `docs/changelog.md`; the working documents from
 building the harness are under `dev/`; the issue index is `dev/issues.md`. The store holds 42
