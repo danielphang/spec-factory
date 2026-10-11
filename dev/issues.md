@@ -91,6 +91,7 @@ A fix closes its issue through a reviewed change on `main`; the merge column is 
 | [87](https://github.com/danielphang/spec-factory/issues/87) | `factory fast-track`: a verify-only path for operator-approved changes (merge gate plus touched capabilities' current-truth scenarios; records the current-truth debt) (operator-approved, from the Driver after Nanobot T-0034) | not in intake (p1) | — | — |
 | [88](https://github.com/danielphang/spec-factory/issues/88) | `factory drive`: Claude Code's attribution footer after the trailer is parsed as escalations (false `escalation.queued`; no routing impact) (found by the Driver) | not in intake (p2, bug) | — | — |
 | [89](https://github.com/danielphang/spec-factory/issues/89) | Retire the Workflow scripts and the clerk: `factory drive` becomes the only runner (after #86, #88, a `--parallel` >1 build, and a drive launch path for every session) | not in intake (p1; gated) | — | — |
+| [90](https://github.com/danielphang/spec-factory/issues/90) | Critic defers an unlabelled Evidence claim to the verifier, which checks only `verification.md` labels: nobody checks it (found by the Driver on Nanobot T-0036) | not in intake (p2, bug) | — | — |
 
 Issues 1–10 are applied and can be closed against their merge; 11 applied (`9168ce1`); 13 and 14 fold into #21 (checklists until it archives); 15 closed as superseded. #12 was a duplicate of #11.
 New findings go straight to GitHub issues; this file is the index.
