@@ -2241,3 +2241,23 @@
 {"ts": "2026-10-11T21:09:24+00:00", "event": "approval.recorded", "ticket": "T-0042", "kind": "spec", "version": 2, "by": "dphang"}
 {"ts": "2026-10-11T21:09:24+00:00", "event": "change.pinned", "ticket": "T-0042", "version": 2, "files": ["openspec/changes/T-0042/proposal.md", "openspec/changes/T-0042/design.md", "openspec/changes/T-0042/specs/live-store-guard/spec.md", "openspec/changes/T-0042/specs/build-dispatch/spec.md", "openspec/changes/T-0042/specs/harness-docs/spec.md", "openspec/changes/T-0042/verification.md"]}
 {"ts": "2026-10-11T21:09:24+00:00", "event": "ticket.transition", "ticket": "T-0042", "from": "awaiting-spec-gate", "to": "ready-for-planner", "by": "dphang"}
+{"ts": "2026-10-11T21:09:58+00:00", "event": "ticket.created", "ticket": "T-0042.1", "parent": "T-0042", "status": "ready-for-implementer"}
+{"ts": "2026-10-11T21:09:58+00:00", "event": "tasks.written", "ticket": "T-0042", "source": "plan:whole-spec"}
+{"ts": "2026-10-11T21:09:58+00:00", "event": "plan.skipped", "ticket": "T-0042", "subticket": "T-0042.1", "reason": "one sub-ticket: no NEEDS-SPLIT, no seam heading, no earlier planner run"}
+{"ts": "2026-10-11T21:10:06+00:00", "event": "ticket.transition", "ticket": "T-0042", "from": "ready-for-planner", "to": "planned", "by": "workflow", "round": {"spec": 1, "pr": 0}}
+{"ts": "2026-10-11T21:10:32+00:00", "event": "run.started", "ticket": "T-0042.1", "run": "run-0427-implementer", "role": "implementer", "model": "opus"}
+{"ts": "2026-10-11T21:22:47+00:00", "event": "run.finished", "ticket": "T-0042.1", "run": "run-0427-implementer", "role": "implementer", "status": "READY-FOR-REVIEW", "wall_s": 735}
+{"ts": "2026-10-11T21:23:05+00:00", "event": "ticket.transition", "ticket": "T-0042.1", "from": "ready-for-implementer", "to": "checks-in-flight", "by": "workflow", "round": {"spec": 0, "pr": 1}}
+{"ts": "2026-10-11T21:23:25+00:00", "event": "run.started", "ticket": "T-0042.1", "run": "run-0428-verifier", "role": "verifier", "model": "opus"}
+{"ts": "2026-10-11T21:23:26+00:00", "event": "run.started", "ticket": "T-0042.1", "run": "run-0429-reviewer", "role": "reviewer", "model": "fable"}
+{"ts": "2026-10-11T21:26:41+00:00", "event": "run.finished", "ticket": "T-0042.1", "run": "run-0429-reviewer", "role": "reviewer", "status": "APPROVE", "wall_s": 195}
+{"ts": "2026-10-11T21:27:01+00:00", "event": "result.recorded", "ticket": "T-0042.1", "head": "8f9c2a96193e4aef8207f6dfd750c334e78f43a5", "role": "reviewer", "status": "APPROVE", "run": "run-0429-reviewer"}
+{"ts": "2026-10-11T21:38:15+00:00", "event": "run.finished", "ticket": "T-0042.1", "run": "run-0428-verifier", "role": "verifier", "status": "VERIFIED", "wall_s": 890}
+{"ts": "2026-10-11T21:38:15+00:00", "event": "escalation.queued", "ticket": "T-0042.1", "run": "run-0428-verifier", "items": ["A non-mapping `drive/<ticket>.yaml` now stops a drive of that ticket with exit 1 (`AttributeError`). Before this change the drive went ahead. The driver never writes such a file, so this needs a hand-damaged or truncated-then-rewritten file. The spec covers missing, non-integer and dead pids but not a malformed file. The operator decides whether the guard should treat a non-mapping file as \"does not block\" (follow-up) or leave it as is."]}
+{"ts": "2026-10-11T21:38:34+00:00", "event": "result.recorded", "ticket": "T-0042.1", "head": "8f9c2a96193e4aef8207f6dfd750c334e78f43a5", "role": "verifier", "status": "VERIFIED", "run": "run-0428-verifier"}
+{"ts": "2026-10-11T21:38:34+00:00", "event": "result.recorded", "ticket": "T-0042.1", "head": "8f9c2a96193e4aef8207f6dfd750c334e78f43a5", "role": "ci", "status": "PASS", "run": "run-0428-verifier"}
+{"ts": "2026-10-11T21:38:54+00:00", "event": "ticket.transition", "ticket": "T-0042.1", "from": "checks-in-flight", "to": "ready-for-merge", "by": "workflow", "round": {"spec": 0, "pr": 1}}
+{"ts": "2026-10-11T21:39:02+00:00", "event": "merge.done", "ticket": "T-0042.1", "head": "8f9c2a96193e4aef8207f6dfd750c334e78f43a5", "base_before": "98dd74c2ec5165f70bf7f08d9ed38d808ade01e4", "main_after": "08bea481db19ac4a52973c9d8f625eef258b1ae1"}
+{"ts": "2026-10-11T21:39:19+00:00", "event": "ticket.transition", "ticket": "T-0042", "from": "planned", "to": "ready-for-parent-verify", "by": "parent-check"}
+{"ts": "2026-10-11T21:39:40+00:00", "event": "change.archived", "ticket": "T-0042", "archived_to": "openspec/changes/archive/2026-10-11-T-0042", "capabilities": ["build-dispatch", "harness-docs", "live-store-guard"], "decisions": 9}
+{"ts": "2026-10-11T21:39:49+00:00", "event": "ticket.transition", "ticket": "T-0042", "from": "ready-for-parent-verify", "to": "closed", "by": "workflow", "round": {"spec": 1, "pr": 0}}

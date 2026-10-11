@@ -1,0 +1,388 @@
+diff --git a/README.md b/README.md
+index 5fe487d..6221404 100644
+--- a/README.md
++++ b/README.md
+@@ -6,7 +6,7 @@ table, and human gates. This page is the system as it runs today; install and us
+ 
+ | | |
+ |---|---|
+-| **Status** | Current state as of 2026-10-10. Intake works end to end. Build works, in local-only mode. |
++| **Status** | Current state as of 2026-10-11. Intake works end to end. Build works, in local-only mode. |
+ | **Reader** | Technical, seeing this project for the first time. Terms specific to this system are defined in "Terms used on this page" or at first use. |
+ | **Scope** | What runs now. The intended design and its reasoning are in `docs/design.md`; where the two disagree, this page is right about what runs and the design is amended. |
+ | **Internal references** | Ticket ids, issue numbers and who did what are in "Related work and history" near the end. |
+@@ -465,7 +465,7 @@ The store's path is `state_dir` in `instance.yaml`. `factory init` creates a new
+ | `.claude/agents/factory-*.md` | integration | `factory init`, when they are missing | the operator, if the target keeps them | durable |
+ | Store records: requests, tickets, specs, plans, runs, results, approvals, current truth, changes, decisions, log | `factory-store` | the harness, through the workflows' clerk or `factory drive`, and the operator's commands | the operator, with `git -C <store> commit`; the harness commits the store once, the first commit `store migrate` makes | durable |
+ | `runs/*/scratch/`, `runs/*/wt/`, `worktrees/` | none; git ignores them | `run start` | never | scratch until the ticket moves on (kept while parked); checker checkouts until `run cleanup`; implementer checkouts until the merge |
+-| `drive/<ticket>.yaml` | none; git ignores it | `factory drive` | never | a live view of one driver process, rewritten at each step; kept until the next drive of that ticket |
++| `drive/<ticket>.yaml` | none; git ignores it | `factory drive` | never | a live view of one driver process, rewritten at each step; read by the next drive of that ticket, which refuses to start while it shows a live driver; kept until that next drive |
+ | Sub-ticket branches, `factory/<T>.<k>` | their own | the implementer's commits | the implementer | kept after the merge |
+ | Merges of sub-tickets | integration | `merge` | the harness | durable |
+ 
+@@ -734,23 +734,30 @@ has, the Workflow tool remains the tested route.
+    goes through intake. A ticket in `ready-for-planner`, `planned` or `ready-for-parent-verify` goes
+    through the build. From any other state it prints "nothing to dispatch from this state" and ends.
+    Like the intake script, it stops at the spec gate: after you approve the spec, run it again.
+-2. If any run is in flight on the target, put `FACTORY_DISPATCH=1` in front of the command, as for
+-   any store write during a run ("Where a human decides"). Without it the live-store fence refuses
+-   the command with exit 2. Once started, the driver marks its own store calls. Its role processes
+-   never carry the marker.
+-3. `--parallel N` sets how many sub-tickets build at once; the default is 2. A commit's reviewer
++2. `--parallel N` sets how many sub-tickets build at once; the default is 2. A commit's reviewer
+    and verifier always run at the same time. Use `--parallel 1` if role processes running at once
+    conflict.
+-4. Read the progress. It prints one line per step, such as
++3. Read the progress. It prints one line per step, such as
+    `T-0032.1 "Add the flag": start implementer run-0120-implementer`. Each line names the ticket or
+    sub-ticket the step concerns, with its title. The last line is the result as one JSON object:
+    what the matching script returns, with `"ok": true` added. The store's `drive/<ticket>.yaml`
+    shows the same while it runs: the role processes still running, the last step line, and the
+    result under `ended` once it stops. Git ignores that file.
+-5. To stop it, press Ctrl-C or send SIGTERM. It ends its role processes, records their runs as
++4. To stop it, press Ctrl-C or send SIGTERM. It ends its role processes, records their runs as
+    `KILLED`, parks nothing, and exits with 128 plus the signal number. Run the same command again to
+    resume from the stored state.
+ 
++The driver needs no `FACTORY_DISPATCH=1`, even while runs of other tickets are in flight on the
++target. It is the dispatcher, the one process meant to write the store while runs work, so the
++live-store fence ("Where a human decides") exempts it from its in-flight check. Once started, it
++marks its own store calls. Its role processes never carry the marker. In place of that check, it
++guards the ticket it drives. It refuses to start on the same ticket, with exit 2 and nothing
++written, while that ticket or one of its sub-tickets has a run in flight. It also refuses while
++`drive/<ticket>.yaml` shows another driver of that ticket still running. From inside the store's
++`runs/` or `worktrees/` it is refused like any write, marker or not. A driver killed by SIGKILL has
++no chance to stop, so its runs stay in flight; clear them as "Where a human decides" says. If the
++refusal names a pid that is not a driver, delete that status file and drive again.
++
+ Each role process's reply is kept as `reply.json` in its run directory. Its session id, cost in
+ dollars, turn count and token usage are recorded under `claude:` in the run's `meta.yaml`. To give a
+ role an effort level, add an `effort:` map to `.factory/instance.yaml`, such as
+@@ -825,7 +832,9 @@ runs from the same runtime. Each target's runner then accepts the new revision b
+ A run is in flight from `run start` until `run finish` records its result. While any run on a
+ target is in flight, the harness refuses every write to that target's store that lacks this
+ marker. A write is any command except `ticket show`, `ticket join`, `results show`, `config`,
+-`status parse`, `log tail` and `paths`; a command given `--accept-harness` is always a write. The
++`status parse`, `log tail` and `paths`; a command given `--accept-harness` is always a write.
++`factory drive` is exempt from this check and needs no marker, because it is the dispatcher; it
++guards its own ticket instead ("Driving a ticket from a shell with `factory drive`"). The
+ workflow scripts already put the marker on their own commands. Put it in front of one command at
+ a time:
+ 
+@@ -904,9 +913,11 @@ path above is relative to the store.
+   for the operator and the run goes on. Neither prints a file's contents. It is tested, and has not
+   yet fired on a real ticket.
+ - **Live-store fence.** While a run is in flight on a target, a write to its store without the
+-  `FACTORY_DISPATCH=1` marker is refused. The workflow scripts and `factory drive` mark their own
+-  commands, the driver's role processes are never marked, and the
+-  operator marks one command at a time ("Where a human decides"). A write run from inside the
++  `FACTORY_DISPATCH=1` marker is refused. The workflow scripts mark their own commands, and the
++  operator marks one command at a time ("Where a human decides"). `factory drive` is exempt from
++  this in-flight check, because it is the dispatcher. It guards its own ticket instead: it refuses
++  to start on a ticket that has a run in flight or another live driver. Once started, it marks its
++  own store calls, and its role processes are never marked. A write run from inside the
+   store's `runs/` or `worktrees/` is refused even with the marker. The fence stops a role's tools,
+   such as its test suite, from changing the live records by accident; it is not isolation. It has
+   fired on a real target: a run left in flight by a stopped workflow blocked writes until the
+diff --git a/dev/build-harness.spec.md b/dev/build-harness.spec.md
+index c85b85a..f226933 100644
+--- a/dev/build-harness.spec.md
++++ b/dev/build-harness.spec.md
+@@ -292,7 +292,7 @@ Common step `runRole(role, ticket, head)` in both scripts: clerk `factory run st
+ 
+ Resumption after a human decision: the `/factory` skill re-runs `build.js` for the parent; the clerk's `ready-implementers` returns the sub-ticket the human moved to `ready-for-implementer` (`resolve --ruling`, `--redispatch`), and `buildOne` starts from the state the store holds (round from the store; for `--redispatch` after a checker kill, only the missing checker runs: `ready-checkers ST` lists roles without a row on the current head; a `--ruling` on BLOCKED re-runs the implementer at the same round with the ruling in its input, K).
+ 
+-**`factory drive`** (`factory/drive.py`) does the same routing outside the Workflow tool. It ports both scripts from `// --- start`, `build.js` with its `buildOne`, branch for branch, with the same commands, transitions, round limits and park reasons, so a ticket it drives leaves the records the scripts leave. In place of the clerk it calls `factory.cli.main` in its own process, one call at a time, so every guard, the fence and the harness lock run as for `bin/factory`. Each role runs as one `claude -p` process from the run's directory; its reply is kept as `runs/<run_id>/reply.json` and recorded by `run finish --reply`. A head's two checkers run at once, ready sub-tickets build at once up to `--parallel N`, and the driver stops at the spec gate. Its permissions are in R6 and I.4.
++**`factory drive`** (`factory/drive.py`) does the same routing outside the Workflow tool. It ports both scripts from `// --- start`, `build.js` with its `buildOne`, branch for branch, with the same commands, transitions, round limits and park reasons, so a ticket it drives leaves the records the scripts leave. In place of the clerk it calls `factory.cli.main` in its own process, one call at a time, so every guard, the fence and the harness lock run as for `bin/factory`. When it starts it is exempt from the fence's in-flight rule, keeps the location rule, and refuses to start on the same ticket as a run in flight, on that ticket or a sub-ticket, or as a live driver. Each role runs as one `claude -p` process from the run's directory; its reply is kept as `runs/<run_id>/reply.json` and recorded by `run finish --reply`. A head's two checkers run at once, ready sub-tickets build at once up to `--parallel N`, and the driver stops at the spec gate. Its permissions are in R6 and I.4.
+ 
+ ### I. Isolated run per role (piece 3) — worktree v0
+ 
+diff --git a/docs/changelog.md b/docs/changelog.md
+index 82aeb12..7cf9e63 100644
+--- a/docs/changelog.md
++++ b/docs/changelog.md
+@@ -70,5 +70,6 @@ Six review rounds ran on this doc, using the reviewer prompt in the appendix. Ro
+ 66. After issue #51 (2026-10-04), where every build role lost its first attempt to a broken Python environment: a role's shell inherited the virtual environment activated in the session that launched the factory, which on this machine belongs to another repository's checkout, and each fresh build checkout had no `.venv`, so a `uv run --no-sync` check failed on its first import until the implementer, then the reviewer, then the verifier each installed the environment themselves. The running-code wrapper, around every role command and every gate command, now first removes the exact `$VIRTUAL_ENV/bin` entry from `PATH` and unsets `VIRTUAL_ENV` and `PYTHONHOME`, then sets the fresh HOME and the `run_env` exports as before. An instance may name one shell command, `environment_sync`, in `instance.yaml`. `run start` runs it through that wrapper in the run's checkout, the implementer's worktree at every dispatch and each checker's checkout, including the parent-close verifier's, after the environment files are copied and before the role starts. On success the run's `meta.yaml` records the command and the role's input ends its "Where you work" section with a line saying the environment is already synced and should not be synced again unless the change alters the files it is built from. A failed sync refuses the run start with exit 2 and one line naming the exit code and the run's `environment-sync.log`, which holds the command and its full output; no run is recorded or put in flight, and a checker's checkout is removed while the implementer's worktree is kept. Without the key nothing runs and the input is as before. Rejected: unsetting only the two variables, which leaves the environment's `python` first on `PATH`; an opt-in way to unset variables through `run_env`, which would leave the deactivation off by default; syncing only when the implementer's worktree is first created, because the environment files and a conflict run's merge can change the lock file at a later dispatch; and quoting the command or its output in the refusal, because the build workflow expands backticks and `$` in a park reason.
+ 67. After issue #65 (2026-10-05), where the dispatcher, a Workflow-tool script that can run no command and read no file, sent every store read and write through a clerk agent: the requester counted 2,236 clerk agents and 4,476 calls over 97 runs, 143M of 866M workflow context tokens (17%), and the clerk was most of the wait between steps. On 2026-10-09 the clerk also returned a correct `run finish` reply pretty-printed across lines, so T-0027.2's build parked as `harness-bug: run finish reviewer:` although the reviewer's run had succeeded. `factory drive TICKET [--phase intake|build] [--parallel N] [--prompt-mode append|replace]` (`factory/drive.py`) now does the scripts' job as an ordinary Python process. It ports both scripts branch for branch, with the same routes, round limits, refusals and park reasons, and stops at the spec gate. It calls the store CLI's entry point in its own process, one call at a time, so it has no clerk and every guard, the fence and the lock run as for `bin/factory`. It marks its own store calls with `FACTORY_DISPATCH=1` once started and never its role processes. Each role runs as one `claude -p` process from its run directory, with `--output-format json`, `--permission-mode auto`, the role's prompt file, model and an optional `--effort` from a new `effort:` map in `instance.yaml`, and `--tools`/`--allowedTools` lists whose `Edit` rules cover only the run's output file, its scratch directory and the temporary directory, plus the implementer's worktree. The reply is kept as `reply.json`, and `run finish --reply` records its session id, cost, turns and usage under `claude:` in `meta.yaml`. Progress is one line per step naming the ticket or sub-ticket and its title, and a status file, `drive/<ticket>.yaml`, which the store's `.gitignore` excludes. SIGINT or SIGTERM ends the role processes, records their runs `KILLED`, parks nothing, and a second run resumes. Absorbed: #22 (per-role effort), #28 (the operator's latest chat message reaching every role agent as overriding its task), #47 (a title beside every ticket id in progress output) and #24 part A (the checkers' tool limits). The workflow scripts stay unchanged until the driver has taken a real ticket through each half; retiring them and the clerk is a later ticket. Rejected: `dontAsk`, which removes the permission classifier while roles have no operating-system isolation (#37); the build spec's "nor `dontAsk`" stays. Rejected: a `bin/factory` subprocess per store call, and calling store functions below the CLI's entry point, which would skip the fence and the lock.
+ 68. After issue #85 (2026-10-10), where the spec drift check parked two sub-tickets of the driver ticket T-0040 for their own siblings' merges, and the second park had no command to clear it: the test rule walked every first-parent commit on the integration branch since the spec was written, so the `--no-ff` merge of T-0040.1, which changed `factory/cli.py` and added `tests/factory/test_drive.py`, parked T-0040.2, and the merges of T-0040.1 and T-0040.2 parked T-0040.3. The Workflow script recorded T-0040.3's drift refusal as `harness-bug: run start implementer: …`, which `resolve --ruling` refused, so the operator edited the stored park reason by hand before the ruling. The test rule now skips a first-parent commit that is the recorded merge (`main_after`) of a merged sub-ticket of the same parent, from any of its plans; every other commit and merge still counts. `resolve --ruling F` now also accepts a `harness-bug: run start implementer:` park from `ready-for-implementer`, which means the harness failed to start an implementer run: F becomes the next ruling and the sub-ticket returns to its implementer at the same round, as for BLOCKED, and the ruling on file keeps the drift check from running again. Any other harness-bug park, such as a failed `run compose` or a checker's failed run start, is still refused, and the refusal text names the new case. Rejected: skipping only the current plan's siblings, since an earlier plan's merged sub-ticket is also the parent's own work; skipping merge commits in general; widening `--redispatch`, which re-runs the checkers and would meet the same drift refusal with no ruling on file; accepting every harness-bug park from `ready-for-implementer`, since a failed `run compose` leaves its run in flight.
++69. After issue #86 (2026-10-11), where an operator driving two tickets of the Nanobot target at once could not restart one drive while the other had a run in flight: `factory drive` met the live-store fence when it started, before it set its marker, so a re-run of the T-0036 drive was refused, naming an implementer run of T-0035. Typing the marker in front of the command got past the fence, but the fence's in-flight rule was also the only thing that stopped a second drive of the same ticket, and a marked second drive of a ticket with a run in flight parked that ticket. `factory drive` is now exempt from the fence's in-flight rule: it starts unmarked beside other tickets' runs. It keeps the location rule, so it is refused from inside the own store's `runs/` or `worktrees/`, marked or not. It keeps the harness lock, and given `--accept-harness` it is fenced in full, because an acceptance rewrites the lock. In place of the in-flight rule it has a same-ticket guard, checked before it sets its marker or writes its status file, whether or not the caller is marked and on any store, a throwaway store included. It refuses with exit 2, writing nothing, while the ticket or one of its sub-tickets has a run in flight, naming the runs. It also refuses while `drive/<ticket>.yaml` has no `ended` and its `pid` is live, meaning signal 0 reaches it or is refused for permission, naming the pid and the file. A dead, missing or non-integer pid does not block, and neither refusal names the marker. README's driver how-to no longer tells the operator to type the marker. This overturns T-0040's decision of 2026-10-10 (entry 67) that the driver is a write like any other, and its rejection of exempting it; the operator made the exemption standing for every later runner command. Rejected: applying the guard only on an own store, as the fence is, since two drivers damage a ticket's records on any store; checking with a process query that a live pid is a `factory drive` process, a platform-dependent query for the rare pid reused after a SIGKILLed driver, so the refusal names the pid and README says to delete the status file when it is not a driver; and a lock against two drives of the same ticket started in the same instant, since the reported case was two different tickets and the window is a few store reads long.
+ 
+ Declined: a dedicated merge agent (merging is gate config plus human gates, not a judgment call).
+diff --git a/docs/design.md b/docs/design.md
+index 7b0cbd0..c8ceede 100644
+--- a/docs/design.md
++++ b/docs/design.md
+@@ -61,7 +61,7 @@ The prompts say what each role does. The harness enforces the wiring rules: fres
+ 
+ **Spec drift.** Between the writing of a spec and the build of one of its sub-tickets, other tickets merge, and a sibling that the sub-ticket's checks rely on may not have merged yet. The harness checks for this before the implementer spends a run on it. Every spec version the store keeps, from `spec add`, a gate edit or `spec amend`, records the integration branch's head when it was stored, as `integration_head` in `specs/<ticket id>/v<n>.yaml`; the value is null when the target repo or branch does not resolve. Before a sub-ticket's implementer run, `run start` checks for drift, ahead of the sibling-tests check. It checks only while the sub-ticket has no finished implementer run and no ruling on file. Two rules find drift. The sibling rule: the sub-ticket's Acceptance field names, by id or by plan label as a whole token, a sibling of the current plan that has not merged and that the sub-ticket does not depend on, directly or through other siblings. Nothing makes such a sibling merge first. The test rule counts from the head recorded with the parent's approved version. It is skipped when that version has no record, because it was stored before the record existed, or when the head is null or not a commit in the target repo. For each first-parent commit on the integration branch since that head that changed a file the version's design part names, each test file the commit changed is a finding, unless the design's `## Tests to change` or the sub-ticket's "Tests to change" lists it. A first-parent commit that is the recorded merge (`main_after`) of a merged sub-ticket of the same parent, from any of its plans, is not counted, because the plan expects its siblings' changes. Every other commit and merge still counts. Named files are the design part's backticked paths that exist at the integration branch's head, other than test files and `.md` documents, which nearly every ticket edits. A test file's name starts with `test_`, ends `_test.<ext>`, or contains `.test.`. The test rule approximates "a test pins behaviour the spec changes". Measured on two stores' history, it would have caught 9 of 10 known breaks, and it parks about half of all sub-tickets. On drift, `run start` refuses with exit 2, writes nothing, and gives an error that starts `BLOCKED from harness: spec drift:` and names each finding. The build parks the sub-ticket with that error as the reason. The human amends the spec (`factory spec amend`, Spec store below), rules, or both; `resolve --ruling` returns the sub-ticket to its implementer, and the ruling on file stops the check from repeating.
+ 
+-**Only the dispatcher writes a live store during a run.** The store CLI fences an instance's own store; a throwaway store (`FACTORY_STATE` naming another) is never fenced. The fence applies to every command except the read-only ones: `ticket show`, `ticket join`, `results show`, `config`, `status parse`, `log tail` and `paths`. A command given `--accept-harness` is always fenced, because it rewrites the lock. The location rule is checked first: a write run from inside the own store's `runs/` or `worktrees/`, where roles do their work, is refused, with or without `FACTORY_DISPATCH=1` and with or without a run in flight. Then the in-flight rule: while any run is in flight on any ticket of the store, a write is refused unless its environment carries `FACTORY_DISPATCH=1`. Both workflow scripts put that marker in front of every clerk command. `factory drive` meets the fence and the lock like any write when it starts; once past them, it sets the marker in its own environment, so its own store calls are marked whether or not it was started marked. It removes the marker from the environment of every role process it starts, so a role's commands are never marked. The operator, or a runner session, puts it in front of one command that must write during a run, and never exports it. A refusal exits 2, writes nothing, and tells the caller to use a throwaway `FACTORY_STATE`; it never names the marker. The fence is checked before the harness lock, so a fenced command never reaches the lock and a fenced `--accept-harness` rewrites nothing. A marked command still meets the lock and its uncommitted-edit refusal unchanged. The fence guards against accidents, such as a role's test suite running `init` from its scratch directory. It is not isolation: a role that copies the marker and writes from outside the store still gets through.
++**Only the dispatcher writes a live store during a run.** The store CLI fences an instance's own store; a throwaway store (`FACTORY_STATE` naming another) is never fenced. The fence applies to every command except the read-only ones: `ticket show`, `ticket join`, `results show`, `config`, `status parse`, `log tail` and `paths`. A command given `--accept-harness` is always fenced, because it rewrites the lock. The location rule is checked first: a write run from inside the own store's `runs/` or `worktrees/`, where roles do their work, is refused, with or without `FACTORY_DISPATCH=1` and with or without a run in flight. Then the in-flight rule: while any run is in flight on any ticket of the store, a write is refused unless its environment carries `FACTORY_DISPATCH=1`. Both workflow scripts put that marker in front of every clerk command. `factory drive` is the dispatcher, so it is exempt from the in-flight rule: it starts unmarked while runs of other tickets are in flight. It keeps the location rule and the lock, and given `--accept-harness` it is fenced in full, in-flight rule included. In place of the in-flight rule it has a same-ticket guard: it refuses to start on the same ticket, marked or not and on any store, while that ticket or one of its sub-tickets has a run in flight, or while the ticket's status file `drive/<ticket>.yaml` has no `ended` and names a live pid. Once started, it sets the marker in its own environment, so its own store calls are marked whether or not it was started marked. It removes the marker from the environment of every role process it starts, so a role's commands are never marked. The operator, or a runner session, puts it in front of one command that must write during a run, and never exports it. A refusal exits 2, writes nothing, and tells the caller to use a throwaway `FACTORY_STATE`; it never names the marker. The fence is checked before the harness lock, so a fenced command never reaches the lock and a fenced `--accept-harness` rewrites nothing. A marked command still meets the lock and its uncommitted-edit refusal unchanged. The fence guards against accidents, such as a role's test suite running `init` from its scratch directory. It is not isolation: a role that copies the marker and writes from outside the store still gets through.
+ 
+ **Scratch directory per run.** Every run gets its own directory for temporary files, `runs/<run id>/scratch/` in the store, so runs that happen at the same time never write into one shared place and no run leaves files in a repository checkout. `run start` creates it for every role, after every guard has passed, and makes sure the store's `.gitignore` excludes `runs/*/scratch/`: an absent or empty `.gitignore` gets the harness's commented block, and an existing one keeps its own lines and gains only the lines it lacks. The composer names the directory's absolute path in a "Scratch directory" section of the run's input, directly after "Running code", and the shared preamble's SCRATCH FILES rule tells every role to put its own temporary files there and nowhere else, taking precedence over any other instruction to use a session scratchpad. When a ticket's status changes to anything other than `parked`, the harness removes the scratch directory of each finished run of that ticket; runs still in flight, other tickets' runs and every path outside `runs/*/scratch` are left alone. A park keeps the files because a human who answers a parked ticket may need to see what the run built; they are removed once the human sends the ticket on or closes it. So a role that wants a later reader to see what a prototype showed puts that in its output, since the directory is gone by the time the ticket's next role reads it.
+ 
+diff --git a/factory/cli.py b/factory/cli.py
+index 05d09e8..4dc4000 100644
+--- a/factory/cli.py
++++ b/factory/cli.py
+@@ -1946,9 +1946,11 @@ def _in_flight(root: Path) -> list[str]:
+             for rid in store.read_yaml(p).get("in_flight") or []]
+ 
+ 
+-def fence(inst: Path, cfg: dict, root: Path) -> None:
++def fence(inst: Path, cfg: dict, root: Path, *, in_flight: bool = True) -> None:
+     """Refuse a write to the instance's own store from inside its runs/ or worktrees/ (marker or
+-    not), or while a run is in flight there unless FACTORY_DISPATCH=1. Accidents, not isolation."""
++    not), or while a run is in flight there unless FACTORY_DISPATCH=1. Accidents, not isolation.
++    With in_flight=False only the location rule applies: `factory drive` is the dispatcher, exempt
++    from the in-flight rule, and guards its own ticket instead (drive._same_ticket_guard)."""
+     if not instance.is_own_store(inst, cfg, root):
+         return
+     own, cwd = instance.own_state_root(inst, cfg), instance.caller_cwd()
+@@ -1956,7 +1958,7 @@ def fence(inst: Path, cfg: dict, root: Path) -> None:
+         if cwd.is_relative_to(own / sub):
+             raise Refused(f"role runs may not write the live store ({own}; called from inside its {sub}/); "
+                           "use a throwaway FACTORY_STATE")
+-    if os.environ.get("FACTORY_DISPATCH") == "1":
++    if not in_flight or os.environ.get("FACTORY_DISPATCH") == "1":
+         return
+     runs = _in_flight(root)
+     if runs:
+@@ -1974,7 +1976,9 @@ def main(argv: list[str] | None = None) -> int:
+         cfg = instance.load_config(inst)
+         root = store.state_root(cfg)
+         if (a.cmd, getattr(a, "sub", None)) not in READ_ONLY or a.accept_harness:
+-            fence(inst, cfg, root)  # before the lock, so a fenced --accept-harness rewrites nothing
++            # before the lock, so a fenced --accept-harness rewrites nothing; drive keeps only the
++            # location rule unless it accepts a harness
++            fence(inst, cfg, root, in_flight=a.cmd != "drive" or bool(a.accept_harness))
+         instance.guard(inst, cfg, root, a.accept_harness)  # the harness lock (design C.2-C.4)
+         a.fn(a, root, cfg)
+         return 0
+diff --git a/factory/drive.py b/factory/drive.py
+index cd08f8d..74392cc 100644
+--- a/factory/drive.py
++++ b/factory/drive.py
+@@ -17,6 +17,12 @@ sub-ticket's steps name the sub-ticket), then the result as one JSON object. The
+ `drive/<ticket>.yaml` is a live view of this process (git ignores it). SIGINT or SIGTERM ends the
+ role processes, records their runs KILLED and parks nothing: running `factory drive` again
+ resumes from the stored state.
++
++The driver is the dispatcher, so the live-store fence exempts it from its in-flight rule: it starts
++with no FACTORY_DISPATCH=1 while other tickets' runs are in flight, and is still refused from inside
++the store's runs/ or worktrees/, or while a run is in flight when given --accept-harness. In place
++of that rule it guards its own ticket: it refuses to start on a ticket that it or one of its
++sub-tickets has a run in flight, or that the status file shows another live driver of (T-0042).
+ """
+ from __future__ import annotations
+ 
+@@ -598,10 +604,43 @@ def _spec_round(tr: dict, rnd: int) -> int:
+     return spec if isinstance(spec, int) and not isinstance(spec, bool) else rnd
+ 
+ 
++def _live(pid) -> bool:
++    """A positive integer pid that signal 0 reaches, or is refused permission to reach."""
++    if not isinstance(pid, int) or isinstance(pid, bool) or pid <= 0:
++        return False
++    try:
++        os.kill(pid, 0)
++    except (ProcessLookupError, OverflowError):  # no such process; or past the platform's pid range
++        return False
++    except PermissionError:  # alive, owned by another user
++        return True
++    return True
++
++
++def _same_ticket_guard(root: Path, tid: str) -> None:
++    """Refuse a drive of a ticket already being worked: a run in flight on it or a sub-ticket, or a
++    status file with no `ended` whose pid is live. A missing ticket passes, for drive() to report."""
++    if not store.ticket_path(root, tid).exists():
++        return
++    t = store.load_ticket(root, tid)
++    runs = [r for x in (t, *store.subtickets_of(root, tid)) for r in x.get("in_flight") or []]
++    if runs:
++        raise store.Refused(f"{tid} has runs in flight on it or its sub-tickets: {', '.join(runs)}; "
++                            "drive it again once they finish")
++    path = root / "drive" / f"{tid}.yaml"
++    st = (store.read_yaml(path) or {}) if path.exists() else {}
++    if st.get("ended") is None and _live(st.get("pid")):
++        raise store.Refused(f"{tid} is already being driven by pid {st['pid']} ({path}); "
++                            "stop that driver or wait for it to end")
++
++
+ def drive(a, root: Path, cfg: dict) -> None:
+-    """`factory drive`, after main() has run the instance refusal, the fence and the harness lock.
+-    From here on the driver's own store calls carry the dispatcher marker; its role processes never
+-    inherit it."""
++    """`factory drive`, after main() has run the instance refusal, the fence's location rule (the
++    driver is exempt from its in-flight rule unless given --accept-harness) and the harness lock.
++    It first refuses a ticket already being worked (_same_ticket_guard), marked or not, on any
++    store. From there on the driver's own store calls carry the dispatcher marker; its role
++    processes never inherit it."""
++    _same_ticket_guard(root, a.ticket)
+     os.environ["FACTORY_DISPATCH"] = "1"
+     d = Driver(a, root, cfg)
+     conf = call("config")
+diff --git a/tests/factory/test_drive_guard.py b/tests/factory/test_drive_guard.py
+new file mode 100644
+index 0000000..a1cad36
+--- /dev/null
++++ b/tests/factory/test_drive_guard.py
+@@ -0,0 +1,157 @@
++"""`factory drive` and the live-store fence (T-0042): the driver is the dispatcher, so the fence
++exempts it from its in-flight rule; it keeps the location rule, is fenced in full when given
++`--accept-harness`, and guards its own ticket instead.
++
++The same-ticket guard refuses `drive T`, exit 2 and nothing written, marked or not and on any store,
++while T or one of its sub-tickets has a run in flight, or while `drive/T.yaml` has no `ended` and
++names a live pid in `pid`.
++
++Black-box through the CLI. Own-store cases use test_live_store_guard's scratch target; throwaway
++store cases use test_drive's and test_drive_build's stores. Each puts test_drive's stand-in `claude`
++first on PATH and counts its calls.
++"""
++from __future__ import annotations
++
++import json
++import os
++import subprocess
++import sys
++from pathlib import Path
++
++import pytest
++
++from .test_drive import STANDIN, Store
++from .test_drive_build import BuildStore
++from .test_instance import cli, js, tree
++from .test_live_store_guard import (  # noqa: F401  (target is a fixture)
++    assert_refused,
++    request,
++    snapshot,
++    start_triage,
++    state,
++    target,
++)
++
++REJECT = {"triage": [{"write": "REJECT"}]}
++
++
++class StandIn:
++    """test_drive's stand-in `claude` in tmp_path/bin, and the environment that puts it on PATH."""
++
++    def __init__(self, tmp_path: Path):
++        bindir = tmp_path / "bin"
++        bindir.mkdir()
++        (bindir / "claude").write_text(STANDIN.format(python=sys.executable))
++        (bindir / "claude").chmod(0o755)
++        self.log = tmp_path / "claude.log"
++        self.env = {"PATH": f"{bindir}{os.pathsep}{os.environ['PATH']}", "STANDIN_LOG": str(self.log)}
++
++    def drive(self, cwd: Path, *argv: str, plays: dict | None = None, **extra: str):
++        return cli(cwd, *argv, **self.env, STANDIN_PLAYS=json.dumps(plays or {}), **extra)
++
++    def calls(self) -> list[dict]:
++        return [json.loads(ln) for ln in self.log.read_text().splitlines()] if self.log.exists() else []
++
++
++def guard_refused(cp, error: str) -> None:
++    assert cp.returncode == 2, (cp.returncode, cp.stdout, cp.stderr)
++    assert cp.stderr.strip() == error
++    assert js(cp) == {"ok": False, "error": error}
++    assert "FACTORY_DISPATCH" not in cp.stdout + cp.stderr
++
++
++# ----- the exemption --------------------------------------------------------------------------
++
++def test_an_unmarked_drive_starts_and_finishes_beside_another_tickets_run(target, tmp_path):
++    rid = start_triage(target)
++    assert cli(target, "ticket", "new", "--file", request(tmp_path), FACTORY_DISPATCH="1").returncode == 0
++    c = StandIn(tmp_path)
++    cp = c.drive(target, "drive", "T-0002", "--phase", "intake", plays=REJECT)
++    assert cp.returncode == 0, cp.stderr
++    assert js(cp)["state"] == "closed"
++    assert js(cli(target, "ticket", "show", "T-0001", "--json"))["in_flight"] == [rid]
++    calls = c.calls()
++    assert len(calls) == 1 and calls[0]["dispatch"] is None
++    assert Path(calls[0]["cwd"]).name.endswith("-triage") and Path(calls[0]["cwd"]).name != rid
++
++
++def test_a_drive_given_accept_harness_is_refused_while_a_run_is_in_flight(target, tmp_path):
++    rid = start_triage(target)
++    assert cli(target, "ticket", "new", "--file", request(tmp_path), FACTORY_DISPATCH="1").returncode == 0
++    lock = (target / ".factory" / "harness.lock").read_text().strip()
++    c = StandIn(tmp_path)
++    before = snapshot(target)
++    assert_refused(c.drive(target, "--accept-harness", lock, "drive", "T-0002", plays=REJECT), f"in flight: {rid}")
++    assert snapshot(target) == before and c.calls() == []
++
++
++@pytest.mark.parametrize("marker", [{}, {"FACTORY_DISPATCH": "1"}], ids=["unmarked", "marked"])
++@pytest.mark.parametrize("where", ["runs", "worktrees"])
++def test_a_drive_from_inside_the_store_is_refused(target, tmp_path, where, marker):
++    rid = start_triage(target)
++    assert cli(target, "ticket", "new", "--file", request(tmp_path), FACTORY_DISPATCH="1").returncode == 0
++    assert cli(target, "run", "finish", rid, "--status-override", "KILLED", FACTORY_DISPATCH="1").returncode == 0
++    cwd = state(target) / "runs" / rid / "scratch" if where == "runs" else state(target) / "worktrees" / "T-0002"
++    cwd.mkdir(parents=True, exist_ok=True)
++    c = StandIn(tmp_path)
++    before = snapshot(target)
++    assert_refused(c.drive(cwd, "drive", "T-0002", plays=REJECT, **marker), f"called from inside its {where}/")
++    assert snapshot(target) == before and c.calls() == []
++
++
++# ----- the same-ticket guard ------------------------------------------------------------------
++
++@pytest.mark.parametrize("marker", [{}, {"FACTORY_DISPATCH": "1"}], ids=["unmarked", "marked"])
++def test_a_drive_of_a_ticket_with_its_own_run_in_flight_is_refused(target, tmp_path, marker):
++    rid = start_triage(target)
++    c = StandIn(tmp_path)
++    before = snapshot(target)
++    cp = c.drive(target, "drive", "T-0001", plays={"triage": [{"write": "ACCEPT"}]}, **marker)
++    guard_refused(cp, f"T-0001 has runs in flight on it or its sub-tickets: {rid}; drive it again once they finish")
++    assert snapshot(target) == before and c.calls() == []
++
++
++def test_a_drive_of_a_parent_whose_subticket_has_a_run_in_flight_is_refused(tmp_path):
++    s = BuildStore(tmp_path)
++    plan = tmp_path / "plan.md"
++    plan.write_text("ST-1 / One\nDepends on: none\nParallel-safe: yes\n")
++    s.ok("subticket", "add", "T-0001", "--file", str(plan))
++    s.ok("ticket", "transition", "T-0001", "--to", "planned", "--by", "t")
++    rid = s.ok("run", "start", "--role", "implementer", "--ticket", "T-0001.1")["run_id"]
++    before = tree(s.root)
++    cp = s.cli("drive", "T-0001", "--phase", "build", plays={"implementer": [{"write": "READY-FOR-REVIEW"}]})
++    guard_refused(cp, f"T-0001 has runs in flight on it or its sub-tickets: {rid}; drive it again once they finish")
++    assert tree(s.root) == before and s.calls() == []
++
++
++def write_status(s: Store, pid, ended=None) -> Path:
++    p = s.root / "drive" / "T-0001.yaml"
++    p.parent.mkdir(parents=True, exist_ok=True)
++    p.write_text(f"ticket: T-0001\npid: {pid}\nended: {json.dumps(ended)}\n")
++    return p
++
++
++@pytest.mark.parametrize("pid", [os.getpid(), 1], ids=["own-user", "other-user-or-root"])
++def test_a_recorded_live_driver_blocks_a_second_drive(tmp_path, pid):
++    s = Store(tmp_path)
++    p = write_status(s, pid)
++    before = tree(s.root)
++    cp, _ = s.drive(REJECT)
++    guard_refused(cp, f"T-0001 is already being driven by pid {pid} ({p}); stop that driver or wait for it to end")
++    assert tree(s.root) == before and s.calls() == []
++
++
++def dead_pid() -> int:
++    p = subprocess.Popen([sys.executable, "-c", "pass"])
++    p.wait()
++    return p.pid
++
++
++@pytest.mark.parametrize("pid,ended", [("dead", None), (os.getpid(), {"ok": True}), ("abc", None), (0, None),
++                                       (2**70, None)], ids=["dead", "ended", "not-a-pid", "zero", "out-of-range"])
++def test_an_ended_dead_or_unusable_driver_record_does_not_block(tmp_path, pid, ended):
++    s = Store(tmp_path)
++    write_status(s, dead_pid() if pid == "dead" else pid, ended)
++    cp, res = s.drive(REJECT)
++    assert cp.returncode == 0, cp.stderr
++    assert res["state"] == "closed" and len(s.calls()) == 1

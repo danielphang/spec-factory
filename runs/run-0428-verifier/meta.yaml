@@ -1,0 +1,31 @@
+run_id: run-0428-verifier
+role: verifier
+ticket: T-0042.1
+model: opus
+round: 1
+spec_version: 2
+started: '2026-10-11T21:23:25+00:00'
+finished: '2026-10-11T21:38:15+00:00'
+wall_s: 890
+status: VERIFIED
+input_sources:
+- specs/T-0042.1/subticket.md
+- specs/T-0042/v2.md
+- runs/run-0427-implementer/output.md
+- runs/run-0428-verifier/diff.patch
+gate_skipped: []
+environment_files: []
+branch: factory/T-0042.1
+base: 98dd74c2ec5165f70bf7f08d9ed38d808ade01e4
+head: 8f9c2a96193e4aef8207f6dfd750c334e78f43a5
+worktree: /Users/dphang/dev/spec-factory/.factory/store/runs/run-0428-verifier/wt
+confidence: high. All 8 acceptance commands printed their THEN lines on the head, the 5 NEW commands printed
+  their stated "Today" lines on the base, both gates passed as written, and a real two-driver probe behaved
+  as the spec intends.
+escalations:
+- A non-mapping `drive/<ticket>.yaml` now stops a drive of that ticket with exit 1 (`AttributeError`).
+  Before this change the drive went ahead. The driver never writes such a file, so this needs a hand-damaged
+  or truncated-then-rewritten file. The spec covers missing, non-integer and dead pids but not a malformed
+  file. The operator decides whether the guard should treat a non-mapping file as "does not block" (follow-up)
+  or leave it as is.
+escalations_note: null

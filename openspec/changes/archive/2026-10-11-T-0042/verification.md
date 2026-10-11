@@ -51,3 +51,7 @@ Evidence: `git diff --stat ba09ba7..HEAD`: `docs/golden.md` added, `docs/north-s
 Suggested fix: None required; the implementer may note that line numbers were verified at `98dd74c`.
 
 No blocking issues. The scenarios would fail against a stub (a guard that always refuses fails "An unmarked drive starts beside another ticket's run" and the ended/dead cases; one that never refuses fails the three refusal scenarios), the exemption is bounded to `drive` with `--accept-harness` kept fenced in full, the overturned T-0040 decision and its replacement are both named, and the two protected paths are declared under Risk.
+
+## Verifier results
+
+8f9c2a96193e4aef8207f6dfd750c334e78f43a5 · T-0042.1 · VERIFIED · run-0428-verifier

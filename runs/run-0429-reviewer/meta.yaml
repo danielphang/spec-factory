@@ -1,0 +1,29 @@
+run_id: run-0429-reviewer
+role: reviewer
+ticket: T-0042.1
+model: fable
+round: 1
+spec_version: 2
+started: '2026-10-11T21:23:26+00:00'
+finished: '2026-10-11T21:26:41+00:00'
+wall_s: 195
+status: APPROVE
+input_sources:
+- specs/T-0042.1/subticket.md
+- specs/T-0042/v2.md
+- runs/run-0427-implementer/output.md
+- runs/run-0429-reviewer/diff.patch
+gate_skipped: []
+environment_files: []
+branch: factory/T-0042.1
+base: 98dd74c2ec5165f70bf7f08d9ed38d808ade01e4
+head: 8f9c2a96193e4aef8207f6dfd750c334e78f43a5
+worktree: /Users/dphang/dev/spec-factory/.factory/store/runs/run-0429-reviewer/wt
+confidence: high. Every name the diff relies on exists where the PR says; the guard runs before the marker
+  and the status write, the fence keeps its location rule for `drive`, and the new tests cover each scenario
+  of the spec without touching an existing test. I did not run the suite or the acceptance commands; the
+  verifier does, on this head.
+escalations: []
+escalations_note: 'none. For the record under check 6: the change edits the protected harness paths `factory/cli.py`
+  and `factory/drive.py`, both declared in the approved spec''s Risk section, so the merge gate needs
+  no further approval for them.'
