@@ -4,14 +4,14 @@ title: Spec drift check parks a sub-ticket for its own sibling's merge; no resol
   park before the first implementer run
 request: requests/T-0041.md
 source: /private/tmp/claude-501/-Users-dphang-dev-nanobot/c69bfd1d-97a6-43e3-9d5a-a517c28d382c/scratchpad/req-85.md
-status: ready-for-planner
+status: closed
 round:
   spec: 2
   pr: 0
 spec:
   version: 2
   approved_version: 2
-plan: null
+plan: plans/T-0041.md
 in_flight: []
 parked: null
 created: '2026-10-10T18:48:14+00:00'
@@ -56,6 +56,25 @@ history:
   to: ready-for-planner
   by: dphang
   approved_version: 2
+- ts: '2026-10-11T06:30:33+00:00'
+  from: ready-for-planner
+  to: planned
+  by: workflow
+  round:
+    spec: 2
+    pr: 0
+- ts: '2026-10-11T06:55:42+00:00'
+  from: planned
+  to: ready-for-parent-verify
+  by: parent-check
+- ts: '2026-10-11T06:56:08+00:00'
+  from: ready-for-parent-verify
+  to: closed
+  by: workflow
+  round:
+    spec: 2
+    pr: 0
+  verified_by: run-0422-verifier
 parent: null
 depends_on: []
 parallel_safe: true
@@ -64,4 +83,4 @@ head: null
 merge:
   base_before: null
   main_after: null
-parent_base: null
+parent_base: cce3d6f43a2126c54141f67c377ac92b908880d6

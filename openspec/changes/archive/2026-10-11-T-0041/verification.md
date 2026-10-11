@@ -90,3 +90,7 @@ Not findings, noted for the writer: the Evidence suite line (512 passed, 8 faile
 
 Out-of-scope observations
 - As in round 1: `README.md` carries "It is tested, and has not yet fired on a real ticket" for other features too (the sibling-tests bullet at line 919 may also be stale after T-0040); the spec rightly touches only the drift bullet.
+
+## Verifier results
+
+654f523b997af69c9896cb06bdd9ac36fc04469c · T-0041.1 · VERIFIED · run-0422-verifier

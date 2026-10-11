@@ -1,0 +1,49 @@
+id: T-0041.1
+type: sub-ticket
+title: Spec drift check parks a sub-ticket for its own sibling's merge; no resolve route back from a harness-bug
+  park before the first implementer run
+request: requests/T-0041.md
+source: plan:whole-spec
+status: merged
+round:
+  spec: 0
+  pr: 1
+spec:
+  version: 2
+  approved_version: 2
+plan: null
+in_flight: []
+parked: null
+created: '2026-10-11T06:30:24+00:00'
+history:
+- ts: '2026-10-11T06:42:22+00:00'
+  from: ready-for-implementer
+  to: checks-in-flight
+  by: workflow
+  round:
+    spec: 0
+    pr: 1
+- ts: '2026-10-11T06:55:05+00:00'
+  from: checks-in-flight
+  to: ready-for-merge
+  by: workflow
+  round:
+    spec: 0
+    pr: 1
+- ts: '2026-10-11T06:55:14+00:00'
+  from: ready-for-merge
+  to: merged
+  by: merge
+  head: 654f523b997af69c9896cb06bdd9ac36fc04469c
+parent: T-0041
+depends_on: []
+parallel_safe: true
+branch: factory/T-0041.1
+head: 654f523b997af69c9896cb06bdd9ac36fc04469c
+merge:
+  base_before: cce3d6f43a2126c54141f67c377ac92b908880d6
+  main_after: a4f90b6b662f7679a26bd06d753d316e194bc657
+parent_base: null
+label: whole-spec
+planned_from: 2
+merge_refused: null
