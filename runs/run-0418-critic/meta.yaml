@@ -1,0 +1,21 @@
+run_id: run-0418-critic
+role: critic
+ticket: T-0041
+model: fable
+round: 1
+spec_version: 1
+started: '2026-10-11T05:35:49+00:00'
+finished: '2026-10-11T05:41:45+00:00'
+wall_s: 356
+status: REVISE
+input_sources:
+- specs/T-0041/v1.md
+- openspec/specs/build-dispatch/spec.md
+- openspec/specs/harness-docs/spec.md
+- openspec/specs/human-resolution/spec.md
+- openspec/specs/spec-amendment/spec.md
+- decisions.md
+confidence: high, every cited path, store record and both spot-run acceptance commands checked on this
+  checkout; the two blocking items are a gloss and one missing still-drift case, both small
+escalations: []
+escalations_note: null

@@ -1,20 +1,61 @@
 id: T-0041
-type: null
-title: Spec drift check parks a sub-ticket for its own sibling's merge
+type: bug
+title: Spec drift check parks a sub-ticket for its own sibling's merge; no resolve route back from a harness-bug
+  park before the first implementer run
 request: requests/T-0041.md
 source: /private/tmp/claude-501/-Users-dphang-dev-nanobot/c69bfd1d-97a6-43e3-9d5a-a517c28d382c/scratchpad/req-85.md
-status: ready-for-triage
+status: ready-for-planner
 round:
-  spec: 0
+  spec: 2
   pr: 0
 spec:
-  version: 0
-  approved_version: null
+  version: 2
+  approved_version: 2
 plan: null
 in_flight: []
 parked: null
 created: '2026-10-10T18:48:14+00:00'
-history: []
+history:
+- ts: '2026-10-11T05:20:51+00:00'
+  from: ready-for-triage
+  to: ready-for-spec-writer
+  by: workflow
+  round:
+    spec: 0
+    pr: 0
+- ts: '2026-10-11T05:35:41+00:00'
+  from: ready-for-spec-writer
+  to: ready-for-critic
+  by: workflow
+  round:
+    spec: 1
+    pr: 0
+- ts: '2026-10-11T05:41:55+00:00'
+  from: ready-for-critic
+  to: ready-for-spec-writer
+  by: workflow
+  round:
+    spec: 2
+    pr: 0
+- ts: '2026-10-11T05:53:09+00:00'
+  from: ready-for-spec-writer
+  to: ready-for-critic
+  by: workflow
+  round:
+    spec: 2
+    pr: 0
+- ts: '2026-10-11T05:57:12+00:00'
+  from: ready-for-critic
+  to: awaiting-spec-gate
+  by: workflow
+  round:
+    spec: 2
+    pr: 0
+- ts: '2026-10-11T06:29:49+00:00'
+  from: awaiting-spec-gate
+  to: ready-for-planner
+  by: dphang
+  approved_version: 2
 parent: null
 depends_on: []
 parallel_safe: true

@@ -1,0 +1,16 @@
+run_id: run-0416-triage
+role: triage
+ticket: T-0041
+model: opus
+round: 0
+spec_version: 0
+started: '2026-10-11T05:19:09+00:00'
+finished: '2026-10-11T05:20:42+00:00'
+wall_s: 93
+status: ACCEPT
+input_sources:
+- requests/T-0041.md
+confidence: medium. The drift false positive is confirmed in code, design text and ticket history. The
+  resolve-route half is a less specific request, and its shape is left to the spec writer.
+escalations: []
+escalations_note: null

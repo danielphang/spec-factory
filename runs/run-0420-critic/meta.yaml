@@ -1,0 +1,24 @@
+run_id: run-0420-critic
+role: critic
+ticket: T-0041
+model: fable
+round: 2
+spec_version: 2
+started: '2026-10-11T05:53:19+00:00'
+finished: '2026-10-11T05:57:02+00:00'
+wall_s: 223
+status: APPROVE
+input_sources:
+- specs/T-0041/v2.md
+- openspec/specs/build-dispatch/spec.md
+- openspec/specs/harness-docs/spec.md
+- openspec/specs/human-resolution/spec.md
+- openspec/specs/spec-amendment/spec.md
+- decisions.md
+- runs/run-0418-critic/output.md
+- specs/T-0041/v1.md
+confidence: high, both blocking findings resolved with the changed scenario run on this checkout and printing
+  the stated today output, including the new `merge` case whose refusal names the merge commit; Tests
+  to change rechecked for the new case
+escalations: []
+escalations_note: null
