@@ -6,7 +6,7 @@ table, and human gates. This page is the system as it runs today; install and us
 
 | | |
 |---|---|
-| **Status** | Current state as of 2026-10-10. Intake works end to end. Build works, in local-only mode. |
+| **Status** | Current state as of 2026-10-11. Intake works end to end. Build works, in local-only mode. |
 | **Reader** | Technical, seeing this project for the first time. Terms specific to this system are defined in "Terms used on this page" or at first use. |
 | **Scope** | What runs now. The intended design and its reasoning are in `docs/design.md`; where the two disagree, this page is right about what runs and the design is amended. |
 | **Internal references** | Ticket ids, issue numbers and who did what are in "Related work and history" near the end. |
@@ -465,7 +465,7 @@ The store's path is `state_dir` in `instance.yaml`. `factory init` creates a new
 | `.claude/agents/factory-*.md` | integration | `factory init`, when they are missing | the operator, if the target keeps them | durable |
 | Store records: requests, tickets, specs, plans, runs, results, approvals, current truth, changes, decisions, log | `factory-store` | the harness, through the workflows' clerk or `factory drive`, and the operator's commands | the operator, with `git -C <store> commit`; the harness commits the store once, the first commit `store migrate` makes | durable |
 | `runs/*/scratch/`, `runs/*/wt/`, `worktrees/` | none; git ignores them | `run start` | never | scratch until the ticket moves on (kept while parked); checker checkouts until `run cleanup`; implementer checkouts until the merge |
-| `drive/<ticket>.yaml` | none; git ignores it | `factory drive` | never | a live view of one driver process, rewritten at each step; kept until the next drive of that ticket |
+| `drive/<ticket>.yaml` | none; git ignores it | `factory drive` | never | a live view of one driver process, rewritten at each step; read by the next drive of that ticket, which refuses to start while it shows a live driver; kept until that next drive |
 | Sub-ticket branches, `factory/<T>.<k>` | their own | the implementer's commits | the implementer | kept after the merge |
 | Merges of sub-tickets | integration | `merge` | the harness | durable |
 
@@ -734,22 +734,29 @@ has, the Workflow tool remains the tested route.
    goes through intake. A ticket in `ready-for-planner`, `planned` or `ready-for-parent-verify` goes
    through the build. From any other state it prints "nothing to dispatch from this state" and ends.
    Like the intake script, it stops at the spec gate: after you approve the spec, run it again.
-2. If any run is in flight on the target, put `FACTORY_DISPATCH=1` in front of the command, as for
-   any store write during a run ("Where a human decides"). Without it the live-store fence refuses
-   the command with exit 2. Once started, the driver marks its own store calls. Its role processes
-   never carry the marker.
-3. `--parallel N` sets how many sub-tickets build at once; the default is 2. A commit's reviewer
+2. `--parallel N` sets how many sub-tickets build at once; the default is 2. A commit's reviewer
    and verifier always run at the same time. Use `--parallel 1` if role processes running at once
    conflict.
-4. Read the progress. It prints one line per step, such as
+3. Read the progress. It prints one line per step, such as
    `T-0032.1 "Add the flag": start implementer run-0120-implementer`. Each line names the ticket or
    sub-ticket the step concerns, with its title. The last line is the result as one JSON object:
    what the matching script returns, with `"ok": true` added. The store's `drive/<ticket>.yaml`
    shows the same while it runs: the role processes still running, the last step line, and the
    result under `ended` once it stops. Git ignores that file.
-5. To stop it, press Ctrl-C or send SIGTERM. It ends its role processes, records their runs as
+4. To stop it, press Ctrl-C or send SIGTERM. It ends its role processes, records their runs as
    `KILLED`, parks nothing, and exits with 128 plus the signal number. Run the same command again to
    resume from the stored state.
+
+The driver needs no `FACTORY_DISPATCH=1`, even while runs of other tickets are in flight on the
+target. It is the dispatcher, the one process meant to write the store while runs work, so the
+live-store fence ("Where a human decides") exempts it from its in-flight check. Once started, it
+marks its own store calls. Its role processes never carry the marker. In place of that check, it
+guards the ticket it drives. It refuses to start on the same ticket, with exit 2 and nothing
+written, while that ticket or one of its sub-tickets has a run in flight. It also refuses while
+`drive/<ticket>.yaml` shows another driver of that ticket still running. From inside the store's
+`runs/` or `worktrees/` it is refused like any write, marker or not. A driver killed by SIGKILL has
+no chance to stop, so its runs stay in flight; clear them as "Where a human decides" says. If the
+refusal names a pid that is not a driver, delete that status file and drive again.
 
 Each role process's reply is kept as `reply.json` in its run directory. Its session id, cost in
 dollars, turn count and token usage are recorded under `claude:` in the run's `meta.yaml`. To give a
@@ -825,7 +832,9 @@ runs from the same runtime. Each target's runner then accepts the new revision b
 A run is in flight from `run start` until `run finish` records its result. While any run on a
 target is in flight, the harness refuses every write to that target's store that lacks this
 marker. A write is any command except `ticket show`, `ticket join`, `results show`, `config`,
-`status parse`, `log tail` and `paths`; a command given `--accept-harness` is always a write. The
+`status parse`, `log tail` and `paths`; a command given `--accept-harness` is always a write.
+`factory drive` is exempt from this check and needs no marker, because it is the dispatcher; it
+guards its own ticket instead ("Driving a ticket from a shell with `factory drive`"). The
 workflow scripts already put the marker on their own commands. Put it in front of one command at
 a time:
 
@@ -904,9 +913,11 @@ path above is relative to the store.
   for the operator and the run goes on. Neither prints a file's contents. It is tested, and has not
   yet fired on a real ticket.
 - **Live-store fence.** While a run is in flight on a target, a write to its store without the
-  `FACTORY_DISPATCH=1` marker is refused. The workflow scripts and `factory drive` mark their own
-  commands, the driver's role processes are never marked, and the
-  operator marks one command at a time ("Where a human decides"). A write run from inside the
+  `FACTORY_DISPATCH=1` marker is refused. The workflow scripts mark their own commands, and the
+  operator marks one command at a time ("Where a human decides"). `factory drive` is exempt from
+  this in-flight check, because it is the dispatcher. It guards its own ticket instead: it refuses
+  to start on a ticket that has a run in flight or another live driver. Once started, it marks its
+  own store calls, and its role processes are never marked. A write run from inside the
   store's `runs/` or `worktrees/` is refused even with the marker. The fence stops a role's tools,
   such as its test suite, from changing the live records by accident; it is not isolation. It has
   fired on a real target: a run left in flight by a stopped workflow blocked writes until the
