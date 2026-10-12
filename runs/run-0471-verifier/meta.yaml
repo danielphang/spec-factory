@@ -1,0 +1,26 @@
+run_id: run-0471-verifier
+role: verifier
+ticket: T-0045.3
+model: opus
+round: 1
+spec_version: 2
+started: '2026-10-12T08:57:34+00:00'
+finished: '2026-10-12T09:09:30+00:00'
+wall_s: 716
+status: VERIFIED
+input_sources:
+- specs/T-0045.3/subticket.md
+- specs/T-0045/v2.md
+- runs/run-0470-implementer/output.md
+- runs/run-0471-verifier/diff.patch
+gate_skipped: []
+environment_files: []
+branch: factory/T-0045.3
+base: 1c5a1527f4c1b12b4f24ddb2aca0bfcac0ecfc52
+head: c8308f2ba30e01db463ee09dff27b778e8819b39
+worktree: /Users/dphang/dev/spec-factory/.factory/store/runs/run-0471-verifier/wt
+confidence: high. All six scenarios and both gates ran as written on c8308f2 and gave the expected output.
+  The NEW scenario fails on the base for the reason the spec gives. AST and scope probes show the moved
+  code is the same code.
+escalations: []
+escalations_note: null

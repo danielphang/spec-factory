@@ -1,0 +1,17 @@
+run_id: run-0463-triage
+role: triage
+ticket: T-0046
+model: opus
+round: 0
+spec_version: 0
+started: '2026-10-12T07:28:46+00:00'
+finished: '2026-10-12T07:30:10+00:00'
+wall_s: 84
+status: ACCEPT
+input_sources:
+- requests/T-0046.md
+confidence: high — I checked every named pattern, test and script at HEAD `2b9baf5`; the only differences
+  from the request are small line-number shifts and the `harness-bug:` grep count (24, not 18), both noted
+  above.
+escalations: []
+escalations_note: null

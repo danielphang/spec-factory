@@ -1,0 +1,26 @@
+run_id: run-0469-reviewer
+role: reviewer
+ticket: T-0045.2
+model: fable
+round: 1
+spec_version: 2
+started: '2026-10-12T08:15:26+00:00'
+finished: '2026-10-12T08:18:44+00:00'
+wall_s: 198
+status: APPROVE
+input_sources:
+- specs/T-0045.2/subticket.md
+- specs/T-0045/v2.md
+- runs/run-0465-implementer/output.md
+- runs/run-0469-reviewer/diff.patch
+gate_skipped: []
+environment_files: []
+branch: factory/T-0045.2
+base: 6ac73f13f1768bd09a6cc1da3879be8ead51e381
+head: a7368d0ff39c534d52cd4d4eecb9d3e463ee95d4
+worktree: /Users/dphang/dev/spec-factory/.factory/store/runs/run-0469-reviewer/wt
+confidence: high. The diff is a mechanical replacement of copied helpers with the shared ones, no test
+  body or assertion changes, and the three static acceptance checks print the sub-ticket's expected output
+  on this head; the suite result rests with the verifier.
+escalations: []
+escalations_note: null

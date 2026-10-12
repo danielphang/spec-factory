@@ -1,0 +1,6 @@
+ticket: T-0045.2
+head: a7368d0ff39c534d52cd4d4eecb9d3e463ee95d4
+role: ci
+status: PASS
+run_id: run-0469-verifier
+at: '2026-10-12T08:27:42+00:00'

@@ -1,0 +1,36 @@
+## Critic review: T-0046 spec v1 (round 1)
+
+What I checked, on `~/dev/spec-factory` at `6ac73f1` (`main`; `factory/` is unchanged since the spec's `2b9baf5`, the only merge since is T-0045.1, which touches `tests/` alone):
+
+- Grounding: every cited path, function and line range in Evidence and design.md exists where the spec says (`compose.py:16` `_runs_for`, `specstore.py:269` `critic_rounds`, `cli.py:1712` `_parent_close_verified`, `store.py:116` `clear_scratch`, `cli.py:671`/`1760`, `stats.py:72`, `cost.py:33-39`/`129`, the five `ticket.transition` sites, `cli.py:603`/`drive.py:626`, the four `rev(repo, integration_branch(...))` sites, the F sites, `drive.py:192`/`453`/`517`/`353`/`529`, `drive.py:226`/`234`/`575`, `specstore.py:102`/`158`/`305`/`324`/`350`, `cli.py:358` `_heading`, `cli.py:1187`, `test_shepherd.py:79`, `test_cost_once.py:19`). All 18 `harness-bug` parks of the shared form read `X.get('stderr') or ''`; the other six (five "unknown STATUS", the `wait` park) are the ones the spec leaves alone. `cost.py` imports nothing from `factory`; `stats.py` imports `_records` from `factory.cost`.
+- All eight NEW scenarios run as written on the base print exactly the "today" values the Acceptance list states: `3`, `3 0`, `5 0`, `2`, `4`, `5 2 2 2`, `18 3`, `3 8`. The `0 5` target of the last one is right: of today's eight `lines_outside_fences` loops, five are replaced (lines 107, 164, 307, 332, 356) and three stay (`parse_delta` 128, `scenario_names` 155, the requirement-statement loop 371), plus the two new helpers.
+- Three REGRESSION scenarios run as written, fixture files in my scratch directory (`TMPDIR` set there), through the fresh-HOME wrapper: "Spec pinning and planner-run refusals keep their text" printed the four lines the THEN gives; "The dispatcher parks a refused store command with the same reason" printed the three park lines the THEN gives, each ending in `\n`; "The spec parser gives the same result as the base" printed `files=265 checks=3940 differ=0` and nothing after (265 because the store has grown by this spec's v1 since the writer ran it; the THEN is parametric). I did not run the status-transition scenario or the suite.
+- Behaviour-preservation by reading: `record_transition`'s four callers all do append-history, save, log in that order with the same fields; `ticket_transition` alone adds `round` to both, which the design passes through. `_blocks` as specified reproduces `requirement_blocks` (boundary at `## `/`### `, `rstrip()+"\n"`) and `scenario_blocks` (boundary via `_heading`, bare `rstrip()`). `section` as specified reproduces all three walks; `acceptance_labels`' fence skip is kept at the caller. `_recorded_plan_run`, `log_tail` and `stats._load` already read files in sorted order, so `log_lines`/`_log_records` change no order; `cost._store_paths` builds a set, so its new ordering is unobservable.
+- Tests: no test under `tests/factory` names a replaced or deleted function (the grep matches only three test-function names), and I found no test that pins the `AttributeError` on an empty `meta.yaml` that Decision 1 removes. "Tests to change: none" stands.
+- Open tickets: T-0045 (approved, planned, its .1 already merged) edits only `tests/`; this spec edits only `factory/`. The suite scenario's `git diff ... main...HEAD -- tests` is merge-base relative, so it holds whichever order the rest of T-0045 and this ticket merge in. No conflict.
+
+### Findings
+
+[BLOCKING] 6 — Decisions, first paragraph
+Problem: The operator's first Decisions sentence hangs on two factory names that nothing has glossed: `meta.yaml` and `clear_scratch`.
+Evidence: "The shared run iterator skips a run whose `meta.yaml` is empty, as `clear_scratch` does today." Evidence mentions both (bullet 4 of "Copies that differ today", the table) but says of neither what it is; the operator has to infer that `meta.yaml` is the record a run's directory carries and that `clear_scratch` is the harness function that deletes finished runs' scratch directories. The rubric makes an unglossed system term in the first paragraph of a human-facing section blocking even when a careful reader could work it out.
+Suggested fix: Gloss both once at the first mention, e.g. "a run whose `meta.yaml` (the record file in the run's directory) is empty, as `clear_scratch`, the function that removes finished runs' scratch directories, does today", or gloss them in Evidence where they first appear.
+
+[SHOULD-FIX] 6 — Problem (bullet 7), Evidence (paragraphs 1 and 2)
+Problem: Three more factory terms appear to the operator without a gloss: "the dispatcher" and "store command" (Problem, bullet 7), and the acceptance labels "NEW"/"REGRESSION" (Evidence, "the counts that the NEW scenarios under Acceptance print", "Each REGRESSION scenario").
+Evidence: Read as the gate operator: "the dispatcher" is the driver code in `drive.py` that runs role processes and calls the store CLI; a "store command" is one `bin/factory` call; NEW/REGRESSION are this factory's labels for a check that must fail before the change and one that must keep passing. None of this is said. Not in a section's first paragraph, so not blocking.
+Suggested fix: One clause each at first use: "the dispatcher, the code that runs each role and calls the store's commands", "a store command (one `bin/factory` call)", and "NEW scenarios (checks that fail before the change) … REGRESSION scenarios (checks that must keep passing)".
+
+[NIT] 2 — ADDED Requirements, scenarios "One function reads the integration-branch tip" and "One line formats a failed-command park …"
+Problem: A THEN of `1` is also satisfied by a wrong fix that adds no helper and leaves one call site, so these two checks pin "at most one" rather than "exactly the helper".
+Evidence: Today the regexes match 4 and 18 lines; after the change the one remaining match is meant to be the helper body, but a leftover `gitops.rev(repo, gitops.integration_branch(cfg, repo))` in `cli.py` with a differently written helper also prints `1`. The code reviewer reads the diff, so this is cheap insurance, not a gap that matters.
+Suggested fix: Optionally add to each WHEN a count of the helper's definition, e.g. `$(grep -c '^def integration_tip(' factory/gitops.py)` and `$(grep -c '^def _failed(' factory/drive.py)`, with THEN `1 1` / `1 1 1`; or leave as is.
+
+Not raised as findings: the NEW scenarios grep internal names (`specstore.applies(root, deltas)`, `lines_outside_fences(`), which the rubric discourages; this ticket's subject is the code's own shape, and the harness-code current truth and T-0045's Decisions already take that line. The spec-parser comparison compares HEAD with its merge base, so on `main` after merge it compares the file with itself; the spec shows it can fail on a mutated copy, and the verifier runs it on the branch, where it is meaningful.
+
+### Out-of-scope observations
+- `cli.py:999-1003` in the Evidence table is `1000-1003` in the file (the `s["status"]` line is 1000). Cosmetic.
+
+STATUS: REVISE
+CONFIDENCE: high — every cited path checked, all eight NEW checks and three of six REGRESSION checks run as written with the stated output; the one blocking finding is a writing-standard gloss, not a design defect.
+ESCALATIONS: none

@@ -1,0 +1,1120 @@
+diff --git a/tests/factory/_cli.py b/tests/factory/_cli.py
+index bcc3213..ebfb936 100644
+--- a/tests/factory/_cli.py
++++ b/tests/factory/_cli.py
+@@ -1,6 +1,7 @@
+ """Helpers the harness suite shares: where the repository and `bin/factory` are, the wrappers that
+-call it, the JSON readers and the ticket reader. A test file imports them from here, never from
+-another test file. Not named `test_*`, so pytest does not collect it.
++call it, the JSON readers, the ticket reader, the two setups (an empty repository and a parent past
++the spec gate) and `CliStore`, the base of the fixture classes. A test file imports them from here,
++never from another test file. Not named `test_*`, so pytest does not collect it.
+ """
+ from __future__ import annotations
+ 
+@@ -54,3 +55,37 @@ def ticket(store: Path, tid: str = "T-0001") -> dict:
+ 
+ def tree(path: Path) -> dict[str, bytes]:
+     return {str(p.relative_to(path)): p.read_bytes() for p in sorted(path.rglob("*")) if p.is_file()}
++
++
++def git_repo(path: Path) -> Path:
++    """A git repository at `path` on branch `main`, with one empty commit."""
++    path.mkdir(parents=True, exist_ok=True)
++    for argv in (["init", "-q", "-b", "main"],
++                 ["-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "--allow-empty", "-m", "init"]):
++        subprocess.run(["git", "-C", str(path), *argv], check=True, capture_output=True)
++    return path
++
++
++def approved_parent(ok, tid: str, spec: Path | str) -> str:
++    """Take ticket `tid` past the spec gate with `spec` as its spec (old format; no spec store).
++    `ok(*argv)` runs one factory command and fails the test on a non-zero exit."""
++    ok("ticket", "transition", tid, "--to", "ready-for-spec-writer", "--by", "t")
++    ok("spec", "add", tid, "--file", str(spec))
++    ok("ticket", "transition", tid, "--to", "ready-for-critic", "--by", "t", "--round", "spec:init")
++    ok("ticket", "transition", tid, "--to", "awaiting-spec-gate", "--by", "t")
++    ok("approve-spec", tid)
++    return tid
++
++
++class CliStore:
++    """One `cli` and `ok` for a fixture class that runs `bin/factory` in the environment `self.env`,
++    which the subclass builds."""
++    env: dict
++
++    def cli(self, *argv: str) -> subprocess.CompletedProcess:
++        return subprocess.run([str(BIN), *argv], capture_output=True, text=True, env=self.env, cwd=REPO)
++
++    def ok(self, *argv: str) -> dict:
++        cp = self.cli(*argv)
++        assert cp.returncode == 0, f"{' '.join(argv)}: {cp.stderr}"
++        return js(cp)
+diff --git a/tests/factory/test_build_startup.py b/tests/factory/test_build_startup.py
+index 97f4d3a..7faefb3 100644
+--- a/tests/factory/test_build_startup.py
++++ b/tests/factory/test_build_startup.py
+@@ -8,24 +8,10 @@ from pathlib import Path
+ import pytest
+ import yaml
+ 
++from ._cli import approved_parent
+ from .test_subtickets import PLAN_LETTERS, js, run, ticket
+ 
+ 
+-def approved_parent(store: Path, tmp_path: Path) -> str:
+-    """A parent past the spec gate (old-format spec; no spec store), with no plan yet."""
+-    req = tmp_path / "r.md"
+-    req.write_text("# Fixture\n\nThe bot should do the thing.\n")
+-    tid = js(run(store, "ticket", "new", "--file", str(req)))["id"]
+-    spec = tmp_path / "s.md"
+-    spec.write_text("## Problem\nx\n")
+-    js(run(store, "ticket", "transition", tid, "--to", "ready-for-spec-writer", "--by", "t"))
+-    js(run(store, "spec", "add", tid, "--file", str(spec)))
+-    js(run(store, "ticket", "transition", tid, "--to", "ready-for-critic", "--by", "t", "--round", "spec:init"))
+-    js(run(store, "ticket", "transition", tid, "--to", "awaiting-spec-gate", "--by", "t"))
+-    js(run(store, "approve-spec", tid))
+-    return tid
+-
+-
+ def planner_run(store: Path, tid: str, plan: str) -> str:
+     rid = js(run(store, "run", "start", "--role", "planner", "--ticket", tid))["run_id"]
+     js(run(store, "run", "compose", rid))
+@@ -40,7 +26,10 @@ def ticket_files(store: Path) -> list[str]:
+ 
+ def test_subticket_add_without_a_source_uses_the_recorded_planner_run(tmp_path):
+     store = tmp_path / "state"
+-    tid = approved_parent(store, tmp_path)
++    (tmp_path / "r.md").write_text("# Fixture\n\nThe bot should do the thing.\n")
++    (tmp_path / "s.md").write_text("## Problem\nx\n")
++    tid = js(run(store, "ticket", "new", "--file", str(tmp_path / "r.md")))["id"]
++    approved_parent(lambda *a: js(run(store, *a)), tid, tmp_path / "s.md")
+     rid = planner_run(store, tid, PLAN_LETTERS)
+     js(run(store, "plan", "add", tid, "--from-run", rid))
+     out = js(run(store, "subticket", "add", tid))
+@@ -50,7 +39,10 @@ def test_subticket_add_without_a_source_uses_the_recorded_planner_run(tmp_path):
+ 
+ def test_subticket_add_without_a_source_takes_the_latest_plan(tmp_path):
+     store = tmp_path / "state"
+-    tid = approved_parent(store, tmp_path)
++    (tmp_path / "r.md").write_text("# Fixture\n\nThe bot should do the thing.\n")
++    (tmp_path / "s.md").write_text("## Problem\nx\n")
++    tid = js(run(store, "ticket", "new", "--file", str(tmp_path / "r.md")))["id"]
++    approved_parent(lambda *a: js(run(store, *a)), tid, tmp_path / "s.md")
+     first = planner_run(store, tid, PLAN_LETTERS)
+     js(run(store, "plan", "add", tid, "--from-run", first))
+     second = planner_run(store, tid, PLAN_LETTERS)
+@@ -62,7 +54,10 @@ def test_subticket_add_without_a_source_takes_the_latest_plan(tmp_path):
+ @pytest.mark.parametrize("plan_from", ["none", "file"])
+ def test_subticket_add_without_a_source_refuses_with_no_recorded_planner_run(tmp_path, plan_from):
+     store = tmp_path / "state"
+-    tid = approved_parent(store, tmp_path)
++    (tmp_path / "r.md").write_text("# Fixture\n\nThe bot should do the thing.\n")
++    (tmp_path / "s.md").write_text("## Problem\nx\n")
++    tid = js(run(store, "ticket", "new", "--file", str(tmp_path / "r.md")))["id"]
++    approved_parent(lambda *a: js(run(store, *a)), tid, tmp_path / "s.md")
+     if plan_from == "file":
+         plan = tmp_path / "plan.md"
+         plan.write_text(PLAN_LETTERS)
+@@ -77,7 +72,10 @@ def test_subticket_add_without_a_source_refuses_with_no_recorded_planner_run(tmp
+ 
+ def test_ready_implementers_lists_every_sub_ticket_in_id_order(tmp_path):
+     store = tmp_path / "state"
+-    tid = approved_parent(store, tmp_path)
++    (tmp_path / "r.md").write_text("# Fixture\n\nThe bot should do the thing.\n")
++    (tmp_path / "s.md").write_text("## Problem\nx\n")
++    tid = js(run(store, "ticket", "new", "--file", str(tmp_path / "r.md")))["id"]
++    approved_parent(lambda *a: js(run(store, *a)), tid, tmp_path / "s.md")
+     rid = planner_run(store, tid, PLAN_LETTERS)
+     js(run(store, "plan", "add", tid, "--from-run", rid))
+     js(run(store, "ticket", "transition", tid, "--to", "planned", "--by", "t"))
+diff --git a/tests/factory/test_coding_standard.py b/tests/factory/test_coding_standard.py
+index 33c1067..2f5d693 100644
+--- a/tests/factory/test_coding_standard.py
++++ b/tests/factory/test_coding_standard.py
+@@ -15,7 +15,7 @@ from pathlib import Path
+ 
+ import pytest
+ 
+-from ._cli import BIN, REPO, STRIP
++from ._cli import BIN, REPO, STRIP, git_repo
+ 
+ STANDARD = REPO.resolve() / "docs" / "coding.md"
+ FENCE = "`" * 3
+@@ -35,11 +35,7 @@ def system_prompts(tmp_path_factory) -> dict[str, str]:
+     in a fresh scratch target on a throwaway store (FACTORY_STATE), as in the spec's scenario. The
+     ticket's status is set by `ticket set` so that each role can start."""
+     tmp = tmp_path_factory.mktemp("coding")
+-    t = tmp / "target"
+-    t.mkdir()
+-    for argv in (["init", "-q", "-b", "main"],
+-                 ["-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "--allow-empty", "-m", "init"]):
+-        subprocess.run(["git", "-C", str(t), *argv], check=True, capture_output=True)
++    t = git_repo(tmp / "target")
+     req = tmp / "r.md"
+     req.write_text("# demo\n\nDo the thing.\n")
+     store = {"FACTORY_STATE": str(tmp / "s")}
+diff --git a/tests/factory/test_critic_approved_changes.py b/tests/factory/test_critic_approved_changes.py
+index 9a6cac6..3f7f7a9 100644
+--- a/tests/factory/test_critic_approved_changes.py
++++ b/tests/factory/test_critic_approved_changes.py
+@@ -8,14 +8,13 @@ source. The body is `none` with no such change, and the section is left out with
+ """
+ from __future__ import annotations
+ 
+-import json
+ import os
+ import subprocess
+ from pathlib import Path
+ 
+ import pytest
+ 
+-from ._cli import BIN, REPO
++from ._cli import CliStore
+ 
+ HEADING = "## Approved changes not yet archived"
+ 
+@@ -28,7 +27,7 @@ def spec(decision: str, requirement: str) -> str:
+             "=== verification.md\n## Acceptance\n- It acts → NEW\n")
+ 
+ 
+-class Store:
++class Store(CliStore):
+     def __init__(self, tmp_path: Path, spec_store: bool = True):
+         self.tmp = tmp_path
+         self.root = tmp_path / "store"
+@@ -39,11 +38,6 @@ class Store:
+         if spec_store:
+             self.ok("init")
+ 
+-    def ok(self, *argv: str) -> dict:
+-        cp = subprocess.run([str(BIN), *argv], capture_output=True, text=True, env=self.env, cwd=REPO)
+-        assert cp.returncode == 0, cp.stdout + cp.stderr
+-        return json.loads(cp.stdout.strip().splitlines()[-1])
+-
+     def ticket(self, tid: str, title: str, text: str) -> None:
+         """A new ticket `tid` with spec v1 `text`, at ready-for-critic."""
+         req, sp = self.tmp / f"{tid}-req.md", self.tmp / f"{tid}-spec.md"
+diff --git a/tests/factory/test_drive.py b/tests/factory/test_drive.py
+index 726c849..b9cfaa0 100644
+--- a/tests/factory/test_drive.py
++++ b/tests/factory/test_drive.py
+@@ -21,7 +21,7 @@ from pathlib import Path
+ 
+ import yaml
+ 
+-from ._cli import BIN, REPO
++from ._cli import BIN, REPO, CliStore
+ 
+ FIXTURE_INSTANCE = Path(__file__).resolve().parent / "fixtures" / "instance"
+ 
+@@ -50,7 +50,7 @@ sys.exit(1 if err else 0)
+ TRIAGE_OK = {"triage": [{"write": "ACCEPT"}], "spec_writer": [{"write": "READY-FOR-CRITIC"}]}
+ 
+ 
+-class Store:
++class Store(CliStore):
+     """A throwaway store with T-0001 ready for triage, and the stand-in `claude` first on PATH."""
+ 
+     def __init__(self, tmp_path: Path, instance: Path = FIXTURE_INSTANCE):
+@@ -73,11 +73,6 @@ class Store:
+         env = {**self.env, "STANDIN_PLAYS": json.dumps(plays or {})}
+         return subprocess.run([str(BIN), *argv], capture_output=True, text=True, env=env, cwd=REPO)
+ 
+-    def ok(self, *argv: str) -> dict:
+-        cp = self.cli(*argv)
+-        assert cp.returncode == 0, cp.stderr
+-        return json.loads(cp.stdout.strip().splitlines()[-1])
+-
+     def drive(self, plays: dict, *extra: str) -> tuple[subprocess.CompletedProcess, dict]:
+         cp = self.cli("drive", "T-0001", *extra, plays=plays)
+         return cp, json.loads(cp.stdout.strip().splitlines()[-1])
+diff --git a/tests/factory/test_drive_build.py b/tests/factory/test_drive_build.py
+index 240c6f0..645b36d 100644
+--- a/tests/factory/test_drive_build.py
++++ b/tests/factory/test_drive_build.py
+@@ -18,6 +18,7 @@ import time
+ 
+ import yaml
+ 
++from ._cli import approved_parent, git_repo
+ from .test_drive import BIN, REPO, Store
+ 
+ STANDIN = '''#!{python}
+@@ -61,14 +62,8 @@ class BuildStore(Store):
+         (tmp_path / "bin" / "claude").write_text(STANDIN.format(python=sys.executable))
+         spec = tmp_path / "spec.md"
+         spec.write_text("## Problem\nx\n")
+-        self.ok("ticket", "transition", "T-0001", "--to", "ready-for-spec-writer", "--by", "t")
+-        self.ok("spec", "add", "T-0001", "--file", str(spec))
+-        self.ok("ticket", "transition", "T-0001", "--to", "ready-for-critic", "--by", "t", "--round", "spec:init")
+-        self.ok("ticket", "transition", "T-0001", "--to", "awaiting-spec-gate", "--by", "t")
+-        self.ok("approve-spec", "T-0001")
+-        self.target = tmp_path / "target"
+-        self.git("init", "-q", "-b", "main", str(self.target), cwd=tmp_path)
+-        self.git("commit", "-q", "--allow-empty", "-m", "init")
++        approved_parent(self.ok, "T-0001", spec)
++        self.target = git_repo(tmp_path / "target")
+         self.env.update(FACTORY_REPO=str(self.target), FACTORY_INTEGRATION_BRANCH="main")
+ 
+     def git(self, *argv: str, cwd=None) -> str:
+diff --git a/tests/factory/test_empty_output.py b/tests/factory/test_empty_output.py
+index 0323f1b..d1e049b 100644
+--- a/tests/factory/test_empty_output.py
++++ b/tests/factory/test_empty_output.py
+@@ -9,16 +9,15 @@ from __future__ import annotations
+ 
+ import json
+ import os
+-import subprocess
+ from pathlib import Path
+ 
+ import pytest
+ import yaml
+ 
+-from ._cli import BIN, REPO
++from ._cli import CliStore
+ 
+ 
+-class Store:
++class Store(CliStore):
+     """A throwaway store with one ticket, T-0001, and one triage run started on it."""
+ 
+     def __init__(self, tmp_path: Path):
+@@ -31,14 +30,6 @@ class Store:
+         self.ok("run", "compose", self.rid)
+         self.run_dir = self.root / "runs" / self.rid
+ 
+-    def cli(self, *argv: str) -> subprocess.CompletedProcess:
+-        return subprocess.run([str(BIN), *argv], capture_output=True, text=True, env=self.env, cwd=REPO)
+-
+-    def ok(self, *argv: str) -> dict:
+-        cp = self.cli(*argv)
+-        assert cp.returncode == 0, cp.stderr
+-        return json.loads(cp.stdout.strip().splitlines()[-1])
+-
+     def meta(self) -> dict:
+         return yaml.safe_load((self.run_dir / "meta.yaml").read_text())
+ 
+diff --git a/tests/factory/test_environment_sync.py b/tests/factory/test_environment_sync.py
+index 0fd1728..023d8e1 100644
+--- a/tests/factory/test_environment_sync.py
++++ b/tests/factory/test_environment_sync.py
+@@ -17,7 +17,7 @@ from pathlib import Path
+ import pytest
+ import yaml
+ 
+-from ._cli import BIN, REPO
++from ._cli import BIN, REPO, CliStore, approved_parent, git_repo
+ 
+ FIXTURE_INSTANCE = Path(__file__).resolve().parent / "fixtures" / "instance"
+ GIT_ID = {"GIT_AUTHOR_NAME": "f", "GIT_AUTHOR_EMAIL": "f@x", "GIT_COMMITTER_NAME": "f", "GIT_COMMITTER_EMAIL": "f@x"}
+@@ -25,7 +25,7 @@ DUMP = "env > synced.env"  # a sync that records the environment it ran in
+ FAIL = "echo sync-$((1+1)) >&2; echo out-line; exit $((2+1))"  # output and exit code are computed
+ 
+ 
+-class Target:
++class Target(CliStore):
+     """T-0001 approved and split into T-0001.1, ready for its implementer, on an instance whose
+     `run_env` exports T31_CACHE and whose `environment_sync` is `sync` (None: the key is absent)."""
+ 
+@@ -43,22 +43,16 @@ class Target:
+             f.write("run_env: {T31_CACHE: /tmp/t31-cache}\n")
+             if sync is not None:
+                 f.write(f"environment_sync: {json.dumps(sync)}\n")
+-        self.repo.mkdir()
+         self.env = {**os.environ, **GIT_ID, "FACTORY_STATE": str(self.root), "FACTORY_INSTANCE": str(inst),
+                     "FACTORY_REPO": str(self.repo), "FACTORY_INTEGRATION_BRANCH": "main",
+                     "PYTHONDONTWRITEBYTECODE": "1"}
+-        self.git("init", "-q", "-b", "main")
+-        self.git("commit", "-q", "--allow-empty", "-m", "init")
++        git_repo(self.repo)
+         req, spec, plan = tmp_path / "req.md", tmp_path / "spec.md", tmp_path / "plan.md"
+         req.write_text("# F\n\nDo x.\n")
+         spec.write_text("## Problem\nx\n")
+         plan.write_text("ST-1 / Do it\nDepends on: none\nParallel-safe: yes\n")
+         self.ok("ticket", "new", "--file", str(req))
+-        self.ok("ticket", "transition", "T-0001", "--to", "ready-for-spec-writer", "--by", "t")
+-        self.ok("spec", "add", "T-0001", "--file", str(spec))
+-        self.ok("ticket", "transition", "T-0001", "--to", "ready-for-critic", "--by", "t", "--round", "spec:init")
+-        self.ok("ticket", "transition", "T-0001", "--to", "awaiting-spec-gate", "--by", "t")
+-        self.ok("approve-spec", "T-0001")
++        approved_parent(self.ok, "T-0001", spec)
+         self.ok("subticket", "add", "T-0001", "--file", str(plan))
+ 
+     def git(self, *argv: str, cwd: Path | None = None) -> str:
+diff --git a/tests/factory/test_gate_paths.py b/tests/factory/test_gate_paths.py
+index 3da0926..d8854c4 100644
+--- a/tests/factory/test_gate_paths.py
++++ b/tests/factory/test_gate_paths.py
+@@ -10,7 +10,6 @@ its own `gate_commands`, and a scratch target repo, as the spec's t0028-sub.sh f
+ """
+ from __future__ import annotations
+ 
+-import json
+ import os
+ import shutil
+ import subprocess
+@@ -19,14 +18,14 @@ from pathlib import Path
+ import pytest
+ import yaml
+ 
+-from ._cli import BIN, REPO
++from ._cli import CliStore, approved_parent
+ 
+ FIXTURE_INSTANCE = Path(__file__).resolve().parent / "fixtures" / "instance"
+ UNSCOPED = "git diff --check main...HEAD"
+ SCOPED = "sh -c 'exit 7'"
+ 
+ 
+-class Target:
++class Target(CliStore):
+     """T-0001.1 at checks-in-flight, its one commit changing `changed`; I is its implementer run."""
+ 
+     def __init__(self, tmp_path: Path, gate: str, changed: str = "docs/b.md"):
+@@ -52,11 +51,7 @@ class Target:
+         (tmp_path / "spec.md").write_text("## Problem\nx\n")
+         (tmp_path / "plan.md").write_text("ST-1 / Do it\nDepends on: none\nParallel-safe: yes\n")
+         self.ok("ticket", "new", "--file", str(tmp_path / "req.md"))
+-        self.ok("ticket", "transition", "T-0001", "--to", "ready-for-spec-writer", "--by", "t")
+-        self.ok("spec", "add", "T-0001", "--file", str(tmp_path / "spec.md"))
+-        self.ok("ticket", "transition", "T-0001", "--to", "ready-for-critic", "--by", "t", "--round", "spec:init")
+-        self.ok("ticket", "transition", "T-0001", "--to", "awaiting-spec-gate", "--by", "t")
+-        self.ok("approve-spec", "T-0001")
++        approved_parent(self.ok, "T-0001", tmp_path / "spec.md")
+         self.ok("subticket", "add", "T-0001", "--file", str(tmp_path / "plan.md"))
+         self.implementer = self.ok("run", "start", "--role", "implementer", "--ticket", "T-0001.1")["run_id"]
+         wt = self.root / "worktrees" / "T-0001.1"
+@@ -77,14 +72,6 @@ class Target:
+         assert cp.returncode == 0, cp.stderr
+         return cp.stdout.strip()
+ 
+-    def cli(self, *argv: str) -> subprocess.CompletedProcess:
+-        return subprocess.run([str(BIN), *argv], capture_output=True, text=True, env=self.env, cwd=REPO)
+-
+-    def ok(self, *argv: str) -> dict:
+-        cp = self.cli(*argv)
+-        assert cp.returncode == 0, f"{' '.join(argv)}: {cp.stderr}"
+-        return json.loads(cp.stdout.strip().splitlines()[-1])
+-
+     def composed(self, rid: str) -> tuple[str, dict]:
+         self.ok("run", "compose", rid)
+         d = self.root / "runs" / rid
+diff --git a/tests/factory/test_harness_lock.py b/tests/factory/test_harness_lock.py
+index f1de71e..d9f91c0 100644
+--- a/tests/factory/test_harness_lock.py
++++ b/tests/factory/test_harness_lock.py
+@@ -24,7 +24,7 @@ from pathlib import Path
+ 
+ import pytest
+ 
+-from ._cli import CLEAN_CLI, REPO, STRIP, js, tree
++from ._cli import CLEAN_CLI, REPO, STRIP, git_repo, js, tree
+ 
+ HARNESS_PATHS = ("factory", "bin/factory", "agents", "pyproject.toml", "uv.lock")
+ ZERO = "0" * 40
+@@ -61,9 +61,7 @@ def revision(harness: Path) -> str:
+ 
+ 
+ def make_target(path: Path, harness: Path) -> Path:
+-    path.mkdir(parents=True)
+-    git(path, "init", "-q", "-b", "main")
+-    git(path, "commit", "-q", "--allow-empty", "-m", "init")
++    git_repo(path)
+     cp = cli(harness, path, "init", "--repo-name", "demo")
+     assert cp.returncode == 0, cp.stderr
+     return path
+diff --git a/tests/factory/test_instance.py b/tests/factory/test_instance.py
+index c444cbd..fc9e4e7 100644
+--- a/tests/factory/test_instance.py
++++ b/tests/factory/test_instance.py
+@@ -13,19 +13,11 @@ from pathlib import Path
+ import pytest
+ import yaml
+ 
+-from ._cli import BIN, REPO, STRIP, cli, js, tree
++from ._cli import BIN, REPO, STRIP, cli, git_repo, js, tree
+ 
+ NOT_FOUND = "no .factory/instance.yaml found from {cwd}; run factory init --repo-name NAME, or set FACTORY_INSTANCE"
+ 
+ 
+-def git_repo(path: Path) -> Path:
+-    path.mkdir(parents=True, exist_ok=True)
+-    for argv in (["init", "-q", "-b", "main"],
+-                 ["-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "--allow-empty", "-m", "init"]):
+-        subprocess.run(["git", "-C", str(path), *argv], check=True, capture_output=True)
+-    return path
+-
+-
+ def harness_status() -> str:
+     return subprocess.run(["git", "-C", str(REPO), "status", "--porcelain"], capture_output=True, text=True).stdout
+ 
+diff --git a/tests/factory/test_merge_protected_paths.py b/tests/factory/test_merge_protected_paths.py
+index 2407455..0ef2751 100644
+--- a/tests/factory/test_merge_protected_paths.py
++++ b/tests/factory/test_merge_protected_paths.py
+@@ -22,7 +22,7 @@ from pathlib import Path
+ import pytest
+ import yaml
+ 
+-from ._cli import BIN, REPO
++from ._cli import REPO, CliStore
+ 
+ FIXTURE = REPO / "tests" / "factory" / "fixtures" / "instance"
+ 
+@@ -52,7 +52,7 @@ console.log(lines.join('\n'))
+ """
+ 
+ 
+-class Gate:
++class Gate(CliStore):
+     """The t0033-gate.sh fixture. `risk` is the line T-0001's approved spec carries in its Risk
+     section (None: T-0001 is never approved and has no sub-ticket; the commit lands on T-0001's own
+     branch). `changes` as in the fixture: `p` appends to p, `p-` deletes p, `p>q` renames p to q."""
+@@ -129,14 +129,6 @@ class Gate:
+                             capture_output=True, text=True, check=True)
+         return cp.stdout.strip()
+ 
+-    def cli(self, *argv: str) -> subprocess.CompletedProcess:
+-        return subprocess.run([str(BIN), *argv], capture_output=True, text=True, env=self.env, cwd=REPO)
+-
+-    def ok(self, *argv: str) -> dict:
+-        cp = self.cli(*argv)
+-        assert cp.returncode == 0, cp.stderr
+-        return json.loads(cp.stdout.strip().splitlines()[-1])
+-
+     def refused(self, *argv: str) -> str:
+         cp = self.cli(*argv)
+         assert cp.returncode == 2, cp.stdout + cp.stderr
+diff --git a/tests/factory/test_plan_fields.py b/tests/factory/test_plan_fields.py
+index 6221f30..2cd180d 100644
+--- a/tests/factory/test_plan_fields.py
++++ b/tests/factory/test_plan_fields.py
+@@ -11,14 +11,18 @@ import subprocess
+ 
+ import pytest
+ 
+-from .test_build_startup import approved_parent, ticket_files
++from ._cli import approved_parent
++from .test_build_startup import ticket_files
+ from .test_subtickets import js, run
+ 
+ 
+ @pytest.fixture
+ def store(tmp_path):
+     root = tmp_path / "state"
+-    tid = approved_parent(root, tmp_path)
++    (tmp_path / "r.md").write_text("# Fixture\n\nThe bot should do the thing.\n")
++    (tmp_path / "s.md").write_text("## Problem\nx\n")
++    tid = js(run(root, "ticket", "new", "--file", str(tmp_path / "r.md")))["id"]
++    approved_parent(lambda *a: js(run(root, *a)), tid, tmp_path / "s.md")
+ 
+     def add(plan: str) -> subprocess.CompletedProcess:
+         f = tmp_path / "plan.md"
+diff --git a/tests/factory/test_redispatch_rows.py b/tests/factory/test_redispatch_rows.py
+index 84db4ab..9d6d441 100644
+--- a/tests/factory/test_redispatch_rows.py
++++ b/tests/factory/test_redispatch_rows.py
+@@ -15,6 +15,7 @@ from pathlib import Path
+ 
+ import pytest
+ 
++from ._cli import approved_parent
+ from ._cli import js_ok as js
+ from ._cli import run_env as run
+ 
+@@ -30,11 +31,7 @@ def env(tmp_path: Path) -> dict:
+     (tmp_path / "spec.md").write_text("## Problem\nx\n")
+     (tmp_path / "plan.md").write_text("ST-1 / Do it\nDepends on: none\nParallel-safe: yes\n")
+     js(run(e, "ticket", "new", "--file", str(tmp_path / "req.md")))
+-    js(run(e, "ticket", "transition", "T-0001", "--to", "ready-for-spec-writer", "--by", "t"))
+-    js(run(e, "spec", "add", "T-0001", "--file", str(tmp_path / "spec.md")))
+-    js(run(e, "ticket", "transition", "T-0001", "--to", "ready-for-critic", "--by", "t", "--round", "spec:init"))
+-    js(run(e, "ticket", "transition", "T-0001", "--to", "awaiting-spec-gate", "--by", "t"))
+-    js(run(e, "approve-spec", "T-0001"))
++    approved_parent(lambda *a: js(run(e, *a)), "T-0001", tmp_path / "spec.md")
+     js(run(e, "subticket", "add", "T-0001", "--file", str(tmp_path / "plan.md")))
+     js(run(e, "ticket", "set", ST, "status=checks-in-flight", f"head={HEAD}"))
+     return e
+diff --git a/tests/factory/test_replan.py b/tests/factory/test_replan.py
+index 63773e2..7bf79c6 100644
+--- a/tests/factory/test_replan.py
++++ b/tests/factory/test_replan.py
+@@ -15,7 +15,7 @@ from pathlib import Path
+ import pytest
+ import yaml
+ 
+-from ._cli import run, ticket
++from ._cli import approved_parent, run, ticket
+ from ._cli import js_ok as js
+ 
+ NOTE = "Re-plan: add one fix for the case-insensitive path.\n"
+@@ -39,11 +39,7 @@ def store(tmp_path: Path) -> Path:
+     (tmp_path / "req.md").write_text("# Fixture\n\nThe bot should do the thing.\n")
+     (tmp_path / "spec.md").write_text("## Problem\nx\n")
+     js(run(s, "ticket", "new", "--file", str(tmp_path / "req.md")))
+-    js(run(s, "ticket", "transition", "T-0001", "--to", "ready-for-spec-writer", "--by", "t"))
+-    js(run(s, "spec", "add", "T-0001", "--file", str(tmp_path / "spec.md")))
+-    js(run(s, "ticket", "transition", "T-0001", "--to", "ready-for-critic", "--by", "t", "--round", "spec:init"))
+-    js(run(s, "ticket", "transition", "T-0001", "--to", "awaiting-spec-gate", "--by", "t"))
+-    js(run(s, "approve-spec", "T-0001"))
++    approved_parent(lambda *a: js(run(s, *a)), "T-0001", tmp_path / "spec.md")
+     return s
+ 
+ 
+diff --git a/tests/factory/test_resolve_rulings.py b/tests/factory/test_resolve_rulings.py
+index 4666127..9697bf6 100644
+--- a/tests/factory/test_resolve_rulings.py
++++ b/tests/factory/test_resolve_rulings.py
+@@ -6,12 +6,11 @@ Black-box through `bin/factory` on a throwaway store (FACTORY_STATE), as test_de
+ """
+ from __future__ import annotations
+ 
+-import subprocess
+ from pathlib import Path
+ 
+ import pytest
+ 
+-from ._cli import ticket
++from ._cli import git_repo, ticket
+ from ._cli import js_ok as js
+ from ._cli import run_env as run
+ 
+@@ -22,10 +21,7 @@ RULING = "Ruling: take the second approach.\n"
+ def env(tmp_path: Path) -> dict:
+     """A scratch store and target repo: T-0001 past the spec gate (no spec store)."""
+     store = tmp_path / "store"
+-    target = tmp_path / "target"
+-    subprocess.run(["git", "init", "-q", "-b", "main", str(target)], check=True)
+-    subprocess.run(["git", "-C", str(target), "-c", "user.email=f@x", "-c", "user.name=f",
+-                    "commit", "-q", "--allow-empty", "-m", "init"], check=True)
++    target = git_repo(tmp_path / "target")
+     e = {"FACTORY_STATE": str(store), "FACTORY_REPO": str(target), "FACTORY_INTEGRATION_BRANCH": "main"}
+     (tmp_path / "req.md").write_text("# Fixture\n\nThe bot should do the thing.\n")
+     (tmp_path / "spec.md").write_text("## Problem\nx\n")
+diff --git a/tests/factory/test_results_commit.py b/tests/factory/test_results_commit.py
+index 3c2bb4f..5a4c07a 100644
+--- a/tests/factory/test_results_commit.py
++++ b/tests/factory/test_results_commit.py
+@@ -15,27 +15,24 @@ from pathlib import Path
+ import pytest
+ import yaml
+ 
+-from ._cli import BIN, REPO
++from ._cli import CliStore
+ 
+ HEAD = "0" * 40
+ REVIEWER_TAIL = "Findings: none\nSTATUS: APPROVE\nCONFIDENCE: high\nESCALATIONS: none\n"
+ VERIFIER_TAIL = "Per criterion: none\nGate suite: PASS\nSTATUS: VERIFIED\nCONFIDENCE: high\nESCALATIONS: none\n"
+ 
+ 
+-class Store:
++class Store(CliStore):
+     def __init__(self, tmp: Path):
+         self.root = tmp / "store"
+         self.tmp = tmp
++        self.env = {**os.environ, "FACTORY_STATE": str(self.root), "PYTHONDONTWRITEBYTECODE": "1"}
+         req = tmp / "r.md"
+         req.write_text("# x\n\nthe thing\n")
+         cp = self.cli("ticket", "new", "--file", str(req))
+         assert cp.returncode == 0, cp.stderr
+         self.tid = json.loads(cp.stdout.strip().splitlines()[-1])["id"]
+ 
+-    def cli(self, *argv: str) -> subprocess.CompletedProcess:
+-        env = {**os.environ, "FACTORY_STATE": str(self.root), "PYTHONDONTWRITEBYTECODE": "1"}
+-        return subprocess.run([str(BIN), *argv], capture_output=True, text=True, env=env, cwd=REPO)
+-
+     def record(self, role: str, output: str | None, *extra: str) -> subprocess.CompletedProcess:
+         argv = ["results", "record", self.tid, "--head", HEAD, "--role", role, "--run", "R1", *extra]
+         if output is not None:
+diff --git a/tests/factory/test_run_isolation.py b/tests/factory/test_run_isolation.py
+index b8e0dd7..b388c80 100644
+--- a/tests/factory/test_run_isolation.py
++++ b/tests/factory/test_run_isolation.py
+@@ -8,7 +8,6 @@ changes `instance.yaml`, on a copy of the suite's fixture instance (FACTORY_INST
+ """
+ from __future__ import annotations
+ 
+-import json
+ import os
+ import shutil
+ import subprocess
+@@ -16,7 +15,7 @@ from pathlib import Path
+ 
+ import pytest
+ 
+-from ._cli import BIN, REPO
++from ._cli import CliStore, approved_parent, git_repo
+ 
+ FIXTURE_INSTANCE = Path(__file__).resolve().parent / "fixtures" / "instance"
+ WRAP = ('([ -z "${{VIRTUAL_ENV:-}}" ] || PATH=$(printf %s "$PATH" | tr : \'\\n\' | grep -vxF "$VIRTUAL_ENV/bin" | paste -sd: -); '
+@@ -28,7 +27,7 @@ SECTION = ("\n## Running code\nRun every test, script or prototype through this
+            "protected path outside the repository.\n")
+ 
+ 
+-class Store:
++class Store(CliStore):
+     def __init__(self, tmp_path: Path, run_env: str | None = None):
+         self.tmp = tmp_path
+         self.root = tmp_path / "state"
+@@ -40,14 +39,6 @@ class Store:
+                 f.write(run_env)
+             self.env["FACTORY_INSTANCE"] = str(inst)
+ 
+-    def cli(self, *argv: str) -> subprocess.CompletedProcess:
+-        return subprocess.run([str(BIN), *argv], capture_output=True, text=True, env=self.env, cwd=REPO)
+-
+-    def ok(self, *argv: str) -> dict:
+-        cp = self.cli(*argv)
+-        assert cp.returncode == 0, cp.stderr
+-        return json.loads(cp.stdout.strip().splitlines()[-1])
+-
+     def request(self) -> None:
+         p = self.tmp / "req.md"
+         p.write_text("# Fixture\n\nThe bot should do the thing.\n")
+@@ -58,20 +49,12 @@ class Store:
+         self.request()
+         spec = self.tmp / "spec.md"
+         spec.write_text("## Problem\nx\n")
+-        self.ok("ticket", "transition", "T-0001", "--to", "ready-for-spec-writer", "--by", "t")
+-        self.ok("spec", "add", "T-0001", "--file", str(spec))
+-        self.ok("ticket", "transition", "T-0001", "--to", "ready-for-critic", "--by", "t", "--round", "spec:init")
+-        self.ok("ticket", "transition", "T-0001", "--to", "awaiting-spec-gate", "--by", "t")
+-        self.ok("approve-spec", "T-0001")
++        approved_parent(self.ok, "T-0001", spec)
+ 
+     def implementer_ready(self) -> None:
+         """One sub-ticket of an approved T-0001, in a scratch target repo with a `main` branch."""
+         self.approved()
+-        target = self.tmp / "target"
+-        target.mkdir()
+-        for argv in (["init", "-q", "-b", "main"],
+-                     ["-c", "user.email=f@x", "-c", "user.name=f", "commit", "-q", "--allow-empty", "-m", "init"]):
+-            subprocess.run(["git", "-C", str(target), *argv], check=True, capture_output=True)
++        target = git_repo(self.tmp / "target")
+         self.env.update({"FACTORY_REPO": str(target), "FACTORY_INTEGRATION_BRANCH": "main"})
+         plan = self.tmp / "plan.md"
+         plan.write_text("T-0001.1 / Do it\nDepends on: none\nParallel-safe: yes\n")
+diff --git a/tests/factory/test_run_scratch.py b/tests/factory/test_run_scratch.py
+index 6d7d970..6d83542 100644
+--- a/tests/factory/test_run_scratch.py
++++ b/tests/factory/test_run_scratch.py
+@@ -8,20 +8,19 @@ fixture instance, like test_run_isolation.py.
+ """
+ from __future__ import annotations
+ 
+-import json
+ import os
+ import re
+ import subprocess
+ from pathlib import Path
+ 
+-from ._cli import BIN, REPO
++from ._cli import REPO, CliStore
+ 
+ FIXTURE_INSTANCE = Path(__file__).resolve().parent / "fixtures" / "instance"
+ PRECEDENCE = "takes precedence over any other instruction to use a session scratchpad"
+ ACCEPT = "Type: bug\nTitle: A\n\nSTATUS: ACCEPT\nCONFIDENCE: high\nESCALATIONS: none\n"
+ 
+ 
+-class Store:
++class Store(CliStore):
+     def __init__(self, tmp_path: Path):
+         self.tmp = tmp_path
+         self.root = tmp_path / "state"
+@@ -29,14 +28,6 @@ class Store:
+                     "PYTHONDONTWRITEBYTECODE": "1"}
+         self.n = 0
+ 
+-    def cli(self, *argv: str) -> subprocess.CompletedProcess:
+-        return subprocess.run([str(BIN), *argv], capture_output=True, text=True, env=self.env, cwd=REPO)
+-
+-    def ok(self, *argv: str) -> dict:
+-        cp = self.cli(*argv)
+-        assert cp.returncode == 0, cp.stderr
+-        return json.loads(cp.stdout.strip().splitlines()[-1])
+-
+     def request(self) -> str:
+         self.n += 1
+         p = self.tmp / f"req{self.n}.md"
+diff --git a/tests/factory/test_shepherd.py b/tests/factory/test_shepherd.py
+index 239aaf9..683def4 100644
+--- a/tests/factory/test_shepherd.py
++++ b/tests/factory/test_shepherd.py
+@@ -19,7 +19,7 @@ from pathlib import Path
+ 
+ import yaml
+ 
+-from ._cli import BIN, REPO
++from ._cli import BIN, REPO, CliStore
+ 
+ STUBS = Path(__file__).resolve().parent / "fixtures" / "stubs"
+ MAX_SPEC_ROUNDS = 2  # factory/config.yaml max_rounds.spec
+@@ -595,7 +595,7 @@ class Run:
+         self.run_id, self.input, self.sources, self.status = run_id, input_text, sources, status
+ 
+ 
+-class Shepherd:
++class Shepherd(CliStore):
+     def __init__(self, tmp_path: Path, case: str, with_repo: bool = False):
+         self.store = tmp_path / "state"
+         self.case = case
+@@ -629,11 +629,6 @@ class Shepherd:
+             env["FACTORY_INTEGRATION_BRANCH"] = "main"
+         return subprocess.run([str(BIN), *argv], capture_output=True, text=True, env=env, cwd=REPO)
+ 
+-    def ok(self, *argv: str) -> dict:
+-        cp = self.cli(*argv)
+-        assert cp.returncode == 0, f"{' '.join(argv)}: {cp.stderr}"
+-        return json.loads(cp.stdout.strip().splitlines()[-1])
+-
+     def ticket(self, tid: str) -> dict:
+         return yaml.safe_load((self.store / "tickets" / f"{tid}.yaml").read_text())
+ 
+diff --git a/tests/factory/test_sibling_tests.py b/tests/factory/test_sibling_tests.py
+index 19898a1..67ce52c 100644
+--- a/tests/factory/test_sibling_tests.py
++++ b/tests/factory/test_sibling_tests.py
+@@ -20,7 +20,7 @@ from pathlib import Path
+ import pytest
+ import yaml
+ 
+-from ._cli import BIN, REPO
++from ._cli import REPO, CliStore, approved_parent
+ 
+ PLAN = """ST-1 / Interim
+ Depends on: none
+@@ -55,7 +55,7 @@ await fn({ ticket: 'T-0001', repo: process.cwd(), state: process.env.FACTORY_STA
+ """
+ 
+ 
+-class Fixture:
++class Fixture(CliStore):
+     def __init__(self, tmp_path: Path):
+         self.tmp = tmp_path
+         self.store = tmp_path / "store"
+@@ -63,14 +63,6 @@ class Fixture:
+         self.env = {**os.environ, "FACTORY_STATE": str(self.store), "FACTORY_REPO": str(self.target),
+                     "FACTORY_INTEGRATION_BRANCH": "main", "PYTHONDONTWRITEBYTECODE": "1"}
+ 
+-    def cli(self, *argv: str) -> subprocess.CompletedProcess:
+-        return subprocess.run([str(BIN), *argv], capture_output=True, text=True, env=self.env, cwd=REPO)
+-
+-    def ok(self, *argv: str) -> dict:
+-        cp = self.cli(*argv)
+-        assert cp.returncode == 0, cp.stderr
+-        return json.loads(cp.stdout.strip().splitlines()[-1])
+-
+     def git(self, *argv: str) -> str:
+         cp = subprocess.run(["git", "-c", "user.email=f@x", "-c", "user.name=f", *argv], cwd=self.target,
+                             capture_output=True, text=True, check=True)
+@@ -109,11 +101,7 @@ def build(tmp_path: Path, path: str, merged: bool = True, readd: bool = False, p
+     req.write_text("# Fixture\n\nThe bot should do the thing.\n")
+     spec.write_text("## Problem\nx\n")
+     f.ok("ticket", "new", "--file", str(req))
+-    f.ok("ticket", "transition", "T-0001", "--to", "ready-for-spec-writer", "--by", "t")
+-    f.ok("spec", "add", "T-0001", "--file", str(spec))
+-    f.ok("ticket", "transition", "T-0001", "--to", "ready-for-critic", "--by", "t", "--round", "spec:init")
+-    f.ok("ticket", "transition", "T-0001", "--to", "awaiting-spec-gate", "--by", "t")
+-    f.ok("approve-spec", "T-0001")
++    approved_parent(f.ok, "T-0001", spec)
+     subprocess.run(["git", "init", "-q", "-b", "main", str(f.target)], check=True)
+     base = f.commit("base", test_old="def test_old(): pass\n")
+     f.git("checkout", "-qb", "sib")
+diff --git a/tests/factory/test_spec_amend.py b/tests/factory/test_spec_amend.py
+index 08e9d4f..27f1bda 100644
+--- a/tests/factory/test_spec_amend.py
++++ b/tests/factory/test_spec_amend.py
+@@ -18,7 +18,7 @@ from pathlib import Path
+ import pytest
+ import yaml
+ 
+-from ._cli import BIN, REPO
++from ._cli import REPO, CliStore, approved_parent  # noqa: F401  (test_spec_drift.py imports REPO from here)
+ 
+ SPEC = """=== proposal.md
+ ## Problem
+@@ -55,7 +55,7 @@ def spec(decision="Greet by default.", cmd="echo hi", out="hi", problem="x", sta
+ V1, V2 = spec(), spec(cmd="echo hello", out="hello")
+ 
+ 
+-class Fixture:
++class Fixture(CliStore):
+     def __init__(self, tmp_path: Path):
+         self.tmp = tmp_path
+         self.store = tmp_path / "store"
+@@ -63,14 +63,6 @@ class Fixture:
+         self.env = {**os.environ, "FACTORY_STATE": str(self.store), "FACTORY_REPO": str(self.target),
+                     "FACTORY_INTEGRATION_BRANCH": "main", "PYTHONDONTWRITEBYTECODE": "1"}
+ 
+-    def cli(self, *argv: str) -> subprocess.CompletedProcess:
+-        return subprocess.run([str(BIN), *argv], capture_output=True, text=True, env=self.env, cwd=REPO)
+-
+-    def ok(self, *argv: str) -> dict:
+-        cp = self.cli(*argv)
+-        assert cp.returncode == 0, cp.stderr
+-        return json.loads(cp.stdout.strip().splitlines()[-1])
+-
+     def file(self, name: str, text: str) -> str:
+         p = self.tmp / name
+         p.write_text(text)
+@@ -107,11 +99,7 @@ def f(tmp_path: Path) -> Fixture:
+                    check=True)
+     f.ok("init")
+     f.ok("ticket", "new", "--file", f.file("req.md", "# Fixture\n\nGreet.\n"))
+-    f.ok("ticket", "transition", "T-0001", "--to", "ready-for-spec-writer", "--by", "t")
+-    f.ok("spec", "add", "T-0001", "--file", f.file("v1.md", V1))
+-    f.ok("ticket", "transition", "T-0001", "--to", "ready-for-critic", "--by", "t", "--round", "spec:init")
+-    f.ok("ticket", "transition", "T-0001", "--to", "awaiting-spec-gate", "--by", "t")
+-    f.ok("approve-spec", "T-0001")
++    approved_parent(f.ok, "T-0001", f.file("v1.md", V1))
+     return f
+ 
+ 
+diff --git a/tests/factory/test_store_setup.py b/tests/factory/test_store_setup.py
+index 84b68ff..cb1b8ae 100644
+--- a/tests/factory/test_store_setup.py
++++ b/tests/factory/test_store_setup.py
+@@ -18,7 +18,7 @@ import shutil
+ import subprocess
+ from pathlib import Path
+ 
+-from ._cli import BIN, REPO, STRIP
++from ._cli import BIN, REPO, STRIP, git_repo
+ from ._cli import js_ok as js
+ 
+ FIXTURE_INSTANCE = Path(__file__).resolve().parent / "fixtures" / "instance"
+@@ -37,13 +37,6 @@ def git(repo: Path, *argv: str) -> subprocess.CompletedProcess:
+                           capture_output=True, text=True)
+ 
+ 
+-def git_repo(path: Path) -> Path:
+-    path.mkdir(parents=True, exist_ok=True)
+-    assert git(path, "init", "-q", "-b", "main").returncode == 0
+-    assert git(path, "commit", "-q", "--allow-empty", "-m", "init").returncode == 0
+-    return path
+-
+-
+ def commit_all(repo: Path, msg: str) -> None:
+     assert git(repo, "add", "-A").returncode == 0
+     assert git(repo, "commit", "-q", "-m", msg).returncode == 0
+diff --git a/tests/factory/test_subtickets.py b/tests/factory/test_subtickets.py
+index 9c06468..5dfd2d0 100644
+--- a/tests/factory/test_subtickets.py
++++ b/tests/factory/test_subtickets.py
+@@ -6,7 +6,7 @@ from pathlib import Path
+ 
+ import yaml
+ 
+-from ._cli import REPO, run, ticket
++from ._cli import REPO, approved_parent, run, ticket
+ from ._cli import js_ok as js
+ 
+ PLAN_LETTERS = """# Plan — T-0001: alert the operator
+@@ -71,11 +71,7 @@ def planned_parent(store: Path, tmp_path: Path, n: int, plan: str) -> str:
+     tid = js(run(store, "ticket", "new", "--file", str(req)))["id"]
+     spec = tmp_path / f"s{n}.md"
+     spec.write_text("## Problem\nx\n")
+-    js(run(store, "ticket", "transition", tid, "--to", "ready-for-spec-writer", "--by", "t"))
+-    js(run(store, "spec", "add", tid, "--file", str(spec)))
+-    js(run(store, "ticket", "transition", tid, "--to", "ready-for-critic", "--by", "t", "--round", "spec:init"))
+-    js(run(store, "ticket", "transition", tid, "--to", "awaiting-spec-gate", "--by", "t"))
+-    js(run(store, "approve-spec", tid))
++    approved_parent(lambda *a: js(run(store, *a)), tid, spec)
+     rid = js(run(store, "run", "start", "--role", "planner", "--ticket", tid))["run_id"]
+     js(run(store, "run", "compose", rid))
+     (store / "runs" / rid / "output.md").write_text(plan)
+@@ -143,11 +139,7 @@ def test_subticket_add_refuses_a_plan_with_no_sub_tickets_and_a_dependency_on_no
+     js(run(store, "ticket", "new", "--file", str(req)))
+     spec = tmp_path / "s.md"
+     spec.write_text("## Problem\nx\n")
+-    js(run(store, "ticket", "transition", "T-0001", "--to", "ready-for-spec-writer", "--by", "t"))
+-    js(run(store, "spec", "add", "T-0001", "--file", str(spec)))
+-    js(run(store, "ticket", "transition", "T-0001", "--to", "ready-for-critic", "--by", "t", "--round", "spec:init"))
+-    js(run(store, "ticket", "transition", "T-0001", "--to", "awaiting-spec-gate", "--by", "t"))
+-    js(run(store, "approve-spec", "T-0001"))
++    approved_parent(lambda *a: js(run(store, *a)), "T-0001", spec)
+     f = tmp_path / "p.md"
+     f.write_text("# Plan\nno sub-tickets here\n")
+     cp = run(store, "subticket", "add", "T-0001", "--file", str(f))
+@@ -177,11 +169,7 @@ def test_a_bullet_that_names_a_sub_ticket_is_not_a_head_and_a_repeated_id_is_ref
+     spec = tmp_path / "s.md"
+     spec.write_text("## Problem\nx\n")
+     js(run(store, "ticket", "new", "--file", str(req)))
+-    js(run(store, "ticket", "transition", "T-0001", "--to", "ready-for-spec-writer", "--by", "t"))
+-    js(run(store, "spec", "add", "T-0001", "--file", str(spec)))
+-    js(run(store, "ticket", "transition", "T-0001", "--to", "ready-for-critic", "--by", "t", "--round", "spec:init"))
+-    js(run(store, "ticket", "transition", "T-0001", "--to", "awaiting-spec-gate", "--by", "t"))
+-    js(run(store, "approve-spec", "T-0001"))
++    approved_parent(lambda *a: js(run(store, *a)), "T-0001", spec)
+     cp = run(store, "subticket", "add", "T-0001", "--file", str(f))
+     assert cp.returncode == 2 and "used more than once" in cp.stderr
+     import importlib.util
+diff --git a/tests/factory/test_superseded_plan.py b/tests/factory/test_superseded_plan.py
+index ce0a9e1..dec879d 100644
+--- a/tests/factory/test_superseded_plan.py
++++ b/tests/factory/test_superseded_plan.py
+@@ -15,7 +15,7 @@ from pathlib import Path
+ 
+ import pytest
+ 
+-from ._cli import run, ticket
++from ._cli import approved_parent, run, ticket
+ from ._cli import js_ok as js
+ 
+ OLD_PLAN = ("ST-1 / Base\nDepends on: none\nParallel-safe: yes\n\nST-2 / Dropped\nDepends on: none\nParallel-safe: yes\n\n"
+@@ -42,11 +42,7 @@ def store(tmp_path: Path) -> Path:
+     (tmp_path / "req.md").write_text("# Fixture\n\nThe bot should do the thing.\n")
+     (tmp_path / "spec.md").write_text("## Problem\nx\n")
+     js(run(s, "ticket", "new", "--file", str(tmp_path / "req.md")))
+-    js(run(s, "ticket", "transition", "T-0001", "--to", "ready-for-spec-writer", "--by", "t"))
+-    js(run(s, "spec", "add", "T-0001", "--file", str(tmp_path / "spec.md")))
+-    js(run(s, "ticket", "transition", "T-0001", "--to", "ready-for-critic", "--by", "t", "--round", "spec:init"))
+-    js(run(s, "ticket", "transition", "T-0001", "--to", "awaiting-spec-gate", "--by", "t"))
+-    js(run(s, "approve-spec", "T-0001"))
++    approved_parent(lambda *a: js(run(s, *a)), "T-0001", tmp_path / "spec.md")
+     return s
+ 
+ 
+diff --git a/tests/factory/test_tripwire.py b/tests/factory/test_tripwire.py
+index 2dc3326..e9ae556 100644
+--- a/tests/factory/test_tripwire.py
++++ b/tests/factory/test_tripwire.py
+@@ -19,14 +19,14 @@ import subprocess
+ import uuid
+ from pathlib import Path
+ 
+-from ._cli import BIN, REPO
++from ._cli import CliStore
+ 
+ FIXTURE_INSTANCE = Path(__file__).resolve().parent / "fixtures" / "instance"
+ SECRET = '{"token": "TRIPWIRE-SECRET-A"}\n'
+ OUT = "Type: bug\nTitle: Fixture\n\nSTATUS: ACCEPT\nCONFIDENCE: high\nESCALATIONS: none\n"
+ 
+ 
+-class Inst:
++class Inst(CliStore):
+     """A scratch instance and store with ticket T-0001 ready for triage. `tripwire` is the YAML
+     text appended to the instance (None: no key)."""
+ 
+@@ -45,14 +45,6 @@ class Inst:
+         self.ok("ticket", "new", "--file", str(req))
+         (tmp_path / "out.md").write_text(OUT)
+ 
+-    def cli(self, *argv: str) -> subprocess.CompletedProcess:
+-        return subprocess.run([str(BIN), *argv], capture_output=True, text=True, env=self.env, cwd=REPO)
+-
+-    def ok(self, *argv: str) -> dict:
+-        cp = self.cli(*argv)
+-        assert cp.returncode == 0, cp.stderr
+-        return json.loads(cp.stdout.strip().splitlines()[-1])
+-
+     def start(self) -> str:
+         return self.ok("run", "start", "--role", "triage", "--ticket", "T-0001")["run_id"]
+ 
+diff --git a/tests/factory/test_turn_economy.py b/tests/factory/test_turn_economy.py
+index 69422eb..54787df 100644
+--- a/tests/factory/test_turn_economy.py
++++ b/tests/factory/test_turn_economy.py
+@@ -15,7 +15,7 @@ from pathlib import Path
+ 
+ import pytest
+ 
+-from ._cli import BIN, REPO, STRIP
++from ._cli import BIN, REPO, STRIP, git_repo
+ 
+ FENCE = "`" * 3
+ 
+@@ -87,11 +87,7 @@ def run_prompts(tmp_path_factory) -> dict[str, str]:
+     scratch target with a throwaway store (FACTORY_STATE). `ticket set` gives the ticket the status
+     each role starts from."""
+     tmp = tmp_path_factory.mktemp("economy")
+-    t = tmp / "target"
+-    t.mkdir()
+-    for argv in (["init", "-q", "-b", "main"],
+-                 ["-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "--allow-empty", "-m", "init"]):
+-        subprocess.run(["git", "-C", str(t), *argv], check=True, capture_output=True)
++    t = git_repo(tmp / "target")
+     req = tmp / "r.md"
+     req.write_text("# demo\n\nDo the thing.\n")
+     store = {"FACTORY_STATE": str(tmp / "s")}
+diff --git a/tests/factory/test_whole_spec_plan.py b/tests/factory/test_whole_spec_plan.py
+index 3059676..f644648 100644
+--- a/tests/factory/test_whole_spec_plan.py
++++ b/tests/factory/test_whole_spec_plan.py
+@@ -14,13 +14,12 @@ from __future__ import annotations
+ import json
+ import os
+ import shutil
+-import subprocess
+ from pathlib import Path
+ 
+ import pytest
+ import yaml
+ 
+-from ._cli import BIN, REPO
++from ._cli import CliStore, git_repo
+ from .test_parent_close_reuse import _build, _parent_verifier_runs
+ from .test_shepherd import Shepherd
+ 
+@@ -52,7 +51,7 @@ ESCALATIONS: none
+ """
+ 
+ 
+-class Parent:
++class Parent(CliStore):
+     """T-0001 at ready-for-planner: one spec-writer run ending `status`, its output approved as v1."""
+ 
+     def __init__(self, tmp_path: Path, status: str = "READY-FOR-CRITIC", extra: str = "", spec_store: bool = False):
+@@ -61,9 +60,7 @@ class Parent:
+         repo = tmp_path / "t"
+         self.env = {**os.environ, "FACTORY_STATE": str(self.root), "FACTORY_REPO": str(repo),
+                     "FACTORY_INTEGRATION_BRANCH": "main", "PYTHONDONTWRITEBYTECODE": "1"}
+-        subprocess.run(["git", "init", "-q", "-b", "main", str(repo)], check=True)
+-        subprocess.run(["git", "-C", str(repo), "-c", "user.email=f@x", "-c", "user.name=f", "commit", "-q",
+-                        "--allow-empty", "-m", "init"], check=True)
++        git_repo(repo)
+         if spec_store:
+             self.ok("init")
+         (tmp_path / "req.md").write_text("# F\n\nDo x.\n")
+@@ -77,14 +74,6 @@ class Parent:
+         self.ok("ticket", "transition", "T-0001", "--to", "awaiting-spec-gate", "--by", "t")
+         self.ok("approve-spec", "T-0001")
+ 
+-    def cli(self, *argv: str) -> subprocess.CompletedProcess:
+-        return subprocess.run([str(BIN), *argv], capture_output=True, text=True, env=self.env, cwd=REPO)
+-
+-    def ok(self, *argv: str) -> dict:
+-        cp = self.cli(*argv)
+-        assert cp.returncode == 0, f"{' '.join(argv)}: {cp.stderr}"
+-        return json.loads(cp.stdout.strip().splitlines()[-1])
+-
+     def tickets(self) -> list[str]:
+         return sorted(p.name for p in (self.root / "tickets").iterdir())
+ 
+diff --git a/tests/factory/test_writing_standard.py b/tests/factory/test_writing_standard.py
+index a690b1f..245bd42 100644
+--- a/tests/factory/test_writing_standard.py
++++ b/tests/factory/test_writing_standard.py
+@@ -14,7 +14,7 @@ from pathlib import Path
+ 
+ import pytest
+ 
+-from ._cli import BIN, REPO, STRIP
++from ._cli import BIN, REPO, STRIP, git_repo
+ 
+ STANDARD = REPO.resolve() / "docs" / "writing.md"
+ FENCE = "`" * 3
+@@ -30,11 +30,7 @@ def cli(cwd: Path, *argv: str, **extra: str) -> subprocess.CompletedProcess:
+ def system_prompt(tmp_path: Path) -> str:
+     """The system prompt of one triage run started in a fresh scratch target, on a throwaway store
+     (FACTORY_STATE) as in the spec's scenario, so it does not depend on a clean harness checkout."""
+-    t = tmp_path / "target"
+-    t.mkdir()
+-    for argv in (["init", "-q", "-b", "main"],
+-                 ["-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "--allow-empty", "-m", "init"]):
+-        subprocess.run(["git", "-C", str(t), *argv], check=True, capture_output=True)
++    t = git_repo(tmp_path / "target")
+     req = tmp_path / "r.md"
+     req.write_text("# demo\n\nDo the thing.\n")
+     store = tmp_path / "s"

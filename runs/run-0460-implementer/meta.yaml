@@ -1,0 +1,25 @@
+run_id: run-0460-implementer
+role: implementer
+ticket: T-0045.1
+model: opus
+round: 0
+spec_version: 2
+started: '2026-10-12T06:47:39+00:00'
+finished: '2026-10-12T07:18:15+00:00'
+wall_s: 1836
+status: READY-FOR-REVIEW
+input_sources:
+- specs/T-0045.1/subticket.md
+- specs/T-0045/v2.md
+gate_skipped: []
+branch: factory/T-0045.1
+base: 2b9baf506852d6f74124b1f5eadbdd84f6bad52b
+head: 2b9baf506852d6f74124b1f5eadbdd84f6bad52b
+worktree: /Users/dphang/dev/spec-factory/.factory/store/worktrees/T-0045.1
+resolution: null
+environment_files: []
+confidence: high. All four NEW checks and both gates were run on `3478d1f` and printed the expected output.
+  The two deviations, the two `cli` functions kept and `STRIP` widened, are listed under Known gaps with
+  their effect.
+escalations: []
+escalations_note: null

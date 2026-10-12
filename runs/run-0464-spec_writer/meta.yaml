@@ -1,0 +1,26 @@
+run_id: run-0464-spec_writer
+role: spec_writer
+ticket: T-0046
+model: opus
+round: 0
+spec_version: 0
+started: '2026-10-12T07:30:28+00:00'
+finished: '2026-10-12T07:49:16+00:00'
+wall_s: 1128
+status: READY-FOR-CRITIC
+input_sources:
+- runs/run-0463-triage/output.md
+- requests/T-0046.md
+- openspec/specs/build-dispatch/spec.md
+- openspec/specs/factory-stats/spec.md
+- openspec/specs/harness-code/spec.md
+- openspec/specs/human-resolution/spec.md
+- openspec/specs/spec-amendment/spec.md
+- openspec/specs/sub-ticket-planning/spec.md
+- decisions.md
+confidence: medium. I ran every scenario on `2b9baf5` and each REGRESSION printed its THEN; the parser
+  comparison also caught a planted one-space change. The NEW counts after the change follow from design.md's
+  helper shapes, so an implementer who writes a helper another way could print a different count for the
+  same intent.
+escalations: []
+escalations_note: null

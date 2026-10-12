@@ -3,7 +3,7 @@ type: sub-ticket
 title: 'De-bloat A: delete dead code, redundant lines and stale docstrings in the harness'
 request: requests/T-0044.md
 source: plan:whole-spec
-status: checks-in-flight
+status: merged
 round:
   spec: 0
   pr: 1
@@ -49,14 +49,26 @@ history:
   - factory/instance.template.yaml
   - factory/specstore.py
   - factory/store.py
+- ts: '2026-10-12T06:40:03+00:00'
+  from: checks-in-flight
+  to: ready-for-merge
+  by: workflow
+  round:
+    spec: 0
+    pr: 1
+- ts: '2026-10-12T06:40:12+00:00'
+  from: ready-for-merge
+  to: merged
+  by: merge
+  head: 53047c59fcd462510650e752a40d3d294f0486fc
 parent: T-0044
 depends_on: []
 parallel_safe: true
 branch: factory/T-0044.1
 head: 53047c59fcd462510650e752a40d3d294f0486fc
 merge:
-  base_before: null
-  main_after: null
+  base_before: 0ba4e4f637a6ab019774f439727b5a15ddc425cf
+  main_after: 2b9baf506852d6f74124b1f5eadbdd84f6bad52b
 parent_base: null
 label: whole-spec
 planned_from: 2
@@ -67,3 +79,4 @@ accepted_paths:
 - factory/instance.template.yaml
 - factory/specstore.py
 - factory/store.py
+merge_refused: null

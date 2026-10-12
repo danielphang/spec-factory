@@ -1,0 +1,23 @@
+run_id: run-0473-verifier
+role: verifier
+ticket: T-0045
+model: opus
+round: 0
+spec_version: 2
+started: '2026-10-12T09:11:02+00:00'
+finished: '2026-10-12T09:42:18+00:00'
+wall_s: 1876
+status: VERIFIED
+input_sources:
+- specs/T-0045/v2.md
+gate_skipped: []
+environment_files: []
+branch: null
+base: 2b9baf506852d6f74124b1f5eadbdd84f6bad52b
+head: 5c1c47d49a60f3ed6c7cc5349fd32a506d750a93
+worktree: /Users/dphang/dev/spec-factory/.factory/store/runs/run-0473-verifier/wt
+confidence: high. All six scenarios ran verbatim on both base and main, each failed on base as the spec
+  predicts and passed on main, both gates exited 0, and the assertion and scope probes found nothing dropped
+  or out of scope.
+escalations: []
+escalations_note: null

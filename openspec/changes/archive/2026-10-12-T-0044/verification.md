@@ -72,3 +72,7 @@ Prior findings:
 New findings on changed text: none. The added glosses are short and factual; none makes the spec vaguer or longer than the gloss needs. The claim in Responses that no scenario changed agrees with the diff.
 
 Not run this round: the suite and `uvx ruff` (REGRESSION items; the verifier runs them). Not re-run: the six grep/awk scenarios and the build-dispatch scenario, whose commands are byte-identical to v1 and were run in round 1 on the same commit.
+
+## Verifier results
+
+53047c59fcd462510650e752a40d3d294f0486fc · T-0044.1 · VERIFIED · run-0454-verifier

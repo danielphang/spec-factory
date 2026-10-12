@@ -1,0 +1,27 @@
+run_id: run-0467-spec_writer
+role: spec_writer
+ticket: T-0046
+model: opus
+round: 2
+spec_version: 1
+started: '2026-10-12T07:57:29+00:00'
+finished: '2026-10-12T08:00:57+00:00'
+wall_s: 208
+status: READY-FOR-CRITIC
+input_sources:
+- runs/run-0463-triage/output.md
+- requests/T-0046.md
+- openspec/specs/build-dispatch/spec.md
+- openspec/specs/factory-stats/spec.md
+- openspec/specs/harness-code/spec.md
+- openspec/specs/human-resolution/spec.md
+- openspec/specs/spec-amendment/spec.md
+- openspec/specs/sub-ticket-planning/spec.md
+- decisions.md
+- runs/run-0466-critic/output.md
+- specs/T-0046/v1.md
+confidence: high — `factory/` is unchanged since v1 was measured (`git diff --stat 2b9baf5 main -- factory/`
+  is empty); round 2 changes only glosses, two stronger NEW checks I re-ran on `main` and one helper name.
+  The design is the same as v1.
+escalations: []
+escalations_note: null

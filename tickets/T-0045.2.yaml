@@ -1,0 +1,53 @@
+id: T-0045.2
+type: sub-ticket
+title: Write the two setups once, and give the fixture classes one shared `cli`/`ok` pair
+request: requests/T-0045.md
+source: plan:run-0459-planner
+status: merged
+round:
+  spec: 0
+  pr: 1
+spec:
+  version: 2
+  approved_version: 2
+plan: null
+in_flight: []
+parked: null
+created: '2026-10-12T06:46:59+00:00'
+history:
+- ts: '2026-10-12T07:47:30+00:00'
+  from: waiting-dependencies
+  to: ready-for-implementer
+  by: merge
+- ts: '2026-10-12T08:15:06+00:00'
+  from: ready-for-implementer
+  to: checks-in-flight
+  by: workflow
+  round:
+    spec: 0
+    pr: 1
+- ts: '2026-10-12T08:28:01+00:00'
+  from: checks-in-flight
+  to: ready-for-merge
+  by: workflow
+  round:
+    spec: 0
+    pr: 1
+- ts: '2026-10-12T08:28:09+00:00'
+  from: ready-for-merge
+  to: merged
+  by: merge
+  head: a7368d0ff39c534d52cd4d4eecb9d3e463ee95d4
+parent: T-0045
+depends_on:
+- T-0045.1
+parallel_safe: false
+branch: factory/T-0045.2
+head: a7368d0ff39c534d52cd4d4eecb9d3e463ee95d4
+merge:
+  base_before: 6ac73f13f1768bd09a6cc1da3879be8ead51e381
+  main_after: 1c5a1527f4c1b12b4f24ddb2aca0bfcac0ecfc52
+parent_base: null
+label: ST-2
+planned_from: 2
+merge_refused: null

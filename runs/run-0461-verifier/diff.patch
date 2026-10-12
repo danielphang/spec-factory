@@ -1,0 +1,859 @@
+diff --git a/tests/factory/_cli.py b/tests/factory/_cli.py
+new file mode 100644
+index 0000000..bcc3213
+--- /dev/null
++++ b/tests/factory/_cli.py
+@@ -0,0 +1,56 @@
++"""Helpers the harness suite shares: where the repository and `bin/factory` are, the wrappers that
++call it, the JSON readers and the ticket reader. A test file imports them from here, never from
++another test file. Not named `test_*`, so pytest does not collect it.
++"""
++from __future__ import annotations
++
++import json
++import os
++import subprocess
++import sys
++from pathlib import Path
++
++import yaml
++
++REPO = Path(__file__).resolve().parents[2]
++BIN = REPO / "bin" / "factory"
++CLEAN_CLI = Path(__file__).resolve().parent / "clean_harness_cli.py"
++STRIP = ("FACTORY_INSTANCE", "FACTORY_REPO", "FACTORY_STATE", "FACTORY_INTEGRATION_BRANCH", "FACTORY_CWD",
++         "FACTORY_DISPATCH")
++
++
++def cli(cwd: Path, *argv: str, **extra: str) -> subprocess.CompletedProcess:
++    env = {k: v for k, v in os.environ.items() if k not in STRIP}
++    env.update({"PYTHONDONTWRITEBYTECODE": "1", **extra})
++    # init and paths are exempt from the harness lock and keep exercising bin/factory's own hand-over
++    # of the caller's directory; every other command runs the launcher that stubs only the
++    # uncommitted-edit refusal (design C.4), so the suite runs in a checkout with an uncommitted edit.
++    cmd = [str(BIN)] if argv[:1] in (("init",), ("paths",)) else [sys.executable, str(CLEAN_CLI)]
++    return subprocess.run([*cmd, *argv], capture_output=True, text=True, env=env, cwd=cwd)
++
++
++def run(store: Path, *argv: str, stdin: str | None = None) -> subprocess.CompletedProcess:
++    env = {**os.environ, "FACTORY_STATE": str(store), "PYTHONDONTWRITEBYTECODE": "1"}
++    return subprocess.run([str(BIN), *argv], capture_output=True, text=True, env=env, cwd=REPO, input=stdin)
++
++
++def run_env(env: dict, *argv: str) -> subprocess.CompletedProcess:
++    return subprocess.run([str(BIN), *argv], capture_output=True, text=True,
++                          env={**os.environ, "PYTHONDONTWRITEBYTECODE": "1", **env}, cwd=REPO)
++
++
++def js(cp: subprocess.CompletedProcess) -> dict:
++    return json.loads(cp.stdout.strip().splitlines()[-1])
++
++
++def js_ok(cp: subprocess.CompletedProcess) -> dict:
++    assert cp.returncode == 0, cp.stderr
++    return js(cp)
++
++
++def ticket(store: Path, tid: str = "T-0001") -> dict:
++    return yaml.safe_load((store / "tickets" / f"{tid}.yaml").read_text())
++
++
++def tree(path: Path) -> dict[str, bytes]:
++    return {str(p.relative_to(path)): p.read_bytes() for p in sorted(path.rglob("*")) if p.is_file()}
+diff --git a/tests/factory/conftest.py b/tests/factory/conftest.py
+index c7450df..b30619e 100644
+--- a/tests/factory/conftest.py
++++ b/tests/factory/conftest.py
+@@ -11,8 +11,12 @@ subprocess environment (the shepherd's scratch target) still overrides it.
+ from __future__ import annotations
+ 
+ import os
++import sys
+ from pathlib import Path
+ 
+ _HERE = Path(__file__).resolve()
+ os.environ["FACTORY_INSTANCE"] = str(_HERE.parent / "fixtures" / "instance")
+ os.environ.setdefault("FACTORY_REPO", str(_HERE.parents[2]))
++# No .pyc in the checkout: the variable covers every Python subprocess, the flag in-process importlib loads.
++os.environ["PYTHONDONTWRITEBYTECODE"] = "1"
++sys.dont_write_bytecode = True
+diff --git a/tests/factory/test_capability_index.py b/tests/factory/test_capability_index.py
+index 9ac00dd..7f540f1 100644
+--- a/tests/factory/test_capability_index.py
++++ b/tests/factory/test_capability_index.py
+@@ -9,15 +9,13 @@ decision often names no capability. Black-box through `bin/factory`.
+ """
+ from __future__ import annotations
+ 
+-import os
+-import subprocess
+ from pathlib import Path
+ 
+ import pytest
+ import yaml
+ 
+-REPO = Path(__file__).resolve().parents[2]
+-BIN = REPO / "bin" / "factory"
++from ._cli import REPO, run
++
+ CAPS = ("alpha", "beta", "gamma")
+ SPEC = "\n".join([
+     "=== proposal.md", "## Problem", "Beta is lax.", "## Evidence", "Read `openspec/specs/gamma/spec.md`.",
+@@ -27,11 +25,6 @@ SPEC = "\n".join([
+     "=== verification.md", "## Acceptance", "- strict → NEW; today lax", ""])
+ 
+ 
+-def run(store: Path, *argv: str) -> subprocess.CompletedProcess:
+-    env = {**os.environ, "FACTORY_STATE": str(store), "PYTHONDONTWRITEBYTECODE": "1"}
+-    return subprocess.run([str(BIN), *argv], capture_output=True, text=True, env=env, cwd=REPO)
+-
+-
+ def ok(store: Path, *argv: str) -> str:
+     cp = run(store, *argv)
+     assert cp.returncode == 0, cp.stderr
+diff --git a/tests/factory/test_coding_standard.py b/tests/factory/test_coding_standard.py
+index f063b93..33c1067 100644
+--- a/tests/factory/test_coding_standard.py
++++ b/tests/factory/test_coding_standard.py
+@@ -15,10 +15,9 @@ from pathlib import Path
+ 
+ import pytest
+ 
+-REPO = Path(__file__).resolve().parents[2]
+-BIN = REPO / "bin" / "factory"
++from ._cli import BIN, REPO, STRIP
++
+ STANDARD = REPO.resolve() / "docs" / "coding.md"
+-STRIP = ("FACTORY_INSTANCE", "FACTORY_REPO", "FACTORY_STATE", "FACTORY_INTEGRATION_BRANCH", "FACTORY_CWD")
+ FENCE = "`" * 3
+ 
+ 
+diff --git a/tests/factory/test_critic_approved_changes.py b/tests/factory/test_critic_approved_changes.py
+index 6eed6a3..9a6cac6 100644
+--- a/tests/factory/test_critic_approved_changes.py
++++ b/tests/factory/test_critic_approved_changes.py
+@@ -15,8 +15,8 @@ from pathlib import Path
+ 
+ import pytest
+ 
+-REPO = Path(__file__).resolve().parents[2]
+-BIN = REPO / "bin" / "factory"
++from ._cli import BIN, REPO
++
+ HEADING = "## Approved changes not yet archived"
+ 
+ 
+diff --git a/tests/factory/test_decision_log.py b/tests/factory/test_decision_log.py
+index 87b541b..fd49661 100644
+--- a/tests/factory/test_decision_log.py
++++ b/tests/factory/test_decision_log.py
+@@ -8,26 +8,15 @@ from __future__ import annotations
+ 
+ import datetime as dt
+ import json
+-import os
+ import re
+-import subprocess
+ from pathlib import Path
+ 
+ import pytest
+ import yaml
+ 
+-REPO = Path(__file__).resolve().parents[2]
+-BIN = REPO / "bin" / "factory"
+-FENCE = "`" * 3
+-
+-
+-def run(store: Path, *argv: str) -> subprocess.CompletedProcess:
+-    env = {**os.environ, "FACTORY_STATE": str(store), "PYTHONDONTWRITEBYTECODE": "1"}
+-    return subprocess.run([str(BIN), *argv], capture_output=True, text=True, env=env, cwd=REPO)
+-
++from ._cli import REPO, js, run, ticket
+ 
+-def js(cp):
+-    return json.loads(cp.stdout.strip().splitlines()[-1])
++FENCE = "`" * 3
+ 
+ 
+ def today() -> str:
+@@ -47,10 +36,6 @@ def events(store: Path, name: str) -> list[dict]:
+     return [json.loads(ln) for ln in run(store, "log", "tail", "-n", "200", "--event", name).stdout.splitlines()]
+ 
+ 
+-def ticket(store: Path) -> dict:
+-    return yaml.safe_load((store / "tickets" / "T-0001.yaml").read_text())
+-
+-
+ @pytest.fixture
+ def store(tmp_path: Path) -> Path:
+     s = tmp_path / "state"
+diff --git a/tests/factory/test_drive.py b/tests/factory/test_drive.py
+index d8b2ddf..726c849 100644
+--- a/tests/factory/test_drive.py
++++ b/tests/factory/test_drive.py
+@@ -21,8 +21,8 @@ from pathlib import Path
+ 
+ import yaml
+ 
+-REPO = Path(__file__).resolve().parents[2]
+-BIN = REPO / "bin" / "factory"
++from ._cli import BIN, REPO
++
+ FIXTURE_INSTANCE = Path(__file__).resolve().parent / "fixtures" / "instance"
+ 
+ STANDIN = '''#!{python}
+diff --git a/tests/factory/test_empty_output.py b/tests/factory/test_empty_output.py
+index ea97fd2..0323f1b 100644
+--- a/tests/factory/test_empty_output.py
++++ b/tests/factory/test_empty_output.py
+@@ -15,8 +15,7 @@ from pathlib import Path
+ import pytest
+ import yaml
+ 
+-REPO = Path(__file__).resolve().parents[2]
+-BIN = REPO / "bin" / "factory"
++from ._cli import BIN, REPO
+ 
+ 
+ class Store:
+diff --git a/tests/factory/test_environment_sync.py b/tests/factory/test_environment_sync.py
+index ca2ec2f..0fd1728 100644
+--- a/tests/factory/test_environment_sync.py
++++ b/tests/factory/test_environment_sync.py
+@@ -17,8 +17,8 @@ from pathlib import Path
+ import pytest
+ import yaml
+ 
+-REPO = Path(__file__).resolve().parents[2]
+-BIN = REPO / "bin" / "factory"
++from ._cli import BIN, REPO
++
+ FIXTURE_INSTANCE = Path(__file__).resolve().parent / "fixtures" / "instance"
+ GIT_ID = {"GIT_AUTHOR_NAME": "f", "GIT_AUTHOR_EMAIL": "f@x", "GIT_COMMITTER_NAME": "f", "GIT_COMMITTER_EMAIL": "f@x"}
+ DUMP = "env > synced.env"  # a sync that records the environment it ran in
+diff --git a/tests/factory/test_gate_paths.py b/tests/factory/test_gate_paths.py
+index 3323b29..3da0926 100644
+--- a/tests/factory/test_gate_paths.py
++++ b/tests/factory/test_gate_paths.py
+@@ -19,8 +19,8 @@ from pathlib import Path
+ import pytest
+ import yaml
+ 
+-REPO = Path(__file__).resolve().parents[2]
+-BIN = REPO / "bin" / "factory"
++from ._cli import BIN, REPO
++
+ FIXTURE_INSTANCE = Path(__file__).resolve().parent / "fixtures" / "instance"
+ UNSCOPED = "git diff --check main...HEAD"
+ SCOPED = "sh -c 'exit 7'"
+diff --git a/tests/factory/test_harness_lock.py b/tests/factory/test_harness_lock.py
+index 8285c74..f1de71e 100644
+--- a/tests/factory/test_harness_lock.py
++++ b/tests/factory/test_harness_lock.py
+@@ -24,9 +24,8 @@ from pathlib import Path
+ 
+ import pytest
+ 
+-REPO = Path(__file__).resolve().parents[2]
+-CLEAN_CLI = Path(__file__).resolve().parent / "clean_harness_cli.py"
+-STRIP = ("FACTORY_INSTANCE", "FACTORY_REPO", "FACTORY_STATE", "FACTORY_INTEGRATION_BRANCH", "FACTORY_CWD")
++from ._cli import CLEAN_CLI, REPO, STRIP, js, tree
++
+ HARNESS_PATHS = ("factory", "bin/factory", "agents", "pyproject.toml", "uv.lock")
+ ZERO = "0" * 40
+ 
+@@ -61,14 +60,6 @@ def revision(harness: Path) -> str:
+     return git(harness, "log", "-1", "--format=%H", "--", *HARNESS_PATHS).strip()
+ 
+ 
+-def tree(path: Path) -> dict[str, bytes]:
+-    return {str(p.relative_to(path)): p.read_bytes() for p in sorted(path.rglob("*")) if p.is_file()}
+-
+-
+-def js(cp: subprocess.CompletedProcess) -> dict:
+-    return json.loads(cp.stdout.strip().splitlines()[-1])
+-
+-
+ def make_target(path: Path, harness: Path) -> Path:
+     path.mkdir(parents=True)
+     git(path, "init", "-q", "-b", "main")
+diff --git a/tests/factory/test_instance.py b/tests/factory/test_instance.py
+index 39a1083..c444cbd 100644
+--- a/tests/factory/test_instance.py
++++ b/tests/factory/test_instance.py
+@@ -6,35 +6,16 @@ harness resolves the instance the way it does for an operator: from the working
+ """
+ from __future__ import annotations
+ 
+-import json
+ import os
+ import subprocess
+-import sys
+ from pathlib import Path
+ 
+ import pytest
+ import yaml
+ 
+-REPO = Path(__file__).resolve().parents[2]
+-BIN = REPO / "bin" / "factory"
+-CLEAN_CLI = Path(__file__).resolve().parent / "clean_harness_cli.py"
+-STRIP = ("FACTORY_INSTANCE", "FACTORY_REPO", "FACTORY_STATE", "FACTORY_INTEGRATION_BRANCH", "FACTORY_CWD",
+-         "FACTORY_DISPATCH")
+-NOT_FOUND = "no .factory/instance.yaml found from {cwd}; run factory init --repo-name NAME, or set FACTORY_INSTANCE"
+-
+-
+-def cli(cwd: Path, *argv: str, **extra: str) -> subprocess.CompletedProcess:
+-    env = {k: v for k, v in os.environ.items() if k not in STRIP}
+-    env.update({"PYTHONDONTWRITEBYTECODE": "1", **extra})
+-    # init and paths are exempt from the harness lock and keep exercising bin/factory's own hand-over
+-    # of the caller's directory; every other command runs the launcher that stubs only the
+-    # uncommitted-edit refusal (design C.4), so the suite runs in a checkout with an uncommitted edit.
+-    cmd = [str(BIN)] if argv[:1] in (("init",), ("paths",)) else [sys.executable, str(CLEAN_CLI)]
+-    return subprocess.run([*cmd, *argv], capture_output=True, text=True, env=env, cwd=cwd)
++from ._cli import BIN, REPO, STRIP, cli, js, tree
+ 
+-
+-def js(cp: subprocess.CompletedProcess) -> dict:
+-    return json.loads(cp.stdout.strip().splitlines()[-1])
++NOT_FOUND = "no .factory/instance.yaml found from {cwd}; run factory init --repo-name NAME, or set FACTORY_INSTANCE"
+ 
+ 
+ def git_repo(path: Path) -> Path:
+@@ -45,10 +26,6 @@ def git_repo(path: Path) -> Path:
+     return path
+ 
+ 
+-def tree(path: Path) -> dict[str, bytes]:
+-    return {str(p.relative_to(path)): p.read_bytes() for p in sorted(path.rglob("*")) if p.is_file()}
+-
+-
+ def harness_status() -> str:
+     return subprocess.run(["git", "-C", str(REPO), "status", "--porcelain"], capture_output=True, text=True).stdout
+ 
+diff --git a/tests/factory/test_merge_protected_paths.py b/tests/factory/test_merge_protected_paths.py
+index 0e87552..2407455 100644
+--- a/tests/factory/test_merge_protected_paths.py
++++ b/tests/factory/test_merge_protected_paths.py
+@@ -22,8 +22,8 @@ from pathlib import Path
+ import pytest
+ import yaml
+ 
+-REPO = Path(__file__).resolve().parents[2]
+-BIN = REPO / "bin" / "factory"
++from ._cli import BIN, REPO
++
+ FIXTURE = REPO / "tests" / "factory" / "fixtures" / "instance"
+ 
+ # Drives factory/workflows/build.js with a stub clerk: each command gets the reply of the longest key
+diff --git a/tests/factory/test_p0_cli.py b/tests/factory/test_p0_cli.py
+index 4c3f14d..04b65a8 100644
+--- a/tests/factory/test_p0_cli.py
++++ b/tests/factory/test_p0_cli.py
+@@ -4,31 +4,13 @@ Black-box through `bin/factory`, as the P0 acceptance items are written.
+ """
+ from __future__ import annotations
+ 
+-import json
+-import os
+-import subprocess
+ import sys
+ from pathlib import Path
+ 
+ import pytest
+ import yaml
+ 
+-REPO = Path(__file__).resolve().parents[2]
+-BIN = REPO / "bin" / "factory"
+-
+-
+-def run(store: Path, *argv: str, stdin: str | None = None) -> subprocess.CompletedProcess:
+-    env = {**os.environ, "FACTORY_STATE": str(store), "PYTHONDONTWRITEBYTECODE": "1"}
+-    return subprocess.run([str(BIN), *argv], capture_output=True, text=True, env=env, cwd=REPO, input=stdin)
+-
+-
+-def js(cp: subprocess.CompletedProcess) -> dict:
+-    return json.loads(cp.stdout.strip().splitlines()[-1])
+-
+-
+-def ticket(store: Path, tid: str) -> dict:
+-    return yaml.safe_load((store / "tickets" / f"{tid}.yaml").read_text())
+-
++from ._cli import REPO, js, run, ticket  # noqa: F401  (test_role_inputs.py imports REPO from here)
+ 
+ TRAILER = "\nSTATUS: {s}\nCONFIDENCE: high, fixture\nESCALATIONS: none\n"
+ 
+@@ -115,15 +97,6 @@ def test_run_compose_then_finish_parses_status_and_clears_in_flight(store, req):
+     assert t["in_flight"] == [] and t["title"] == "Do the thing" and t["type"] == "feature"
+ 
+ 
+-def test_run_finish_without_output_is_killed(store, req):
+-    run(store, "ticket", "new", "--file", str(req))
+-    rid = js(run(store, "run", "start", "--role", "triage", "--ticket", "T-0001"))["run_id"]
+-    run(store, "run", "compose", rid)
+-    cp = run(store, "run", "finish", rid, "--status-override", "KILLED")
+-    assert cp.returncode == 0 and js(cp)["status"] == "KILLED"
+-    assert yaml.safe_load((store / "runs" / rid / "meta.yaml").read_text())["status"] == "KILLED"
+-
+-
+ def test_status_parse_last_status_line_wins_and_needs_both_followers(tmp_path, store):
+     p = tmp_path / "m.md"
+     p.write_text("body\nSTATUS: APPROVE\nmore\nSTATUS: REVISE\nCONFIDENCE: high, ok\nESCALATIONS:\n- one\n- two\n")
+diff --git a/tests/factory/test_redispatch_rows.py b/tests/factory/test_redispatch_rows.py
+index a877f54..84db4ab 100644
+--- a/tests/factory/test_redispatch_rows.py
++++ b/tests/factory/test_redispatch_rows.py
+@@ -11,28 +11,17 @@ Black-box through `bin/factory` on a throwaway store (FACTORY_STATE), as test_re
+ from __future__ import annotations
+ 
+ import json
+-import os
+-import subprocess
+ from pathlib import Path
+ 
+ import pytest
+ 
+-REPO = Path(__file__).resolve().parents[2]
+-BIN = REPO / "bin" / "factory"
++from ._cli import js_ok as js
++from ._cli import run_env as run
++
+ HEAD = "ab" * 20
+ ST = "T-0001.1"
+ 
+ 
+-def run(env: dict, *argv: str) -> subprocess.CompletedProcess:
+-    return subprocess.run([str(BIN), *argv], capture_output=True, text=True,
+-                          env={**os.environ, "PYTHONDONTWRITEBYTECODE": "1", **env}, cwd=REPO)
+-
+-
+-def js(cp: subprocess.CompletedProcess) -> dict:
+-    assert cp.returncode == 0, cp.stderr
+-    return json.loads(cp.stdout.strip().splitlines()[-1])
+-
+-
+ @pytest.fixture
+ def env(tmp_path: Path) -> dict:
+     """A scratch store: T-0001 approved and split into T-0001.1, which is in its checks on HEAD."""
+diff --git a/tests/factory/test_replan.py b/tests/factory/test_replan.py
+index adf55e1..63773e2 100644
+--- a/tests/factory/test_replan.py
++++ b/tests/factory/test_replan.py
+@@ -9,35 +9,20 @@ Black-box through `bin/factory` on a throwaway store (FACTORY_STATE), as test_de
+ """
+ from __future__ import annotations
+ 
+-import json
+-import os
+ import subprocess
+ from pathlib import Path
+ 
+ import pytest
+ import yaml
+ 
+-REPO = Path(__file__).resolve().parents[2]
+-BIN = REPO / "bin" / "factory"
++from ._cli import run, ticket
++from ._cli import js_ok as js
++
+ NOTE = "Re-plan: add one fix for the case-insensitive path.\n"
+ SECTION = "## Sub-tickets already under T-0001"
+ FIRST_PLAN = "ST-1 / First\nDepends on: none\nParallel-safe: yes\n\nST-2 / Second\nDepends on: ST-1\nParallel-safe: yes\n"
+ 
+ 
+-def run(store: Path, *argv: str) -> subprocess.CompletedProcess:
+-    env = {**os.environ, "FACTORY_STATE": str(store), "PYTHONDONTWRITEBYTECODE": "1"}
+-    return subprocess.run([str(BIN), *argv], capture_output=True, text=True, env=env, cwd=REPO)
+-
+-
+-def js(cp: subprocess.CompletedProcess) -> dict:
+-    assert cp.returncode == 0, cp.stderr
+-    return json.loads(cp.stdout.strip().splitlines()[-1])
+-
+-
+-def ticket(store: Path, tid: str) -> dict:
+-    return yaml.safe_load((store / "tickets" / f"{tid}.yaml").read_text())
+-
+-
+ def files(d: Path) -> list[str]:
+     return sorted(str(p.relative_to(d)) for p in d.rglob("*") if p.is_file()) if d.exists() else []
+ 
+diff --git a/tests/factory/test_request_frontmatter.py b/tests/factory/test_request_frontmatter.py
+index b665887..e7b6830 100644
+--- a/tests/factory/test_request_frontmatter.py
++++ b/tests/factory/test_request_frontmatter.py
+@@ -8,20 +8,12 @@ silently and only failed later, in an editor's preview.
+ from __future__ import annotations
+ 
+ import json
+-import os
+-import subprocess
+ from pathlib import Path
+ 
+ import pytest
+ import yaml
+ 
+-REPO = Path(__file__).resolve().parents[2]
+-BIN = REPO / "bin" / "factory"
+-
+-
+-def run(store: Path, *argv: str) -> subprocess.CompletedProcess:
+-    env = {**os.environ, "FACTORY_STATE": str(store), "PYTHONDONTWRITEBYTECODE": "1"}
+-    return subprocess.run([str(BIN), *argv], capture_output=True, text=True, env=env, cwd=REPO)
++from ._cli import run
+ 
+ 
+ @pytest.fixture
+diff --git a/tests/factory/test_resolve_rulings.py b/tests/factory/test_resolve_rulings.py
+index 7299488..4666127 100644
+--- a/tests/factory/test_resolve_rulings.py
++++ b/tests/factory/test_resolve_rulings.py
+@@ -6,31 +6,16 @@ Black-box through `bin/factory` on a throwaway store (FACTORY_STATE), as test_de
+ """
+ from __future__ import annotations
+ 
+-import json
+-import os
+ import subprocess
+ from pathlib import Path
+ 
+ import pytest
+-import yaml
+-
+-REPO = Path(__file__).resolve().parents[2]
+-BIN = REPO / "bin" / "factory"
+-RULING = "Ruling: take the second approach.\n"
+-
+-
+-def run(env: dict, *argv: str) -> subprocess.CompletedProcess:
+-    return subprocess.run([str(BIN), *argv], capture_output=True, text=True,
+-                          env={**os.environ, "PYTHONDONTWRITEBYTECODE": "1", **env}, cwd=REPO)
+ 
++from ._cli import ticket
++from ._cli import js_ok as js
++from ._cli import run_env as run
+ 
+-def js(cp: subprocess.CompletedProcess) -> dict:
+-    assert cp.returncode == 0, cp.stderr
+-    return json.loads(cp.stdout.strip().splitlines()[-1])
+-
+-
+-def ticket(store: Path, tid: str) -> dict:
+-    return yaml.safe_load((store / "tickets" / f"{tid}.yaml").read_text())
++RULING = "Ruling: take the second approach.\n"
+ 
+ 
+ @pytest.fixture
+diff --git a/tests/factory/test_results_commit.py b/tests/factory/test_results_commit.py
+index 0908d58..3c2bb4f 100644
+--- a/tests/factory/test_results_commit.py
++++ b/tests/factory/test_results_commit.py
+@@ -15,8 +15,8 @@ from pathlib import Path
+ import pytest
+ import yaml
+ 
+-REPO = Path(__file__).resolve().parents[2]
+-BIN = REPO / "bin" / "factory"
++from ._cli import BIN, REPO
++
+ HEAD = "0" * 40
+ REVIEWER_TAIL = "Findings: none\nSTATUS: APPROVE\nCONFIDENCE: high\nESCALATIONS: none\n"
+ VERIFIER_TAIL = "Per criterion: none\nGate suite: PASS\nSTATUS: VERIFIED\nCONFIDENCE: high\nESCALATIONS: none\n"
+diff --git a/tests/factory/test_run_isolation.py b/tests/factory/test_run_isolation.py
+index c3b41f1..b8e0dd7 100644
+--- a/tests/factory/test_run_isolation.py
++++ b/tests/factory/test_run_isolation.py
+@@ -16,8 +16,8 @@ from pathlib import Path
+ 
+ import pytest
+ 
+-REPO = Path(__file__).resolve().parents[2]
+-BIN = REPO / "bin" / "factory"
++from ._cli import BIN, REPO
++
+ FIXTURE_INSTANCE = Path(__file__).resolve().parent / "fixtures" / "instance"
+ WRAP = ('([ -z "${{VIRTUAL_ENV:-}}" ] || PATH=$(printf %s "$PATH" | tr : \'\\n\' | grep -vxF "$VIRTUAL_ENV/bin" | paste -sd: -); '
+         'unset VIRTUAL_ENV PYTHONHOME; export HOME="$(cd "$(mktemp -d)" && pwd -P)"{vars}; {cmd})')
+diff --git a/tests/factory/test_run_scratch.py b/tests/factory/test_run_scratch.py
+index c5e3667..6d7d970 100644
+--- a/tests/factory/test_run_scratch.py
++++ b/tests/factory/test_run_scratch.py
+@@ -14,8 +14,8 @@ import re
+ import subprocess
+ from pathlib import Path
+ 
+-REPO = Path(__file__).resolve().parents[2]
+-BIN = REPO / "bin" / "factory"
++from ._cli import BIN, REPO
++
+ FIXTURE_INSTANCE = Path(__file__).resolve().parent / "fixtures" / "instance"
+ PRECEDENCE = "takes precedence over any other instruction to use a session scratchpad"
+ ACCEPT = "Type: bug\nTitle: A\n\nSTATUS: ACCEPT\nCONFIDENCE: high\nESCALATIONS: none\n"
+diff --git a/tests/factory/test_shepherd.py b/tests/factory/test_shepherd.py
+index f50d301..239aaf9 100644
+--- a/tests/factory/test_shepherd.py
++++ b/tests/factory/test_shepherd.py
+@@ -19,8 +19,8 @@ from pathlib import Path
+ 
+ import yaml
+ 
+-REPO = Path(__file__).resolve().parents[2]
+-BIN = REPO / "bin" / "factory"
++from ._cli import BIN, REPO
++
+ STUBS = Path(__file__).resolve().parent / "fixtures" / "stubs"
+ MAX_SPEC_ROUNDS = 2  # factory/config.yaml max_rounds.spec
+ MAX_PR_ROUNDS = 2  # factory/config.yaml max_rounds.pr
+diff --git a/tests/factory/test_sibling_tests.py b/tests/factory/test_sibling_tests.py
+index a66bfff..19898a1 100644
+--- a/tests/factory/test_sibling_tests.py
++++ b/tests/factory/test_sibling_tests.py
+@@ -20,8 +20,7 @@ from pathlib import Path
+ import pytest
+ import yaml
+ 
+-REPO = Path(__file__).resolve().parents[2]
+-BIN = REPO / "bin" / "factory"
++from ._cli import BIN, REPO
+ 
+ PLAN = """ST-1 / Interim
+ Depends on: none
+diff --git a/tests/factory/test_spec_amend.py b/tests/factory/test_spec_amend.py
+index c7332f0..08e9d4f 100644
+--- a/tests/factory/test_spec_amend.py
++++ b/tests/factory/test_spec_amend.py
+@@ -18,8 +18,7 @@ from pathlib import Path
+ import pytest
+ import yaml
+ 
+-REPO = Path(__file__).resolve().parents[2]
+-BIN = REPO / "bin" / "factory"
++from ._cli import BIN, REPO
+ 
+ SPEC = """=== proposal.md
+ ## Problem
+diff --git a/tests/factory/test_spec_store.py b/tests/factory/test_spec_store.py
+index c7d933d..060a7ee 100644
+--- a/tests/factory/test_spec_store.py
++++ b/tests/factory/test_spec_store.py
+@@ -2,26 +2,14 @@
+ compose additions from spec-factory T-0003 and T-0008, black-box through `bin/factory`."""
+ from __future__ import annotations
+ 
+-import json
+-import os
+-import subprocess
+ from pathlib import Path
+ 
+ import pytest
+ import yaml
+ 
+-REPO = Path(__file__).resolve().parents[2]
+-BIN = REPO / "bin" / "factory"
+-TRAILER = "\nSTATUS: {s}\nCONFIDENCE: high, fixture\nESCALATIONS: none\n"
+-
+-
+-def run(store: Path, *argv: str) -> subprocess.CompletedProcess:
+-    env = {**os.environ, "FACTORY_STATE": str(store), "PYTHONDONTWRITEBYTECODE": "1"}
+-    return subprocess.run([str(BIN), *argv], capture_output=True, text=True, env=env, cwd=REPO)
++from ._cli import js, run
+ 
+-
+-def js(cp):
+-    return json.loads(cp.stdout.strip().splitlines()[-1])
++TRAILER = "\nSTATUS: {s}\nCONFIDENCE: high, fixture\nESCALATIONS: none\n"
+ 
+ 
+ def meta(store: Path, rid: str) -> dict:
+diff --git a/tests/factory/test_store_setup.py b/tests/factory/test_store_setup.py
+index c63b9c1..84b68ff 100644
+--- a/tests/factory/test_store_setup.py
++++ b/tests/factory/test_store_setup.py
+@@ -13,16 +13,15 @@ exempts (`init`, `paths`), so the file passes in a checkout with an uncommitted
+ """
+ from __future__ import annotations
+ 
+-import json
+ import os
+ import shutil
+ import subprocess
+ from pathlib import Path
+ 
+-REPO = Path(__file__).resolve().parents[2]
+-BIN = REPO / "bin" / "factory"
++from ._cli import BIN, REPO, STRIP
++from ._cli import js_ok as js
++
+ FIXTURE_INSTANCE = Path(__file__).resolve().parent / "fixtures" / "instance"
+-STRIP = ("FACTORY_INSTANCE", "FACTORY_REPO", "FACTORY_STATE", "FACTORY_INTEGRATION_BRANCH", "FACTORY_CWD")
+ RULE = "runs/** -whitespace"
+ 
+ 
+@@ -33,11 +32,6 @@ def cli(cwd: Path, *argv: str, **env: str) -> subprocess.CompletedProcess:
+     return subprocess.run([str(BIN), *argv], capture_output=True, text=True, env=e, cwd=cwd)
+ 
+ 
+-def js(cp: subprocess.CompletedProcess) -> dict:
+-    assert cp.returncode == 0, cp.stderr
+-    return json.loads(cp.stdout.strip().splitlines()[-1])
+-
+-
+ def git(repo: Path, *argv: str) -> subprocess.CompletedProcess:
+     return subprocess.run(["git", "-C", str(repo), "-c", "user.email=f@x", "-c", "user.name=f", *argv],
+                           capture_output=True, text=True)
+diff --git a/tests/factory/test_subtickets.py b/tests/factory/test_subtickets.py
+index 728a1c2..9c06468 100644
+--- a/tests/factory/test_subtickets.py
++++ b/tests/factory/test_subtickets.py
+@@ -2,15 +2,12 @@
+ `T-0001-A` or `ST-1` ids, bold field names, shared preludes, and a dependency on another parent."""
+ from __future__ import annotations
+ 
+-import json
+-import os
+-import subprocess
+ from pathlib import Path
+ 
+ import yaml
+ 
+-REPO = Path(__file__).resolve().parents[2]
+-BIN = REPO / "bin" / "factory"
++from ._cli import REPO, run, ticket
++from ._cli import js_ok as js
+ 
+ PLAN_LETTERS = """# Plan — T-0001: alert the operator
+ 
+@@ -67,16 +64,6 @@ ESCALATIONS: none
+ """
+ 
+ 
+-def run(store: Path, *argv: str) -> subprocess.CompletedProcess:
+-    env = {**os.environ, "FACTORY_STATE": str(store), "PYTHONDONTWRITEBYTECODE": "1"}
+-    return subprocess.run([str(BIN), *argv], capture_output=True, text=True, env=env, cwd=REPO)
+-
+-
+-def js(cp):
+-    assert cp.returncode == 0, cp.stderr
+-    return json.loads(cp.stdout.strip().splitlines()[-1])
+-
+-
+ def planned_parent(store: Path, tmp_path: Path, n: int, plan: str) -> str:
+     """A parent ticket approved (old-format spec; no spec store) with `plan` as its planner output."""
+     req = tmp_path / f"r{n}.md"
+@@ -99,10 +86,6 @@ def planned_parent(store: Path, tmp_path: Path, n: int, plan: str) -> str:
+     return tid, subs
+ 
+ 
+-def ticket(store: Path, tid: str) -> dict:
+-    return yaml.safe_load((store / "tickets" / f"{tid}.yaml").read_text())
+-
+-
+ def test_lettered_ids_become_numbered_sub_tickets_in_plan_order(tmp_path):
+     store = tmp_path / "state"
+     tid, subs = planned_parent(store, tmp_path, 21, PLAN_LETTERS)
+diff --git a/tests/factory/test_superseded_plan.py b/tests/factory/test_superseded_plan.py
+index c6ab61d..ce0a9e1 100644
+--- a/tests/factory/test_superseded_plan.py
++++ b/tests/factory/test_superseded_plan.py
+@@ -10,15 +10,14 @@ Black-box through `bin/factory` on a throwaway store (FACTORY_STATE), as test_re
+ from __future__ import annotations
+ 
+ import json
+-import os
+ import subprocess
+ from pathlib import Path
+ 
+ import pytest
+-import yaml
+ 
+-REPO = Path(__file__).resolve().parents[2]
+-BIN = REPO / "bin" / "factory"
++from ._cli import run, ticket
++from ._cli import js_ok as js
++
+ OLD_PLAN = ("ST-1 / Base\nDepends on: none\nParallel-safe: yes\n\nST-2 / Dropped\nDepends on: none\nParallel-safe: yes\n\n"
+             "ST-3 / Unstarted\nDepends on: ST-2\nParallel-safe: yes\n")
+ NEW_PLAN = "ST-1 / Redo\nDepends on: T-0001.1\nParallel-safe: yes\n"
+@@ -26,20 +25,6 @@ SUPERSEDES_LINE = ("Not merged and planned from an earlier approved version, so
+                    "not depend on them: T-0001.2, T-0001.3")
+ 
+ 
+-def run(store: Path, *argv: str) -> subprocess.CompletedProcess:
+-    env = {**os.environ, "FACTORY_STATE": str(store), "PYTHONDONTWRITEBYTECODE": "1"}
+-    return subprocess.run([str(BIN), *argv], capture_output=True, text=True, env=env, cwd=REPO)
+-
+-
+-def js(cp: subprocess.CompletedProcess) -> dict:
+-    assert cp.returncode == 0, cp.stderr
+-    return json.loads(cp.stdout.strip().splitlines()[-1])
+-
+-
+-def ticket(store: Path, tid: str) -> dict:
+-    return yaml.safe_load((store / "tickets" / f"{tid}.yaml").read_text())
+-
+-
+ def add_plan(store: Path, tmp_path: Path, text: str, name: str) -> subprocess.CompletedProcess:
+     (tmp_path / name).write_text(text)
+     return run(store, "subticket", "add", "T-0001", "--file", str(tmp_path / name))
+diff --git a/tests/factory/test_tripwire.py b/tests/factory/test_tripwire.py
+index 9968c83..2dc3326 100644
+--- a/tests/factory/test_tripwire.py
++++ b/tests/factory/test_tripwire.py
+@@ -19,8 +19,8 @@ import subprocess
+ import uuid
+ from pathlib import Path
+ 
+-REPO = Path(__file__).resolve().parents[2]
+-BIN = REPO / "bin" / "factory"
++from ._cli import BIN, REPO
++
+ FIXTURE_INSTANCE = Path(__file__).resolve().parent / "fixtures" / "instance"
+ SECRET = '{"token": "TRIPWIRE-SECRET-A"}\n'
+ OUT = "Type: bug\nTitle: Fixture\n\nSTATUS: ACCEPT\nCONFIDENCE: high\nESCALATIONS: none\n"
+diff --git a/tests/factory/test_turn_economy.py b/tests/factory/test_turn_economy.py
+index 5205fe0..69422eb 100644
+--- a/tests/factory/test_turn_economy.py
++++ b/tests/factory/test_turn_economy.py
+@@ -15,9 +15,8 @@ from pathlib import Path
+ 
+ import pytest
+ 
+-REPO = Path(__file__).resolve().parents[2]
+-BIN = REPO / "bin" / "factory"
+-STRIP = ("FACTORY_INSTANCE", "FACTORY_REPO", "FACTORY_STATE", "FACTORY_INTEGRATION_BRANCH", "FACTORY_CWD")
++from ._cli import BIN, REPO, STRIP
++
+ FENCE = "`" * 3
+ 
+ BULLET = [
+diff --git a/tests/factory/test_whole_spec_plan.py b/tests/factory/test_whole_spec_plan.py
+index 7f0939e..3059676 100644
+--- a/tests/factory/test_whole_spec_plan.py
++++ b/tests/factory/test_whole_spec_plan.py
+@@ -20,11 +20,10 @@ from pathlib import Path
+ import pytest
+ import yaml
+ 
++from ._cli import BIN, REPO
+ from .test_parent_close_reuse import _build, _parent_verifier_runs
+ from .test_shepherd import Shepherd
+ 
+-REPO = Path(__file__).resolve().parents[2]
+-BIN = REPO / "bin" / "factory"
+ REASON = "one sub-ticket: no NEEDS-SPLIT, no seam heading, no earlier planner run"
+ SPEC_WRITER_OUTPUT = """=== proposal.md
+ ## Problem
+diff --git a/tests/factory/test_writing_standard.py b/tests/factory/test_writing_standard.py
+index ebdc8cf..a690b1f 100644
+--- a/tests/factory/test_writing_standard.py
++++ b/tests/factory/test_writing_standard.py
+@@ -14,10 +14,9 @@ from pathlib import Path
+ 
+ import pytest
+ 
+-REPO = Path(__file__).resolve().parents[2]
+-BIN = REPO / "bin" / "factory"
++from ._cli import BIN, REPO, STRIP
++
+ STANDARD = REPO.resolve() / "docs" / "writing.md"
+-STRIP = ("FACTORY_INSTANCE", "FACTORY_REPO", "FACTORY_STATE", "FACTORY_INTEGRATION_BRANCH", "FACTORY_CWD")
+ FENCE = "`" * 3

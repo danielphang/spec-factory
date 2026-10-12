@@ -1,0 +1,32 @@
+Commit: c8308f2ba30e01db463ee09dff27b778e8819b39 (branch `factory/T-0045.3`, base `1c5a1527f4c1b12b4f24ddb2aca0bfcac0ecfc52`)
+
+How this was run: every command ran in the worktree `/Users/dphang/dev/spec-factory/.factory/store/runs/run-0471-verifier/wt`, through the fresh-HOME wrapper, under bash. The worktree had no `.venv`, so I ran `uv sync --frozen` there first. Each WHEN was copied by script from the `- WHEN` lines of `/Users/dphang/dev/spec-factory/.factory/store/specs/T-0045/v2.md` (lines 211, 218, 222, 230, 235 and 243) into files and run verbatim with `eval`. For the base run, I unpacked `git archive 1c5a152` into the scratch directory and symlinked the same `.venv` into it.
+
+Per criterion:
+- NEW | No test file imports from another test file (v2.md:211) | base: `cross-test imports: 27`, followed by 27 sites from `test_build_startup.py:12` to `test_whole_spec_plan.py:24` (FAIL, as the spec expects) | PR: `cross-test imports: 0` | PASS
+- REGRESSION | The shared constants and wrappers are defined once (v2.md:218) | base: not run | PR: `REPO=1 BIN=1 run=1 js=1 ticket=1 git_repo=1 approved_parent=1` | PASS
+- REGRESSION | The approved-parent and empty-repository setups are written once (v2.md:222) | base: not run | PR: `approved-parent sequences: 1 _cli.py:73` and `empty-commit repo setups: 1 _cli.py:63` | PASS
+- REGRESSION | Only the duplicate test and its assertions are gone (v2.md:230) | base: not run | PR: `pair: 3`, `removed: 1`, `removed tests/factory/test_p0_cli.py::test_run_finish_without_output_is_killed`, `added: 0`, `missing: 2`, then two lines that both start `missing test_p0_cli.py::test_run_finish_without_output_is_killed:` (`assert cp.returncode == 0 and js(cp)['status'] == 'KILLED'` and `assert yaml.safe_load((store / 'runs' / rid / 'meta.yaml').read_text())['status'`). stderr held only four `tar: Failed to set default locale` lines, which the spec says to ignore. | PASS
+- REGRESSION | The suite is shorter (v2.md:235) | base: not run | PR: `pairs: 3; test lines before: 28728, after: 28510, change: -218` | PASS
+- REGRESSION | A suite run in a fresh clone passes and adds nothing to the checkout (v2.md:243) | base: not run | PR: `576 passed in 605.19s (0:10:05)`, then `paths changed: 0`, with nothing after it | PASS
+
+Gate suite: PASS
+  `git diff --check main...HEAD`: exit 0, no output.
+  `uv run --frozen pytest -q -p no:cacheprovider tests/factory`: `576 passed in 605.19s (0:10:05)`, exit 0. It ran at the same time as the fresh-clone scenario, so both runs took longer than the implementer's.
+
+Probes:
+- Are the moved bodies unchanged? I compared the AST of every top-level definition in `_fixtures.py` with its definition in the base test files. 36 of 39 are identical to a base definition, including `V1`/`V2` (one tuple assignment), `Fixture`, `f`, `Store`, `STANDIN`, `Shepherd`, `built_to_implementer`, `target`, `state`, `request` (from `test_store_branch.py`), `_build` and `_parent_verifier_runs`. The other three are the renames the PR declares. `BUILD_STANDIN`'s value is identical to base `test_drive_build.py`'s `STANDIN`. `BuildStore` is identical to base once `BUILD_STANDIN` is read back as `STANDIN`. `other_request` is identical to base `test_live_store_guard.py`'s `request` except for its name. → OK
+- Does a moved body now pick up a different global, because one module holds names from several files? I ran `symtable` over `_fixtures.py` for the names that clash or could be captured (`git`, `head`, `spec`, `f`, `Store`, `state`, `request`, `STANDIN`, `BUILD_STANDIN`, `RULE`). Only five global references exist: `land`→`head`, `Store.__init__`→`STANDIN`, `BuildStore.__init__`→`BUILD_STANDIN`, `assert_refused`→`RULE` and `exclude`→`git`. Each one resolves to the same definition it used in its original file. The one `state` kept differs from the dropped `test_store_branch.py` copy only in its parameter name (`target` against `t`). No call in `tests/factory/` passes it by keyword: `grep -rnE "state\((t|target)="` finds nothing. → OK
+- Did any test function change, beyond what the assertion check sees? I compared the AST of every `test_*` function in the base test files with the PR: 446 compared, 0 changed, 0 added. → OK
+- Does each importer work alone, without some other test module having loaded first? `pytest --collect-only` on each `tests/factory/test_*.py` file alone gives no collection error in any file. `test_stats.py`, `test_drift_siblings.py` and `test_drive_guard.py` run together, without the rest of the suite: `46 passed in 31.17s`. → OK
+- Could the cross-test check be met by hiding an import? Grepping `tests/factory/*.py` for `importlib`, `__import__` and `import_module` finds only the existing loads of `factory/subtickets.py` (`test_subtickets.py:116-139`) and the comment in `conftest.py`. No test module is loaded by another route. → OK
+- Was anything changed that should not be? The diff `1c5a152..HEAD` touches only `tests/factory/`: 21 files, `_fixtures.py` plus 20 that are all listed under "Tests to change". It leaves `test_instance.py`, `_cli.py`, `conftest.py`, `clean_harness_cli.py` and the four design-block files unchanged (0 diff lines). → OK
+- The js form each importer takes: `test_build_startup.py:12` and `test_plan_fields.py:15` import `js_ok as js`, matching `test_subtickets.py`'s asserting copy. `test_role_inputs.py`, `test_stats.py`, `test_drive_guard.py` and `test_store_migrate.py` import plain `js`. `test_stats.py:23` keeps `cli as factory_cli`. → OK
+
+Notes for the operator. These are not failures; the PR declares both.
+- The two renames in `_fixtures.py`, `BUILD_STANDIN` and `other_request`, are the only places where the change departs from "with the body unchanged". The probes above show the behaviour is the same. Whether to accept the departure is the operator's call, and the implementer already escalated it.
+- `_fixtures.py` also holds names the D table does not list: `assert_refused`, the live-store `request` (as `other_request`), `SPEC`, `TWO`, `spec`, `FIXTURE_INSTANCE`, `STUBS`, `MAX_SPEC_ROUNDS`, `Run` and `RULE`. Without them the cross-test count cannot reach 0, or the moved bodies cannot resolve their names.
+
+STATUS: VERIFIED
+CONFIDENCE: high. All six scenarios and both gates ran as written on c8308f2 and gave the expected output. The NEW scenario fails on the base for the reason the spec gives. AST and scope probes show the moved code is the same code.
+ESCALATIONS: none

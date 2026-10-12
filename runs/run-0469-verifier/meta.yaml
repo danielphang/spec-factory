@@ -1,0 +1,26 @@
+run_id: run-0469-verifier
+role: verifier
+ticket: T-0045.2
+model: opus
+round: 1
+spec_version: 2
+started: '2026-10-12T08:15:26+00:00'
+finished: '2026-10-12T08:27:21+00:00'
+wall_s: 715
+status: VERIFIED
+input_sources:
+- specs/T-0045.2/subticket.md
+- specs/T-0045/v2.md
+- runs/run-0465-implementer/output.md
+- runs/run-0469-verifier/diff.patch
+gate_skipped: []
+environment_files: []
+branch: factory/T-0045.2
+base: 6ac73f13f1768bd09a6cc1da3879be8ead51e381
+head: a7368d0ff39c534d52cd4d4eecb9d3e463ee95d4
+worktree: /Users/dphang/dev/spec-factory/.factory/store/runs/run-0469-verifier/wt
+confidence: high. All three NEW commands fail on base for the reasons the spec states and pass on the
+  PR. All three REGRESSION commands and both gates pass on a7368d0. The probes show the helpers are not
+  special-cased to the tested inputs.
+escalations: []
+escalations_note: null

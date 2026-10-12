@@ -1,0 +1,34 @@
+run_id: run-0472-reviewer
+role: reviewer
+ticket: T-0045.3
+model: fable
+round: 1
+spec_version: 2
+started: '2026-10-12T08:57:35+00:00'
+finished: '2026-10-12T09:01:23+00:00'
+wall_s: 228
+status: APPROVE
+input_sources:
+- specs/T-0045.3/subticket.md
+- specs/T-0045/v2.md
+- runs/run-0470-implementer/output.md
+- runs/run-0472-reviewer/diff.patch
+gate_skipped: []
+environment_files: []
+branch: factory/T-0045.3
+base: 1c5a1527f4c1b12b4f24ddb2aca0bfcac0ecfc52
+head: c8308f2ba30e01db463ee09dff27b778e8819b39
+worktree: /Users/dphang/dev/spec-factory/.factory/store/runs/run-0472-reviewer/wt
+confidence: high. The diff is a verbatim move apart from the two declared renames (checked line-set against
+  line-set), imports lint clean, and the cross-test import scenario prints 0 on this head; the suite and
+  the remaining scenarios are the verifier's.
+escalations:
+- 'Spec departure, for the record: the spec''s "with the body unchanged" cannot hold for both members
+  of two clashing pairs once they share one module. `test_drive_build.py`''s `STANDIN` is `BUILD_STANDIN`
+  in `_fixtures.py` (one token changes in `BuildStore.__init__`), and `test_live_store_guard.py`''s `request`
+  is `other_request`, imported back under the old name. Behaviour is unchanged; the spec''s D table should
+  be amended to allow the two renames.'
+- 'Spec gap, for the record: the D table omits `test_live_store_guard.py`''s `assert_refused` and `request`,
+  which `test_drive_guard.py` imports, and the module-level names the listed bodies depend on. The implementer
+  moved them under the spec''s general rule; the table should list them.'
+escalations_note: null

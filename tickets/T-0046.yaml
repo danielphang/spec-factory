@@ -1,21 +1,56 @@
 id: T-0046
-type: null
-title: 'De-bloat C: one helper for each pattern the harness writes out several times (runs scan, log read,
-  status transition, park on a failed call) (about 90 lines)'
+type: chore
+title: 'De-bloat C: give each operation the harness writes out several times one shared helper, with no
+  change in behaviour'
 request: requests/T-0046.md
 source: /private/tmp/claude-501/-Users-dphang-dev-nanobot/c69bfd1d-97a6-43e3-9d5a-a517c28d382c/scratchpad/debloat/c-helpers.md
-status: ready-for-triage
+status: awaiting-spec-gate
 round:
-  spec: 0
+  spec: 2
   pr: 0
 spec:
-  version: 0
+  version: 2
   approved_version: null
 plan: null
 in_flight: []
 parked: null
 created: '2026-10-12T00:32:01+00:00'
-history: []
+history:
+- ts: '2026-10-12T07:30:20+00:00'
+  from: ready-for-triage
+  to: ready-for-spec-writer
+  by: workflow
+  round:
+    spec: 0
+    pr: 0
+- ts: '2026-10-12T07:49:37+00:00'
+  from: ready-for-spec-writer
+  to: ready-for-critic
+  by: workflow
+  round:
+    spec: 1
+    pr: 0
+- ts: '2026-10-12T07:57:20+00:00'
+  from: ready-for-critic
+  to: ready-for-spec-writer
+  by: workflow
+  round:
+    spec: 2
+    pr: 0
+- ts: '2026-10-12T08:01:15+00:00'
+  from: ready-for-spec-writer
+  to: ready-for-critic
+  by: workflow
+  round:
+    spec: 2
+    pr: 0
+- ts: '2026-10-12T08:03:46+00:00'
+  from: ready-for-critic
+  to: awaiting-spec-gate
+  by: workflow
+  round:
+    spec: 2
+    pr: 0
 parent: null
 depends_on: []
 parallel_safe: true

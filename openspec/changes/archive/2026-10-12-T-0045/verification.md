@@ -71,3 +71,9 @@ Prior findings:
 New findings on changed text: none that I would defend as blocking or should-fix. One note, not a finding: the comparison scenario's THEN requires `removed: 1` exactly, which holds for every sub-ticket's verifier run because the parts run in order and each branch is cut from `main` after the earlier part merged, so part A's merge is reachable from every later HEAD; if the planner ever reordered the parts so a branch did not contain part A, `removed: 0` would appear on that sub-ticket and the verifier would read it as a failure. The spec already says the parts run in order A, B, C, D and none is parallel-safe, so the planner has what it needs.
 
 No other findings. Rubric 1: still one behaviour change (one deleted test), no test pins it. Rubric 3: NEEDS-SPLIT with ordered seams; Tests to change gives a per-file reason by part letter and now names the T-0044 lines it leaves alone. Rubric 4: Protected paths: none remains right. Rubric 5: checked above. Rubric 6: the human-facing sections read without a translator; "harness", "spec gate", "sub-ticket merge" and the fixture are glossed on first use.
+
+## Verifier results
+
+3478d1fddf4b207fdf0a04ba34ae5459ec11968c · T-0045.1 · VERIFIED · run-0461-verifier
+a7368d0ff39c534d52cd4d4eecb9d3e463ee95d4 · T-0045.2 · VERIFIED · run-0469-verifier
+c8308f2ba30e01db463ee09dff27b778e8819b39 · T-0045.3 · VERIFIED · run-0471-verifier

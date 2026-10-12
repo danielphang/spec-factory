@@ -1,0 +1,54 @@
+id: T-0045.3
+type: sub-ticket
+title: Move every helper that test files import from each other into `_fixtures.py`
+request: requests/T-0045.md
+source: plan:run-0459-planner
+status: merged
+round:
+  spec: 0
+  pr: 1
+spec:
+  version: 2
+  approved_version: 2
+plan: null
+in_flight: []
+parked: null
+created: '2026-10-12T06:46:59+00:00'
+history:
+- ts: '2026-10-12T08:28:09+00:00'
+  from: waiting-dependencies
+  to: ready-for-implementer
+  by: merge
+- ts: '2026-10-12T08:57:15+00:00'
+  from: ready-for-implementer
+  to: checks-in-flight
+  by: workflow
+  round:
+    spec: 0
+    pr: 1
+- ts: '2026-10-12T09:10:08+00:00'
+  from: checks-in-flight
+  to: ready-for-merge
+  by: workflow
+  round:
+    spec: 0
+    pr: 1
+- ts: '2026-10-12T09:10:23+00:00'
+  from: ready-for-merge
+  to: merged
+  by: merge
+  head: c8308f2ba30e01db463ee09dff27b778e8819b39
+parent: T-0045
+depends_on:
+- T-0045.1
+- T-0045.2
+parallel_safe: false
+branch: factory/T-0045.3
+head: c8308f2ba30e01db463ee09dff27b778e8819b39
+merge:
+  base_before: 1c5a1527f4c1b12b4f24ddb2aca0bfcac0ecfc52
+  main_after: 5c1c47d49a60f3ed6c7cc5349fd32a506d750a93
+parent_base: null
+label: ST-3
+planned_from: 2
+merge_refused: null

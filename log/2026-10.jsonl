@@ -2410,3 +2410,79 @@
 {"ts": "2026-10-12T06:38:41+00:00", "event": "approval.recorded", "ticket": "T-0045", "kind": "spec", "version": 2, "by": "dphang"}
 {"ts": "2026-10-12T06:38:41+00:00", "event": "change.pinned", "ticket": "T-0045", "version": 2, "files": ["openspec/changes/T-0045/proposal.md", "openspec/changes/T-0045/design.md", "openspec/changes/T-0045/specs/harness-suite/spec.md", "openspec/changes/T-0045/verification.md"]}
 {"ts": "2026-10-12T06:38:41+00:00", "event": "ticket.transition", "ticket": "T-0045", "from": "awaiting-spec-gate", "to": "ready-for-planner", "by": "dphang"}
+{"ts": "2026-10-12T06:39:25+00:00", "event": "run.started", "ticket": "T-0045", "run": "run-0459-planner", "role": "planner", "model": "opus"}
+{"ts": "2026-10-12T06:40:03+00:00", "event": "ticket.transition", "ticket": "T-0044.1", "from": "checks-in-flight", "to": "ready-for-merge", "by": "workflow", "round": {"spec": 0, "pr": 1}}
+{"ts": "2026-10-12T06:40:12+00:00", "event": "merge.done", "ticket": "T-0044.1", "head": "53047c59fcd462510650e752a40d3d294f0486fc", "base_before": "0ba4e4f637a6ab019774f439727b5a15ddc425cf", "main_after": "2b9baf506852d6f74124b1f5eadbdd84f6bad52b"}
+{"ts": "2026-10-12T06:40:33+00:00", "event": "ticket.transition", "ticket": "T-0044", "from": "planned", "to": "ready-for-parent-verify", "by": "parent-check"}
+{"ts": "2026-10-12T06:40:50+00:00", "event": "change.archived", "ticket": "T-0044", "archived_to": "openspec/changes/archive/2026-10-12-T-0044", "capabilities": ["build-dispatch", "harness-code"], "decisions": 7}
+{"ts": "2026-10-12T06:40:59+00:00", "event": "ticket.transition", "ticket": "T-0044", "from": "ready-for-parent-verify", "to": "closed", "by": "workflow", "round": {"spec": 2, "pr": 0}}
+{"ts": "2026-10-12T06:46:28+00:00", "event": "run.finished", "ticket": "T-0045", "run": "run-0459-planner", "role": "planner", "status": "PLANNED", "wall_s": 423}
+{"ts": "2026-10-12T06:46:40+00:00", "event": "tasks.written", "ticket": "T-0045", "run": "run-0459-planner"}
+{"ts": "2026-10-12T06:46:50+00:00", "event": "plan.added", "ticket": "T-0045", "source": "run-0459-planner"}
+{"ts": "2026-10-12T06:46:59+00:00", "event": "ticket.created", "ticket": "T-0045.1", "parent": "T-0045", "status": "ready-for-implementer"}
+{"ts": "2026-10-12T06:46:59+00:00", "event": "ticket.created", "ticket": "T-0045.2", "parent": "T-0045", "status": "waiting-dependencies"}
+{"ts": "2026-10-12T06:46:59+00:00", "event": "ticket.created", "ticket": "T-0045.3", "parent": "T-0045", "status": "waiting-dependencies"}
+{"ts": "2026-10-12T06:47:08+00:00", "event": "ticket.transition", "ticket": "T-0045", "from": "ready-for-planner", "to": "planned", "by": "workflow", "round": {"spec": 2, "pr": 0}}
+{"ts": "2026-10-12T06:47:39+00:00", "event": "run.started", "ticket": "T-0045.1", "run": "run-0460-implementer", "role": "implementer", "model": "opus"}
+{"ts": "2026-10-12T07:18:15+00:00", "event": "run.finished", "ticket": "T-0045.1", "run": "run-0460-implementer", "role": "implementer", "status": "READY-FOR-REVIEW", "wall_s": 1836}
+{"ts": "2026-10-12T07:18:35+00:00", "event": "ticket.transition", "ticket": "T-0045.1", "from": "ready-for-implementer", "to": "checks-in-flight", "by": "workflow", "round": {"spec": 0, "pr": 1}}
+{"ts": "2026-10-12T07:18:54+00:00", "event": "run.started", "ticket": "T-0045.1", "run": "run-0461-verifier", "role": "verifier", "model": "opus"}
+{"ts": "2026-10-12T07:19:00+00:00", "event": "run.started", "ticket": "T-0045.1", "run": "run-0462-reviewer", "role": "reviewer", "model": "fable"}
+{"ts": "2026-10-12T07:23:52+00:00", "event": "run.finished", "ticket": "T-0045.1", "run": "run-0462-reviewer", "role": "reviewer", "status": "APPROVE", "wall_s": 292}
+{"ts": "2026-10-12T07:24:10+00:00", "event": "result.recorded", "ticket": "T-0045.1", "head": "3478d1fddf4b207fdf0a04ba34ae5459ec11968c", "role": "reviewer", "status": "APPROVE", "run": "run-0462-reviewer"}
+{"ts": "2026-10-12T07:28:10+00:00", "event": "decision.recorded", "ticket": "T-0044", "by": "dphang", "line": "2026-10-12 T-0044 A change to factory/**, bin/factory, agents/**, pyproject.toml or uv.lock touches the protected class harness and must declare it on the spec's Protected paths line; T-0044 wrote 'none' and its merge was refused (operator accepted with resolve --accept-paths, 2026-10-11)", "via": "decision add"}
+{"ts": "2026-10-12T07:28:46+00:00", "event": "run.started", "ticket": "T-0046", "run": "run-0463-triage", "role": "triage", "model": "opus"}
+{"ts": "2026-10-12T07:30:10+00:00", "event": "run.finished", "ticket": "T-0046", "run": "run-0463-triage", "role": "triage", "status": "ACCEPT", "wall_s": 84}
+{"ts": "2026-10-12T07:30:20+00:00", "event": "ticket.transition", "ticket": "T-0046", "from": "ready-for-triage", "to": "ready-for-spec-writer", "by": "workflow", "round": {"spec": 0, "pr": 0}}
+{"ts": "2026-10-12T07:30:28+00:00", "event": "run.started", "ticket": "T-0046", "run": "run-0464-spec_writer", "role": "spec_writer", "model": "opus"}
+{"ts": "2026-10-12T07:46:42+00:00", "event": "run.finished", "ticket": "T-0045.1", "run": "run-0461-verifier", "role": "verifier", "status": "VERIFIED", "wall_s": 1668}
+{"ts": "2026-10-12T07:47:02+00:00", "event": "result.recorded", "ticket": "T-0045.1", "head": "3478d1fddf4b207fdf0a04ba34ae5459ec11968c", "role": "verifier", "status": "VERIFIED", "run": "run-0461-verifier"}
+{"ts": "2026-10-12T07:47:02+00:00", "event": "result.recorded", "ticket": "T-0045.1", "head": "3478d1fddf4b207fdf0a04ba34ae5459ec11968c", "role": "ci", "status": "PASS", "run": "run-0461-verifier"}
+{"ts": "2026-10-12T07:47:22+00:00", "event": "ticket.transition", "ticket": "T-0045.1", "from": "checks-in-flight", "to": "ready-for-merge", "by": "workflow", "round": {"spec": 0, "pr": 1}}
+{"ts": "2026-10-12T07:47:30+00:00", "event": "merge.done", "ticket": "T-0045.1", "head": "3478d1fddf4b207fdf0a04ba34ae5459ec11968c", "base_before": "2b9baf506852d6f74124b1f5eadbdd84f6bad52b", "main_after": "6ac73f13f1768bd09a6cc1da3879be8ead51e381"}
+{"ts": "2026-10-12T07:47:30+00:00", "event": "ticket.transition", "ticket": "T-0045.2", "from": "waiting-dependencies", "to": "ready-for-implementer", "by": "merge"}
+{"ts": "2026-10-12T07:47:59+00:00", "event": "run.started", "ticket": "T-0045.2", "run": "run-0465-implementer", "role": "implementer", "model": "opus"}
+{"ts": "2026-10-12T07:49:16+00:00", "event": "run.finished", "ticket": "T-0046", "run": "run-0464-spec_writer", "role": "spec_writer", "status": "READY-FOR-CRITIC", "wall_s": 1128}
+{"ts": "2026-10-12T07:49:28+00:00", "event": "spec.added", "ticket": "T-0046", "version": 1, "source": "run-0464-spec_writer"}
+{"ts": "2026-10-12T07:49:37+00:00", "event": "ticket.transition", "ticket": "T-0046", "from": "ready-for-spec-writer", "to": "ready-for-critic", "by": "workflow", "round": {"spec": 1, "pr": 0}}
+{"ts": "2026-10-12T07:49:46+00:00", "event": "run.started", "ticket": "T-0046", "run": "run-0466-critic", "role": "critic", "model": "fable"}
+{"ts": "2026-10-12T07:57:11+00:00", "event": "run.finished", "ticket": "T-0046", "run": "run-0466-critic", "role": "critic", "status": "REVISE", "wall_s": 445}
+{"ts": "2026-10-12T07:57:21+00:00", "event": "ticket.transition", "ticket": "T-0046", "from": "ready-for-critic", "to": "ready-for-spec-writer", "by": "workflow", "round": {"spec": 2, "pr": 0}}
+{"ts": "2026-10-12T07:57:29+00:00", "event": "run.started", "ticket": "T-0046", "run": "run-0467-spec_writer", "role": "spec_writer", "model": "opus"}
+{"ts": "2026-10-12T08:00:57+00:00", "event": "run.finished", "ticket": "T-0046", "run": "run-0467-spec_writer", "role": "spec_writer", "status": "READY-FOR-CRITIC", "wall_s": 208}
+{"ts": "2026-10-12T08:01:07+00:00", "event": "spec.added", "ticket": "T-0046", "version": 2, "source": "run-0467-spec_writer"}
+{"ts": "2026-10-12T08:01:15+00:00", "event": "ticket.transition", "ticket": "T-0046", "from": "ready-for-spec-writer", "to": "ready-for-critic", "by": "workflow", "round": {"spec": 2, "pr": 0}}
+{"ts": "2026-10-12T08:01:24+00:00", "event": "run.started", "ticket": "T-0046", "run": "run-0468-critic", "role": "critic", "model": "fable"}
+{"ts": "2026-10-12T08:03:36+00:00", "event": "run.finished", "ticket": "T-0046", "run": "run-0468-critic", "role": "critic", "status": "APPROVE", "wall_s": 132}
+{"ts": "2026-10-12T08:03:46+00:00", "event": "ticket.transition", "ticket": "T-0046", "from": "ready-for-critic", "to": "awaiting-spec-gate", "by": "workflow", "round": {"spec": 2, "pr": 0}}
+{"ts": "2026-10-12T08:14:49+00:00", "event": "run.finished", "ticket": "T-0045.2", "run": "run-0465-implementer", "role": "implementer", "status": "READY-FOR-REVIEW", "wall_s": 1610}
+{"ts": "2026-10-12T08:15:06+00:00", "event": "ticket.transition", "ticket": "T-0045.2", "from": "ready-for-implementer", "to": "checks-in-flight", "by": "workflow", "round": {"spec": 0, "pr": 1}}
+{"ts": "2026-10-12T08:15:26+00:00", "event": "run.started", "ticket": "T-0045.2", "run": "run-0469-verifier", "role": "verifier", "model": "opus"}
+{"ts": "2026-10-12T08:15:26+00:00", "event": "run.started", "ticket": "T-0045.2", "run": "run-0469-reviewer", "role": "reviewer", "model": "fable"}
+{"ts": "2026-10-12T08:18:44+00:00", "event": "run.finished", "ticket": "T-0045.2", "run": "run-0469-reviewer", "role": "reviewer", "status": "APPROVE", "wall_s": 198}
+{"ts": "2026-10-12T08:19:03+00:00", "event": "result.recorded", "ticket": "T-0045.2", "head": "a7368d0ff39c534d52cd4d4eecb9d3e463ee95d4", "role": "reviewer", "status": "APPROVE", "run": "run-0469-reviewer"}
+{"ts": "2026-10-12T08:27:21+00:00", "event": "run.finished", "ticket": "T-0045.2", "run": "run-0469-verifier", "role": "verifier", "status": "VERIFIED", "wall_s": 715}
+{"ts": "2026-10-12T08:27:42+00:00", "event": "result.recorded", "ticket": "T-0045.2", "head": "a7368d0ff39c534d52cd4d4eecb9d3e463ee95d4", "role": "verifier", "status": "VERIFIED", "run": "run-0469-verifier"}
+{"ts": "2026-10-12T08:27:42+00:00", "event": "result.recorded", "ticket": "T-0045.2", "head": "a7368d0ff39c534d52cd4d4eecb9d3e463ee95d4", "role": "ci", "status": "PASS", "run": "run-0469-verifier"}
+{"ts": "2026-10-12T08:28:01+00:00", "event": "ticket.transition", "ticket": "T-0045.2", "from": "checks-in-flight", "to": "ready-for-merge", "by": "workflow", "round": {"spec": 0, "pr": 1}}
+{"ts": "2026-10-12T08:28:09+00:00", "event": "merge.done", "ticket": "T-0045.2", "head": "a7368d0ff39c534d52cd4d4eecb9d3e463ee95d4", "base_before": "6ac73f13f1768bd09a6cc1da3879be8ead51e381", "main_after": "1c5a1527f4c1b12b4f24ddb2aca0bfcac0ecfc52"}
+{"ts": "2026-10-12T08:28:09+00:00", "event": "ticket.transition", "ticket": "T-0045.3", "from": "waiting-dependencies", "to": "ready-for-implementer", "by": "merge"}
+{"ts": "2026-10-12T08:28:38+00:00", "event": "run.started", "ticket": "T-0045.3", "run": "run-0470-implementer", "role": "implementer", "model": "opus"}
+{"ts": "2026-10-12T08:56:48+00:00", "event": "run.finished", "ticket": "T-0045.3", "run": "run-0470-implementer", "role": "implementer", "status": "READY-FOR-REVIEW", "wall_s": 1690}
+{"ts": "2026-10-12T08:56:48+00:00", "event": "escalation.queued", "ticket": "T-0045.3", "run": "run-0470-implementer", "items": ["The spec cannot be met exactly as written. Two pairs of names clash once they share one module: test_drive.py's and test_drive_build.py's `STANDIN`, and test_store_branch.py's and test_live_store_guard.py's `request`. So \"body unchanged\" cannot hold for both members of each pair. I renamed one of each pair in `_fixtures.py` (`BUILD_STANDIN`, `other_request`). That changes one token in `BuildStore`'s body; the `request` users import the new name under the old one. A human should confirm this small departure, or amend the spec to allow it.", "The spec's D table leaves out names that must move for the cross-test import count to reach 0: test_live_store_guard.py's `assert_refused` and `request`, which test_drive_guard.py imports, and the module-level names the moved bodies depend on. I moved them under the spec's general rule (\"Every name a test file imports from another test file today moves into it\")."]}
+{"ts": "2026-10-12T08:57:15+00:00", "event": "ticket.transition", "ticket": "T-0045.3", "from": "ready-for-implementer", "to": "checks-in-flight", "by": "workflow", "round": {"spec": 0, "pr": 1}}
+{"ts": "2026-10-12T08:57:34+00:00", "event": "run.started", "ticket": "T-0045.3", "run": "run-0471-verifier", "role": "verifier", "model": "opus"}
+{"ts": "2026-10-12T08:57:35+00:00", "event": "run.started", "ticket": "T-0045.3", "run": "run-0472-reviewer", "role": "reviewer", "model": "fable"}
+{"ts": "2026-10-12T09:01:23+00:00", "event": "run.finished", "ticket": "T-0045.3", "run": "run-0472-reviewer", "role": "reviewer", "status": "APPROVE", "wall_s": 228}
+{"ts": "2026-10-12T09:01:23+00:00", "event": "escalation.queued", "ticket": "T-0045.3", "run": "run-0472-reviewer", "items": ["Spec departure, for the record: the spec's \"with the body unchanged\" cannot hold for both members of two clashing pairs once they share one module. `test_drive_build.py`'s `STANDIN` is `BUILD_STANDIN` in `_fixtures.py` (one token changes in `BuildStore.__init__`), and `test_live_store_guard.py`'s `request` is `other_request`, imported back under the old name. Behaviour is unchanged; the spec's D table should be amended to allow the two renames.", "Spec gap, for the record: the D table omits `test_live_store_guard.py`'s `assert_refused` and `request`, which `test_drive_guard.py` imports, and the module-level names the listed bodies depend on. The implementer moved them under the spec's general rule; the table should list them."]}
+{"ts": "2026-10-12T09:01:45+00:00", "event": "result.recorded", "ticket": "T-0045.3", "head": "c8308f2ba30e01db463ee09dff27b778e8819b39", "role": "reviewer", "status": "APPROVE", "run": "run-0472-reviewer"}
+{"ts": "2026-10-12T09:09:30+00:00", "event": "run.finished", "ticket": "T-0045.3", "run": "run-0471-verifier", "role": "verifier", "status": "VERIFIED", "wall_s": 716}
+{"ts": "2026-10-12T09:09:48+00:00", "event": "result.recorded", "ticket": "T-0045.3", "head": "c8308f2ba30e01db463ee09dff27b778e8819b39", "role": "verifier", "status": "VERIFIED", "run": "run-0471-verifier"}
+{"ts": "2026-10-12T09:09:48+00:00", "event": "result.recorded", "ticket": "T-0045.3", "head": "c8308f2ba30e01db463ee09dff27b778e8819b39", "role": "ci", "status": "PASS", "run": "run-0471-verifier"}
+{"ts": "2026-10-12T09:10:08+00:00", "event": "ticket.transition", "ticket": "T-0045.3", "from": "checks-in-flight", "to": "ready-for-merge", "by": "workflow", "round": {"spec": 0, "pr": 1}}
+{"ts": "2026-10-12T09:10:23+00:00", "event": "merge.done", "ticket": "T-0045.3", "head": "c8308f2ba30e01db463ee09dff27b778e8819b39", "base_before": "1c5a1527f4c1b12b4f24ddb2aca0bfcac0ecfc52", "main_after": "5c1c47d49a60f3ed6c7cc5349fd32a506d750a93"}
+{"ts": "2026-10-12T09:10:43+00:00", "event": "ticket.transition", "ticket": "T-0045", "from": "planned", "to": "ready-for-parent-verify", "by": "parent-check"}
+{"ts": "2026-10-12T09:11:02+00:00", "event": "run.started", "ticket": "T-0045", "run": "run-0473-verifier", "role": "verifier", "model": "opus"}
+{"ts": "2026-10-12T09:42:18+00:00", "event": "run.finished", "ticket": "T-0045", "run": "run-0473-verifier", "role": "verifier", "status": "VERIFIED", "wall_s": 1876}
+{"ts": "2026-10-12T09:42:35+00:00", "event": "change.archived", "ticket": "T-0045", "archived_to": "openspec/changes/archive/2026-10-12-T-0045", "capabilities": ["harness-suite"], "decisions": 9}
+{"ts": "2026-10-12T09:42:44+00:00", "event": "ticket.transition", "ticket": "T-0045", "from": "ready-for-parent-verify", "to": "closed", "by": "workflow", "round": {"spec": 2, "pr": 0}}

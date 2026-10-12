@@ -1,0 +1,6 @@
+ticket: T-0045.3
+head: c8308f2ba30e01db463ee09dff27b778e8819b39
+role: ci
+status: PASS
+run_id: run-0471-verifier
+at: '2026-10-12T09:09:48+00:00'
