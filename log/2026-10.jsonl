@@ -2487,3 +2487,7 @@
 {"ts": "2026-10-12T09:42:35+00:00", "event": "change.archived", "ticket": "T-0045", "archived_to": "openspec/changes/archive/2026-10-12-T-0045", "capabilities": ["harness-suite"], "decisions": 9}
 {"ts": "2026-10-12T09:42:44+00:00", "event": "ticket.transition", "ticket": "T-0045", "from": "ready-for-parent-verify", "to": "closed", "by": "workflow", "round": {"spec": 2, "pr": 0}}
 {"ts": "2026-10-12T15:56:17+00:00", "event": "harness.accepted", "instance": "/Users/dphang/dev/spec-factory/.factory", "old": "41417c1789d40b26370b10f2bdcae6a84f903a9d", "new": "53047c59fcd462510650e752a40d3d294f0486fc"}
+{"ts": "2026-10-12T15:58:47+00:00", "event": "spec.added", "ticket": "T-0046", "version": 3, "source": "gate edit /private/tmp/claude-501/-Users-dphang-dev-nanobot/c69bfd1d-97a6-43e3-9d5a-a517c28d382c/scratchpad/T-0046-v3.md"}
+{"ts": "2026-10-12T15:58:47+00:00", "event": "approval.recorded", "ticket": "T-0046", "kind": "spec", "version": 3, "by": "dphang"}
+{"ts": "2026-10-12T15:58:47+00:00", "event": "change.pinned", "ticket": "T-0046", "version": 3, "files": ["openspec/changes/T-0046/proposal.md", "openspec/changes/T-0046/design.md", "openspec/changes/T-0046/specs/harness-code/spec.md", "openspec/changes/T-0046/verification.md"]}
+{"ts": "2026-10-12T15:58:47+00:00", "event": "ticket.transition", "ticket": "T-0046", "from": "awaiting-spec-gate", "to": "ready-for-planner", "by": "dphang"}

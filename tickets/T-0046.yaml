@@ -4,13 +4,13 @@ title: 'De-bloat C: give each operation the harness writes out several times one
   change in behaviour'
 request: requests/T-0046.md
 source: /private/tmp/claude-501/-Users-dphang-dev-nanobot/c69bfd1d-97a6-43e3-9d5a-a517c28d382c/scratchpad/debloat/c-helpers.md
-status: awaiting-spec-gate
+status: ready-for-planner
 round:
   spec: 2
   pr: 0
 spec:
-  version: 2
-  approved_version: null
+  version: 3
+  approved_version: 3
 plan: null
 in_flight: []
 parked: null
@@ -51,6 +51,11 @@ history:
   round:
     spec: 2
     pr: 0
+- ts: '2026-10-12T15:58:47+00:00'
+  from: awaiting-spec-gate
+  to: ready-for-planner
+  by: dphang
+  approved_version: 3
 parent: null
 depends_on: []
 parallel_safe: true
