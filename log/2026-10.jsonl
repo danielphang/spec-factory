@@ -2486,3 +2486,4 @@
 {"ts": "2026-10-12T09:42:18+00:00", "event": "run.finished", "ticket": "T-0045", "run": "run-0473-verifier", "role": "verifier", "status": "VERIFIED", "wall_s": 1876}
 {"ts": "2026-10-12T09:42:35+00:00", "event": "change.archived", "ticket": "T-0045", "archived_to": "openspec/changes/archive/2026-10-12-T-0045", "capabilities": ["harness-suite"], "decisions": 9}
 {"ts": "2026-10-12T09:42:44+00:00", "event": "ticket.transition", "ticket": "T-0045", "from": "ready-for-parent-verify", "to": "closed", "by": "workflow", "round": {"spec": 2, "pr": 0}}
+{"ts": "2026-10-12T15:56:17+00:00", "event": "harness.accepted", "instance": "/Users/dphang/dev/spec-factory/.factory", "old": "41417c1789d40b26370b10f2bdcae6a84f903a9d", "new": "53047c59fcd462510650e752a40d3d294f0486fc"}
