@@ -204,12 +204,10 @@ def run_start(a, root, cfg):
     ready = cfg["ready_state"][a.role]
     if t["status"] != ready and not parent_close:
         raise Refused(f"{t['id']} is {t['status']}, not {ready}")
-    if a.role == "implementer" and t["in_flight"]:
+    if a.role in ("triage", "spec_writer", "critic", "planner", "implementer") and t["in_flight"]:
         raise Refused(f"{t['id']} already has run {t['in_flight'][0]} in flight")
     if a.role in ("reviewer", "verifier") and any(a.role in r for r in t["in_flight"]):
         raise Refused(f"{t['id']} already has a {a.role} run in flight")
-    if a.role in ("triage", "spec_writer", "critic", "planner") and t["in_flight"]:
-        raise Refused(f"{t['id']} already has run {t['in_flight'][0]} in flight")
     if a.role == "implementer" and t.get("parent"):
         _check_drift(root, cfg, t)
         _check_sibling_tests(root, cfg, t)
@@ -231,9 +229,8 @@ def run_start(a, root, cfg):
     (d / "scratch").mkdir(exist_ok=True)
     if baseline:
         store.write_yaml(d / "tripwire.yaml", baseline)
-    prompt_name = a.role
     preamble = instance.fill_preamble((PROMPTS / "preamble.md").read_text(encoding="utf-8"), cfg)
-    role_prompt = instance.fill_standards((PROMPTS / f"{prompt_name}.md").read_text(encoding="utf-8"))
+    role_prompt = instance.fill_standards((PROMPTS / f"{a.role}.md").read_text(encoding="utf-8"))
     sysp = preamble.rstrip() + "\n\n" + role_prompt
     store.write_text(d / "system-prompt.txt", sysp)
     t["in_flight"].append(rid)
@@ -253,7 +250,7 @@ def _check_sibling_tests(root: Path, cfg: dict, t: dict) -> None:
         return
     parent = store.load_ticket(root, t["parent"])
     base = parent.get("parent_base")
-    repo = gitops.repo_root(cfg)
+    repo = gitops.repo_root()
     tip = gitops.rev(repo, gitops.integration_branch(cfg, repo))
     merges = [s["merge"] for s in store.subtickets_of(root, parent["id"])
               if s["id"] != t["id"] and s["status"] == "merged"
@@ -325,7 +322,7 @@ def _test_drift(root: Path, cfg: dict, parent: dict, sub_text: str) -> list[str]
     base = (store.read_yaml(rec) or {}).get("integration_head") if rec.exists() else None
     if not base:
         return []
-    repo = gitops.repo_root(cfg)
+    repo = gitops.repo_root()
     if not gitops.git(repo, "rev-parse", "--verify", "--quiet", f"{base}^{{commit}}", check=False):
         return []
     tip = gitops.rev(repo, gitops.integration_branch(cfg, repo))
@@ -372,9 +369,8 @@ def _start_build_run(root: Path, cfg: dict, t: dict, meta: dict, d: Path, parent
     detached checkout of the head it checks, plus the diff written as runs/<id>/diff.patch. Each
     checkout then runs the instance's `environment_sync`, if set (`_sync_environment`)."""
     sync = compose.environment_sync(cfg)
-    repo = gitops.repo_root(cfg)
+    repo = gitops.repo_root()
     integ = gitops.integration_branch(cfg, repo)
-    store.ensure_gitignore(root)
     meta["round"] = t["round"]["pr"]
     meta["gate_skipped"] = []  # only a checker of a sub-ticket's diff skips a gate command
     if meta["role"] == "implementer":
@@ -435,7 +431,7 @@ def run_cleanup(a, root, cfg):
     meta = store.read_yaml(d / "meta.yaml")
     wt = Path(meta.get("worktree") or "")
     if meta.get("role") in ("reviewer", "verifier") and wt.exists():
-        gitops.remove_worktree(gitops.repo_root(cfg), wt)
+        gitops.remove_worktree(gitops.repo_root(), wt)
     out({"ok": True, "run_id": a.run, "removed": str(wt) if wt else None})
 
 
@@ -545,7 +541,7 @@ def _text_from(a, root) -> str:
 def _integration_head(cfg: dict) -> str | None:
     """The integration branch's head in the target repo, or None when the repo or branch does not resolve."""
     try:
-        repo = gitops.repo_root(cfg)
+        repo = gitops.repo_root()
         return gitops.rev(repo, gitops.integration_branch(cfg, repo))
     except (Refused, OSError):
         return None
@@ -838,7 +834,7 @@ def ticket_head(a, root, cfg):
     t = store.load_ticket(root, a.id)
     if not t.get("branch"):
         raise Refused(f"{t['id']} has no branch yet")
-    repo = gitops.repo_root(cfg)
+    repo = gitops.repo_root()
     head = gitops.rev(repo, t["branch"])
     changed = head != t.get("head")
     t["head"] = head
@@ -939,7 +935,7 @@ def undeclared_protected(root: Path, cfg: dict, t: dict, head: str) -> tuple[lis
     where = f"in {sid} spec v{av}" if av is not None else f"({sid} has no approved spec)"
     patterns = [g for globs in (cfg.get("protected_paths") or {}).values()
                 for g in ([globs] if isinstance(globs, str) else list(globs or []))]
-    repo = gitops.repo_root(cfg)
+    repo = gitops.repo_root()
     integ = gitops.integration_branch(cfg, repo)
     changed = gitops.changed_files(repo, integ, head, _in_repo(patterns))
     if not changed:
@@ -967,7 +963,7 @@ def merge_cmd(a, root, cfg):
     t = store.load_ticket(root, a.id)
     if t["status"] not in ("ready-for-merge", "checks-in-flight"):
         raise Refused(f"{t['id']} is {t['status']}, not ready-for-merge")
-    repo = gitops.repo_root(cfg)
+    repo = gitops.repo_root()
     integ = gitops.integration_branch(cfg, repo)
     head = _branch_tip(repo, t)
     rows = store.results_for(root, head)
@@ -1216,7 +1212,7 @@ def resolve(a, root, cfg):
         if st != "parked" or not reason.startswith("BLOCKED from merge gate:"):
             raise Refused("--accept-paths applies to a merge gate park (BLOCKED from merge gate); "
                           f"{t['id']} is {st} ({reason or 'no park'})")
-        head = _branch_tip(gitops.repo_root(cfg), t)
+        head = _branch_tip(gitops.repo_root(), t)
         paths, _ = undeclared_protected(root, cfg, t, head)
         if not paths:
             raise Refused(f"nothing to accept: {t['id']} has no undeclared protected path at {head[:9]}")
@@ -1693,7 +1689,7 @@ def _reused_subticket_run(root: Path, cfg: dict, t: dict) -> str | None:
     after = (s.get("merge") or {}).get("main_after")
     if s["status"] != "merged" or not after or not s.get("head"):
         return None
-    repo = gitops.repo_root(cfg)
+    repo = gitops.repo_root()
     if gitops.rev(repo, gitops.integration_branch(cfg, repo)) != after:
         return None
     row = store.results_for(root, s["head"]).get("verifier") or {}
@@ -1721,7 +1717,7 @@ def _parent_close_verified(root: Path, cfg: dict, t: dict) -> str | None:
     subs = subtickets.split_plan(store.subtickets_of(root, t["id"]))[0]
     if any(s["status"] != "merged" for s in subs):
         return None
-    repo = gitops.repo_root(cfg)
+    repo = gitops.repo_root()
     runs = root / "runs"
     for d in sorted(runs.iterdir()) if runs.exists() else []:
         mp = d / "meta.yaml"
@@ -1964,8 +1960,6 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--ticket")
     p.set_defaults(fn=log_tail)
     return ap
-
-
 
 
 # ----- live-store fence: only the dispatcher writes a live store during a run ------------------

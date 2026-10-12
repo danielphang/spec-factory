@@ -6,7 +6,7 @@ Current truth is `openspec/specs/<capability>/spec.md`. A ticket's change is the
 text is split on its `=== <path>` lines. Only `archive` writes current truth. `decisions.md` has
 three writers, all through `record_decision`: `archive`, `decision add` and `resolve --decision`.
 The store is active once `init` has created `openspec/`; a store without it keeps the P0
-behaviour (specs pinned as one text), so the live pilot store is unaffected.
+behaviour (specs pinned as one text).
 """
 from __future__ import annotations
 
@@ -17,7 +17,6 @@ from pathlib import Path
 
 from factory import store
 
-OPS = ("ADDED", "MODIFIED", "REMOVED")
 FIXED_PARTS = ("proposal.md", "design.md", "verification.md")
 DELTA_RE = re.compile(r"^specs/([a-z0-9]+(?:-[a-z0-9]+)*)/spec\.md$")
 PART_RE = re.compile(r"^=== (\S+).*$", re.M)  # the path is the first token after "=== "

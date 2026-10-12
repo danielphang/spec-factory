@@ -15,7 +15,7 @@ from pathlib import Path
 from factory import instance, store
 
 
-def repo_root(cfg: dict | None = None) -> Path:
+def repo_root() -> Path:
     return instance.repo_root()
 
 
@@ -197,15 +197,3 @@ def merge_no_ff(repo: Path, sha: str, into: str, message: str) -> tuple[str, str
     finally:
         if temp is not None:
             remove_worktree(repo, temp)
-
-
-def run_gates(cwd: Path, commands: list[str]) -> tuple[bool, str]:
-    """Run the repo's gate commands in `cwd`; (all passed, combined output)."""
-    outs = []
-    ok = True
-    for cmd in commands:
-        cp = subprocess.run(cmd, shell=True, cwd=cwd, capture_output=True, text=True)
-        outs.append(f"$ {cmd}\n{cp.stdout}{cp.stderr}".rstrip())
-        if cp.returncode != 0:
-            ok = False
-    return ok, "\n\n".join(outs)

@@ -106,7 +106,7 @@ def test_init_writes_instance_yaml_from_the_template(target):
     assert cfg["state_dir"] == ".factory/state"
     assert cfg["protected_paths"] == {"infra": [".factory/instance.yaml", ".factory/harness.lock", ".factory/context.md"]}
     assert cfg["gate_commands"] == []
-    assert cfg["integration_branch"] is None and cfg["environment_files"] == [] and cfg["force_push_allowed"] is False
+    assert cfg["integration_branch"] is None and cfg["environment_files"] == []
     assert "request_dir" not in cfg
     for key in ("placeholders", "max_rounds", "models", "ready_state", "routing"):
         assert cfg[key] == tpl[key], key
@@ -351,6 +351,6 @@ def test_conftest_points_the_suite_at_the_fixture_instance():
     tpl = yaml.safe_load((REPO / "factory" / "instance.template.yaml").read_text())
     assert cfg["environment_files"] == ["uv.lock"] and cfg["gate_commands"] == ["git diff --check main...HEAD"]
     for key in ("state_dir", "protected_paths", "placeholders", "max_rounds", "integration_branch",
-                "force_push_allowed", "models", "ready_state", "routing"):
+                "models", "ready_state", "routing"):
         assert cfg[key] == tpl[key], key
     assert (fixture / "context.md").is_file()
