@@ -8,7 +8,6 @@ changes `instance.yaml`, on a copy of the suite's fixture instance (FACTORY_INST
 """
 from __future__ import annotations
 
-import json
 import os
 import shutil
 import subprocess
@@ -16,7 +15,7 @@ from pathlib import Path
 
 import pytest
 
-from ._cli import BIN, REPO
+from ._cli import CliStore, approved_parent, git_repo
 
 FIXTURE_INSTANCE = Path(__file__).resolve().parent / "fixtures" / "instance"
 WRAP = ('([ -z "${{VIRTUAL_ENV:-}}" ] || PATH=$(printf %s "$PATH" | tr : \'\\n\' | grep -vxF "$VIRTUAL_ENV/bin" | paste -sd: -); '
@@ -28,7 +27,7 @@ SECTION = ("\n## Running code\nRun every test, script or prototype through this 
            "protected path outside the repository.\n")
 
 
-class Store:
+class Store(CliStore):
     def __init__(self, tmp_path: Path, run_env: str | None = None):
         self.tmp = tmp_path
         self.root = tmp_path / "state"
@@ -40,14 +39,6 @@ class Store:
                 f.write(run_env)
             self.env["FACTORY_INSTANCE"] = str(inst)
 
-    def cli(self, *argv: str) -> subprocess.CompletedProcess:
-        return subprocess.run([str(BIN), *argv], capture_output=True, text=True, env=self.env, cwd=REPO)
-
-    def ok(self, *argv: str) -> dict:
-        cp = self.cli(*argv)
-        assert cp.returncode == 0, cp.stderr
-        return json.loads(cp.stdout.strip().splitlines()[-1])
-
     def request(self) -> None:
         p = self.tmp / "req.md"
         p.write_text("# Fixture\n\nThe bot should do the thing.\n")
@@ -58,20 +49,12 @@ class Store:
         self.request()
         spec = self.tmp / "spec.md"
         spec.write_text("## Problem\nx\n")
-        self.ok("ticket", "transition", "T-0001", "--to", "ready-for-spec-writer", "--by", "t")
-        self.ok("spec", "add", "T-0001", "--file", str(spec))
-        self.ok("ticket", "transition", "T-0001", "--to", "ready-for-critic", "--by", "t", "--round", "spec:init")
-        self.ok("ticket", "transition", "T-0001", "--to", "awaiting-spec-gate", "--by", "t")
-        self.ok("approve-spec", "T-0001")
+        approved_parent(self.ok, "T-0001", spec)
 
     def implementer_ready(self) -> None:
         """One sub-ticket of an approved T-0001, in a scratch target repo with a `main` branch."""
         self.approved()
-        target = self.tmp / "target"
-        target.mkdir()
-        for argv in (["init", "-q", "-b", "main"],
-                     ["-c", "user.email=f@x", "-c", "user.name=f", "commit", "-q", "--allow-empty", "-m", "init"]):
-            subprocess.run(["git", "-C", str(target), *argv], check=True, capture_output=True)
+        target = git_repo(self.tmp / "target")
         self.env.update({"FACTORY_REPO": str(target), "FACTORY_INTEGRATION_BRANCH": "main"})
         plan = self.tmp / "plan.md"
         plan.write_text("T-0001.1 / Do it\nDepends on: none\nParallel-safe: yes\n")

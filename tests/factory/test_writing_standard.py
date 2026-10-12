@@ -14,7 +14,7 @@ from pathlib import Path
 
 import pytest
 
-from ._cli import BIN, REPO, STRIP
+from ._cli import BIN, REPO, STRIP, git_repo
 
 STANDARD = REPO.resolve() / "docs" / "writing.md"
 FENCE = "`" * 3
@@ -30,11 +30,7 @@ def cli(cwd: Path, *argv: str, **extra: str) -> subprocess.CompletedProcess:
 def system_prompt(tmp_path: Path) -> str:
     """The system prompt of one triage run started in a fresh scratch target, on a throwaway store
     (FACTORY_STATE) as in the spec's scenario, so it does not depend on a clean harness checkout."""
-    t = tmp_path / "target"
-    t.mkdir()
-    for argv in (["init", "-q", "-b", "main"],
-                 ["-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "--allow-empty", "-m", "init"]):
-        subprocess.run(["git", "-C", str(t), *argv], check=True, capture_output=True)
+    t = git_repo(tmp_path / "target")
     req = tmp_path / "r.md"
     req.write_text("# demo\n\nDo the thing.\n")
     store = tmp_path / "s"

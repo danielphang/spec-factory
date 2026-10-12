@@ -18,6 +18,7 @@ import time
 
 import yaml
 
+from ._cli import approved_parent, git_repo
 from .test_drive import BIN, REPO, Store
 
 STANDIN = '''#!{python}
@@ -61,14 +62,8 @@ class BuildStore(Store):
         (tmp_path / "bin" / "claude").write_text(STANDIN.format(python=sys.executable))
         spec = tmp_path / "spec.md"
         spec.write_text("## Problem\nx\n")
-        self.ok("ticket", "transition", "T-0001", "--to", "ready-for-spec-writer", "--by", "t")
-        self.ok("spec", "add", "T-0001", "--file", str(spec))
-        self.ok("ticket", "transition", "T-0001", "--to", "ready-for-critic", "--by", "t", "--round", "spec:init")
-        self.ok("ticket", "transition", "T-0001", "--to", "awaiting-spec-gate", "--by", "t")
-        self.ok("approve-spec", "T-0001")
-        self.target = tmp_path / "target"
-        self.git("init", "-q", "-b", "main", str(self.target), cwd=tmp_path)
-        self.git("commit", "-q", "--allow-empty", "-m", "init")
+        approved_parent(self.ok, "T-0001", spec)
+        self.target = git_repo(tmp_path / "target")
         self.env.update(FACTORY_REPO=str(self.target), FACTORY_INTEGRATION_BRANCH="main")
 
     def git(self, *argv: str, cwd=None) -> str:

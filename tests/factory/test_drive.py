@@ -21,7 +21,7 @@ from pathlib import Path
 
 import yaml
 
-from ._cli import BIN, REPO
+from ._cli import BIN, REPO, CliStore
 
 FIXTURE_INSTANCE = Path(__file__).resolve().parent / "fixtures" / "instance"
 
@@ -50,7 +50,7 @@ sys.exit(1 if err else 0)
 TRIAGE_OK = {"triage": [{"write": "ACCEPT"}], "spec_writer": [{"write": "READY-FOR-CRITIC"}]}
 
 
-class Store:
+class Store(CliStore):
     """A throwaway store with T-0001 ready for triage, and the stand-in `claude` first on PATH."""
 
     def __init__(self, tmp_path: Path, instance: Path = FIXTURE_INSTANCE):
@@ -72,11 +72,6 @@ class Store:
     def cli(self, *argv: str, plays: dict | None = None) -> subprocess.CompletedProcess:
         env = {**self.env, "STANDIN_PLAYS": json.dumps(plays or {})}
         return subprocess.run([str(BIN), *argv], capture_output=True, text=True, env=env, cwd=REPO)
-
-    def ok(self, *argv: str) -> dict:
-        cp = self.cli(*argv)
-        assert cp.returncode == 0, cp.stderr
-        return json.loads(cp.stdout.strip().splitlines()[-1])
 
     def drive(self, plays: dict, *extra: str) -> tuple[subprocess.CompletedProcess, dict]:
         cp = self.cli("drive", "T-0001", *extra, plays=plays)

@@ -18,7 +18,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from ._cli import BIN, REPO
+from ._cli import REPO, CliStore, approved_parent  # noqa: F401  (test_spec_drift.py imports REPO from here)
 
 SPEC = """=== proposal.md
 ## Problem
@@ -55,21 +55,13 @@ def spec(decision="Greet by default.", cmd="echo hi", out="hi", problem="x", sta
 V1, V2 = spec(), spec(cmd="echo hello", out="hello")
 
 
-class Fixture:
+class Fixture(CliStore):
     def __init__(self, tmp_path: Path):
         self.tmp = tmp_path
         self.store = tmp_path / "store"
         self.target = tmp_path / "t"
         self.env = {**os.environ, "FACTORY_STATE": str(self.store), "FACTORY_REPO": str(self.target),
                     "FACTORY_INTEGRATION_BRANCH": "main", "PYTHONDONTWRITEBYTECODE": "1"}
-
-    def cli(self, *argv: str) -> subprocess.CompletedProcess:
-        return subprocess.run([str(BIN), *argv], capture_output=True, text=True, env=self.env, cwd=REPO)
-
-    def ok(self, *argv: str) -> dict:
-        cp = self.cli(*argv)
-        assert cp.returncode == 0, cp.stderr
-        return json.loads(cp.stdout.strip().splitlines()[-1])
 
     def file(self, name: str, text: str) -> str:
         p = self.tmp / name
@@ -107,11 +99,7 @@ def f(tmp_path: Path) -> Fixture:
                    check=True)
     f.ok("init")
     f.ok("ticket", "new", "--file", f.file("req.md", "# Fixture\n\nGreet.\n"))
-    f.ok("ticket", "transition", "T-0001", "--to", "ready-for-spec-writer", "--by", "t")
-    f.ok("spec", "add", "T-0001", "--file", f.file("v1.md", V1))
-    f.ok("ticket", "transition", "T-0001", "--to", "ready-for-critic", "--by", "t", "--round", "spec:init")
-    f.ok("ticket", "transition", "T-0001", "--to", "awaiting-spec-gate", "--by", "t")
-    f.ok("approve-spec", "T-0001")
+    approved_parent(f.ok, "T-0001", f.file("v1.md", V1))
     return f
 
 

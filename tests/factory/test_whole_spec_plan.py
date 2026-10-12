@@ -14,13 +14,12 @@ from __future__ import annotations
 import json
 import os
 import shutil
-import subprocess
 from pathlib import Path
 
 import pytest
 import yaml
 
-from ._cli import BIN, REPO
+from ._cli import CliStore, git_repo
 from .test_parent_close_reuse import _build, _parent_verifier_runs
 from .test_shepherd import Shepherd
 
@@ -52,7 +51,7 @@ ESCALATIONS: none
 """
 
 
-class Parent:
+class Parent(CliStore):
     """T-0001 at ready-for-planner: one spec-writer run ending `status`, its output approved as v1."""
 
     def __init__(self, tmp_path: Path, status: str = "READY-FOR-CRITIC", extra: str = "", spec_store: bool = False):
@@ -61,9 +60,7 @@ class Parent:
         repo = tmp_path / "t"
         self.env = {**os.environ, "FACTORY_STATE": str(self.root), "FACTORY_REPO": str(repo),
                     "FACTORY_INTEGRATION_BRANCH": "main", "PYTHONDONTWRITEBYTECODE": "1"}
-        subprocess.run(["git", "init", "-q", "-b", "main", str(repo)], check=True)
-        subprocess.run(["git", "-C", str(repo), "-c", "user.email=f@x", "-c", "user.name=f", "commit", "-q",
-                        "--allow-empty", "-m", "init"], check=True)
+        git_repo(repo)
         if spec_store:
             self.ok("init")
         (tmp_path / "req.md").write_text("# F\n\nDo x.\n")
@@ -76,14 +73,6 @@ class Parent:
         self.ok("ticket", "transition", "T-0001", "--to", "ready-for-critic", "--by", "t", "--round", "spec:init")
         self.ok("ticket", "transition", "T-0001", "--to", "awaiting-spec-gate", "--by", "t")
         self.ok("approve-spec", "T-0001")
-
-    def cli(self, *argv: str) -> subprocess.CompletedProcess:
-        return subprocess.run([str(BIN), *argv], capture_output=True, text=True, env=self.env, cwd=REPO)
-
-    def ok(self, *argv: str) -> dict:
-        cp = self.cli(*argv)
-        assert cp.returncode == 0, f"{' '.join(argv)}: {cp.stderr}"
-        return json.loads(cp.stdout.strip().splitlines()[-1])
 
     def tickets(self) -> list[str]:
         return sorted(p.name for p in (self.root / "tickets").iterdir())

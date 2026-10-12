@@ -22,7 +22,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from ._cli import BIN, REPO
+from ._cli import REPO, CliStore
 
 FIXTURE = REPO / "tests" / "factory" / "fixtures" / "instance"
 
@@ -52,7 +52,7 @@ console.log(lines.join('\n'))
 """
 
 
-class Gate:
+class Gate(CliStore):
     """The t0033-gate.sh fixture. `risk` is the line T-0001's approved spec carries in its Risk
     section (None: T-0001 is never approved and has no sub-ticket; the commit lands on T-0001's own
     branch). `changes` as in the fixture: `p` appends to p, `p-` deletes p, `p>q` renames p to q."""
@@ -128,14 +128,6 @@ class Gate:
         cp = subprocess.run(["git", "-c", "user.email=f@x", "-c", "user.name=f", *argv], cwd=self.target,
                             capture_output=True, text=True, check=True)
         return cp.stdout.strip()
-
-    def cli(self, *argv: str) -> subprocess.CompletedProcess:
-        return subprocess.run([str(BIN), *argv], capture_output=True, text=True, env=self.env, cwd=REPO)
-
-    def ok(self, *argv: str) -> dict:
-        cp = self.cli(*argv)
-        assert cp.returncode == 0, cp.stderr
-        return json.loads(cp.stdout.strip().splitlines()[-1])
 
     def refused(self, *argv: str) -> str:
         cp = self.cli(*argv)

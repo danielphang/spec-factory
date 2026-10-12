@@ -11,14 +11,18 @@ import subprocess
 
 import pytest
 
-from .test_build_startup import approved_parent, ticket_files
+from ._cli import approved_parent
+from .test_build_startup import ticket_files
 from .test_subtickets import js, run
 
 
 @pytest.fixture
 def store(tmp_path):
     root = tmp_path / "state"
-    tid = approved_parent(root, tmp_path)
+    (tmp_path / "r.md").write_text("# Fixture\n\nThe bot should do the thing.\n")
+    (tmp_path / "s.md").write_text("## Problem\nx\n")
+    tid = js(run(root, "ticket", "new", "--file", str(tmp_path / "r.md")))["id"]
+    approved_parent(lambda *a: js(run(root, *a)), tid, tmp_path / "s.md")
 
     def add(plan: str) -> subprocess.CompletedProcess:
         f = tmp_path / "plan.md"

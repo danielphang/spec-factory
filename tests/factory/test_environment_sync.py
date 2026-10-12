@@ -17,7 +17,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from ._cli import BIN, REPO
+from ._cli import BIN, REPO, CliStore, approved_parent, git_repo
 
 FIXTURE_INSTANCE = Path(__file__).resolve().parent / "fixtures" / "instance"
 GIT_ID = {"GIT_AUTHOR_NAME": "f", "GIT_AUTHOR_EMAIL": "f@x", "GIT_COMMITTER_NAME": "f", "GIT_COMMITTER_EMAIL": "f@x"}
@@ -25,7 +25,7 @@ DUMP = "env > synced.env"  # a sync that records the environment it ran in
 FAIL = "echo sync-$((1+1)) >&2; echo out-line; exit $((2+1))"  # output and exit code are computed
 
 
-class Target:
+class Target(CliStore):
     """T-0001 approved and split into T-0001.1, ready for its implementer, on an instance whose
     `run_env` exports T31_CACHE and whose `environment_sync` is `sync` (None: the key is absent)."""
 
@@ -43,22 +43,16 @@ class Target:
             f.write("run_env: {T31_CACHE: /tmp/t31-cache}\n")
             if sync is not None:
                 f.write(f"environment_sync: {json.dumps(sync)}\n")
-        self.repo.mkdir()
         self.env = {**os.environ, **GIT_ID, "FACTORY_STATE": str(self.root), "FACTORY_INSTANCE": str(inst),
                     "FACTORY_REPO": str(self.repo), "FACTORY_INTEGRATION_BRANCH": "main",
                     "PYTHONDONTWRITEBYTECODE": "1"}
-        self.git("init", "-q", "-b", "main")
-        self.git("commit", "-q", "--allow-empty", "-m", "init")
+        git_repo(self.repo)
         req, spec, plan = tmp_path / "req.md", tmp_path / "spec.md", tmp_path / "plan.md"
         req.write_text("# F\n\nDo x.\n")
         spec.write_text("## Problem\nx\n")
         plan.write_text("ST-1 / Do it\nDepends on: none\nParallel-safe: yes\n")
         self.ok("ticket", "new", "--file", str(req))
-        self.ok("ticket", "transition", "T-0001", "--to", "ready-for-spec-writer", "--by", "t")
-        self.ok("spec", "add", "T-0001", "--file", str(spec))
-        self.ok("ticket", "transition", "T-0001", "--to", "ready-for-critic", "--by", "t", "--round", "spec:init")
-        self.ok("ticket", "transition", "T-0001", "--to", "awaiting-spec-gate", "--by", "t")
-        self.ok("approve-spec", "T-0001")
+        approved_parent(self.ok, "T-0001", spec)
         self.ok("subticket", "add", "T-0001", "--file", str(plan))
 
     def git(self, *argv: str, cwd: Path | None = None) -> str:

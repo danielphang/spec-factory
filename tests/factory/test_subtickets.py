@@ -6,7 +6,7 @@ from pathlib import Path
 
 import yaml
 
-from ._cli import REPO, run, ticket
+from ._cli import REPO, approved_parent, run, ticket
 from ._cli import js_ok as js
 
 PLAN_LETTERS = """# Plan — T-0001: alert the operator
@@ -71,11 +71,7 @@ def planned_parent(store: Path, tmp_path: Path, n: int, plan: str) -> str:
     tid = js(run(store, "ticket", "new", "--file", str(req)))["id"]
     spec = tmp_path / f"s{n}.md"
     spec.write_text("## Problem\nx\n")
-    js(run(store, "ticket", "transition", tid, "--to", "ready-for-spec-writer", "--by", "t"))
-    js(run(store, "spec", "add", tid, "--file", str(spec)))
-    js(run(store, "ticket", "transition", tid, "--to", "ready-for-critic", "--by", "t", "--round", "spec:init"))
-    js(run(store, "ticket", "transition", tid, "--to", "awaiting-spec-gate", "--by", "t"))
-    js(run(store, "approve-spec", tid))
+    approved_parent(lambda *a: js(run(store, *a)), tid, spec)
     rid = js(run(store, "run", "start", "--role", "planner", "--ticket", tid))["run_id"]
     js(run(store, "run", "compose", rid))
     (store / "runs" / rid / "output.md").write_text(plan)
@@ -143,11 +139,7 @@ def test_subticket_add_refuses_a_plan_with_no_sub_tickets_and_a_dependency_on_no
     js(run(store, "ticket", "new", "--file", str(req)))
     spec = tmp_path / "s.md"
     spec.write_text("## Problem\nx\n")
-    js(run(store, "ticket", "transition", "T-0001", "--to", "ready-for-spec-writer", "--by", "t"))
-    js(run(store, "spec", "add", "T-0001", "--file", str(spec)))
-    js(run(store, "ticket", "transition", "T-0001", "--to", "ready-for-critic", "--by", "t", "--round", "spec:init"))
-    js(run(store, "ticket", "transition", "T-0001", "--to", "awaiting-spec-gate", "--by", "t"))
-    js(run(store, "approve-spec", "T-0001"))
+    approved_parent(lambda *a: js(run(store, *a)), "T-0001", spec)
     f = tmp_path / "p.md"
     f.write_text("# Plan\nno sub-tickets here\n")
     cp = run(store, "subticket", "add", "T-0001", "--file", str(f))
@@ -177,11 +169,7 @@ def test_a_bullet_that_names_a_sub_ticket_is_not_a_head_and_a_repeated_id_is_ref
     spec = tmp_path / "s.md"
     spec.write_text("## Problem\nx\n")
     js(run(store, "ticket", "new", "--file", str(req)))
-    js(run(store, "ticket", "transition", "T-0001", "--to", "ready-for-spec-writer", "--by", "t"))
-    js(run(store, "spec", "add", "T-0001", "--file", str(spec)))
-    js(run(store, "ticket", "transition", "T-0001", "--to", "ready-for-critic", "--by", "t", "--round", "spec:init"))
-    js(run(store, "ticket", "transition", "T-0001", "--to", "awaiting-spec-gate", "--by", "t"))
-    js(run(store, "approve-spec", "T-0001"))
+    approved_parent(lambda *a: js(run(store, *a)), "T-0001", spec)
     cp = run(store, "subticket", "add", "T-0001", "--file", str(f))
     assert cp.returncode == 2 and "used more than once" in cp.stderr
     import importlib.util
