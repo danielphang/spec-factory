@@ -13,17 +13,9 @@ from pathlib import Path
 import pytest
 import yaml
 
-from ._cli import BIN, REPO, STRIP, cli, js, tree
+from ._cli import BIN, REPO, STRIP, cli, git_repo, js, tree
 
 NOT_FOUND = "no .factory/instance.yaml found from {cwd}; run factory init --repo-name NAME, or set FACTORY_INSTANCE"
-
-
-def git_repo(path: Path) -> Path:
-    path.mkdir(parents=True, exist_ok=True)
-    for argv in (["init", "-q", "-b", "main"],
-                 ["-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "--allow-empty", "-m", "init"]):
-        subprocess.run(["git", "-C", str(path), *argv], check=True, capture_output=True)
-    return path
 
 
 def harness_status() -> str:

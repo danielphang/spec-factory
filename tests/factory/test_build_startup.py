@@ -8,22 +8,8 @@ from pathlib import Path
 import pytest
 import yaml
 
+from ._cli import approved_parent
 from .test_subtickets import PLAN_LETTERS, js, run, ticket
-
-
-def approved_parent(store: Path, tmp_path: Path) -> str:
-    """A parent past the spec gate (old-format spec; no spec store), with no plan yet."""
-    req = tmp_path / "r.md"
-    req.write_text("# Fixture\n\nThe bot should do the thing.\n")
-    tid = js(run(store, "ticket", "new", "--file", str(req)))["id"]
-    spec = tmp_path / "s.md"
-    spec.write_text("## Problem\nx\n")
-    js(run(store, "ticket", "transition", tid, "--to", "ready-for-spec-writer", "--by", "t"))
-    js(run(store, "spec", "add", tid, "--file", str(spec)))
-    js(run(store, "ticket", "transition", tid, "--to", "ready-for-critic", "--by", "t", "--round", "spec:init"))
-    js(run(store, "ticket", "transition", tid, "--to", "awaiting-spec-gate", "--by", "t"))
-    js(run(store, "approve-spec", tid))
-    return tid
 
 
 def planner_run(store: Path, tid: str, plan: str) -> str:
@@ -40,7 +26,10 @@ def ticket_files(store: Path) -> list[str]:
 
 def test_subticket_add_without_a_source_uses_the_recorded_planner_run(tmp_path):
     store = tmp_path / "state"
-    tid = approved_parent(store, tmp_path)
+    (tmp_path / "r.md").write_text("# Fixture\n\nThe bot should do the thing.\n")
+    (tmp_path / "s.md").write_text("## Problem\nx\n")
+    tid = js(run(store, "ticket", "new", "--file", str(tmp_path / "r.md")))["id"]
+    approved_parent(lambda *a: js(run(store, *a)), tid, tmp_path / "s.md")
     rid = planner_run(store, tid, PLAN_LETTERS)
     js(run(store, "plan", "add", tid, "--from-run", rid))
     out = js(run(store, "subticket", "add", tid))
@@ -50,7 +39,10 @@ def test_subticket_add_without_a_source_uses_the_recorded_planner_run(tmp_path):
 
 def test_subticket_add_without_a_source_takes_the_latest_plan(tmp_path):
     store = tmp_path / "state"
-    tid = approved_parent(store, tmp_path)
+    (tmp_path / "r.md").write_text("# Fixture\n\nThe bot should do the thing.\n")
+    (tmp_path / "s.md").write_text("## Problem\nx\n")
+    tid = js(run(store, "ticket", "new", "--file", str(tmp_path / "r.md")))["id"]
+    approved_parent(lambda *a: js(run(store, *a)), tid, tmp_path / "s.md")
     first = planner_run(store, tid, PLAN_LETTERS)
     js(run(store, "plan", "add", tid, "--from-run", first))
     second = planner_run(store, tid, PLAN_LETTERS)
@@ -62,7 +54,10 @@ def test_subticket_add_without_a_source_takes_the_latest_plan(tmp_path):
 @pytest.mark.parametrize("plan_from", ["none", "file"])
 def test_subticket_add_without_a_source_refuses_with_no_recorded_planner_run(tmp_path, plan_from):
     store = tmp_path / "state"
-    tid = approved_parent(store, tmp_path)
+    (tmp_path / "r.md").write_text("# Fixture\n\nThe bot should do the thing.\n")
+    (tmp_path / "s.md").write_text("## Problem\nx\n")
+    tid = js(run(store, "ticket", "new", "--file", str(tmp_path / "r.md")))["id"]
+    approved_parent(lambda *a: js(run(store, *a)), tid, tmp_path / "s.md")
     if plan_from == "file":
         plan = tmp_path / "plan.md"
         plan.write_text(PLAN_LETTERS)
@@ -77,7 +72,10 @@ def test_subticket_add_without_a_source_refuses_with_no_recorded_planner_run(tmp
 
 def test_ready_implementers_lists_every_sub_ticket_in_id_order(tmp_path):
     store = tmp_path / "state"
-    tid = approved_parent(store, tmp_path)
+    (tmp_path / "r.md").write_text("# Fixture\n\nThe bot should do the thing.\n")
+    (tmp_path / "s.md").write_text("## Problem\nx\n")
+    tid = js(run(store, "ticket", "new", "--file", str(tmp_path / "r.md")))["id"]
+    approved_parent(lambda *a: js(run(store, *a)), tid, tmp_path / "s.md")
     rid = planner_run(store, tid, PLAN_LETTERS)
     js(run(store, "plan", "add", tid, "--from-run", rid))
     js(run(store, "ticket", "transition", tid, "--to", "planned", "--by", "t"))

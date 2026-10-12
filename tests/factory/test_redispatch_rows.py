@@ -15,6 +15,7 @@ from pathlib import Path
 
 import pytest
 
+from ._cli import approved_parent
 from ._cli import js_ok as js
 from ._cli import run_env as run
 
@@ -30,11 +31,7 @@ def env(tmp_path: Path) -> dict:
     (tmp_path / "spec.md").write_text("## Problem\nx\n")
     (tmp_path / "plan.md").write_text("ST-1 / Do it\nDepends on: none\nParallel-safe: yes\n")
     js(run(e, "ticket", "new", "--file", str(tmp_path / "req.md")))
-    js(run(e, "ticket", "transition", "T-0001", "--to", "ready-for-spec-writer", "--by", "t"))
-    js(run(e, "spec", "add", "T-0001", "--file", str(tmp_path / "spec.md")))
-    js(run(e, "ticket", "transition", "T-0001", "--to", "ready-for-critic", "--by", "t", "--round", "spec:init"))
-    js(run(e, "ticket", "transition", "T-0001", "--to", "awaiting-spec-gate", "--by", "t"))
-    js(run(e, "approve-spec", "T-0001"))
+    approved_parent(lambda *a: js(run(e, *a)), "T-0001", tmp_path / "spec.md")
     js(run(e, "subticket", "add", "T-0001", "--file", str(tmp_path / "plan.md")))
     js(run(e, "ticket", "set", ST, "status=checks-in-flight", f"head={HEAD}"))
     return e

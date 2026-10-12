@@ -18,7 +18,7 @@ import shutil
 import subprocess
 from pathlib import Path
 
-from ._cli import BIN, REPO, STRIP
+from ._cli import BIN, REPO, STRIP, git_repo
 from ._cli import js_ok as js
 
 FIXTURE_INSTANCE = Path(__file__).resolve().parent / "fixtures" / "instance"
@@ -35,13 +35,6 @@ def cli(cwd: Path, *argv: str, **env: str) -> subprocess.CompletedProcess:
 def git(repo: Path, *argv: str) -> subprocess.CompletedProcess:
     return subprocess.run(["git", "-C", str(repo), "-c", "user.email=f@x", "-c", "user.name=f", *argv],
                           capture_output=True, text=True)
-
-
-def git_repo(path: Path) -> Path:
-    path.mkdir(parents=True, exist_ok=True)
-    assert git(path, "init", "-q", "-b", "main").returncode == 0
-    assert git(path, "commit", "-q", "--allow-empty", "-m", "init").returncode == 0
-    return path
 
 
 def commit_all(repo: Path, msg: str) -> None:

@@ -19,7 +19,7 @@ from pathlib import Path
 
 import yaml
 
-from ._cli import BIN, REPO
+from ._cli import BIN, REPO, CliStore
 
 STUBS = Path(__file__).resolve().parent / "fixtures" / "stubs"
 MAX_SPEC_ROUNDS = 2  # factory/config.yaml max_rounds.spec
@@ -595,7 +595,7 @@ class Run:
         self.run_id, self.input, self.sources, self.status = run_id, input_text, sources, status
 
 
-class Shepherd:
+class Shepherd(CliStore):
     def __init__(self, tmp_path: Path, case: str, with_repo: bool = False):
         self.store = tmp_path / "state"
         self.case = case
@@ -628,11 +628,6 @@ class Shepherd:
             env["FACTORY_REPO"] = str(self.repo)
             env["FACTORY_INTEGRATION_BRANCH"] = "main"
         return subprocess.run([str(BIN), *argv], capture_output=True, text=True, env=env, cwd=REPO)
-
-    def ok(self, *argv: str) -> dict:
-        cp = self.cli(*argv)
-        assert cp.returncode == 0, f"{' '.join(argv)}: {cp.stderr}"
-        return json.loads(cp.stdout.strip().splitlines()[-1])
 
     def ticket(self, tid: str) -> dict:
         return yaml.safe_load((self.store / "tickets" / f"{tid}.yaml").read_text())

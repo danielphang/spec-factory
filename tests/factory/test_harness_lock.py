@@ -24,7 +24,7 @@ from pathlib import Path
 
 import pytest
 
-from ._cli import CLEAN_CLI, REPO, STRIP, js, tree
+from ._cli import CLEAN_CLI, REPO, STRIP, git_repo, js, tree
 
 HARNESS_PATHS = ("factory", "bin/factory", "agents", "pyproject.toml", "uv.lock")
 ZERO = "0" * 40
@@ -61,9 +61,7 @@ def revision(harness: Path) -> str:
 
 
 def make_target(path: Path, harness: Path) -> Path:
-    path.mkdir(parents=True)
-    git(path, "init", "-q", "-b", "main")
-    git(path, "commit", "-q", "--allow-empty", "-m", "init")
+    git_repo(path)
     cp = cli(harness, path, "init", "--repo-name", "demo")
     assert cp.returncode == 0, cp.stderr
     return path

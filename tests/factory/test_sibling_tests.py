@@ -20,7 +20,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from ._cli import BIN, REPO
+from ._cli import REPO, CliStore, approved_parent
 
 PLAN = """ST-1 / Interim
 Depends on: none
@@ -55,21 +55,13 @@ await fn({ ticket: 'T-0001', repo: process.cwd(), state: process.env.FACTORY_STA
 """
 
 
-class Fixture:
+class Fixture(CliStore):
     def __init__(self, tmp_path: Path):
         self.tmp = tmp_path
         self.store = tmp_path / "store"
         self.target = tmp_path / "t"
         self.env = {**os.environ, "FACTORY_STATE": str(self.store), "FACTORY_REPO": str(self.target),
                     "FACTORY_INTEGRATION_BRANCH": "main", "PYTHONDONTWRITEBYTECODE": "1"}
-
-    def cli(self, *argv: str) -> subprocess.CompletedProcess:
-        return subprocess.run([str(BIN), *argv], capture_output=True, text=True, env=self.env, cwd=REPO)
-
-    def ok(self, *argv: str) -> dict:
-        cp = self.cli(*argv)
-        assert cp.returncode == 0, cp.stderr
-        return json.loads(cp.stdout.strip().splitlines()[-1])
 
     def git(self, *argv: str) -> str:
         cp = subprocess.run(["git", "-c", "user.email=f@x", "-c", "user.name=f", *argv], cwd=self.target,
@@ -109,11 +101,7 @@ def build(tmp_path: Path, path: str, merged: bool = True, readd: bool = False, p
     req.write_text("# Fixture\n\nThe bot should do the thing.\n")
     spec.write_text("## Problem\nx\n")
     f.ok("ticket", "new", "--file", str(req))
-    f.ok("ticket", "transition", "T-0001", "--to", "ready-for-spec-writer", "--by", "t")
-    f.ok("spec", "add", "T-0001", "--file", str(spec))
-    f.ok("ticket", "transition", "T-0001", "--to", "ready-for-critic", "--by", "t", "--round", "spec:init")
-    f.ok("ticket", "transition", "T-0001", "--to", "awaiting-spec-gate", "--by", "t")
-    f.ok("approve-spec", "T-0001")
+    approved_parent(f.ok, "T-0001", spec)
     subprocess.run(["git", "init", "-q", "-b", "main", str(f.target)], check=True)
     base = f.commit("base", test_old="def test_old(): pass\n")
     f.git("checkout", "-qb", "sib")

@@ -19,14 +19,14 @@ import subprocess
 import uuid
 from pathlib import Path
 
-from ._cli import BIN, REPO
+from ._cli import CliStore
 
 FIXTURE_INSTANCE = Path(__file__).resolve().parent / "fixtures" / "instance"
 SECRET = '{"token": "TRIPWIRE-SECRET-A"}\n'
 OUT = "Type: bug\nTitle: Fixture\n\nSTATUS: ACCEPT\nCONFIDENCE: high\nESCALATIONS: none\n"
 
 
-class Inst:
+class Inst(CliStore):
     """A scratch instance and store with ticket T-0001 ready for triage. `tripwire` is the YAML
     text appended to the instance (None: no key)."""
 
@@ -44,14 +44,6 @@ class Inst:
         req.write_text("# Fixture\n\nDo the thing.\n")
         self.ok("ticket", "new", "--file", str(req))
         (tmp_path / "out.md").write_text(OUT)
-
-    def cli(self, *argv: str) -> subprocess.CompletedProcess:
-        return subprocess.run([str(BIN), *argv], capture_output=True, text=True, env=self.env, cwd=REPO)
-
-    def ok(self, *argv: str) -> dict:
-        cp = self.cli(*argv)
-        assert cp.returncode == 0, cp.stderr
-        return json.loads(cp.stdout.strip().splitlines()[-1])
 
     def start(self) -> str:
         return self.ok("run", "start", "--role", "triage", "--ticket", "T-0001")["run_id"]

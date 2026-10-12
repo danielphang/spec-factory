@@ -6,12 +6,11 @@ Black-box through `bin/factory` on a throwaway store (FACTORY_STATE), as test_de
 """
 from __future__ import annotations
 
-import subprocess
 from pathlib import Path
 
 import pytest
 
-from ._cli import ticket
+from ._cli import git_repo, ticket
 from ._cli import js_ok as js
 from ._cli import run_env as run
 
@@ -22,10 +21,7 @@ RULING = "Ruling: take the second approach.\n"
 def env(tmp_path: Path) -> dict:
     """A scratch store and target repo: T-0001 past the spec gate (no spec store)."""
     store = tmp_path / "store"
-    target = tmp_path / "target"
-    subprocess.run(["git", "init", "-q", "-b", "main", str(target)], check=True)
-    subprocess.run(["git", "-C", str(target), "-c", "user.email=f@x", "-c", "user.name=f",
-                    "commit", "-q", "--allow-empty", "-m", "init"], check=True)
+    target = git_repo(tmp_path / "target")
     e = {"FACTORY_STATE": str(store), "FACTORY_REPO": str(target), "FACTORY_INTEGRATION_BRANCH": "main"}
     (tmp_path / "req.md").write_text("# Fixture\n\nThe bot should do the thing.\n")
     (tmp_path / "spec.md").write_text("## Problem\nx\n")

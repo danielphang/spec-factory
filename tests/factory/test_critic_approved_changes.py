@@ -8,14 +8,13 @@ source. The body is `none` with no such change, and the section is left out with
 """
 from __future__ import annotations
 
-import json
 import os
 import subprocess
 from pathlib import Path
 
 import pytest
 
-from ._cli import BIN, REPO
+from ._cli import CliStore
 
 HEADING = "## Approved changes not yet archived"
 
@@ -28,7 +27,7 @@ def spec(decision: str, requirement: str) -> str:
             "=== verification.md\n## Acceptance\n- It acts → NEW\n")
 
 
-class Store:
+class Store(CliStore):
     def __init__(self, tmp_path: Path, spec_store: bool = True):
         self.tmp = tmp_path
         self.root = tmp_path / "store"
@@ -38,11 +37,6 @@ class Store:
                     "FACTORY_INTEGRATION_BRANCH": "main", "PYTHONDONTWRITEBYTECODE": "1"}
         if spec_store:
             self.ok("init")
-
-    def ok(self, *argv: str) -> dict:
-        cp = subprocess.run([str(BIN), *argv], capture_output=True, text=True, env=self.env, cwd=REPO)
-        assert cp.returncode == 0, cp.stdout + cp.stderr
-        return json.loads(cp.stdout.strip().splitlines()[-1])
 
     def ticket(self, tid: str, title: str, text: str) -> None:
         """A new ticket `tid` with spec v1 `text`, at ready-for-critic."""

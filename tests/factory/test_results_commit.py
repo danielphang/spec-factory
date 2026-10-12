@@ -15,26 +15,23 @@ from pathlib import Path
 import pytest
 import yaml
 
-from ._cli import BIN, REPO
+from ._cli import CliStore
 
 HEAD = "0" * 40
 REVIEWER_TAIL = "Findings: none\nSTATUS: APPROVE\nCONFIDENCE: high\nESCALATIONS: none\n"
 VERIFIER_TAIL = "Per criterion: none\nGate suite: PASS\nSTATUS: VERIFIED\nCONFIDENCE: high\nESCALATIONS: none\n"
 
 
-class Store:
+class Store(CliStore):
     def __init__(self, tmp: Path):
         self.root = tmp / "store"
         self.tmp = tmp
+        self.env = {**os.environ, "FACTORY_STATE": str(self.root), "PYTHONDONTWRITEBYTECODE": "1"}
         req = tmp / "r.md"
         req.write_text("# x\n\nthe thing\n")
         cp = self.cli("ticket", "new", "--file", str(req))
         assert cp.returncode == 0, cp.stderr
         self.tid = json.loads(cp.stdout.strip().splitlines()[-1])["id"]
-
-    def cli(self, *argv: str) -> subprocess.CompletedProcess:
-        env = {**os.environ, "FACTORY_STATE": str(self.root), "PYTHONDONTWRITEBYTECODE": "1"}
-        return subprocess.run([str(BIN), *argv], capture_output=True, text=True, env=env, cwd=REPO)
 
     def record(self, role: str, output: str | None, *extra: str) -> subprocess.CompletedProcess:
         argv = ["results", "record", self.tid, "--head", HEAD, "--role", role, "--run", "R1", *extra]

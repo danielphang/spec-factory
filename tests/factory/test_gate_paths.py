@@ -10,7 +10,6 @@ its own `gate_commands`, and a scratch target repo, as the spec's t0028-sub.sh f
 """
 from __future__ import annotations
 
-import json
 import os
 import shutil
 import subprocess
@@ -19,14 +18,14 @@ from pathlib import Path
 import pytest
 import yaml
 
-from ._cli import BIN, REPO
+from ._cli import CliStore, approved_parent
 
 FIXTURE_INSTANCE = Path(__file__).resolve().parent / "fixtures" / "instance"
 UNSCOPED = "git diff --check main...HEAD"
 SCOPED = "sh -c 'exit 7'"
 
 
-class Target:
+class Target(CliStore):
     """T-0001.1 at checks-in-flight, its one commit changing `changed`; I is its implementer run."""
 
     def __init__(self, tmp_path: Path, gate: str, changed: str = "docs/b.md"):
@@ -52,11 +51,7 @@ class Target:
         (tmp_path / "spec.md").write_text("## Problem\nx\n")
         (tmp_path / "plan.md").write_text("ST-1 / Do it\nDepends on: none\nParallel-safe: yes\n")
         self.ok("ticket", "new", "--file", str(tmp_path / "req.md"))
-        self.ok("ticket", "transition", "T-0001", "--to", "ready-for-spec-writer", "--by", "t")
-        self.ok("spec", "add", "T-0001", "--file", str(tmp_path / "spec.md"))
-        self.ok("ticket", "transition", "T-0001", "--to", "ready-for-critic", "--by", "t", "--round", "spec:init")
-        self.ok("ticket", "transition", "T-0001", "--to", "awaiting-spec-gate", "--by", "t")
-        self.ok("approve-spec", "T-0001")
+        approved_parent(self.ok, "T-0001", tmp_path / "spec.md")
         self.ok("subticket", "add", "T-0001", "--file", str(tmp_path / "plan.md"))
         self.implementer = self.ok("run", "start", "--role", "implementer", "--ticket", "T-0001.1")["run_id"]
         wt = self.root / "worktrees" / "T-0001.1"
@@ -76,14 +71,6 @@ class Target:
         cp = subprocess.run(["git", *argv], cwd=cwd or self.repo, capture_output=True, text=True)
         assert cp.returncode == 0, cp.stderr
         return cp.stdout.strip()
-
-    def cli(self, *argv: str) -> subprocess.CompletedProcess:
-        return subprocess.run([str(BIN), *argv], capture_output=True, text=True, env=self.env, cwd=REPO)
-
-    def ok(self, *argv: str) -> dict:
-        cp = self.cli(*argv)
-        assert cp.returncode == 0, f"{' '.join(argv)}: {cp.stderr}"
-        return json.loads(cp.stdout.strip().splitlines()[-1])
 
     def composed(self, rid: str) -> tuple[str, dict]:
         self.ok("run", "compose", rid)

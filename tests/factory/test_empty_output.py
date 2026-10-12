@@ -9,16 +9,15 @@ from __future__ import annotations
 
 import json
 import os
-import subprocess
 from pathlib import Path
 
 import pytest
 import yaml
 
-from ._cli import BIN, REPO
+from ._cli import CliStore
 
 
-class Store:
+class Store(CliStore):
     """A throwaway store with one ticket, T-0001, and one triage run started on it."""
 
     def __init__(self, tmp_path: Path):
@@ -30,14 +29,6 @@ class Store:
         self.rid = self.ok("run", "start", "--role", "triage", "--ticket", "T-0001")["run_id"]
         self.ok("run", "compose", self.rid)
         self.run_dir = self.root / "runs" / self.rid
-
-    def cli(self, *argv: str) -> subprocess.CompletedProcess:
-        return subprocess.run([str(BIN), *argv], capture_output=True, text=True, env=self.env, cwd=REPO)
-
-    def ok(self, *argv: str) -> dict:
-        cp = self.cli(*argv)
-        assert cp.returncode == 0, cp.stderr
-        return json.loads(cp.stdout.strip().splitlines()[-1])
 
     def meta(self) -> dict:
         return yaml.safe_load((self.run_dir / "meta.yaml").read_text())

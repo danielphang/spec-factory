@@ -15,7 +15,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from ._cli import run, ticket
+from ._cli import approved_parent, run, ticket
 from ._cli import js_ok as js
 
 NOTE = "Re-plan: add one fix for the case-insensitive path.\n"
@@ -39,11 +39,7 @@ def store(tmp_path: Path) -> Path:
     (tmp_path / "req.md").write_text("# Fixture\n\nThe bot should do the thing.\n")
     (tmp_path / "spec.md").write_text("## Problem\nx\n")
     js(run(s, "ticket", "new", "--file", str(tmp_path / "req.md")))
-    js(run(s, "ticket", "transition", "T-0001", "--to", "ready-for-spec-writer", "--by", "t"))
-    js(run(s, "spec", "add", "T-0001", "--file", str(tmp_path / "spec.md")))
-    js(run(s, "ticket", "transition", "T-0001", "--to", "ready-for-critic", "--by", "t", "--round", "spec:init"))
-    js(run(s, "ticket", "transition", "T-0001", "--to", "awaiting-spec-gate", "--by", "t"))
-    js(run(s, "approve-spec", "T-0001"))
+    approved_parent(lambda *a: js(run(s, *a)), "T-0001", tmp_path / "spec.md")
     return s
 
 

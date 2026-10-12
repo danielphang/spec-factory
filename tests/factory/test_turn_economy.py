@@ -15,7 +15,7 @@ from pathlib import Path
 
 import pytest
 
-from ._cli import BIN, REPO, STRIP
+from ._cli import BIN, REPO, STRIP, git_repo
 
 FENCE = "`" * 3
 
@@ -87,11 +87,7 @@ def run_prompts(tmp_path_factory) -> dict[str, str]:
     scratch target with a throwaway store (FACTORY_STATE). `ticket set` gives the ticket the status
     each role starts from."""
     tmp = tmp_path_factory.mktemp("economy")
-    t = tmp / "target"
-    t.mkdir()
-    for argv in (["init", "-q", "-b", "main"],
-                 ["-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "--allow-empty", "-m", "init"]):
-        subprocess.run(["git", "-C", str(t), *argv], check=True, capture_output=True)
+    t = git_repo(tmp / "target")
     req = tmp / "r.md"
     req.write_text("# demo\n\nDo the thing.\n")
     store = {"FACTORY_STATE": str(tmp / "s")}
