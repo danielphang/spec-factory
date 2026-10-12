@@ -1,0 +1,24 @@
+run_id: run-0487-verifier
+role: verifier
+ticket: T-0047.2
+model: fable
+round: 1
+spec_version: 2
+started: '2026-10-12T20:24:58+00:00'
+finished: '2026-10-12T20:29:02+00:00'
+wall_s: 244
+status: EMPTY-OUTPUT
+input_sources:
+- specs/T-0047.2/subticket.md
+- specs/T-0047/v2.md
+- runs/run-0484-implementer/output.md
+- runs/run-0487-verifier/diff.patch
+gate_skipped: []
+environment_files: []
+branch: factory/T-0047.2
+base: 700ce73e216d1fe5d218a9fe9b46e53545cf6674
+head: 634117766e31f55980921ec1f9250d3d40e07c04
+worktree: /Users/dphang/dev/spec-factory/.factory/store/runs/run-0487-verifier/wt
+confidence: null
+escalations: []
+escalations_note: null

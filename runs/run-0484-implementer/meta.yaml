@@ -1,0 +1,25 @@
+run_id: run-0484-implementer
+role: implementer
+ticket: T-0047.2
+model: opus
+round: 0
+spec_version: 2
+started: '2026-10-12T19:19:50+00:00'
+finished: '2026-10-12T20:20:48+00:00'
+wall_s: 3658
+status: READY-FOR-REVIEW
+input_sources:
+- specs/T-0047.2/subticket.md
+- specs/T-0047/v2.md
+gate_skipped: []
+branch: factory/T-0047.2
+base: 700ce73e216d1fe5d218a9fe9b46e53545cf6674
+head: 700ce73e216d1fe5d218a9fe9b46e53545cf6674
+worktree: /Users/dphang/dev/spec-factory/.factory/store/worktrees/T-0047.2
+resolution: null
+environment_files: []
+confidence: 'high. The move is checked by machine (M: added=0 removed=0), all acceptance commands and
+  both gates passed on HEAD, and the one failing test is a timing test known to be unreliable under load
+  that passed on rerun.'
+escalations: []
+escalations_note: null

@@ -2528,3 +2528,39 @@
 {"ts": "2026-10-12T18:07:07+00:00", "event": "approval.recorded", "ticket": "T-0047", "kind": "spec", "version": 2, "by": "dphang"}
 {"ts": "2026-10-12T18:07:07+00:00", "event": "change.pinned", "ticket": "T-0047", "version": 2, "files": ["openspec/changes/T-0047/proposal.md", "openspec/changes/T-0047/design.md", "openspec/changes/T-0047/specs/harness-code/spec.md", "openspec/changes/T-0047/specs/harness-docs/spec.md", "openspec/changes/T-0047/verification.md"]}
 {"ts": "2026-10-12T18:07:07+00:00", "event": "ticket.transition", "ticket": "T-0047", "from": "awaiting-spec-gate", "to": "ready-for-planner", "by": "dphang"}
+{"ts": "2026-10-12T18:08:12+00:00", "event": "run.started", "ticket": "T-0047", "run": "run-0480-planner", "role": "planner", "model": "opus"}
+{"ts": "2026-10-12T18:12:28+00:00", "event": "run.finished", "ticket": "T-0047", "run": "run-0480-planner", "role": "planner", "status": "PLANNED", "wall_s": 256}
+{"ts": "2026-10-12T18:12:38+00:00", "event": "tasks.written", "ticket": "T-0047", "run": "run-0480-planner"}
+{"ts": "2026-10-12T18:12:47+00:00", "event": "plan.added", "ticket": "T-0047", "source": "run-0480-planner"}
+{"ts": "2026-10-12T18:12:55+00:00", "event": "ticket.created", "ticket": "T-0047.1", "parent": "T-0047", "status": "ready-for-implementer"}
+{"ts": "2026-10-12T18:12:55+00:00", "event": "ticket.created", "ticket": "T-0047.2", "parent": "T-0047", "status": "waiting-dependencies"}
+{"ts": "2026-10-12T18:12:55+00:00", "event": "ticket.created", "ticket": "T-0047.3", "parent": "T-0047", "status": "waiting-dependencies"}
+{"ts": "2026-10-12T18:12:55+00:00", "event": "ticket.created", "ticket": "T-0047.4", "parent": "T-0047", "status": "waiting-dependencies"}
+{"ts": "2026-10-12T18:13:06+00:00", "event": "ticket.transition", "ticket": "T-0047", "from": "ready-for-planner", "to": "planned", "by": "workflow", "round": {"spec": 1, "pr": 0}}
+{"ts": "2026-10-12T18:13:41+00:00", "event": "run.started", "ticket": "T-0047.1", "run": "run-0481-implementer", "role": "implementer", "model": "opus"}
+{"ts": "2026-10-12T18:45:11+00:00", "event": "run.finished", "ticket": "T-0047.1", "run": "run-0481-implementer", "role": "implementer", "status": "READY-FOR-REVIEW", "wall_s": 1891}
+{"ts": "2026-10-12T18:45:32+00:00", "event": "ticket.transition", "ticket": "T-0047.1", "from": "ready-for-implementer", "to": "checks-in-flight", "by": "workflow", "round": {"spec": 0, "pr": 1}}
+{"ts": "2026-10-12T18:45:52+00:00", "event": "run.started", "ticket": "T-0047.1", "run": "run-0482-reviewer", "role": "reviewer", "model": "fable"}
+{"ts": "2026-10-12T18:45:52+00:00", "event": "run.started", "ticket": "T-0047.1", "run": "run-0483-verifier", "role": "verifier", "model": "fable"}
+{"ts": "2026-10-12T18:47:58+00:00", "event": "run.finished", "ticket": "T-0047.1", "run": "run-0482-reviewer", "role": "reviewer", "status": "APPROVE", "wall_s": 126}
+{"ts": "2026-10-12T18:47:58+00:00", "event": "escalation.queued", "ticket": "T-0047.1", "run": "run-0482-reviewer", "items": ["protected paths touched, all declared in the sub-ticket and the approved spec's Risk section: `factory/cli.py`, `factory/common.py`, `factory/drift.py`. For the record only; no undeclared path."]}
+{"ts": "2026-10-12T18:48:21+00:00", "event": "result.recorded", "ticket": "T-0047.1", "head": "359b3c6c88c10f308523d7d733baf60b5797cdcc", "role": "reviewer", "status": "APPROVE", "run": "run-0482-reviewer"}
+{"ts": "2026-10-12T19:18:32+00:00", "event": "run.finished", "ticket": "T-0047.1", "run": "run-0483-verifier", "role": "verifier", "status": "VERIFIED", "wall_s": 1960}
+{"ts": "2026-10-12T19:18:50+00:00", "event": "result.recorded", "ticket": "T-0047.1", "head": "359b3c6c88c10f308523d7d733baf60b5797cdcc", "role": "verifier", "status": "VERIFIED", "run": "run-0483-verifier"}
+{"ts": "2026-10-12T19:18:50+00:00", "event": "result.recorded", "ticket": "T-0047.1", "head": "359b3c6c88c10f308523d7d733baf60b5797cdcc", "role": "ci", "status": "PASS", "run": "run-0483-verifier"}
+{"ts": "2026-10-12T19:19:15+00:00", "event": "ticket.transition", "ticket": "T-0047.1", "from": "checks-in-flight", "to": "ready-for-merge", "by": "workflow", "round": {"spec": 0, "pr": 1}}
+{"ts": "2026-10-12T19:19:23+00:00", "event": "merge.done", "ticket": "T-0047.1", "head": "359b3c6c88c10f308523d7d733baf60b5797cdcc", "base_before": "62030967710765e996fb3d752386f9ce8dec6abc", "main_after": "700ce73e216d1fe5d218a9fe9b46e53545cf6674"}
+{"ts": "2026-10-12T19:19:23+00:00", "event": "ticket.transition", "ticket": "T-0047.2", "from": "waiting-dependencies", "to": "ready-for-implementer", "by": "merge"}
+{"ts": "2026-10-12T19:19:50+00:00", "event": "run.started", "ticket": "T-0047.2", "run": "run-0484-implementer", "role": "implementer", "model": "opus"}
+{"ts": "2026-10-12T20:20:48+00:00", "event": "run.finished", "ticket": "T-0047.2", "run": "run-0484-implementer", "role": "implementer", "status": "READY-FOR-REVIEW", "wall_s": 3658}
+{"ts": "2026-10-12T20:21:08+00:00", "event": "ticket.transition", "ticket": "T-0047.2", "from": "ready-for-implementer", "to": "checks-in-flight", "by": "workflow", "round": {"spec": 0, "pr": 1}}
+{"ts": "2026-10-12T20:21:26+00:00", "event": "run.started", "ticket": "T-0047.2", "run": "run-0485-reviewer", "role": "reviewer", "model": "fable"}
+{"ts": "2026-10-12T20:21:26+00:00", "event": "run.started", "ticket": "T-0047.2", "run": "run-0486-verifier", "role": "verifier", "model": "fable"}
+{"ts": "2026-10-12T20:23:33+00:00", "event": "run.finished", "ticket": "T-0047.2", "run": "run-0485-reviewer", "role": "reviewer", "status": "APPROVE", "wall_s": 128}
+{"ts": "2026-10-12T20:23:33+00:00", "event": "escalation.queued", "ticket": "T-0047.2", "run": "run-0485-reviewer", "items": ["protected paths touched, both declared by the sub-ticket and the spec's Risk section: `factory/cli.py`, `factory/setup.py`."]}
+{"ts": "2026-10-12T20:23:52+00:00", "event": "result.recorded", "ticket": "T-0047.2", "head": "634117766e31f55980921ec1f9250d3d40e07c04", "role": "reviewer", "status": "APPROVE", "run": "run-0485-reviewer"}
+{"ts": "2026-10-12T20:24:29+00:00", "event": "run.finished", "ticket": "T-0047.2", "run": "run-0486-verifier", "role": "verifier", "status": "EMPTY-OUTPUT", "wall_s": 183}
+{"ts": "2026-10-12T20:24:58+00:00", "event": "run.started", "ticket": "T-0047.2", "run": "run-0487-verifier", "role": "verifier", "model": "fable"}
+{"ts": "2026-10-12T20:29:02+00:00", "event": "run.finished", "ticket": "T-0047.2", "run": "run-0487-verifier", "role": "verifier", "status": "EMPTY-OUTPUT", "wall_s": 244}
+{"ts": "2026-10-12T20:29:33+00:00", "event": "ticket.parked", "ticket": "T-0047.2", "from": "checks-in-flight", "reason": "EMPTY-OUTPUT from verifier"}
+{"ts": "2026-10-12T20:29:33+00:00", "event": "escalation.queued", "ticket": "T-0047.2", "items": ["EMPTY-OUTPUT from verifier"]}

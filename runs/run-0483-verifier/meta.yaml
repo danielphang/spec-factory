@@ -1,0 +1,26 @@
+run_id: run-0483-verifier
+role: verifier
+ticket: T-0047.1
+model: fable
+round: 1
+spec_version: 2
+started: '2026-10-12T18:45:52+00:00'
+finished: '2026-10-12T19:18:32+00:00'
+wall_s: 1960
+status: VERIFIED
+input_sources:
+- specs/T-0047.1/subticket.md
+- specs/T-0047/v2.md
+- runs/run-0481-implementer/output.md
+- runs/run-0483-verifier/diff.patch
+gate_skipped: []
+environment_files: []
+branch: factory/T-0047.1
+base: 62030967710765e996fb3d752386f9ce8dec6abc
+head: 359b3c6c88c10f308523d7d733baf60b5797cdcc
+worktree: /Users/dphang/dev/spec-factory/.factory/store/runs/run-0483-verifier/wt
+confidence: high. Every NEW criterion fails on base for the reason the spec states and passes on 359b3c6;
+  all nineteen REGRESSION checks, both gates and three independent full suite runs (576 passed each) pass;
+  a line-range diff confirms the moved ranges are identical to base including the text between definitions.
+escalations: []
+escalations_note: null

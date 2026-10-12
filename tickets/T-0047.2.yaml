@@ -1,0 +1,52 @@
+id: T-0047.2
+type: sub-ticket
+title: Move instance and store setup to factory/setup.py
+request: requests/T-0047.md
+source: plan:run-0480-planner
+status: parked
+round:
+  spec: 0
+  pr: 1
+spec:
+  version: 2
+  approved_version: 2
+plan: null
+in_flight: []
+parked:
+  reason: EMPTY-OUTPUT from verifier
+  since: '2026-10-12T20:29:33+00:00'
+  from: checks-in-flight
+  outputs:
+  - run-0486-verifier
+  - run-0487-verifier
+  question: null
+created: '2026-10-12T18:12:55+00:00'
+history:
+- ts: '2026-10-12T19:19:23+00:00'
+  from: waiting-dependencies
+  to: ready-for-implementer
+  by: merge
+- ts: '2026-10-12T20:21:08+00:00'
+  from: ready-for-implementer
+  to: checks-in-flight
+  by: workflow
+  round:
+    spec: 0
+    pr: 1
+- ts: '2026-10-12T20:29:33+00:00'
+  from: checks-in-flight
+  to: parked
+  by: park
+  reason: EMPTY-OUTPUT from verifier
+parent: T-0047
+depends_on:
+- T-0047.1
+parallel_safe: false
+branch: factory/T-0047.2
+head: 634117766e31f55980921ec1f9250d3d40e07c04
+merge:
+  base_before: null
+  main_after: null
+parent_base: null
+label: T-0047.2
+planned_from: 2

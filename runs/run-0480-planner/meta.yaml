@@ -1,0 +1,18 @@
+run_id: run-0480-planner
+role: planner
+ticket: T-0047
+model: opus
+round: 1
+spec_version: 2
+started: '2026-10-12T18:08:12+00:00'
+finished: '2026-10-12T18:12:28+00:00'
+wall_s: 256
+status: PLANNED
+input_sources:
+- specs/T-0047/v2.md
+- decisions.md
+confidence: high, the spec names every moved definition and its build order; I checked the anchors, the
+  A-to-B independence and every grep and ruff REGRESSION check on `main` at `6203096`, but did not run
+  the suite.
+escalations: []
+escalations_note: null

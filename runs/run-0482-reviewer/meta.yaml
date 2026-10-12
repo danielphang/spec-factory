@@ -1,0 +1,27 @@
+run_id: run-0482-reviewer
+role: reviewer
+ticket: T-0047.1
+model: fable
+round: 1
+spec_version: 2
+started: '2026-10-12T18:45:52+00:00'
+finished: '2026-10-12T18:47:58+00:00'
+wall_s: 126
+status: APPROVE
+input_sources:
+- specs/T-0047.1/subticket.md
+- specs/T-0047/v2.md
+- runs/run-0481-implementer/output.md
+- runs/run-0482-reviewer/diff.patch
+gate_skipped: []
+environment_files: []
+branch: factory/T-0047.1
+base: 62030967710765e996fb3d752386f9ce8dec6abc
+head: 359b3c6c88c10f308523d7d733baf60b5797cdcc
+worktree: /Users/dphang/dev/spec-factory/.factory/store/runs/run-0482-reviewer/wt
+confidence: high. The spec's own moved-not-rewritten script, the fresh-interpreter imports and ruff F
+  all pass on 359b3c6, the three changed files are the three the sub-ticket declares, and no test changed.
+escalations:
+- 'protected paths touched, all declared in the sub-ticket and the approved spec''s Risk section: `factory/cli.py`,
+  `factory/common.py`, `factory/drift.py`. For the record only; no undeclared path.'
+escalations_note: null

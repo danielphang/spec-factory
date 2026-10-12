@@ -1,0 +1,48 @@
+id: T-0047.1
+type: sub-ticket
+title: Move the spec-drift checks to factory/drift.py and the shared helpers and live-store fence to factory/common.py
+request: requests/T-0047.md
+source: plan:run-0480-planner
+status: merged
+round:
+  spec: 0
+  pr: 1
+spec:
+  version: 2
+  approved_version: 2
+plan: null
+in_flight: []
+parked: null
+created: '2026-10-12T18:12:55+00:00'
+history:
+- ts: '2026-10-12T18:45:31+00:00'
+  from: ready-for-implementer
+  to: checks-in-flight
+  by: workflow
+  round:
+    spec: 0
+    pr: 1
+- ts: '2026-10-12T19:19:14+00:00'
+  from: checks-in-flight
+  to: ready-for-merge
+  by: workflow
+  round:
+    spec: 0
+    pr: 1
+- ts: '2026-10-12T19:19:22+00:00'
+  from: ready-for-merge
+  to: merged
+  by: merge
+  head: 359b3c6c88c10f308523d7d733baf60b5797cdcc
+parent: T-0047
+depends_on: []
+parallel_safe: false
+branch: factory/T-0047.1
+head: 359b3c6c88c10f308523d7d733baf60b5797cdcc
+merge:
+  base_before: 62030967710765e996fb3d752386f9ce8dec6abc
+  main_after: 700ce73e216d1fe5d218a9fe9b46e53545cf6674
+parent_base: null
+label: T-0047.1
+planned_from: 2
+merge_refused: null
