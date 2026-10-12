@@ -97,6 +97,12 @@ A fix closes its issue through a reviewed change on `main`; the merge column is 
 | [94](https://github.com/danielphang/spec-factory/issues/94) | Eval: does a critic REVISE predict anything downstream (BLOCKED implementers, SPEC-DEFECTs) vs approved-first-time (2026-10-11 retrospective) | not in intake (p2; after #70) | — | — |
 | [95](https://github.com/danielphang/spec-factory/issues/95) | Prompt claims about other components drift: a test that anchors each to the design doc (2026-10-11 retrospective) | not in intake (p2) | — | — |
 | [96](https://github.com/danielphang/spec-factory/issues/96) | Intake list 2026-10-11: efficiency and cleanup, ordered; the record for the sequence (operator, via the Reviewer) | the list itself | — | — |
+| [97](https://github.com/danielphang/spec-factory/issues/97) | De-bloat A: dead code, redundant lines, stale docstrings (sweep 2026-10-11) | T-0044 (ready for triage; #96 row 2a.1) | — | — |
+| [98](https://github.com/danielphang/spec-factory/issues/98) | De-bloat B: one shared CLI helper module for the tests, fixture helpers, a duplicate test | T-0045 (ready for triage; #96 row 2a.2) | — | — |
+| [99](https://github.com/danielphang/spec-factory/issues/99) | De-bloat C: one helper per repeated pattern (runs scan, log read, transition, drive parks, specstore walks) | T-0046 (ready for triage; #96 row 2a.3) | — | — |
+| [100](https://github.com/danielphang/spec-factory/issues/100) | De-bloat D: split `factory/cli.py` into drift, setup, gates and human modules | T-0047 (ready for triage; #96 row 2a.4) | — | — |
+| [101](https://github.com/danielphang/spec-factory/issues/101) | De-bloat E: docs: freeze dev/ build docs, stale claims, one home per mechanism, history to the changelog, harness-docs cleanup | T-0048 (ready for triage; #96 row 2a.5) | — | — |
+| [102](https://github.com/danielphang/spec-factory/issues/102) | Question: a closed sibling releases dependants at merge, but `ready_implementers` requires it merged | not in intake (p2; needs a spec decision) | — | — |
 
 Issues 1–10 are applied and can be closed against their merge; 11 applied (`9168ce1`); 13 and 14 fold into #21 (checklists until it archives); 15 closed as superseded. #12 was a duplicate of #11.
 New findings go straight to GitHub issues; this file is the index.
