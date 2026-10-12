@@ -10,8 +10,8 @@ from __future__ import annotations
 import subprocess
 import sys
 
-from .test_p0_cli import REPO, js, run
-from .test_shepherd import Shepherd
+from ._cli import REPO, js, run
+from ._fixtures import Shepherd
 
 FENCE = "```"
 

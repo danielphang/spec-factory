@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import pytest
 
-from .test_shepherd import built_to_implementer
+from ._fixtures import built_to_implementer
 
 
 @pytest.mark.parametrize("role", ["verifier", "reviewer"])

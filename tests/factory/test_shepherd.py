@@ -7,22 +7,18 @@ mode), and the dispatcher routes on its STATUS. The human steps are the two gate
 answers to questions.
 
 The real dispatcher is factory/workflows/intake.js, a Workflow script that needs the Claude Code
-agent runtime, so it cannot run under pytest. `Shepherd` at the bottom applies the same routing
-table to the same store CLI; if the two ever disagree, the table in the design doc decides.
+agent runtime, so it cannot run under pytest. `Shepherd`, in `_fixtures.py`, applies the same
+routing table to the same store CLI; if the two ever disagree, the table in the design doc decides.
 """
 from __future__ import annotations
 
-import json
-import os
 import subprocess
 from pathlib import Path
 
 import yaml
 
-from ._cli import BIN, REPO, CliStore
+from ._fixtures import MAX_SPEC_ROUNDS, Shepherd, built_to_implementer
 
-STUBS = Path(__file__).resolve().parent / "fixtures" / "stubs"
-MAX_SPEC_ROUNDS = 2  # factory/config.yaml max_rounds.spec
 MAX_PR_ROUNDS = 2  # factory/config.yaml max_rounds.pr
 
 
@@ -388,23 +384,6 @@ def test_a_planned_parent_can_be_parked_and_a_closed_sibling_is_reported(tmp_pat
     assert f.state(tid) == "parked"
 
 
-def built_to_implementer(tmp_path, plan: str | None = None):
-    """A ticket approved, planned and split; returns the shepherd, the parent id and its sub-ticket ids."""
-    f = Shepherd(tmp_path, case="accept-approve", with_repo=True)
-    f.human_runs("init")
-    tid = f.request("# SPEC-99: Fixture\n\nThe bot should do the thing.\n")
-    for role in ("triage", "spec_writer", "critic"):
-        f.dispatch(role, tid)
-    f.human_approves(tid)
-    if plan:
-        p = f.tmp / "plan.md"
-        p.write_text(plan + "STATUS: PLANNED\nCONFIDENCE: high, fixture\nESCALATIONS: none\n")
-        f.dispatch("planner", tid, stub_path=p)
-    else:
-        f.dispatch("planner", tid)
-    return f, tid, list(f.ok("ticket", "parent-check", tid)["subtickets"])
-
-
 TWO_PARALLEL = "## ST-1 / First\n**Depends on:** none\n**Parallel-safe:** yes\n\n## ST-2 / Second\n**Depends on:** none\n**Parallel-safe:** yes\n\n"
 CHAIN = "## ST-1 / First\n**Depends on:** none\n**Parallel-safe:** yes\n\n## ST-2 / Second\n**Depends on:** ST-1\n**Parallel-safe:** yes\n\n"
 REQUEST_CHANGES = "Commit: HEAD\nFindings: [BLOCKING] thing.txt:1: FINDING-ROUND-{n} → wrong\nSTATUS: REQUEST-CHANGES\nCONFIDENCE: high, fixture\nESCALATIONS: none\n"
@@ -586,196 +565,3 @@ def test_redispatch_re_runs_the_checks_on_the_same_head_after_a_harness_fix(tmp_
     assert f.ok("ticket", "ready-implementers", tid)["resumable"] == [st]
     f.dispatch("verifier", st, stub="accept-approve/verifier-1.md")
     assert f.state(st) == "merged"
-
-
-# ----- the shepherd: the routing table applied to the store CLI ----------------------------------
-
-class Run:
-    def __init__(self, run_id: str, input_text: str, sources: list[str], status: str | None):
-        self.run_id, self.input, self.sources, self.status = run_id, input_text, sources, status
-
-
-class Shepherd(CliStore):
-    def __init__(self, tmp_path: Path, case: str, with_repo: bool = False):
-        self.store = tmp_path / "state"
-        self.case = case
-        self.tmp = tmp_path
-        self.count: dict[str, int] = {}
-        self.last_join: dict = {}
-        self.repo: Path | None = None
-        if with_repo:  # a scratch target repo: one commit on `main`, the integration branch
-            self.repo = tmp_path / "target"
-            self.repo.mkdir()
-            self.git("init", "-q", "-b", "main")
-            self.git("config", "user.email", "fixture@example.com")
-            self.git("config", "user.name", "fixture")
-            (self.repo / "README.md").write_text("target repo\n")
-            self.git("add", "README.md")
-            self.git("commit", "-q", "-m", "initial")
-
-    def git(self, *argv: str, cwd: Path | None = None) -> str:
-        cp = subprocess.run(["git", *argv], cwd=cwd or self.repo, capture_output=True, text=True)
-        assert cp.returncode == 0, f"git {' '.join(argv)}: {cp.stderr}"
-        return cp.stdout
-
-    def repo_rev(self, ref: str) -> str:
-        return self.git("rev-parse", ref).strip()
-
-    # --- the store CLI, as the clerk runs it
-    def cli(self, *argv: str) -> subprocess.CompletedProcess:
-        env = {**os.environ, "FACTORY_STATE": str(self.store), "PYTHONDONTWRITEBYTECODE": "1"}
-        if self.repo:
-            env["FACTORY_REPO"] = str(self.repo)
-            env["FACTORY_INTEGRATION_BRANCH"] = "main"
-        return subprocess.run([str(BIN), *argv], capture_output=True, text=True, env=env, cwd=REPO)
-
-    def ticket(self, tid: str) -> dict:
-        return yaml.safe_load((self.store / "tickets" / f"{tid}.yaml").read_text())
-
-    def state(self, tid: str) -> str:
-        return self.ticket(tid)["status"]
-
-    def results(self, tid: str) -> dict:
-        return self.ok("results", "show", tid)["rows"]
-
-    def ready_implementers(self, parent: str) -> list[str]:
-        return self.ok("ticket", "ready-implementers", parent)["ready"]
-
-    def parent_check(self, parent: str) -> str:
-        return self.ok("ticket", "parent-check", parent)["state"]
-
-    def log(self) -> list[dict]:
-        return [json.loads(ln) for p in sorted((self.store / "log").glob("*.jsonl")) for ln in p.read_text().splitlines()]
-
-    # --- the humans
-    def request(self, text: str) -> str:
-        p = self.tmp / f"request-{len(list(self.tmp.glob('request-*.md'))) + 1}.md"
-        p.write_text(text)
-        return self.ok("ticket", "new", "--file", str(p))["id"]
-
-    def human_runs(self, *argv: str) -> dict:
-        return self.ok(*argv)
-
-    def human_approves(self, tid: str) -> None:
-        self.ok("approve-spec", tid)
-
-    def human_answers(self, tid: str, text: str) -> None:
-        p = self.tmp / f"answer-{tid}-{self.ticket(tid)['history'].__len__()}.md"
-        p.write_text(text)
-        self.ok("resolve", tid, "--answer", str(p))
-
-    # --- one role run, then the routing table's row for its STATUS (as intake.js does)
-    def dispatch(self, role: str, tid: str, stub: str | None = None, finish: bool = True, stub_path: Path | None = None, route: bool = True,
-                 file: str = "thing.txt", merge_main: bool = False, no_change: bool = False, killed: bool = False) -> Run:
-        self.count[role] = self.count.get(role, 0) + 1
-        stub_path = stub_path or STUBS / (stub or f"{self.case}/{role}-{self.count[role]}.md")
-        rid = self.ok("run", "start", "--role", role, "--ticket", tid)["run_id"]
-        composed = self.ok("run", "compose", rid)
-        input_text = (self.store / "runs" / rid / "input.md").read_text()
-        if not finish:
-            return Run(rid, input_text, composed["sources"], None)
-        meta = yaml.safe_load((self.store / "runs" / rid / "meta.yaml").read_text())
-        if role == "implementer":  # the stub implementer's one code change, committed on its branch
-            wt = Path(meta["worktree"])
-            if merge_main:  # a conflict run: merge the integration branch into the branch, nothing else
-                self.git("merge", "-q", "--no-edit", "main", cwd=wt)
-            elif no_change:
-                pass  # an implementer that returns without touching its branch
-            else:
-                (wt / file).write_text("the thing\n")
-                self.git("add", file, cwd=wt)
-                self.git("commit", "-q", "-m", f"{tid}: the thing", cwd=wt)
-        if killed:  # the run returned nothing (budget kill): no output, a KILLED row
-            status = self.ok("run", "finish", rid, "--status-override", "KILLED")["status"]
-            self.ok("run", "cleanup", rid)
-            self.ok("results", "record", tid, "--head", self.ok("ticket", "head", tid)["head"], "--role", role, "--run", rid, "--killed")
-            self.act_on_join(tid, rid)
-            return Run(rid, input_text, composed["sources"], status)
-        text = stub_path.read_text().replace("Commit: HEAD", f"Commit: {meta.get('head')}")
-        (self.store / "runs" / rid / "output.md").write_text(text)
-        status = self.ok("run", "finish", rid)["status"]
-        if role in ("reviewer", "verifier"):
-            self.ok("run", "cleanup", rid)
-        if route:
-            self.route(role, tid, rid, status, meta)
-        return Run(rid, input_text, composed["sources"], status)
-
-    def route(self, role: str, tid: str, rid: str, status: str, meta: dict | None = None) -> None:
-        go = lambda to, rnd=None: self.ok("ticket", "transition", tid, "--to", to, "--by", "workflow", *(["--round", rnd] if rnd else []))  # noqa: E731
-        park = lambda reason: self.ok("ticket", "park", tid, "--reason", reason, "--outputs", rid)  # noqa: E731
-        if role == "triage":
-            {"ACCEPT": lambda: go("ready-for-spec-writer"), "REJECT": lambda: go("closed"),
-             "CLARIFY": lambda: go("waiting-requester"), "NEEDS-HUMAN": lambda: park("NEEDS-HUMAN from triage")}[status]()
-        elif role == "spec_writer":
-            self.ok("spec", "add", tid, "--from-run", rid)  # every version the writer returns is kept
-            if status == "NEEDS-HUMAN":
-                park("NEEDS-HUMAN from spec writer")
-            else:
-                assert status in ("READY-FOR-CRITIC", "NEEDS-SPLIT"), status
-                go("ready-for-critic", "spec:init")
-        elif role == "critic":
-            if status == "APPROVE":
-                go("awaiting-spec-gate")
-            elif status == "ESCALATE":
-                park("ESCALATE from critic")
-            else:
-                assert status == "REVISE", status
-                if self.ticket(tid)["round"]["spec"] < MAX_SPEC_ROUNDS:
-                    go("ready-for-spec-writer", "spec:+1")
-                else:
-                    park("max rounds")
-        elif role == "planner":
-            if status == "PLANNED":
-                self.ok("spec", "tasks", tid, "--run", rid)
-                self.ok("plan", "add", tid, "--from-run", rid)
-                self.ok("subticket", "add", tid, "--run", rid)
-                go("planned")
-            else:
-                park(f"{status} from planner")
-        elif role == "implementer":
-            if status == "BLOCKED":
-                park("BLOCKED from implementer")
-            else:
-                assert status == "READY-FOR-REVIEW", status
-                moved = self.ok("ticket", "head", tid)
-                if moved["merge_refused"]:  # a conflict run that did not merge main in: ask the join, skip the checkers
-                    self.act_on_join(tid, rid)
-                else:
-                    go("checks-in-flight", "pr:init")
-        elif role in ("reviewer", "verifier"):
-            if self.ticket(tid)["status"] == "ready-for-parent-verify":
-                # | parent-close | VERIFIED archives the change, then closes; anything else parks the parent |
-                if status == "VERIFIED":
-                    self.ok("archive", tid)
-                    go("closed")
-                else:
-                    park(f"{status} from parent-close verifier")
-                return
-            head = self.ok("ticket", "head", tid)["head"]  # as build.js does: the CLI names the head, never the store file
-            assert self.ok("ticket", "show", tid, "--json")["head"] == head
-            self.ok("results", "record", tid, "--head", head, "--role", role, "--output", str(self.store / "runs" / rid / "output.md"), "--run", rid)
-            self.act_on_join(tid, rid)
-
-    def act_on_join(self, tid: str, rid: str | None = None) -> dict:
-        """`factory ticket join` decides; the dispatcher (build.js, and this shepherd) only carries it out."""
-        go = lambda to, rnd=None: self.ok("ticket", "transition", tid, "--to", to, "--by", "workflow", *(["--round", rnd] if rnd else []))  # noqa: E731
-        join = self.ok("ticket", "join", tid)
-        self.last_join = join
-        if join["decision"] == "merge":
-            go("ready-for-merge")
-            cp = self.cli("merge", tid)
-            if cp.returncode != 0:
-                again = self.ok("ticket", "join", tid)
-                self.last_join = again
-                if again["decision"] == "conflict":
-                    go("ready-for-implementer")
-                else:
-                    self.ok("ticket", "park", tid, "--reason", again["reason"])
-        elif join["decision"] == "revise":
-            go("ready-for-implementer", join["round_op"])
-        elif join["decision"] == "conflict":
-            if self.state(tid) != "ready-for-implementer":
-                go("ready-for-implementer")
-        elif join["decision"] == "park":
-            self.ok("ticket", "park", tid, "--reason", join["reason"], *(["--outputs", rid] if rid else []))
-        return join  # "wait": the other checker has not reported on this head yet

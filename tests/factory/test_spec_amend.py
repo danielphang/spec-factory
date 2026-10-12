@@ -11,96 +11,12 @@ scenario; v3 also changes the Decisions line.
 from __future__ import annotations
 
 import json
-import os
 import subprocess
-from pathlib import Path
 
 import pytest
 import yaml
 
-from ._cli import REPO, CliStore, approved_parent  # noqa: F401  (test_spec_drift.py imports REPO from here)
-
-SPEC = """=== proposal.md
-## Problem
-{problem}
-## Decisions
-- {decision}
-=== design.md
-## Proposed change
-Edit `src/greet.py`.
-## Tests to change
-none
-=== specs/demo/spec.md
-## ADDED Requirements
-### Requirement: Greets
-{statement}
-
-#### Scenario: Greeting is printed
-- WHEN `{cmd}`
-- THEN it prints `{out}`
-{extra}=== verification.md
-## Acceptance
-- Greeting is printed → NEW
-{labels}"""
-
-TWO = "ST-1 / First\nDepends on: none\nParallel-safe: yes\n\nST-2 / Second\nDepends on: none\nParallel-safe: yes\n"
-
-
-def spec(decision="Greet by default.", cmd="echo hi", out="hi", problem="x", statement="The tool SHALL greet.",
-         extra="", labels="") -> str:
-    return SPEC.format(decision=decision, cmd=cmd, out=out, problem=problem, statement=statement, extra=extra,
-                       labels=labels)
-
-
-V1, V2 = spec(), spec(cmd="echo hello", out="hello")
-
-
-class Fixture(CliStore):
-    def __init__(self, tmp_path: Path):
-        self.tmp = tmp_path
-        self.store = tmp_path / "store"
-        self.target = tmp_path / "t"
-        self.env = {**os.environ, "FACTORY_STATE": str(self.store), "FACTORY_REPO": str(self.target),
-                    "FACTORY_INTEGRATION_BRANCH": "main", "PYTHONDONTWRITEBYTECODE": "1"}
-
-    def file(self, name: str, text: str) -> str:
-        p = self.tmp / name
-        p.write_text(text)
-        return str(p)
-
-    def ticket(self, tid: str) -> dict:
-        return yaml.safe_load((self.store / "tickets" / f"{tid}.yaml").read_text())
-
-    def plan(self, text: str = TWO) -> None:
-        self.ok("subticket", "add", "T-0001", "--file", self.file("plan.md", text))
-        self.ok("ticket", "transition", "T-0001", "--to", "planned", "--by", "t")
-
-    def amend(self, text: str, reason: str = "Seed the greeting.", intent: str = "unchanged",
-              tid: str = "T-0001") -> subprocess.CompletedProcess:
-        return self.cli("spec", "amend", tid, "--file", self.file("amend.md", text), "--reason", reason,
-                        "--intent", intent)
-
-    def snapshot(self) -> dict[str, bytes]:
-        return {str(p.relative_to(self.store)): p.read_bytes() for p in sorted(self.store.rglob("*")) if p.is_file()}
-
-    def change(self, rel: str) -> Path:
-        return self.store / "openspec" / "changes" / "T-0001" / rel
-
-
-@pytest.fixture
-def f(tmp_path: Path) -> Fixture:
-    f = Fixture(tmp_path)
-    subprocess.run(["git", "init", "-q", "-b", "main", str(f.target)], check=True)
-    for rel in ("src/greet.py", "src/other.py"):
-        (f.target / rel).parent.mkdir(parents=True, exist_ok=True)
-        (f.target / rel).write_text(f"# {rel}\n")
-    subprocess.run(["git", "-C", str(f.target), "add", "-A"], check=True)
-    subprocess.run(["git", "-C", str(f.target), "-c", "user.email=f@x", "-c", "user.name=f", "commit", "-qm", "land"],
-                   check=True)
-    f.ok("init")
-    f.ok("ticket", "new", "--file", f.file("req.md", "# Fixture\n\nGreet.\n"))
-    approved_parent(f.ok, "T-0001", f.file("v1.md", V1))
-    return f
+from ._fixtures import V1, V2, Fixture, f, spec  # noqa: F401  (f is a fixture)
 
 
 def refused(f: Fixture, cp: subprocess.CompletedProcess, before: dict[str, bytes]) -> str:

@@ -8,8 +8,9 @@ from pathlib import Path
 import pytest
 import yaml
 
-from ._cli import approved_parent
-from .test_subtickets import PLAN_LETTERS, js, run, ticket
+from ._cli import approved_parent, run, ticket
+from ._cli import js_ok as js
+from ._fixtures import PLAN_LETTERS, ticket_files
 
 
 def planner_run(store: Path, tid: str, plan: str) -> str:
@@ -18,10 +19,6 @@ def planner_run(store: Path, tid: str, plan: str) -> str:
     (store / "runs" / rid / "output.md").write_text(plan)
     js(run(store, "run", "finish", rid))
     return rid
-
-
-def ticket_files(store: Path) -> list[str]:
-    return sorted(p.name for p in (store / "tickets").iterdir())
 
 
 def test_subticket_add_without_a_source_uses_the_recorded_planner_run(tmp_path):

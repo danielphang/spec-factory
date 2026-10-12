@@ -21,74 +21,10 @@ from pathlib import Path
 
 import yaml
 
-from ._cli import BIN, REPO, CliStore
-
-FIXTURE_INSTANCE = Path(__file__).resolve().parent / "fixtures" / "instance"
-
-STANDIN = '''#!{python}
-import json, os, pathlib, sys, time
-cwd = pathlib.Path.cwd(); log = pathlib.Path(os.environ["STANDIN_LOG"])
-with log.open("a") as f:
-    f.write(json.dumps({{"argv": sys.argv[1:], "cwd": str(cwd), "pid": os.getpid(),
-                        "dispatch": os.environ.get("FACTORY_DISPATCH")}}) + "\\n")
-role = cwd.name.split("-", 2)[2]
-plays = json.loads(os.environ.get("STANDIN_PLAYS") or "{{}}").get(role) or [{{"say": ""}}]
-nf = log.with_name(log.name + ".n-" + role); n = int(nf.read_text()) + 1 if nf.exists() else 1
-nf.write_text(str(n)); p = plays[min(n, len(plays)) - 1]
-time.sleep(p.get("sleep", 0))
-text, err = p.get("say", ""), "fail" in p
-if "write" in p:
-    text = "STATUS: %s\\nCONFIDENCE: high, stand-in\\nESCALATIONS: none\\n" % p["write"]
-    (cwd / "output.md").write_text(text)
-elif err:
-    text = p["fail"]
-print(json.dumps({{"type": "result", "is_error": err, "result": text, "session_id": "s-" + cwd.name,
-                  "total_cost_usd": 0.5, "num_turns": 3, "usage": {{"output_tokens": 7}}}}))
-sys.exit(1 if err else 0)
-'''
+from ._cli import BIN, REPO
+from ._fixtures import FIXTURE_INSTANCE, Store
 
 TRIAGE_OK = {"triage": [{"write": "ACCEPT"}], "spec_writer": [{"write": "READY-FOR-CRITIC"}]}
-
-
-class Store(CliStore):
-    """A throwaway store with T-0001 ready for triage, and the stand-in `claude` first on PATH."""
-
-    def __init__(self, tmp_path: Path, instance: Path = FIXTURE_INSTANCE):
-        self.tmp = tmp_path
-        self.root = tmp_path / "state"
-        self.log = tmp_path / "claude.log"
-        bindir = tmp_path / "bin"
-        bindir.mkdir()
-        (bindir / "claude").write_text(STANDIN.format(python=sys.executable))
-        (bindir / "claude").chmod(0o755)
-        self.env = {**os.environ, "FACTORY_STATE": str(self.root), "FACTORY_INSTANCE": str(instance),
-                    "PYTHONDONTWRITEBYTECODE": "1", "STANDIN_LOG": str(self.log),
-                    "PATH": f"{bindir}{os.pathsep}{os.environ['PATH']}"}
-        self.env.pop("FACTORY_DISPATCH", None)
-        req = tmp_path / "req.md"
-        req.write_text("# Fixture\n\nThe bot should do the thing.\n")
-        self.ok("ticket", "new", "--file", str(req))
-
-    def cli(self, *argv: str, plays: dict | None = None) -> subprocess.CompletedProcess:
-        env = {**self.env, "STANDIN_PLAYS": json.dumps(plays or {})}
-        return subprocess.run([str(BIN), *argv], capture_output=True, text=True, env=env, cwd=REPO)
-
-    def drive(self, plays: dict, *extra: str) -> tuple[subprocess.CompletedProcess, dict]:
-        cp = self.cli("drive", "T-0001", *extra, plays=plays)
-        return cp, json.loads(cp.stdout.strip().splitlines()[-1])
-
-    def ticket(self, tid: str = "T-0001") -> dict:
-        return yaml.safe_load((self.root / "tickets" / f"{tid}.yaml").read_text())
-
-    def runs(self) -> list[dict]:
-        return [yaml.safe_load(p.read_text()) for p in sorted(self.root.glob("runs/*/meta.yaml"))]
-
-    def calls(self) -> list[dict]:
-        return [json.loads(ln) for ln in self.log.read_text().splitlines()] if self.log.exists() else []
-
-    def events(self) -> list[str]:
-        return [json.loads(ln)["event"] for p in sorted((self.root / "log").glob("*.jsonl"))
-                for ln in p.read_text().splitlines() if ln.strip()]
 
 
 def test_an_approved_spec_stops_at_the_spec_gate_after_one_revision(tmp_path):

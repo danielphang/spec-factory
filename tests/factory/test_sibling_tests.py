@@ -21,6 +21,7 @@ import pytest
 import yaml
 
 from ._cli import REPO, CliStore, approved_parent
+from ._fixtures import BUILD_DRIVER
 
 PLAN = """ST-1 / Interim
 Depends on: none
@@ -34,24 +35,6 @@ Scope: B, which reads `tests/test_old.py` (added by the base commit)
 Tests to change:
 - `{path}` (added by ST-1): ST-2 replaces the interim behaviour
 Protected paths: none
-"""
-
-# Drives factory/workflows/build.js on parent T-0001: each clerk command runs for real, each role run
-# returns an empty output (a killed run). Prints each park as `park <id>: <reason>`.
-BUILD_DRIVER = r"""
-import { readFileSync } from 'node:fs'
-import { spawnSync } from 'node:child_process'
-const src = readFileSync('factory/workflows/build.js', 'utf8').replace(/^export const meta/m, 'const meta')
-const agent = async (prompt) => {
-  const m = prompt.match(/and nothing else:\n\n([\s\S]*?)\n\nReport/)
-  if (!m) return ''
-  const cp = spawnSync('sh', ['-c', m[1]], { cwd: process.cwd(), encoding: 'utf8' })
-  return { stdout: cp.stdout, exit: cp.status, stderr: cp.stderr }
-}
-const log = (s) => { const p = String(s).match(/^(\S+) parked: (.*)$/s); if (p) console.log(`park ${p[1]}: ${p[2]}`) }
-const fn = new (async () => {}).constructor('args', 'agent', 'log', 'phase', 'parallel', src)
-await fn({ ticket: 'T-0001', repo: process.cwd(), state: process.env.FACTORY_STATE, target: process.env.FACTORY_REPO,
-  integration: 'main', inlineRoles: true }, agent, log, () => {}, async (fs) => Promise.all(fs.map(f => f())))
 """
 
 

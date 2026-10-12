@@ -12,34 +12,15 @@ their identity in GIT_AUTHOR_* / GIT_COMMITTER_*, because the suite runs under a
 """
 from __future__ import annotations
 
-import os
 import subprocess
 from pathlib import Path
 
 import pytest
 
-from .test_instance import cli, git_repo, js, tree
+from ._cli import cli, git_repo, js, tree
+from ._fixtures import BRANCH, IDENT, exclude, git, request, state
 
-BRANCH = "factory-store"
-IDENT = {"GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@t", "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@t"}
 RULE = "role runs may not write the live store"
-
-
-def git(cwd: Path, *argv: str, check: bool = True) -> str:
-    env = {**os.environ, **IDENT}
-    cp = subprocess.run(["git", *argv], cwd=cwd, capture_output=True, text=True, env=env)
-    if check:
-        assert cp.returncode == 0, (argv, cp.stderr)
-    return cp.stdout.strip()
-
-
-def state(t: Path) -> Path:
-    return t / ".factory" / "state"
-
-
-def exclude(t: Path) -> Path:
-    p = Path(git(t, "rev-parse", "--git-path", "info/exclude"))
-    return p if p.is_absolute() else t / p
 
 
 def files(t: Path) -> dict[str, bytes]:
@@ -60,12 +41,6 @@ def target(tmp_path: Path) -> Path:
     cp = init(t, "--repo-name", "demo")
     assert cp.returncode == 0, cp.stderr
     return t
-
-
-def request(tmp_path: Path) -> str:
-    p = tmp_path / "r.md"
-    p.write_text("# demo\n\nDo the thing.\n")
-    return str(p)
 
 
 def start_triage(t: Path, tmp_path: Path) -> Path:
