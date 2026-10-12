@@ -1129,8 +1129,8 @@ feeding its figures to the retro is #42. Earlier sources: prompt changes borrowe
 standard this page follows (#23); each run's scratch directory (#35); the store branch (#46). The
 design document is `docs/design.md`, its changelog `docs/changelog.md`; the working documents from
 building the harness are under `dev/`; the issue index is `dev/issues.md`. The store holds 49
-tickets and 57 sub-tickets at `.factory/store/`; the runtime is at `~/dev/spec-factory-harness`,
-commit `1709f27`, and its harness revision `b1123b0` equals this repo's `harness.lock`.
+tickets and 61 sub-tickets at `.factory/store/`; the runtime is at `~/dev/spec-factory-harness`,
+commit `122e949`, and its harness revision `9349e57` equals this repo's `harness.lock`.
 
 ## Maintaining this page
 
