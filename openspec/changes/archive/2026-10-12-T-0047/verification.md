@@ -80,3 +80,10 @@ Suggested fix: On first use write "T-0045, the ticket that moved the test suite'
 Problem: The request put `_run_dir`, `_by`, `_approval_dir`, `_next_n` and `_text_from` in the common module; the spec keeps each where its only callers are, which is the better rule, but states the rule without saying it departs from the request.
 Evidence: `.factory/store/requests/T-0047.md`, "Shared small helpers (...) go to one common module"; the `ast` walk shows `_by`, `_approval_dir`, `_next_n` used only by human-decision functions and `_run_dir`, `_text_from` only by functions that stay in `cli.py`.
 Suggested fix: Add one clause to Decision 1: "Rejected: the request's wider common list; a helper with callers in one module stays in that module."
+
+## Verifier results
+
+359b3c6c88c10f308523d7d733baf60b5797cdcc · T-0047.1 · VERIFIED · run-0483-verifier
+634117766e31f55980921ec1f9250d3d40e07c04 · T-0047.2 · VERIFIED · run-0488-verifier
+9349e5762e727e570bf0bd0e7ceb90c865387a71 · T-0047.4 · VERIFIED · run-0493-verifier
+c30b80f45a39824b71c7064cc22e2563a53f9438 · T-0047.3 · VERIFIED · run-0491-verifier

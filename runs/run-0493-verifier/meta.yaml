@@ -1,0 +1,25 @@
+run_id: run-0493-verifier
+role: verifier
+ticket: T-0047.4
+model: opus
+round: 1
+spec_version: 2
+started: '2026-10-12T23:07:50+00:00'
+finished: '2026-10-12T23:19:47+00:00'
+wall_s: 717
+status: VERIFIED
+input_sources:
+- specs/T-0047.4/subticket.md
+- specs/T-0047/v2.md
+- runs/run-0492-implementer/output.md
+- runs/run-0493-verifier/diff.patch
+gate_skipped: []
+environment_files: []
+branch: factory/T-0047.4
+base: 43265a02f3ad943ebed963d7246495418c3d2ee8
+head: 9349e5762e727e570bf0bd0e7ceb90c865387a71
+worktree: /Users/dphang/dev/spec-factory/.factory/store/runs/run-0493-verifier/wt
+confidence: high. All three NEW criteria failed on base and pass on the PR, every regression check and
+  both gates passed on head 9349e57, and probes show the moved commands behave the same as on base.
+escalations: []
+escalations_note: null

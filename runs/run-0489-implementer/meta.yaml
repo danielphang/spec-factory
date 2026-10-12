@@ -1,0 +1,24 @@
+run_id: run-0489-implementer
+role: implementer
+ticket: T-0047.3
+model: opus
+round: 0
+spec_version: 2
+started: '2026-10-12T21:31:36+00:00'
+finished: '2026-10-12T22:04:12+00:00'
+wall_s: 1956
+status: READY-FOR-REVIEW
+input_sources:
+- specs/T-0047.3/subticket.md
+- specs/T-0047/v2.md
+gate_skipped: []
+branch: factory/T-0047.3
+base: 57b46e18ca48c71254487dec086b27c3d34ec79c
+head: 57b46e18ca48c71254487dec086b27c3d34ec79c
+worktree: /Users/dphang/dev/spec-factory/.factory/store/worktrees/T-0047.3
+resolution: null
+environment_files: []
+confidence: high. Every NEW, REGRESSION and gate command passed on `c30b80f`, and M shows no moved definition
+  changed its text.
+escalations: []
+escalations_note: null

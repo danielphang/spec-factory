@@ -1,0 +1,31 @@
+run_id: run-0491-verifier
+role: verifier
+ticket: T-0047.3
+model: opus
+round: 1
+spec_version: 2
+started: '2026-10-12T22:04:47+00:00'
+finished: '2026-10-12T22:34:08+00:00'
+wall_s: 1761
+status: VERIFIED
+input_sources:
+- specs/T-0047.3/subticket.md
+- specs/T-0047/v2.md
+- runs/run-0489-implementer/output.md
+- runs/run-0491-verifier/diff.patch
+gate_skipped: []
+environment_files: []
+branch: factory/T-0047.3
+base: 57b46e18ca48c71254487dec086b27c3d34ec79c
+head: c30b80f45a39824b71c7064cc22e2563a53f9438
+worktree: /Users/dphang/dev/spec-factory/.factory/store/runs/run-0491-verifier/wt
+confidence: high. Every acceptance and gate command ran exactly as written on `c30b80f`, and each NEW
+  criterion that can discriminate failed on base for the reason the spec gives. An independent AST check
+  and behaviour probes show the moved code is byte-identical and behaves the same as on base.
+escalations:
+- 1. The sub-ticket labels `git diff --check main...HEAD -- README.md docs/principles.md` a NEW intermediate
+  check. It cannot fail on base, because on base `main...HEAD` is an empty diff. It is a guard against
+  whitespace errors, not a criterion that tells base and PR apart, and the gate's `git diff --check main...HEAD`
+  already covers it. I did not count this as a SPEC-DEFECT, because the check passing on both commits
+  says nothing about whether the change works. Future plans should label such guards REGRESSION.
+escalations_note: null

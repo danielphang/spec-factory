@@ -4,7 +4,7 @@ title: 'De-bloat D: split factory/cli.py into modules by job (drift, setup, gate
   cli.py keeping the parser and main'
 request: requests/T-0047.md
 source: /private/tmp/claude-501/-Users-dphang-dev-nanobot/c69bfd1d-97a6-43e3-9d5a-a517c28d382c/scratchpad/debloat/d-split.md
-status: planned
+status: closed
 round:
   spec: 1
   pr: 0
@@ -49,6 +49,18 @@ history:
   round:
     spec: 1
     pr: 0
+- ts: '2026-10-12T23:20:53+00:00'
+  from: planned
+  to: ready-for-parent-verify
+  by: parent-check
+- ts: '2026-10-12T23:45:47+00:00'
+  from: ready-for-parent-verify
+  to: closed
+  by: workflow
+  round:
+    spec: 1
+    pr: 0
+  verified_by: run-0495-verifier
 parent: null
 depends_on: []
 parallel_safe: true

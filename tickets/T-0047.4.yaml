@@ -3,10 +3,10 @@ type: sub-ticket
 title: Move the human decisions to factory/human.py, leaving factory/cli.py under 900 lines
 request: requests/T-0047.md
 source: plan:run-0480-planner
-status: waiting-dependencies
+status: merged
 round:
   spec: 0
-  pr: 0
+  pr: 1
 spec:
   version: 2
   approved_version: 2
@@ -14,16 +14,40 @@ plan: null
 in_flight: []
 parked: null
 created: '2026-10-12T18:12:55+00:00'
-history: []
+history:
+- ts: '2026-10-12T22:34:55+00:00'
+  from: waiting-dependencies
+  to: ready-for-implementer
+  by: merge
+- ts: '2026-10-12T23:07:32+00:00'
+  from: ready-for-implementer
+  to: checks-in-flight
+  by: workflow
+  round:
+    spec: 0
+    pr: 1
+- ts: '2026-10-12T23:20:24+00:00'
+  from: checks-in-flight
+  to: ready-for-merge
+  by: workflow
+  round:
+    spec: 0
+    pr: 1
+- ts: '2026-10-12T23:20:32+00:00'
+  from: ready-for-merge
+  to: merged
+  by: merge
+  head: 9349e5762e727e570bf0bd0e7ceb90c865387a71
 parent: T-0047
 depends_on:
 - T-0047.3
 parallel_safe: false
-branch: null
-head: null
+branch: factory/T-0047.4
+head: 9349e5762e727e570bf0bd0e7ceb90c865387a71
 merge:
-  base_before: null
-  main_after: null
+  base_before: 43265a02f3ad943ebed963d7246495418c3d2ee8
+  main_after: 122e949a9d865f40c3db3104b4908e29e67b5021
 parent_base: null
 label: T-0047.4
 planned_from: 2
+merge_refused: null

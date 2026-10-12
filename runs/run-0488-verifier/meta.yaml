@@ -1,0 +1,36 @@
+run_id: run-0488-verifier
+role: verifier
+ticket: T-0047.2
+model: opus
+round: 1
+spec_version: 2
+started: '2026-10-12T20:40:36+00:00'
+finished: '2026-10-12T21:30:09+00:00'
+wall_s: 2973
+status: VERIFIED
+input_sources:
+- specs/T-0047.2/subticket.md
+- specs/T-0047/v2.md
+- runs/run-0484-implementer/output.md
+- runs/run-0488-verifier/diff.patch
+gate_skipped: []
+environment_files: []
+branch: factory/T-0047.2
+base: 700ce73e216d1fe5d218a9fe9b46e53545cf6674
+head: 634117766e31f55980921ec1f9250d3d40e07c04
+worktree: /Users/dphang/dev/spec-factory/.factory/store/runs/run-0488-verifier/wt
+confidence: medium. Every acceptance command and both gates passed, M shows no definition text changed,
+  and the probes behave the same on both heads. But one full-suite run on HEAD failed one test that I
+  could not identify (see ESCALATIONS).
+escalations:
+- 'One full-suite run on the PR head failed one test, and passed on rerun. My first R12 run printed `1
+  failed, 575 passed`. R12 runs the harness suite and prints only its last line, so I don''t know which
+  test failed. The rerun on HEAD passed, and so did R12 on the base, my gate run and my R4 run. Counting
+  the implementer''s runs too, the full suite failed 3 times out of 8 on this head and 0 times out of
+  2 on the base. The implementer named the failing test both times: `tests/factory/test_drive_build.py::test_build_step_lines_and_the_status_file_name_the_subticket_in_flight`,
+  a timing-sensitive test. The parent spec and T-0047.1 record the same test failing once under load.
+  A change that only moves definitions between modules, with M at `added=0 removed=0`, cannot plausibly
+  change that test''s timing. So I count R12 as passing on rerun, as the spec''s note on R4 allows. The
+  failure rate is still high enough to deserve its own issue, because it makes every harness verification
+  depend on reruns.'
+escalations_note: null

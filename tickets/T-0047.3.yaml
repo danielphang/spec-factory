@@ -3,10 +3,10 @@ type: sub-ticket
 title: Move the gates to factory/gates.py, and name gates.py in the README and the principles
 request: requests/T-0047.md
 source: plan:run-0480-planner
-status: waiting-dependencies
+status: merged
 round:
   spec: 0
-  pr: 0
+  pr: 1
 spec:
   version: 2
   approved_version: 2
@@ -14,16 +14,40 @@ plan: null
 in_flight: []
 parked: null
 created: '2026-10-12T18:12:55+00:00'
-history: []
+history:
+- ts: '2026-10-12T21:31:06+00:00'
+  from: waiting-dependencies
+  to: ready-for-implementer
+  by: merge
+- ts: '2026-10-12T22:04:30+00:00'
+  from: ready-for-implementer
+  to: checks-in-flight
+  by: workflow
+  round:
+    spec: 0
+    pr: 1
+- ts: '2026-10-12T22:34:47+00:00'
+  from: checks-in-flight
+  to: ready-for-merge
+  by: workflow
+  round:
+    spec: 0
+    pr: 1
+- ts: '2026-10-12T22:34:55+00:00'
+  from: ready-for-merge
+  to: merged
+  by: merge
+  head: c30b80f45a39824b71c7064cc22e2563a53f9438
 parent: T-0047
 depends_on:
 - T-0047.2
 parallel_safe: false
-branch: null
-head: null
+branch: factory/T-0047.3
+head: c30b80f45a39824b71c7064cc22e2563a53f9438
 merge:
-  base_before: null
-  main_after: null
+  base_before: 57b46e18ca48c71254487dec086b27c3d34ec79c
+  main_after: 43265a02f3ad943ebed963d7246495418c3d2ee8
 parent_base: null
 label: T-0047.3
 planned_from: 2
+merge_refused: null

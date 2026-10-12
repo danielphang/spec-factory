@@ -1,0 +1,23 @@
+run_id: run-0495-verifier
+role: verifier
+ticket: T-0047
+model: opus
+round: 0
+spec_version: 2
+started: '2026-10-12T23:21:11+00:00'
+finished: '2026-10-12T23:45:21+00:00'
+wall_s: 1450
+status: VERIFIED
+input_sources:
+- specs/T-0047/v2.md
+gate_skipped: []
+environment_files: []
+branch: null
+base: 62030967710765e996fb3d752386f9ce8dec6abc
+head: 122e949a9d865f40c3db3104b4908e29e67b5021
+worktree: /Users/dphang/dev/spec-factory/.factory/store/runs/run-0495-verifier/wt
+confidence: high. All 27 scenarios and both gates ran on 122e949 with the expected output. All 8 NEW scenarios
+  fail on base for the reasons the spec states. Probes show identical command wiring, identical CLI behaviour
+  and no definition text changed.
+escalations: []
+escalations_note: null

@@ -3,7 +3,7 @@ type: sub-ticket
 title: Move instance and store setup to factory/setup.py
 request: requests/T-0047.md
 source: plan:run-0480-planner
-status: checks-in-flight
+status: merged
 round:
   spec: 0
   pr: 1
@@ -38,6 +38,18 @@ history:
   resolve: redispatch
   head: 634117766e31f55980921ec1f9250d3d40e07c04
   superseded: []
+- ts: '2026-10-12T21:30:56+00:00'
+  from: checks-in-flight
+  to: ready-for-merge
+  by: workflow
+  round:
+    spec: 0
+    pr: 1
+- ts: '2026-10-12T21:31:06+00:00'
+  from: ready-for-merge
+  to: merged
+  by: merge
+  head: 634117766e31f55980921ec1f9250d3d40e07c04
 parent: T-0047
 depends_on:
 - T-0047.1
@@ -45,8 +57,9 @@ parallel_safe: false
 branch: factory/T-0047.2
 head: 634117766e31f55980921ec1f9250d3d40e07c04
 merge:
-  base_before: null
-  main_after: null
+  base_before: 700ce73e216d1fe5d218a9fe9b46e53545cf6674
+  main_after: 57b46e18ca48c71254487dec086b27c3d34ec79c
 parent_base: null
 label: T-0047.2
 planned_from: 2
+merge_refused: null
