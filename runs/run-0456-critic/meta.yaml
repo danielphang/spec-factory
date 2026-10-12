@@ -1,0 +1,19 @@
+run_id: run-0456-critic
+role: critic
+ticket: T-0045
+model: fable
+round: 1
+spec_version: 1
+started: '2026-10-12T02:22:11+00:00'
+finished: '2026-10-12T02:27:44+00:00'
+wall_s: 333
+status: REVISE
+input_sources:
+- specs/T-0045/v1.md
+- openspec/specs/harness-suite/spec.md
+- decisions.md
+- openspec/changes/T-0044/proposal.md
+confidence: high, every Evidence figure reproduced by running the spec's own commands; the blocking finding
+  rests on T-0044's design text and the two cited test lines, both read.
+escalations: []
+escalations_note: null

@@ -1,0 +1,24 @@
+run_id: run-0452-implementer
+role: implementer
+ticket: T-0044.1
+model: opus
+round: 0
+spec_version: 2
+started: '2026-10-12T01:42:42+00:00'
+finished: '2026-10-12T01:58:24+00:00'
+wall_s: 942
+status: READY-FOR-REVIEW
+input_sources:
+- specs/T-0044.1/subticket.md
+- specs/T-0044/v2.md
+gate_skipped: []
+branch: factory/T-0044.1
+base: 0ba4e4f637a6ab019774f439727b5a15ddc425cf
+head: 0ba4e4f637a6ab019774f439727b5a15ddc425cf
+worktree: /Users/dphang/dev/spec-factory/.factory/store/worktrees/T-0044.1
+resolution: null
+environment_files: []
+confidence: high. Every NEW command failed before the change and passes after, with the spec's exact values.
+  Both gates and all three regression commands pass on head `53047c5`.
+escalations: []
+escalations_note: null

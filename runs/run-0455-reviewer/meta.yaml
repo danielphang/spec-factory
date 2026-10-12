@@ -1,0 +1,26 @@
+run_id: run-0455-reviewer
+role: reviewer
+ticket: T-0044.1
+model: fable
+round: 1
+spec_version: 2
+started: '2026-10-12T01:58:57+00:00'
+finished: '2026-10-12T02:00:55+00:00'
+wall_s: 118
+status: APPROVE
+input_sources:
+- specs/T-0044.1/subticket.md
+- specs/T-0044/v2.md
+- runs/run-0452-implementer/output.md
+- runs/run-0455-reviewer/diff.patch
+gate_skipped: []
+environment_files: []
+branch: factory/T-0044.1
+base: 0ba4e4f637a6ab019774f439727b5a15ddc425cf
+head: 53047c59fcd462510650e752a40d3d294f0486fc
+worktree: /Users/dphang/dev/spec-factory/.factory/store/runs/run-0455-reviewer/wt
+confidence: high. Every hunk in the diff maps to a lettered part of the approved spec, greps on the head
+  confirm no remaining reference to any deleted name or to a `repo_root(cfg)` call or patch, and the only
+  test edits are the lines the spec lists.
+escalations: []
+escalations_note: null

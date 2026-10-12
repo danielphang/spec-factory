@@ -1,0 +1,25 @@
+run_id: run-0454-verifier
+role: verifier
+ticket: T-0044.1
+model: opus
+round: 1
+spec_version: 2
+started: '2026-10-12T01:58:57+00:00'
+finished: '2026-10-12T02:13:24+00:00'
+wall_s: 867
+status: VERIFIED
+input_sources:
+- specs/T-0044.1/subticket.md
+- specs/T-0044/v2.md
+- runs/run-0452-implementer/output.md
+- runs/run-0454-verifier/diff.patch
+gate_skipped: []
+environment_files: []
+branch: factory/T-0044.1
+base: 0ba4e4f637a6ab019774f439727b5a15ddc425cf
+head: 53047c59fcd462510650e752a40d3d294f0486fc
+worktree: /Users/dphang/dev/spec-factory/.factory/store/runs/run-0454-verifier/wt
+confidence: high. All six NEW criteria fail on base with the stated values and pass on the PR; all three
+  regressions and both gates pass on 53047c5; the probes show the behaviour holds beyond the tested inputs.
+escalations: []
+escalations_note: null

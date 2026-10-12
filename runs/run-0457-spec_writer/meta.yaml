@@ -1,0 +1,21 @@
+run_id: run-0457-spec_writer
+role: spec_writer
+ticket: T-0045
+model: opus
+round: 2
+spec_version: 1
+started: '2026-10-12T02:28:03+00:00'
+finished: '2026-10-12T02:34:37+00:00'
+wall_s: 394
+status: NEEDS-SPLIT
+input_sources:
+- runs/run-0451-triage/output.md
+- requests/T-0045.md
+- openspec/specs/harness-suite/spec.md
+- decisions.md
+- runs/run-0456-critic/output.md
+- specs/T-0045/v1.md
+confidence: high. Both rewritten comparison commands were run on `0ba4e4f` and in a simulated interleaved-merge
+  clone, under bash and zsh. The other scenarios are unchanged from v1 and the critic reproduced them.
+escalations: []
+escalations_note: null

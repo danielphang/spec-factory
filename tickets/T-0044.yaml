@@ -3,14 +3,14 @@ type: chore
 title: 'De-bloat A: delete dead code, redundant lines and stale docstrings in the harness'
 request: requests/T-0044.md
 source: /private/tmp/claude-501/-Users-dphang-dev-nanobot/c69bfd1d-97a6-43e3-9d5a-a517c28d382c/scratchpad/debloat/a-dead.md
-status: ready-for-planner
+status: planned
 round:
   spec: 2
   pr: 0
 spec:
   version: 2
   approved_version: 2
-plan: null
+plan: plans/T-0044.md
 in_flight: []
 parked: null
 created: '2026-10-12T00:32:01+00:00'
@@ -55,6 +55,13 @@ history:
   to: ready-for-planner
   by: dphang
   approved_version: 2
+- ts: '2026-10-12T01:42:16+00:00'
+  from: ready-for-planner
+  to: planned
+  by: workflow
+  round:
+    spec: 2
+    pr: 0
 parent: null
 depends_on: []
 parallel_safe: true

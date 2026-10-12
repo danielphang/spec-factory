@@ -1,0 +1,20 @@
+run_id: run-0453-spec_writer
+role: spec_writer
+ticket: T-0045
+model: opus
+round: 0
+spec_version: 0
+started: '2026-10-12T01:43:47+00:00'
+finished: '2026-10-12T02:21:44+00:00'
+wall_s: 2277
+status: NEEDS-SPLIT
+input_sources:
+- runs/run-0451-triage/output.md
+- requests/T-0045.md
+- openspec/specs/harness-suite/spec.md
+- decisions.md
+confidence: medium. Each acceptance command was run on the base and its output is quoted. The bytecode
+  fix was prototyped in a clone and the suite passed at 577. The size estimates for the four parts and
+  the claim that every listed site can take the shared helper unchanged were not prototyped.
+escalations: []
+escalations_note: null

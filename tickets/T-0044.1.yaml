@@ -1,0 +1,69 @@
+id: T-0044.1
+type: sub-ticket
+title: 'De-bloat A: delete dead code, redundant lines and stale docstrings in the harness'
+request: requests/T-0044.md
+source: plan:whole-spec
+status: checks-in-flight
+round:
+  spec: 0
+  pr: 1
+spec:
+  version: 2
+  approved_version: 2
+plan: null
+in_flight: []
+parked: null
+created: '2026-10-12T01:42:07+00:00'
+history:
+- ts: '2026-10-12T01:58:41+00:00'
+  from: ready-for-implementer
+  to: checks-in-flight
+  by: workflow
+  round:
+    spec: 0
+    pr: 1
+- ts: '2026-10-12T02:14:09+00:00'
+  from: checks-in-flight
+  to: ready-for-merge
+  by: workflow
+  round:
+    spec: 0
+    pr: 1
+- ts: '2026-10-12T02:14:27+00:00'
+  from: ready-for-merge
+  to: parked
+  by: park
+  reason: 'BLOCKED from merge gate: protected paths not declared in T-0044 spec v2: factory/cli.py, factory/compose.py,
+    factory/gitops.py, factory/instance.template.yaml, factory/specstore.py, factory/store.py'
+- ts: '2026-10-12T04:37:24+00:00'
+  from: parked
+  to: checks-in-flight
+  by: dphang
+  resolve: accept-paths
+  ruling: approvals/T-0044.1/ruling-1.md
+  head: 53047c59fcd462510650e752a40d3d294f0486fc
+  accepted:
+  - factory/cli.py
+  - factory/compose.py
+  - factory/gitops.py
+  - factory/instance.template.yaml
+  - factory/specstore.py
+  - factory/store.py
+parent: T-0044
+depends_on: []
+parallel_safe: true
+branch: factory/T-0044.1
+head: 53047c59fcd462510650e752a40d3d294f0486fc
+merge:
+  base_before: null
+  main_after: null
+parent_base: null
+label: whole-spec
+planned_from: 2
+accepted_paths:
+- factory/cli.py
+- factory/compose.py
+- factory/gitops.py
+- factory/instance.template.yaml
+- factory/specstore.py
+- factory/store.py
