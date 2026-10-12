@@ -1,0 +1,27 @@
+id: T-0050
+type: null
+title: 'The harness owns each role''s model: run start refuses a --model the instance doesn''t name (spec-factory
+  #107)'
+request: requests/T-0050.md
+source: /private/tmp/claude-501/-Users-dphang-dev-nanobot/c69bfd1d-97a6-43e3-9d5a-a517c28d382c/scratchpad/req-107.md
+status: ready-for-triage
+round:
+  spec: 0
+  pr: 0
+spec:
+  version: 0
+  approved_version: null
+plan: null
+in_flight: []
+parked: null
+created: '2026-10-12T23:48:25+00:00'
+history: []
+parent: null
+depends_on: []
+parallel_safe: true
+branch: null
+head: null
+merge:
+  base_before: null
+  main_after: null
+parent_base: null
