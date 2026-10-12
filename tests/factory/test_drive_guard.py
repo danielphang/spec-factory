@@ -20,17 +20,18 @@ from pathlib import Path
 
 import pytest
 
-from .test_drive import STANDIN, Store
-from .test_drive_build import BuildStore
-from .test_instance import cli, js, tree
-from .test_live_store_guard import (  # noqa: F401  (target is a fixture)
+from ._cli import cli, js, tree
+from ._fixtures import (  # noqa: F401  (target is a fixture)
+    STANDIN,
+    BuildStore,
+    Store,
     assert_refused,
-    request,
     snapshot,
     start_triage,
     state,
     target,
 )
+from ._fixtures import other_request as request
 
 REJECT = {"triage": [{"write": "REJECT"}]}
 

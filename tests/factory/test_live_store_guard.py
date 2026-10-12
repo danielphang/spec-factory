@@ -12,54 +12,15 @@ change a result; a case that needs the marker passes it explicitly.
 """
 from __future__ import annotations
 
-from pathlib import Path
-
-import pytest
-
-from .test_instance import cli, git_repo, js, tree
-
-RULE = "role runs may not write the live store"
-
-
-@pytest.fixture
-def target(tmp_path: Path) -> Path:
-    t = git_repo(tmp_path / "target")
-    cp = cli(t, "init", "--repo-name", "demo")
-    assert cp.returncode == 0, cp.stderr
-    req = tmp_path / "r.md"
-    req.write_text("# demo\n\nDo the thing.\n")
-    assert cli(t, "ticket", "new", "--file", str(req)).returncode == 0
-    return t
-
-
-def state(target: Path) -> Path:
-    return target / ".factory" / "state"
-
-
-def start_triage(target: Path) -> str:
-    cp = cli(target, "run", "start", "--role", "triage", "--ticket", "T-0001")
-    assert cp.returncode == 0, cp.stderr
-    return js(cp)["run_id"]
-
-
-def snapshot(target: Path) -> dict[str, bytes]:
-    return {**tree(target / ".factory"), **tree(target / ".claude")}
-
-
-def request(tmp_path: Path) -> str:
-    p = tmp_path / "r2.md"
-    p.write_text("# other\n\nDo another thing.\n")
-    return str(p)
-
-
-def assert_refused(cp, *details: str) -> None:
-    assert cp.returncode == 2, (cp.returncode, cp.stdout, cp.stderr)
-    assert RULE in cp.stderr and "use a throwaway FACTORY_STATE" in cp.stderr
-    assert "FACTORY_DISPATCH" not in cp.stderr + cp.stdout
-    assert js(cp) == {"ok": False, "error": cp.stderr.strip()}
-    for d in details:
-        assert d in cp.stderr
-
+from ._cli import cli, js
+from ._fixtures import (  # noqa: F401  (target is a fixture)
+    assert_refused,
+    snapshot,
+    start_triage,
+    state,
+    target,
+)
+from ._fixtures import other_request as request
 
 # ----- in flight ------------------------------------------------------------------------------
 

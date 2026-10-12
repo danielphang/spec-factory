@@ -8,45 +8,7 @@ import yaml
 
 from ._cli import REPO, approved_parent, run, ticket
 from ._cli import js_ok as js
-
-PLAN_LETTERS = """# Plan — T-0001: alert the operator
-
-## Grounding for this plan
-Checked on this base.
-
-## Fixture (prelude for every sub-ticket)
-```
-cat > /tmp/fx.py <<'PY'
-## not a heading
-PY
-```
-
-## T-0001-A / Emit the truncation event
-**Depends on:** none. Lands first.
-
-**Parallel-safe:** yes, alongside T-0001-C. The two edit disjoint files.
-
-Scope: A
-
-## T-0001-C / Retire the margin signal
-**Depends on:** none. Lands second, before T-0001-B.
-
-**Parallel-safe:** yes, alongside T-0001-A (disjoint files).
-
-## T-0001-B / Re-anchor the check
-**Depends on:** T-0001-C.
-
-**Parallel-safe:** no. Same file as T-0001-C.
-
-## Coverage map
-- criterion 1 → T-0001-A
-
-## Out-of-scope observations
-none
-STATUS: PLANNED
-CONFIDENCE: high, fixture
-ESCALATIONS: none
-"""
+from ._fixtures import PLAN_LETTERS
 
 PLAN_ST = """# Plan — T-0002 (SPEC-26): warn before a prompt stops fitting
 

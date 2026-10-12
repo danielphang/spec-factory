@@ -23,8 +23,8 @@ from pathlib import Path
 import pytest
 import yaml
 
-from .test_instance import REPO, STRIP, cli, git_repo, js, tree
-from .test_store_branch import BRANCH, IDENT, exclude, git, request, state
+from ._cli import REPO, STRIP, cli, git_repo, js, tree
+from ._fixtures import BRANCH, IDENT, exclude, git, request, state
 
 NEW = ".factory/store"
 SCRATCH = "runs/run-0001-triage/scratch"

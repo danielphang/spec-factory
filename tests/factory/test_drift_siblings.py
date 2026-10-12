@@ -16,11 +16,17 @@ import subprocess
 import pytest
 import yaml
 
-from . import test_spec_amend
-from .test_spec_amend import V2, Fixture
-from .test_spec_drift import drifted, head, implementer_runs, land, start, started
-
-f = test_spec_amend.f  # the t0027-amend.sh store fixture, shared with test_spec_amend
+from ._fixtures import (  # noqa: F401  (f is the t0027-amend.sh store fixture)
+    V2,
+    Fixture,
+    drifted,
+    f,
+    head,
+    implementer_runs,
+    land,
+    start,
+    started,
+)
 
 ST1_THEN_ST2 = "ST-1 / First\nDepends on: none\nParallel-safe: yes\n\nST-2 / Second\nDepends on: ST-1\nParallel-safe: yes\n"
 ONE = "ST-1 / First\nDepends on: none\nParallel-safe: yes\n"

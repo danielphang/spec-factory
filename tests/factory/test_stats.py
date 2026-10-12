@@ -19,9 +19,9 @@ import os
 import subprocess
 from pathlib import Path
 
-from .test_instance import BIN, STRIP, js, tree
-from .test_instance import cli as factory_cli
-from .test_live_store_guard import snapshot, start_triage, state, target  # noqa: F401  (target is a fixture)
+from ._cli import BIN, STRIP, js, tree
+from ._cli import cli as factory_cli
+from ._fixtures import snapshot, start_triage, state, target  # noqa: F401  (target is a fixture)
 
 # store, run id, ticket, model, spec_version, started, finished, wall_s, status
 RUNS = [

@@ -10,26 +10,13 @@ from __future__ import annotations
 
 import yaml
 
-from .test_shepherd import built_to_implementer
+from ._fixtures import _build, _parent_verifier_runs, built_to_implementer
 
 TWO_COVERING = ("T-0001.1 / First\n  Depends on: none\n  Parallel-safe: yes\n  Acceptance: asked once\n\n"
                 "T-0001.2 / Second\n  Depends on: T-0001.1\n  Parallel-safe: yes\n  Acceptance: asked once\n\n"
                 "Coverage map: asked once → T-0001.1, T-0001.2\n")
 UNCOVERED = ("T-0001.1 / Do the thing\n  Depends on: none\n  Parallel-safe: yes\n  Acceptance: the check\n\n"
              "Coverage map: the check → T-0001.1\n")
-
-
-def _parent_verifier_runs(f, tid: str) -> list[str]:
-    return [p.parent.name for p in (f.store / "runs").glob("*-verifier/meta.yaml")
-            if yaml.safe_load(p.read_text())["ticket"] == tid]
-
-
-def _build(f, st: str, file: str = "thing.txt"):
-    f.dispatch("implementer", st, stub="accept-approve/implementer-1.md", file=file)
-    f.dispatch("reviewer", st, stub="accept-approve/reviewer-1.md")
-    ver = f.dispatch("verifier", st, stub="accept-approve/verifier-1.md")
-    assert f.state(st) == "merged"
-    return ver
 
 
 def _assert_parent_close_still_required(f, tid: str) -> None:

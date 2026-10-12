@@ -11,9 +11,9 @@ import subprocess
 
 import pytest
 
-from ._cli import approved_parent
-from .test_build_startup import ticket_files
-from .test_subtickets import js, run
+from ._cli import approved_parent, run
+from ._cli import js_ok as js
+from ._fixtures import ticket_files
 
 
 @pytest.fixture

@@ -10,7 +10,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from ._cli import REPO, js, run, ticket  # noqa: F401  (test_role_inputs.py imports REPO from here)
+from ._cli import js, run, ticket
 
 TRAILER = "\nSTATUS: {s}\nCONFIDENCE: high, fixture\nESCALATIONS: none\n"
 

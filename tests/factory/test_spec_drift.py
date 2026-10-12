@@ -14,63 +14,27 @@ design names `src/greet.py`, is approved.
 """
 from __future__ import annotations
 
-import json
 import shutil
 import subprocess
 
 import pytest
 import yaml
 
-from . import test_spec_amend
-from .test_sibling_tests import BUILD_DRIVER
-from .test_spec_amend import REPO, V1, V2, Fixture
-
-f = test_spec_amend.f  # the t0027-amend.sh store fixture, shared with test_spec_amend
+from ._cli import REPO
+from ._fixtures import (  # noqa: F401  (f is the t0027-amend.sh store fixture)
+    BUILD_DRIVER,
+    V1,
+    V2,
+    drifted,
+    f,
+    head,
+    implementer_runs,
+    land,
+    start,
+    started,
+)
 
 TWO = "ST-1 / First\nDepends on: none\nParallel-safe: yes\n\nST-2 / Second\nDepends on: {deps}\nParallel-safe: yes\n{extra}"
-
-
-def land(f: Fixture, *files: str) -> str:
-    """One commit on the target's main that appends a line to each file; returns its sha."""
-    for rel in files:
-        p = f.target / rel
-        p.parent.mkdir(parents=True, exist_ok=True)
-        with p.open("a") as fh:
-            fh.write(f"# {rel}\n")
-    git = ["git", "-C", str(f.target), "-c", "user.email=f@x", "-c", "user.name=f"]
-    subprocess.run([*git, "add", "-A"], check=True)
-    subprocess.run([*git, "commit", "-qm", f"land {' '.join(files)}"], check=True)
-    return head(f)
-
-
-def head(f: Fixture) -> str:
-    return subprocess.run(["git", "-C", str(f.target), "rev-parse", "main"], capture_output=True, text=True,
-                          check=True).stdout.strip()
-
-
-def start(f: Fixture, tid: str = "T-0001.1") -> subprocess.CompletedProcess:
-    return f.cli("run", "start", "--role", "implementer", "--ticket", tid)
-
-
-def implementer_runs(f: Fixture) -> list[str]:
-    d = f.store / "runs"
-    return sorted(p.name for p in d.iterdir() if p.name.endswith("-implementer")) if d.exists() else []
-
-
-def drifted(f: Fixture, cp: subprocess.CompletedProcess, tid: str = "T-0001.1") -> str:
-    """Assert a drift refusal that reserved no run and wrote nothing to the sub-ticket; return its error."""
-    assert cp.returncode == 2, cp.stdout + cp.stderr
-    error = json.loads(cp.stdout.strip().splitlines()[-1])["error"]
-    assert error.startswith("BLOCKED from harness: spec drift: ")
-    assert error.endswith(f"Amend the spec (`spec amend T-0001`) or rule (`resolve {tid} --ruling F`)")
-    assert implementer_runs(f) == []
-    sub = f.ticket(tid)
-    assert sub["status"] == "ready-for-implementer" and sub["in_flight"] == [] and not sub.get("branch")
-    return error
-
-
-def started(cp: subprocess.CompletedProcess) -> None:
-    assert cp.returncode == 0, cp.stdout + cp.stderr
 
 
 # ----- the record -----------------------------------------------------------------------------

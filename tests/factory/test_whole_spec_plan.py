@@ -20,8 +20,7 @@ import pytest
 import yaml
 
 from ._cli import CliStore, git_repo
-from .test_parent_close_reuse import _build, _parent_verifier_runs
-from .test_shepherd import Shepherd
+from ._fixtures import Shepherd, _build, _parent_verifier_runs
 
 REASON = "one sub-ticket: no NEEDS-SPLIT, no seam heading, no earlier planner run"
 SPEC_WRITER_OUTPUT = """=== proposal.md

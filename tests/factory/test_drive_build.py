@@ -12,86 +12,16 @@ import json
 import os
 import signal
 import subprocess
-import sys
 import tempfile
 import time
 
 import yaml
 
-from ._cli import approved_parent, git_repo
-from .test_drive import BIN, REPO, Store
-
-STANDIN = '''#!{python}
-import json, os, pathlib, re, sys, time
-t0 = time.time()
-cwd = pathlib.Path.cwd(); log = pathlib.Path(os.environ["STANDIN_LOG"])
-with log.open("a") as f:
-    f.write(json.dumps({{"argv": sys.argv[1:], "cwd": str(cwd), "pid": os.getpid(),
-                        "dispatch": os.environ.get("FACTORY_DISPATCH")}}) + "\\n")
-role = cwd.name.split("-", 2)[2]
-plays = json.loads(os.environ.get("STANDIN_PLAYS") or "{{}}").get(role) or [{{"say": ""}}]
-nf = log.with_name(log.name + ".n-" + role); n = int(nf.read_text()) + 1 if nf.exists() else 1
-nf.write_text(str(n)); p = plays[min(n, len(plays)) - 1]
-time.sleep(p.get("sleep", 0))
-text, err = p.get("say", ""), "fail" in p
-if "write" in p:
-    head = re.search(r"^head: '?([0-9a-f]{{40}})", (cwd / "meta.yaml").read_text(), re.M)
-    text = (("Commit: %s\\n" % head[1]) if head else "") + ("Gate suite: PASS\\n" if role == "verifier" else "")
-    text += "STATUS: %s\\nCONFIDENCE: high, stand-in\\nESCALATIONS: none\\n" % p["write"]
-    (cwd / "output.md").write_text(text)
-elif err:
-    text = p["fail"]
-with log.with_name(log.name + ".times").open("a") as f:
-    f.write("%f %f\\n" % (t0, time.time()))
-print(json.dumps({{"type": "result", "is_error": err, "result": text, "session_id": "s-" + cwd.name,
-                  "total_cost_usd": 0.5, "num_turns": 3, "usage": {{"output_tokens": 7}}}}))
-sys.exit(1 if err else 0)
-'''
+from ._cli import BIN, REPO
+from ._fixtures import BuildStore, Store
 
 OK_PLAYS = {"implementer": [{"write": "READY-FOR-REVIEW"}], "reviewer": [{"write": "APPROVE"}],
             "verifier": [{"write": "VERIFIED"}]}
-
-
-class BuildStore(Store):
-    """Part A's store, with T-0001 approved at the spec gate (ready for its planner; a one-section
-    spec, so the planner is skipped), a scratch git repository as the target, and this file's
-    stand-in `claude`."""
-
-    def __init__(self, tmp_path):
-        super().__init__(tmp_path)
-        (tmp_path / "bin" / "claude").write_text(STANDIN.format(python=sys.executable))
-        spec = tmp_path / "spec.md"
-        spec.write_text("## Problem\nx\n")
-        approved_parent(self.ok, "T-0001", spec)
-        self.target = git_repo(tmp_path / "target")
-        self.env.update(FACTORY_REPO=str(self.target), FACTORY_INTEGRATION_BRANCH="main")
-
-    def git(self, *argv: str, cwd=None) -> str:
-        cp = subprocess.run(["git", "-c", "user.email=f@x", "-c", "user.name=f", *argv], cwd=cwd or self.target,
-                            capture_output=True, text=True, check=True)
-        return cp.stdout.strip()
-
-    def two_subtickets_at_checks(self) -> None:
-        """T-0001 planned into T-0001.1 and T-0001.2, independent, each at checks-in-flight on its own commit."""
-        plan = self.tmp / "plan.md"
-        plan.write_text("ST-1 / One\nDepends on: none\nParallel-safe: yes\n\n"
-                        "ST-2 / Two\nDepends on: none\nParallel-safe: yes\n")
-        self.ok("subticket", "add", "T-0001", "--file", str(plan))
-        self.ok("ticket", "transition", "T-0001", "--to", "planned", "--by", "t")
-        for i in (1, 2):
-            self.git("checkout", "-qb", f"factory/T-0001.{i}", "main")
-            (self.target / f"f{i}.txt").write_text(f"{i}\n")
-            self.git("add", f"f{i}.txt")
-            self.git("commit", "-qm", f"w{i}")
-            self.git("checkout", "-q", "main")
-            head = self.git("rev-parse", f"factory/T-0001.{i}")
-            self.ok("ticket", "set", f"T-0001.{i}", "status=checks-in-flight", f"branch=factory/T-0001.{i}",
-                    f"head={head}")
-
-    def most_at_once(self) -> int:
-        spans = [tuple(map(float, ln.split())) for ln in (self.log.parent / (self.log.name + ".times"))
-                 .read_text().splitlines()]
-        return max([sum(a <= s < b for a, b in spans) for s, _ in spans] or [0])
 
 
 def roles_and_statuses(s: Store) -> list[tuple[str, str, str]]:
