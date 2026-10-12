@@ -39,6 +39,12 @@ def _records(path: str):
                 continue
 
 
+def _log_records(store: str):
+    """Each parseable record of a store's event log, `log/*.jsonl` in file-name order."""
+    for lf in sorted(glob.glob(os.path.join(store, "log", "*.jsonl"))):
+        yield from _records(lf)
+
+
 def _user_text(o: dict) -> str | None:
     """The text of a user record, or None for any other record."""
     if o.get("type") != "user":
@@ -126,15 +132,14 @@ def _store_paths(store: str) -> set[str]:
     """A store's path and its paths before each `store.migrated` event in its log."""
     here = os.path.realpath(store)
     paths = {here}
-    for lf in glob.glob(os.path.join(store, "log", "*.jsonl")):
-        for e in _records(lf):
-            if e.get("event") != "store.migrated" or not e.get("from") or not e.get("to"):
-                continue
-            src, dst = e["from"], e["to"].rstrip("/")
-            if os.path.isabs(src):
-                paths.add(os.path.realpath(src))
-            elif here.endswith(os.sep + os.path.normpath(dst)):
-                paths.add(os.path.realpath(os.path.join(here[:-len(os.path.normpath(dst))], src)))
+    for e in _log_records(store):
+        if e.get("event") != "store.migrated" or not e.get("from") or not e.get("to"):
+            continue
+        src, dst = e["from"], e["to"].rstrip("/")
+        if os.path.isabs(src):
+            paths.add(os.path.realpath(src))
+        elif here.endswith(os.sep + os.path.normpath(dst)):
+            paths.add(os.path.realpath(os.path.join(here[:-len(os.path.normpath(dst))], src)))
     return paths
 
 

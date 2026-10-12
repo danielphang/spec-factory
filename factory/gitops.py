@@ -39,6 +39,11 @@ def rev(repo: Path, ref: str) -> str:
     return git(repo, "rev-parse", ref)
 
 
+def integration_tip(cfg: dict, repo: Path) -> str:
+    """The commit at the tip of the integration branch."""
+    return rev(repo, integration_branch(cfg, repo))
+
+
 def branch_of(tid: str) -> str:
     return f"factory/{tid}"
 

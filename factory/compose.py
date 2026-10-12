@@ -13,19 +13,6 @@ from pathlib import Path
 from factory import instance, specstore, store, subtickets
 
 
-def _runs_for(root: Path, ticket: str, role: str, exclude: str) -> list[str]:
-    runs = root / "runs"
-    out = []
-    if runs.exists():
-        for p in sorted(runs.iterdir()):
-            if p.name == exclude or not (p / "meta.yaml").exists():
-                continue
-            m = store.read_yaml(p / "meta.yaml")
-            if m.get("ticket") == ticket and m.get("role") == role and m.get("finished"):
-                out.append(p.name)
-    return out
-
-
 def _approvals(root: Path, ticket: str, kind: str) -> list[Path]:
     d = root / "approvals" / ticket
     return sorted(d.glob(f"{kind}-*.md")) if d.exists() else []
@@ -43,7 +30,7 @@ def triage_capabilities(root: Path, tid: str) -> list[str] | None:
     finished triage output, split on commas and whitespace, backticks and periods stripped, unknown
     names (`none`, `new`) dropped. None when there is no such run or no such line: the ticket then
     gets the whole of current truth and the decision log, as before the line existed."""
-    runs = _runs_for(root, tid, "triage", "")
+    runs = [r for r, _ in store.ticket_runs(root, tid, "triage", finished=True)]
     p = root / "runs" / runs[-1] / "output.md" if runs else None
     if p is None or not p.exists():
         return None
@@ -69,8 +56,8 @@ def capability_index(paths: list[Path]) -> str:
 
 
 def _last_run_meta(root: Path, ticket: str, role: str, exclude: str) -> dict | None:
-    runs = _runs_for(root, ticket, role, exclude)
-    return store.read_yaml(root / "runs" / runs[-1] / "meta.yaml") if runs else None
+    runs = [m for r, m in store.ticket_runs(root, ticket, role, finished=True) if r != exclude]
+    return runs[-1] if runs else None
 
 
 def gate_entries(cfg: dict) -> list[tuple[str, list[str] | None]]:
@@ -282,11 +269,11 @@ def compose(root: Path, cfg: dict, meta: dict, t: dict) -> tuple[str, list[str]]
             parts.append("\n## Capability index: every capability in current truth\n\nName the capabilities this "
                          "request touches on your `Capabilities:` line. The spec writer receives those in full and "
                          "this index for the rest.\n\n" + capability_index(every))
-        prior = _runs_for(root, tid, "triage", run_id)
+        prior = [r for r, _ in store.ticket_runs(root, tid, "triage", finished=True) if r != run_id]
         if prior:
             add(f"runs/{prior[-1]}/output.md", "Your previous Triage output (the question you asked is answered above)")
     elif role == "spec_writer":
-        tri = _runs_for(root, tid, "triage", run_id)
+        tri = [r for r, _ in store.ticket_runs(root, tid, "triage", finished=True) if r != run_id]
         if tri:
             add(f"runs/{tri[-1]}/output.md", "Ticket (Triage output)")
         add(t["request"], "Request (raw)")
@@ -294,7 +281,7 @@ def compose(root: Path, cfg: dict, meta: dict, t: dict) -> tuple[str, list[str]]
         add_truth(sel)
         add_decisions()
         if rnd >= 1 and version >= 1:
-            crit = _runs_for(root, tid, "critic", run_id)
+            crit = [r for r, _ in store.ticket_runs(root, tid, "critic", finished=True) if r != run_id]
             if crit:
                 add(f"runs/{crit[-1]}/output.md", "Critic findings on your previous version")
             add(f"specs/{tid}/v{version}.md", f"Your previous spec (v{version})")
@@ -314,7 +301,7 @@ def compose(root: Path, cfg: dict, meta: dict, t: dict) -> tuple[str, list[str]]
         add_decisions()
         add_approved_changes()
         if rnd >= 2 and version >= 2:
-            crit = _runs_for(root, tid, "critic", run_id)
+            crit = [r for r, _ in store.ticket_runs(root, tid, "critic", finished=True) if r != run_id]
             if crit:
                 add(f"runs/{crit[-1]}/output.md", "Your prior findings (round %d)" % (rnd - 1))
             # the smaller of the diff and the previous version: a rewrite's diff outgrows the version
@@ -400,7 +387,7 @@ def compose(root: Path, cfg: dict, meta: dict, t: dict) -> tuple[str, list[str]]
             else:
                 add(f"specs/{tid}/subticket.md", f"Sub-ticket {tid}")
                 add_spec(f"specs/{parent}/v{av}.md", f"Parent spec (v{av}, pinned)")
-                impl = _runs_for(root, tid, "implementer", run_id)
+                impl = [r for r, _ in store.ticket_runs(root, tid, "implementer", finished=True) if r != run_id]
                 if impl:
                     add(f"runs/{impl[-1]}/output.md", "PR description (the implementer's output)")
                 diff_rel = f"runs/{run_id}/diff.patch"
@@ -409,8 +396,8 @@ def compose(root: Path, cfg: dict, meta: dict, t: dict) -> tuple[str, list[str]]
                 prnd = t["round"]["pr"]
                 if prnd >= 2:  # both checkers' findings from the previous round (doc §Routing table, Implementer row)
                     for r in ("reviewer", "verifier"):
-                        prev = [x for x in _runs_for(root, tid, r, run_id)
-                                if store.read_yaml(root / "runs" / x / "meta.yaml").get("round") == prnd - 1]
+                        prev = [x for x, m in store.ticket_runs(root, tid, r, finished=True)
+                                if x != run_id and m.get("round") == prnd - 1]
                         if prev:
                             who = "Your" if r == role else f"The {r}'s"
                             add(f"runs/{prev[-1]}/output.md", f"{who} prior findings (round {prnd - 1})")
