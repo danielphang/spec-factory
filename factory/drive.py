@@ -189,12 +189,12 @@ class Driver:
             # check): parked verbatim, so `resolve --ruling` treats it as an implementer's BLOCKED.
             err = start.get("error")
             blocked = isinstance(err, str) and err.startswith("BLOCKED ")
-            self.park(ticket, err if blocked else f"harness-bug: run start {role}: {start.get('stderr') or ''}", [])
+            self.park(ticket, err if blocked else _harness_bug(f"run start {role}", start), [])
             return None
         rid = start["run_id"]
         comp = call("run", "compose", rid)
         if not comp["ok"]:
-            self.park(ticket, f"harness-bug: run compose {role}: {comp.get('stderr') or ''}", [rid])
+            self.park(ticket, _harness_bug(f"run compose {role}", comp), [rid])
             return None
         run = os.path.realpath(self.root / "runs" / rid)
         wt = os.path.realpath(start["worktree"]) if start.get("worktree") else None
@@ -222,19 +222,17 @@ class Driver:
             # A failed call is treated as a thrown agent() call: the run is recorded KILLED and the
             # ticket parked with the error, so no run is left in flight. No retry.
             call("run", "finish", rid, "--status-override", "KILLED", "--reply", reply_path)
-            if role in CHECKERS:
-                call("run", "cleanup", rid)
+            _cleanup_checker(role, rid)
             self.running.pop(rid, None)
             self.step(f"{role} {rid}: KILLED", ticket)
             self.park(ticket, f"agent call failed: {role}: {_failure_message(reply, err, code)}", [rid])
             return None
         # run finish reads the output file for every run: a missing or blank one is EMPTY-OUTPUT.
         fin = call("run", "finish", rid, "--reply", reply_path)
-        if role in CHECKERS:
-            call("run", "cleanup", rid)
+        _cleanup_checker(role, rid)
         self.running.pop(rid, None)
         if not fin["ok"]:
-            self.park(ticket, f"harness-bug: run finish {role}: {fin.get('stderr') or ''}", [rid])
+            self.park(ticket, _harness_bug(f"run finish {role}", fin), [rid])
             return None
         if fin.get("parked"):  # the tripwire saw a listed live file change: do not route on STATUS
             self.step(f"parked: {fin['parked']}", ticket)
@@ -289,11 +287,11 @@ class Driver:
                     return parked
                 added = call("spec", "add", T, "--from-run", w["runId"])
                 if not added["ok"]:
-                    self.park(T, f"harness-bug: spec add: {added.get('stderr') or ''}", [w["runId"]])
+                    self.park(T, _harness_bug("spec add", added), [w["runId"]])
                     return parked
                 tr = self.transition("ready-for-critic", "spec:init")
                 if not tr["ok"]:
-                    self.park(T, f"harness-bug: transition to critic: {tr.get('stderr') or ''}", [w["runId"]])
+                    self.park(T, _harness_bug("transition to critic", tr), [w["runId"]])
                     return parked
                 rnd = _spec_round(tr, rnd)
                 state = "ready-for-critic"
@@ -314,7 +312,7 @@ class Driver:
             if rnd < self.max_spec:
                 tr = self.transition("ready-for-spec-writer", "spec:+1")
                 if not tr["ok"]:
-                    self.park(T, f"harness-bug: round increment refused: {tr.get('stderr') or ''}", [c["runId"]])
+                    self.park(T, _harness_bug("round increment refused", tr), [c["runId"]])
                     return parked
                 rnd = _spec_round(tr, rnd)
                 state = "ready-for-spec-writer"
@@ -331,7 +329,7 @@ class Driver:
             # A spec that needs one sub-ticket becomes it without a planner run; the harness decides which.
             whole = call("plan", "whole-spec", T)
             if not whole["ok"]:
-                self.park(T, f"harness-bug: plan whole-spec: {whole.get('stderr') or ''}", [])
+                self.park(T, _harness_bug("plan whole-spec", whole), [])
                 return parked
             if whole.get("planner") == "skipped":
                 self.step(f"planner skipped ({whole.get('reason')}); one sub-ticket from the whole spec")
@@ -350,7 +348,7 @@ class Driver:
                                    ("subticket add", ("subticket", "add", T, "--run", p["runId"]))):
                     res = call(*argv)
                     if not res["ok"]:
-                        self.park(T, f"harness-bug: {what}: {res.get('stderr') or ''}", [p["runId"]])
+                        self.park(T, _harness_bug(what, res), [p["runId"]])
                         return parked
             self.transition("planned")
             state = "planned"
@@ -365,7 +363,7 @@ class Driver:
             while True:
                 ready = call("ticket", "ready-implementers", T)
                 if not ready["ok"]:
-                    self.park(T, f"harness-bug: ready-implementers: {ready.get('stderr') or ''}", [])
+                    self.park(T, _harness_bug("ready-implementers", ready), [])
                     return parked
                 # A parent planned with no sub-tickets (e.g. by an older intake): create them once from
                 # the planner run its recorded plan names, or park the parent saying why.
@@ -443,19 +441,19 @@ class Driver:
                     return
                 moved = call("ticket", "head", st)
                 if not moved["ok"]:
-                    self.park(st, f"harness-bug: ticket head: {moved.get('stderr') or ''}", [impl["runId"]])
+                    self.park(st, _harness_bug("ticket head", moved), [impl["runId"]])
                     return
                 if moved.get("merge_refused"):
                     # A conflict run that did not merge the integration branch in: no point checking that head.
                     j = call("ticket", "join", st)
                     if j["ok"] and j.get("decision") == "conflict":
                         continue
-                    self.park(st, (j.get("reason") or "") if j["ok"] else f"harness-bug: join: {j.get('stderr') or ''}",
+                    self.park(st, (j.get("reason") or "") if j["ok"] else _harness_bug("join", j),
                               [impl["runId"]])
                     return
                 tr = self.transition("checks-in-flight", "pr:init", st)
                 if not tr["ok"]:
-                    self.park(st, f"harness-bug: transition to checks: {tr.get('stderr') or ''}", [impl["runId"]])
+                    self.park(st, _harness_bug("transition to checks", tr), [impl["runId"]])
                     return
             elif show["state"] != "checks-in-flight":
                 return  # parked, merged, closed or waiting: nothing for this loop to do
@@ -465,13 +463,13 @@ class Driver:
             head_now = call("ticket", "head", st)
             sha = head_now.get("head") if head_now["ok"] else None
             if not isinstance(sha, str) or not re.fullmatch(r"[0-9a-f]{40}", sha):
-                self.park(st, f"harness-bug: no head for the checkers: {head_now.get('stderr') or ''}", [])
+                self.park(st, _harness_bug("no head for the checkers", head_now), [])
                 return
             roles = list(CHECKERS)
             if not implemented:
                 rows = call("results", "show", st)
                 if not rows["ok"]:
-                    self.park(st, f"harness-bug: results show: {rows.get('stderr') or ''}", [])
+                    self.park(st, _harness_bug("results show", rows), [])
                     return
                 missing = rows.get("missing") or []
                 roles = [r for r in roles if r in missing or (r == "verifier" and "ci" in missing)]
@@ -483,7 +481,7 @@ class Driver:
                 rec = call("results", "record", st, "--head", sha, "--role", role, "--output", r["outputPath"],
                            "--run", r["runId"], *(["--killed"] if r["status"] == "KILLED" else []))
                 if not rec["ok"]:
-                    self.park(st, f"harness-bug: results record {role}: {rec.get('stderr') or ''}", [r["runId"]])
+                    self.park(st, _harness_bug(f"results record {role}", rec), [r["runId"]])
                     return None
                 return r
 
@@ -493,7 +491,7 @@ class Driver:
             outs = [r["runId"] for r in checked]
             join = call("ticket", "join", st)
             if not join["ok"]:
-                self.park(st, f"harness-bug: join: {join.get('stderr') or ''}", outs)
+                self.park(st, _harness_bug("join", join), outs)
                 return
             decision, reason = join.get("decision"), join.get("reason") or ""
             self.step(f"join: {decision} ({reason})", st)
@@ -514,12 +512,12 @@ class Driver:
                     self.transition("ready-for-implementer", None, st)
                     continue
                 self.park(st, (again.get("reason") or "") if again["ok"] and again.get("decision") == "park"
-                          else f"harness-bug: merge: {m.get('stderr') or ''}", outs)
+                          else _harness_bug("merge", m), outs)
                 return
             if decision == "revise":
                 tr = self.transition("ready-for-implementer", join.get("round_op"), st)
                 if not tr["ok"]:
-                    self.park(st, f"harness-bug: round increment refused: {tr.get('stderr') or ''}", outs)
+                    self.park(st, _harness_bug("round increment refused", tr), outs)
                     return
                 continue
             if decision == "conflict":
@@ -571,8 +569,7 @@ class Driver:
             await asyncio.gather(*waits)
         for rid, r in list(self.running.items()):
             call("run", "finish", rid, "--status-override", "KILLED")
-            if r["role"] in CHECKERS:
-                call("run", "cleanup", rid)
+            _cleanup_checker(r["role"], rid)
             self.running.pop(rid)
             self.procs.pop(rid, None)
             self.step(f"{r['role']} {rid}: KILLED", r["ticket"])
@@ -599,6 +596,17 @@ async def _all(aws) -> list:
         raise
 
 
+def _harness_bug(what: str, res: dict) -> str:
+    """The park reason for a store command `what` that failed with result `res`."""
+    return f"harness-bug: {what}: {res.get('stderr') or ''}"
+
+
+def _cleanup_checker(role: str, rid: str) -> None:
+    """Remove a checker run's checkout; other roles have none."""
+    if role in CHECKERS:
+        call("run", "cleanup", rid)
+
+
 def _spec_round(tr: dict, rnd: int) -> int:
     spec = (tr.get("round") or {}).get("spec")
     return spec if isinstance(spec, int) and not isinstance(spec, bool) else rnd
@@ -623,7 +631,7 @@ def _same_ticket_guard(root: Path, tid: str) -> None:
     if not store.ticket_path(root, tid).exists():
         return
     t = store.load_ticket(root, tid)
-    runs = [r for x in (t, *store.subtickets_of(root, tid)) for r in x.get("in_flight") or []]
+    runs = store.in_flight_runs(root, t)
     if runs:
         raise store.Refused(f"{tid} has runs in flight on it or its sub-tickets: {', '.join(runs)}; "
                             "drive it again once they finish")

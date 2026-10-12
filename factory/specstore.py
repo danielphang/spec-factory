@@ -270,19 +270,12 @@ def critic_rounds(root: Path, tid: str) -> str:
     """`## Critic rounds`: per finished critic run of the ticket, oldest first."""
     from factory import status  # local import: status has no store dependency
 
-    runs = root / "runs"
     entries = []
-    if runs.exists():
-        for d in sorted(runs.iterdir()):
-            mp = d / "meta.yaml"
-            if not mp.exists():
-                continue
-            m = store.read_yaml(mp)
-            if m.get("ticket") != tid or m.get("role") != "critic" or not m.get("finished"):
-                continue
-            body = (d / "output.md").read_text(encoding="utf-8") if (d / "output.md").exists() else ""
-            entries.append(f"round {m.get('round')} · spec v{m.get('spec_version')} · {m['run_id']} · {m.get('status')}\n\n"
-                           + status.strip_trailer(body).rstrip() + "\n")
+    for run_id, m in store.ticket_runs(root, tid, "critic", finished=True):
+        out = root / "runs" / run_id / "output.md"
+        body = out.read_text(encoding="utf-8") if out.exists() else ""
+        entries.append(f"round {m.get('round')} · spec v{m.get('spec_version')} · {m['run_id']} · {m.get('status')}\n\n"
+                       + status.strip_trailer(body).rstrip() + "\n")
     return "## Critic rounds\n\n" + ("\n".join(entries) if entries else "none\n")
 
 

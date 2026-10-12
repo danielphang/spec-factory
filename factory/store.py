@@ -92,6 +92,13 @@ def log_event(root: Path, event: str, **fields) -> dict:
     return line
 
 
+def log_lines(root: Path):
+    """Each line of the event log, `log/*.jsonl` in file-name order; the caller parses it."""
+    d = root / "log"
+    for p in sorted(d.glob("*.jsonl")) if d.exists() else []:
+        yield from p.read_text(encoding="utf-8").splitlines()
+
+
 def ticket_path(root: Path, tid: str) -> Path:
     return root / "tickets" / f"{tid}.yaml"
 
@@ -116,17 +123,44 @@ def save_ticket(root: Path, t: dict) -> None:
 def clear_scratch(root: Path, tid: str) -> None:
     """Remove runs/<id>/scratch of each finished run of ticket `tid`; runs in flight, other tickets'
     runs and every path outside runs/*/scratch are left alone."""
-    for d in (root / "runs").glob("*/scratch"):
-        meta = d.parent / "meta.yaml"
-        m = read_yaml(meta) if meta.exists() else None
-        if not m or m.get("ticket") != tid or not m.get("finished"):
-            continue
+    for rid, _ in ticket_runs(root, tid, finished=True):
+        d = root / "runs" / rid / "scratch"
         if d.is_symlink():
             d.unlink()
-        else:
+        elif d.is_dir():
             # factory: plain rmtree fails on a read-only directory inside scratch (a Go module cache,
             # say); add a chmod-and-retry handler if a run ever leaves one
             shutil.rmtree(d)
+
+
+def ticket_runs(root: Path, ticket: str, role: str | None = None, finished: bool = False):
+    """(run_id, meta) of each run of `ticket` in run-id order, only `role`'s when given and only
+    finished ones when `finished`. A run whose meta.yaml is missing or still empty is skipped."""
+    runs = root / "runs"
+    for d in sorted(runs.iterdir()) if runs.exists() else []:
+        mp = d / "meta.yaml"
+        m = read_yaml(mp) if mp.exists() else None
+        if (not m or m.get("ticket") != ticket or (role is not None and m.get("role") != role)
+                or (finished and not m.get("finished"))):
+            continue
+        yield d.name, m
+
+
+def in_flight_runs(root: Path, t: dict) -> list[str]:
+    """The runs in flight on ticket `t` and on its sub-tickets."""
+    return [r for x in (t, *subtickets_of(root, t["id"])) for r in x.get("in_flight") or []]
+
+
+def record_transition(root: Path, t: dict, to: str, by: str, history: dict | None = None,
+                      event: dict | None = None) -> str:
+    """Move ticket `t` to status `to`: append its history entry (plus `history`), save it and log
+    `ticket.transition` (plus `event`). Returns the status it left."""
+    frm = t["status"]
+    t["status"] = to
+    t["history"].append({"ts": now(), "from": frm, "to": to, "by": by, **(history or {})})
+    save_ticket(root, t)
+    log_event(root, "ticket.transition", ticket=t["id"], **{"from": frm, "to": to, "by": by, **(event or {})})
+    return frm
 
 
 def park_ticket(root: Path, t: dict, reason: str, outputs: list[str], question: str | None = None,

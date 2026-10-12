@@ -21,7 +21,7 @@ from datetime import datetime
 from pathlib import Path
 
 from factory.cli import ROLES
-from factory.cost import _records, _when, gate_failures, match_transcripts, transcript_usage
+from factory.cost import _log_records, _when, gate_failures, match_transcripts, transcript_usage
 from factory.store import Refused, read_yaml
 
 # Verdicts that change what happens next, from any role.
@@ -69,10 +69,9 @@ def _load(store: str) -> tuple[list[dict], list[dict]]:
         m.update(_store=store, _id=os.path.basename(d), _dir=d, _started=_when(m.get("started")))
         runs.append(m)
     events = []
-    for lf in sorted(glob.glob(os.path.join(store, "log", "*.jsonl"))):
-        for e in _records(lf):
-            if isinstance(e, dict) and e.get("ts"):
-                events.append({**e, "_ts": _when(e["ts"])})
+    for e in _log_records(store):
+        if isinstance(e, dict) and e.get("ts"):
+            events.append({**e, "_ts": _when(e["ts"])})
     events.sort(key=lambda e: e["_ts"])
     return runs, events
 
