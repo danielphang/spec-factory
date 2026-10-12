@@ -1,0 +1,21 @@
+run_id: run-0450-critic
+role: critic
+ticket: T-0044
+model: fable
+round: 2
+spec_version: 2
+started: '2026-10-12T00:54:08+00:00'
+finished: '2026-10-12T00:55:49+00:00'
+wall_s: 101
+status: APPROVE
+input_sources:
+- specs/T-0044/v2.md
+- openspec/specs/build-dispatch/spec.md
+- openspec/specs/harness-suite/spec.md
+- decisions.md
+- runs/run-0448-critic/output.md
+- specs/T-0044/v1.md
+confidence: high; every round-1 finding is fixed as described, the fixes were checked against the tree
+  at `0ba4e4f`, and no command or expected result changed between v1 and v2.
+escalations: []
+escalations_note: null

@@ -1,0 +1,23 @@
+run_id: run-0449-spec_writer
+role: spec_writer
+ticket: T-0044
+model: opus
+round: 2
+spec_version: 1
+started: '2026-10-12T00:50:44+00:00'
+finished: '2026-10-12T00:53:40+00:00'
+wall_s: 176
+status: READY-FOR-CRITIC
+input_sources:
+- runs/run-0446-triage/output.md
+- requests/T-0044.md
+- openspec/specs/build-dispatch/spec.md
+- openspec/specs/harness-suite/spec.md
+- decisions.md
+- runs/run-0448-critic/output.md
+- specs/T-0044/v1.md
+confidence: high; the three findings were wording and line-number fixes, and I re-checked each one on
+  `0ba4e4f` (`git rev-parse --short HEAD` = `0ba4e4f`, the blank-line awk, and the store path listing
+  and grep).
+escalations: []
+escalations_note: null

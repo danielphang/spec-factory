@@ -1,0 +1,19 @@
+run_id: run-0447-spec_writer
+role: spec_writer
+ticket: T-0044
+model: opus
+round: 0
+spec_version: 0
+started: '2026-10-12T00:35:20+00:00'
+finished: '2026-10-12T00:45:28+00:00'
+wall_s: 608
+status: READY-FOR-CRITIC
+input_sources:
+- runs/run-0446-triage/output.md
+- requests/T-0044.md
+- decisions.md
+confidence: 'high. I re-checked every evidence item on `0ba4e4f`, ran each NEW command for its output
+  today, and ran the suite, ruff and the black-box scenario. The change only removes code. One judgement
+  call: the new `harness-code` capability, which the spec store''s one-delta-part rule requires.'
+escalations: []
+escalations_note: null

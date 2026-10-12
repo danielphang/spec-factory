@@ -1,0 +1,16 @@
+run_id: run-0446-triage
+role: triage
+ticket: T-0044
+model: opus
+round: 0
+spec_version: 0
+started: '2026-10-12T00:33:04+00:00'
+finished: '2026-10-12T00:35:01+00:00'
+wall_s: 117
+status: ACCEPT
+input_sources:
+- requests/T-0044.md
+confidence: high. I checked every evidence item on this checkout with grep and by reading the lines. The
+  scope only removes code and the requester spelled it out.
+escalations: []
+escalations_note: null
