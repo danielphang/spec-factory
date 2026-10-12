@@ -1128,9 +1128,9 @@ latest chat message reaching every role agent (#28), titles beside ticket ids in
 feeding its figures to the retro is #42. Earlier sources: prompt changes borrowed from the ponytail project (#20); the documentation
 standard this page follows (#23); each run's scratch directory (#35); the store branch (#46). The
 design document is `docs/design.md`, its changelog `docs/changelog.md`; the working documents from
-building the harness are under `dev/`; the issue index is `dev/issues.md`. The store holds 43
-tickets and 52 sub-tickets at `.factory/store/`; the runtime is at `~/dev/spec-factory-harness`,
-commit `e033e27`, and its harness revision `41417c1` equals this repo's `harness.lock`.
+building the harness are under `dev/`; the issue index is `dev/issues.md`. The store holds 48
+tickets and 56 sub-tickets at `.factory/store/`; the runtime is at `~/dev/spec-factory-harness`,
+commit `5c1c47d`, and its harness revision `53047c5` equals this repo's `harness.lock`.
 
 ## Maintaining this page
 
