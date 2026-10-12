@@ -103,9 +103,10 @@ prompt or by the clerk.
 External test: reasoning-based guardrails fall to simple attacks (https://arxiv.org/pdf/2510.11570).
 Enforcement belongs between the decision to call a tool and the call
 (https://arxiv.org/pdf/2607.08028).
-Implemented by: the routing table (`routing` in `instance.yaml`) and the guards in `factory/cli.py`:
-`ticket transition`, `run start`, `merge`; the merge gate refuses a changed protected path the approved
-spec does not declare (#57, merged, live at the next runtime move).
+Implemented by: the routing table (`routing` in `instance.yaml`) and the guards in `factory/cli.py`
+(`ticket transition`, `run start`) and `factory/gates.py` (`merge`); the merge gate refuses a
+changed protected path the approved spec does not declare (#57, merged, live at the next runtime
+move).
 
 ### 8. Every stop is a logged state with a reason.
 
