@@ -1,0 +1,25 @@
+run_id: run-0439-implementer
+role: implementer
+ticket: T-0043.2
+model: opus
+round: 0
+spec_version: 2
+started: '2026-10-11T22:52:34+00:00'
+finished: '2026-10-11T23:07:03+00:00'
+wall_s: 869
+status: READY-FOR-REVIEW
+input_sources:
+- specs/T-0043.2/subticket.md
+- specs/T-0043/v2.md
+gate_skipped: []
+branch: factory/T-0043.2
+base: a0f77c9ffdb638dfcb77ec1dde702a861e6796d4
+head: a0f77c9ffdb638dfcb77ec1dde702a861e6796d4
+worktree: /Users/dphang/dev/spec-factory/.factory/store/worktrees/T-0043.2
+resolution: null
+environment_files: []
+confidence: high. Every acceptance command printed its THEN lines exactly, both gates passed on `41417c1`,
+  and the new tests failed on the base before the change.
+escalations: []
+escalations_note: none. The protected paths `factory/cli.py` and `factory/stats.py` are declared by the
+  sub-ticket, and the change does only what parts B and C describe.

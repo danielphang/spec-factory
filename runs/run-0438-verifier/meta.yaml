@@ -1,0 +1,36 @@
+run_id: run-0438-verifier
+role: verifier
+ticket: T-0043.1
+model: opus
+round: 1
+spec_version: 2
+started: '2026-10-11T22:42:25+00:00'
+finished: '2026-10-11T22:51:11+00:00'
+wall_s: 526
+status: VERIFIED
+input_sources:
+- specs/T-0043.1/subticket.md
+- specs/T-0043/v2.md
+- runs/run-0436-implementer/output.md
+- runs/run-0438-verifier/diff.patch
+gate_skipped: []
+environment_files: []
+branch: factory/T-0043.1
+base: 5215c5f8449c4e09e89acd27bd99f64fb3fc1ba9
+head: e375b16232346cc46947937e750c4f3be25a7472
+worktree: /Users/dphang/dev/spec-factory/.factory/store/runs/run-0438-verifier/wt
+confidence: high. The NEW criterion fails on base exactly as stated and passes on the PR. The new tests
+  fail on base code and pass on the PR. The full suite and both gates pass. Probes off the tested inputs
+  behave as the spec's rules say.
+escalations:
+- 'The gate rule overcounts test-driven work. ST-2''s "gate fails fixed before hand-off" column comes
+  from `gate_failures()` here. That function counts any Bash call whose command *contains* a gate command''s
+  text, which is what the spec''s Decisions say. A gate such as `pytest ... tests/factory` is a prefix
+  of the implementer''s own one-file runs, such as `pytest ... tests/factory/test_new.py`. So the "red"
+  step of test-first work (a new test written to fail, then made to pass) counts as a gate failure fixed
+  before hand-off. My probe shows exactly that: one red/green run of a single test file returned 1. The
+  README limit planned for ST-3 names only the opposite error, a gate run in another form being missed.
+  For the operator or the spec owner: either accept this inflation and state it beside that limit, or
+  tighten the match (for example, require the gate text to be followed by end of command, a space, `)`,
+  `|` or `;`). This is a design question for ST-2/ST-3. It does not affect this sub-ticket''s criteria.'
+escalations_note: null

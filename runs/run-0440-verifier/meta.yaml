@@ -1,0 +1,30 @@
+run_id: run-0440-verifier
+role: verifier
+ticket: T-0043.2
+model: opus
+round: 1
+spec_version: 2
+started: '2026-10-11T23:07:38+00:00'
+finished: '2026-10-11T23:17:18+00:00'
+wall_s: 580
+status: VERIFIED
+input_sources:
+- specs/T-0043.2/subticket.md
+- specs/T-0043/v2.md
+- runs/run-0439-implementer/output.md
+- runs/run-0440-verifier/diff.patch
+gate_skipped: []
+environment_files: []
+branch: factory/T-0043.2
+base: a0f77c9ffdb638dfcb77ec1dde702a861e6796d4
+head: 41417c1789d40b26370b10f2bdcae6a84f903a9d
+worktree: /Users/dphang/dev/spec-factory/.factory/store/runs/run-0440-verifier/wt
+confidence: high. Every acceptance command printed its exact THEN lines on the PR head and failed on base
+  for the reason verification.md states, both gates passed, and probes off the fixture show the counts
+  follow the rules.
+escalations:
+- 'Minor, outside the acceptance criteria: an empty `--since ''''` or `--until ''''` is accepted as no
+  bound rather than refused as an unparsable WHEN. The Decisions say an unparsable WHEN is refused with
+  exit 2. Whether an empty value counts as unparsable is the operator''s call; it could be tightened in
+  ST-3 or later.'
+escalations_note: null

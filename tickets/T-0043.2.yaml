@@ -1,0 +1,54 @@
+id: T-0043.2
+type: sub-ticket
+title: Add `factory stats` and exempt it from the instance lookup, the live-store fence and the harness
+  lock
+request: requests/T-0043.md
+source: plan:run-0435-planner
+status: merged
+round:
+  spec: 0
+  pr: 1
+spec:
+  version: 2
+  approved_version: 2
+plan: null
+in_flight: []
+parked: null
+created: '2026-10-11T22:29:29+00:00'
+history:
+- ts: '2026-10-11T22:52:01+00:00'
+  from: waiting-dependencies
+  to: ready-for-implementer
+  by: merge
+- ts: '2026-10-11T23:07:21+00:00'
+  from: ready-for-implementer
+  to: checks-in-flight
+  by: workflow
+  round:
+    spec: 0
+    pr: 1
+- ts: '2026-10-11T23:17:56+00:00'
+  from: checks-in-flight
+  to: ready-for-merge
+  by: workflow
+  round:
+    spec: 0
+    pr: 1
+- ts: '2026-10-11T23:18:04+00:00'
+  from: ready-for-merge
+  to: merged
+  by: merge
+  head: 41417c1789d40b26370b10f2bdcae6a84f903a9d
+parent: T-0043
+depends_on:
+- T-0043.1
+parallel_safe: false
+branch: factory/T-0043.2
+head: 41417c1789d40b26370b10f2bdcae6a84f903a9d
+merge:
+  base_before: a0f77c9ffdb638dfcb77ec1dde702a861e6796d4
+  main_after: ebc5773ef696d25c58159c61a7531e7ee3b61b3f
+parent_base: null
+label: ST-2
+planned_from: 2
+merge_refused: null

@@ -1,0 +1,25 @@
+run_id: run-0436-implementer
+role: implementer
+ticket: T-0043.1
+model: opus
+round: 0
+spec_version: 2
+started: '2026-10-11T22:30:05+00:00'
+finished: '2026-10-11T22:41:50+00:00'
+wall_s: 705
+status: READY-FOR-REVIEW
+input_sources:
+- specs/T-0043.1/subticket.md
+- specs/T-0043/v2.md
+gate_skipped: []
+branch: factory/T-0043.1
+base: 5215c5f8449c4e09e89acd27bd99f64fb3fc1ba9
+head: 5215c5f8449c4e09e89acd27bd99f64fb3fc1ba9
+worktree: /Users/dphang/dev/spec-factory/.factory/store/worktrees/T-0043.1
+resolution: null
+environment_files: []
+confidence: high. The NEW criterion and the 11 new tests pass, and so does the full suite (557 passed).
+  The new functions reproduce the spec's evidence on the live stores (630 of 631 matched, run-0384's gate
+  fix found).
+escalations: []
+escalations_note: null

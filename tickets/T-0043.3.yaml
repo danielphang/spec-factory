@@ -1,0 +1,53 @@
+id: T-0043.3
+type: sub-ticket
+title: Record `factory stats` in README, the design, the principles, the build spec and the changelog
+request: requests/T-0043.md
+source: plan:run-0435-planner
+status: merged
+round:
+  spec: 0
+  pr: 1
+spec:
+  version: 2
+  approved_version: 2
+plan: null
+in_flight: []
+parked: null
+created: '2026-10-11T22:29:29+00:00'
+history:
+- ts: '2026-10-11T23:18:04+00:00'
+  from: waiting-dependencies
+  to: ready-for-implementer
+  by: merge
+- ts: '2026-10-11T23:36:56+00:00'
+  from: ready-for-implementer
+  to: checks-in-flight
+  by: workflow
+  round:
+    spec: 0
+    pr: 1
+- ts: '2026-10-12T00:03:25+00:00'
+  from: checks-in-flight
+  to: ready-for-merge
+  by: workflow
+  round:
+    spec: 0
+    pr: 1
+- ts: '2026-10-12T00:03:34+00:00'
+  from: ready-for-merge
+  to: merged
+  by: merge
+  head: 608a62ced66a5f32cb0e3e090d43ef75dd2a6618
+parent: T-0043
+depends_on:
+- T-0043.2
+parallel_safe: false
+branch: factory/T-0043.3
+head: 608a62ced66a5f32cb0e3e090d43ef75dd2a6618
+merge:
+  base_before: ebc5773ef696d25c58159c61a7531e7ee3b61b3f
+  main_after: e033e2752bc1202be70c51bed01967c2bb1c19da
+parent_base: null
+label: ST-3
+planned_from: 2
+merge_refused: null

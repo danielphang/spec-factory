@@ -1,0 +1,48 @@
+id: T-0043.1
+type: sub-ticket
+title: Count each transcript message once, and add the transcript readers that `factory stats` needs
+request: requests/T-0043.md
+source: plan:run-0435-planner
+status: merged
+round:
+  spec: 0
+  pr: 1
+spec:
+  version: 2
+  approved_version: 2
+plan: null
+in_flight: []
+parked: null
+created: '2026-10-11T22:29:29+00:00'
+history:
+- ts: '2026-10-11T22:42:08+00:00'
+  from: ready-for-implementer
+  to: checks-in-flight
+  by: workflow
+  round:
+    spec: 0
+    pr: 1
+- ts: '2026-10-11T22:51:53+00:00'
+  from: checks-in-flight
+  to: ready-for-merge
+  by: workflow
+  round:
+    spec: 0
+    pr: 1
+- ts: '2026-10-11T22:52:01+00:00'
+  from: ready-for-merge
+  to: merged
+  by: merge
+  head: e375b16232346cc46947937e750c4f3be25a7472
+parent: T-0043
+depends_on: []
+parallel_safe: false
+branch: factory/T-0043.1
+head: e375b16232346cc46947937e750c4f3be25a7472
+merge:
+  base_before: 5215c5f8449c4e09e89acd27bd99f64fb3fc1ba9
+  main_after: a0f77c9ffdb638dfcb77ec1dde702a861e6796d4
+parent_base: null
+label: ST-1
+planned_from: 2
+merge_refused: null

@@ -1,0 +1,26 @@
+run_id: run-0443-verifier
+role: verifier
+ticket: T-0043.3
+model: opus
+round: 1
+spec_version: 2
+started: '2026-10-11T23:37:13+00:00'
+finished: '2026-10-11T23:45:24+00:00'
+wall_s: 491
+status: VERIFIED
+input_sources:
+- specs/T-0043.3/subticket.md
+- specs/T-0043/v2.md
+- runs/run-0442-implementer/output.md
+- runs/run-0443-verifier/diff.patch
+gate_skipped: []
+environment_files: []
+branch: factory/T-0043.3
+base: ebc5773ef696d25c58159c61a7531e7ee3b61b3f
+head: 608a62ced66a5f32cb0e3e090d43ef75dd2a6618
+worktree: /Users/dphang/dev/spec-factory/.factory/store/runs/run-0443-verifier/wt
+confidence: 'high. Both acceptance commands ran verbatim and printed exactly their expected output: the
+  NEW check fails on the base and passes on the PR. Both gates pass, and every figure the design doc quotes
+  was reproduced from the command it names.'
+escalations: []
+escalations_note: null

@@ -101,3 +101,9 @@ Prior findings (round 1):
 
 Out-of-scope observations:
 - The writer's observation on live-store-guard's second requirement (its "read-only list above" wording now also covers `drive`, and after this change `stats`) still stands; nothing more from me.
+
+## Verifier results
+
+41417c1789d40b26370b10f2bdcae6a84f903a9d · T-0043.2 · VERIFIED · run-0440-verifier
+608a62ced66a5f32cb0e3e090d43ef75dd2a6618 · T-0043.3 · VERIFIED · run-0443-verifier
+e375b16232346cc46947937e750c4f3be25a7472 · T-0043.1 · VERIFIED · run-0438-verifier

@@ -1,0 +1,28 @@
+run_id: run-0445-verifier
+role: verifier
+ticket: T-0043
+model: opus
+round: 0
+spec_version: 2
+started: '2026-10-12T00:04:07+00:00'
+finished: '2026-10-12T00:12:35+00:00'
+wall_s: 508
+status: VERIFIED
+input_sources:
+- specs/T-0043/v2.md
+gate_skipped: []
+environment_files: []
+branch: null
+base: 5215c5f8449c4e09e89acd27bd99f64fb3fc1ba9
+head: e033e2752bc1202be70c51bed01967c2bb1c19da
+worktree: /Users/dphang/dev/spec-factory/.factory/store/runs/run-0445-verifier/wt
+confidence: high. All 12 scenarios were run verbatim from the pinned spec on both base and head, every
+  result matched exactly, and the full suite passed. The only weak spot is that the `main...HEAD` checks
+  are empty on a parent close, and I covered them with the base range.
+escalations:
+- BLOCKING findings in a numbered list are undercounted. The approved rule (Decisions, and `factory/stats.py:30`)
+  accepts only `1.` as a numbered-list marker. A reviewer or critic that writes `2. [BLOCKING] ...` for
+  its second finding has that finding left out of section A's BLOCKING column. The shipped code follows
+  the spec, so this is not a defect of the change. If reviewers write numbered findings, the figure the
+  operator relies on will read low. The operator decides whether to widen the rule to any `N.` marker.
+escalations_note: null

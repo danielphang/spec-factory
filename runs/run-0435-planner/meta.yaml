@@ -1,0 +1,17 @@
+run_id: run-0435-planner
+role: planner
+ticket: T-0043
+model: opus
+round: 2
+spec_version: 2
+started: '2026-10-11T22:26:45+00:00'
+finished: '2026-10-11T22:29:04+00:00'
+wall_s: 139
+status: PLANNED
+input_sources:
+- specs/T-0043/v2.md
+- decisions.md
+confidence: high, the spec names its seams, scenario ownership and test files, and each fact this plan
+  relies on was checked on `main` at `5215c5f`.
+escalations: []
+escalations_note: null

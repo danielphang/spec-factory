@@ -3,7 +3,7 @@
 ## Requirements
 
 ### Requirement: Unmarked writes to a live store are refused while a role run is in flight there
-While any run is in flight on an instance's own store, every `factory` command on that store except `ticket show`, `ticket join`, `results show`, `config`, `status parse`, `log tail`, `paths` and `drive`, none of them given `--accept-harness`, MUST be refused with exit 2, writing nothing to the store, the instance or the repository, unless its environment has `FACTORY_DISPATCH=1`; the refusal SHALL name a throwaway `FACTORY_STATE` and SHALL NOT name the marker.
+While any run is in flight on an instance's own store, every `factory` command on that store except `ticket show`, `ticket join`, `results show`, `config`, `status parse`, `log tail`, `paths`, `drive` and `stats`, none of them given `--accept-harness`, MUST be refused with exit 2, writing nothing to the store, the instance or the repository, unless its environment has `FACTORY_DISPATCH=1`; the refusal SHALL name a throwaway `FACTORY_STATE` and SHALL NOT name the marker.
 
 #### Scenario: Unmarked writes from inside the target are refused while a run is in flight, init included
 Run every command in this change from the repository root of the checkout under test, after `uv sync --frozen`, with `node` on `PATH`. Each WHEN runs in a subshell.
@@ -122,3 +122,11 @@ A command with `FACTORY_DISPATCH=1` on an instance's own store MUST still be ref
 #### Scenario: A marked write from a harness checkout with an uncommitted edit is still refused
 - WHEN `(T=$(mktemp -d) && git clone -q --no-checkout . $T/c && git -C $T/c checkout -q $(git rev-parse HEAD) && ln -s "$PWD/.venv" $T/c/.venv && git init -q -b main $T/tgt && git -C $T/tgt -c user.email=f@x -c user.name=f commit -q --allow-empty -m init && cd $T/tgt && $T/c/bin/factory init --repo-name demo >/dev/null 2>&1 && printf '# F\n\nDo x.\n' > $T/req.md && $T/c/bin/factory ticket new --file $T/req.md >/dev/null && $T/c/bin/factory run start --role triage --ticket T-0001 >/dev/null && echo '# uncommitted edit' >> $T/c/factory/status.py && S0=$(find $T/tgt/.factory -type f -exec cksum {} + | sort | cksum) && FACTORY_DISPATCH=1 $T/c/bin/factory decision add T-0001 x >/dev/null 2>$T/err; echo "exit=$? lock=$(head -1 $T/err | grep -c 'has uncommitted changes:$') store=$([ "$(find $T/tgt/.factory -type f -exec cksum {} + | sort | cksum)" = "$S0" ] && echo unchanged || echo changed)")`
 - THEN it prints exactly `exit=2 lock=1 store=unchanged`
+
+### Requirement: factory stats reads any store under any harness revision and writes nothing
+`factory stats` MUST run on an instance's own store while a run is in flight there, from inside that store's `runs/`, and when the instance's `harness.lock` names another revision, exiting 0 and writing nothing, and with no `--store` it SHALL read the store of the instance found from the caller's directory.
+
+#### Scenario: Stats reads a live store with a run in flight and an unaccepted harness, and writes nothing
+Needs the GIVEN block of "Unmarked writes from inside the target are refused while a run is in flight, init included" run once. T-0001's triage run is in flight on the target's own store, and the lock is overwritten to name another revision, so an ordinary read is refused.
+- WHEN `(. ${TMPDIR:-/tmp}/t0024-inflight.sh && echo 0000000000000000000000000000000000000000 > $T/tgt/.factory/harness.lock && S0=$(snap); $B stats > $T/o1 2>/dev/null; a=$?; cd $W && $B stats > $T/o2 2>/dev/null; b=$?; cd $T/tgt && $B ticket show T-0001 >/dev/null 2>&1; c=$?; echo "here=$a inside=$b store=$([ "$(snap)" = "$S0" ] && echo unchanged || echo changed) own=$(grep -cxF "Stores: $S" $T/o1) locked=$c")`
+- THEN it prints exactly `here=0 inside=0 store=unchanged own=1 locked=2`
