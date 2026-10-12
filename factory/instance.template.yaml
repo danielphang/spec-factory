@@ -42,7 +42,6 @@ run_env: {}
 # wrapper, after the environment files are copied (for example `uv sync --frozen`). null means none.
 # A failure refuses the run.
 environment_sync: null
-force_push_allowed: false
 models:
   triage: opus
   spec_writer: opus

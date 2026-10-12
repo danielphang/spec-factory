@@ -1,7 +1,4 @@
-"""Ticket store on disk: tickets/, requests/, specs/, plans/, runs/, log/ under the state dir.
-
-Every write goes through here so a later sub-ticket can add commit-and-push in one place.
-"""
+"""Ticket store on disk: tickets/, requests/, specs/, plans/, runs/, log/ under the state dir."""
 from __future__ import annotations
 
 import datetime as dt
@@ -12,24 +9,11 @@ from pathlib import Path
 
 import yaml
 
-STATES = [
-    "ready-for-triage", "waiting-requester", "ready-for-spec-writer", "ready-for-critic",
-    "awaiting-spec-gate", "ready-for-planner", "planned", "parked", "closed",
-    # build half (sub-tickets, and the parent after all of them merged)
-    "waiting-dependencies", "ready-for-implementer", "checks-in-flight", "ready-for-merge",
-    "merged", "ready-for-parent-verify",
-]
 RESULT_ROLES = ("reviewer", "verifier", "ci")
 
 
 class Refused(Exception):  # noqa: N818
     """A guard refused the operation: exit 2, store unchanged, nothing logged."""
-
-
-def load_config() -> dict:
-    """The resolved instance's `instance.yaml` (factory/instance.py); refused when none is found."""
-    from factory import instance  # local: instance imports Refused from here
-    return instance.load_config()
 
 
 def state_root(cfg: dict | None = None) -> Path:

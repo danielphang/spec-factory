@@ -19,7 +19,6 @@ integration_branch: null
 # example a lockfile the target repo git-ignores). A tracked file does not belong here: copying it in
 # would mask the branch's own version.
 environment_files: ["uv.lock"]
-force_push_allowed: false
 models:
   triage: opus
   spec_writer: opus

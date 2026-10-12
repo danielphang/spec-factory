@@ -107,7 +107,7 @@ def gate_commands(cfg: dict) -> list[str]:
     branch: the gate script and its baseline come from the integration branch, never from the branch
     under test, so a change cannot weaken its own gate."""
     from factory import gitops  # local: compose is otherwise git-free
-    repo = gitops.repo_root(cfg)
+    repo = gitops.repo_root()
     co = gitops.checkout_of(repo, gitops.integration_branch(cfg, repo)) or repo
     return [g.replace("{integration}", str(co)) for g, _ in gate_entries(cfg)]
 
@@ -417,5 +417,5 @@ def compose(root: Path, cfg: dict, meta: dict, t: dict) -> tuple[str, list[str]]
             for p in _approvals(root, tid, "ruling"):
                 add(str(p.relative_to(root)), "Human ruling")
     else:
-        raise store.Refused(f"compose: role {role} not supported yet")
+        raise store.Refused(f"compose: unknown role {role}")
     return "".join(parts), sources
