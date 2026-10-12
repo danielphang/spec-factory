@@ -1,0 +1,26 @@
+run_id: run-0476-verifier
+role: verifier
+ticket: T-0046.1
+model: opus
+round: 1
+spec_version: 3
+started: '2026-10-12T16:31:00+00:00'
+finished: '2026-10-12T16:50:53+00:00'
+wall_s: 1193
+status: VERIFIED
+input_sources:
+- specs/T-0046.1/subticket.md
+- specs/T-0046/v3.md
+- runs/run-0474-implementer/output.md
+- runs/run-0476-verifier/diff.patch
+gate_skipped: []
+environment_files: []
+branch: factory/T-0046.1
+base: 34de412fd5fa7f410654e6f6c496877e9608cad1
+head: b1123b0bb2430ff9d23d9302c34e133b522c5aa2
+worktree: /Users/dphang/dev/spec-factory/.factory/store/runs/run-0476-verifier/wt
+confidence: high. All 7 NEW criteria fail on the base and pass on the PR with the predicted values. All
+  6 REGRESSION scenarios pass, three of them byte-identical to the spec. Both gate commands pass. The
+  probes found no difference from the base outside the empty-meta change the spec accepts.
+escalations: []
+escalations_note: null

@@ -89,3 +89,7 @@ Suggested fix: Optionally move "the store, the directory of tickets, runs and lo
 
 ### Out-of-scope observations
 - none new. The round-1 observation (`999-1003` → `1000-1003`) is fixed, and the writer's extra correction (`817-821` → `818-821`) is right.
+
+## Verifier results
+
+b1123b0bb2430ff9d23d9302c34e133b522c5aa2 · T-0046.1 · VERIFIED · run-0476-verifier

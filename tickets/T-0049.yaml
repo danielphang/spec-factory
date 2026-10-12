@@ -1,0 +1,27 @@
+id: T-0049
+type: null
+title: 'README: a diagram of a spec''s life: from request to pinned spec to build, how a spec changes
+  after the gate, and how current truth and the decision log feed later tickets'
+request: requests/T-0049.md
+source: /private/tmp/claude-501/-Users-dphang-dev-nanobot/c69bfd1d-97a6-43e3-9d5a-a517c28d382c/scratchpad/debloat/g-diagram.md
+status: ready-for-triage
+round:
+  spec: 0
+  pr: 0
+spec:
+  version: 0
+  approved_version: null
+plan: null
+in_flight: []
+parked: null
+created: '2026-10-12T16:47:02+00:00'
+history: []
+parent: null
+depends_on: []
+parallel_safe: true
+branch: null
+head: null
+merge:
+  base_before: null
+  main_after: null
+parent_base: null

@@ -1,0 +1,29 @@
+run_id: run-0475-reviewer
+role: reviewer
+ticket: T-0046.1
+model: fable
+round: 1
+spec_version: 3
+started: '2026-10-12T16:30:59+00:00'
+finished: '2026-10-12T16:34:24+00:00'
+wall_s: 205
+status: APPROVE
+input_sources:
+- specs/T-0046.1/subticket.md
+- specs/T-0046/v3.md
+- runs/run-0474-implementer/output.md
+- runs/run-0475-reviewer/diff.patch
+gate_skipped: []
+environment_files: []
+branch: factory/T-0046.1
+base: 34de412fd5fa7f410654e6f6c496877e9608cad1
+head: b1123b0bb2430ff9d23d9302c34e133b522c5aa2
+worktree: /Users/dphang/dev/spec-factory/.factory/store/runs/run-0475-reviewer/wt
+confidence: high. Every replaced block maps line-for-line onto its helper with the same key order and
+  condition; the implementer's three REGRESSION outputs are byte-identical to the spec's blocks, and my
+  own narrow checks agree with its NEW results.
+escalations:
+- Protected path `factory/**` touched (`cli.py`, `compose.py`, `cost.py`, `drive.py`, `gitops.py`, `specstore.py`,
+  `stats.py`, `store.py`). The approved spec's Risk section declares `factory/**`, so the merge gate needs
+  no further approval; listed for the record.
+escalations_note: null

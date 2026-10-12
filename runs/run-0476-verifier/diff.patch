@@ -1,0 +1,821 @@
+diff --git a/factory/cli.py b/factory/cli.py
+index 8373b4b..091fc46 100644
+--- a/factory/cli.py
++++ b/factory/cli.py
+@@ -168,13 +168,11 @@ def ticket_transition(a, root, cfg):
+         if specstore.is_active(root) and specstore.change_dir(root, t["id"]).exists():
+             raise Refused(f"{t['id']} is verified but not archived: run `archive {t['id']}` first")
+     _apply_round(t, a.round, cfg)
+-    t["status"] = a.to
+     if a.to != "parked":
+         t["parked"] = None
+-    t["history"].append({"ts": store.now(), "from": frm, "to": a.to, "by": a.by, "round": dict(t["round"]),
+-                         **({"verified_by": verified_by} if verified_by else {})})
+-    store.save_ticket(root, t)
+-    store.log_event(root, "ticket.transition", ticket=t["id"], **{"from": frm, "to": a.to, "by": a.by, "round": t["round"]})
++    store.record_transition(root, t, a.to, a.by,
++                            history={"round": dict(t["round"]), **({"verified_by": verified_by} if verified_by else {})},
++                            event={"round": t["round"]})
+     out({"ok": True, "id": t["id"], "state": t["status"], "round": t["round"]})
+ 
+ 
+@@ -196,6 +194,15 @@ def _run_dir(root: Path, rid: str) -> Path:
+     return d
+ 
+ 
++def _planner_run(root: Path, run: str, tid: str) -> Path:
++    """Run `run`'s directory, refused unless it is a PLANNED planner run of ticket `tid`."""
++    d = _run_dir(root, run)
++    meta = store.read_yaml(d / "meta.yaml")
++    if meta.get("ticket") != tid or meta.get("role") != "planner" or meta.get("status") != "PLANNED":
++        raise Refused(f"{run} is not a PLANNED planner run of {tid}")
++    return d
++
++
+ def run_start(a, root, cfg):
+     if a.role not in ROLES:
+         raise Refused(f"unknown role {a.role}; roles: {', '.join(ROLES)}")
+@@ -251,7 +258,7 @@ def _check_sibling_tests(root: Path, cfg: dict, t: dict) -> None:
+     parent = store.load_ticket(root, t["parent"])
+     base = parent.get("parent_base")
+     repo = gitops.repo_root()
+-    tip = gitops.rev(repo, gitops.integration_branch(cfg, repo))
++    tip = gitops.integration_tip(cfg, repo)
+     merges = [s["merge"] for s in store.subtickets_of(root, parent["id"])
+               if s["id"] != t["id"] and s["status"] == "merged"
+               and (s.get("merge") or {}).get("main_after") and s["merge"].get("base_before")]
+@@ -278,7 +285,7 @@ def _check_drift(root: Path, cfg: dict, t: dict) -> None:
+     design names, and no Tests to change list names it. A merged sibling's recorded merge is not
+     drift: the plan expects its changes. The build parks the refusal as BLOCKED."""
+     tid = t["id"]
+-    if compose._runs_for(root, tid, "implementer", "") or list((root / "approvals" / tid).glob("ruling-*")):
++    if any(store.ticket_runs(root, tid, "implementer", finished=True)) or list((root / "approvals" / tid).glob("ruling-*")):
+         return
+     sub = root / "specs" / tid / "subticket.md"
+     sub_text = sub.read_text(encoding="utf-8") if sub.exists() else ""
+@@ -325,7 +332,7 @@ def _test_drift(root: Path, cfg: dict, parent: dict, sub_text: str) -> list[str]
+     repo = gitops.repo_root()
+     if not gitops.git(repo, "rev-parse", "--verify", "--quiet", f"{base}^{{commit}}", check=False):
+         return []
+-    tip = gitops.rev(repo, gitops.integration_branch(cfg, repo))
++    tip = gitops.integration_tip(cfg, repo)
+     design = dict(specstore.split_parts((root / "specs" / parent["id"] / f"v{n}.md").read_text(encoding="utf-8")))
+     design_text = design.get("design.md", "")
+     at_tip = set(gitops.git(repo, "ls-tree", "-r", "--name-only", tip).splitlines())
+@@ -542,7 +549,7 @@ def _integration_head(cfg: dict) -> str | None:
+     """The integration branch's head in the target repo, or None when the repo or branch does not resolve."""
+     try:
+         repo = gitops.repo_root()
+-        return gitops.rev(repo, gitops.integration_branch(cfg, repo))
++        return gitops.integration_tip(cfg, repo)
+     except (Refused, OSError):
+         return None
+ 
+@@ -600,7 +607,7 @@ def spec_amend(a, root, cfg):
+     if not reason or len(reason.splitlines()) > 1:
+         raise Refused("--reason is one non-blank line of text")
+     subs = store.subtickets_of(root, tid)
+-    runs = [r for x in (t, *subs) for r in x.get("in_flight") or []]
++    runs = store.in_flight_runs(root, t)
+     if runs:
+         raise Refused(f"{tid} has runs in flight on it or its sub-tickets: {', '.join(runs)}; amend once they finish")
+     if a.intent == "changed":
+@@ -617,10 +624,7 @@ def spec_amend(a, root, cfg):
+         if not specstore.change_dir(root, tid).exists():
+             raise Refused(f"{tid} has no change folder ({_rel(root, specstore.change_dir(root, tid))}): "
+                           "it was archived, so its spec can no longer be amended")
+-        _, deltas, errors = specstore.validate(text)
+-        errors += specstore.applies(root, deltas) if not errors else []
+-        if errors:
+-            raise Refused("spec not amended: " + "; ".join(errors))
++        _refuse_unless_applies(root, text, "spec not amended")
+     n = _add_spec_version(root, t, text, f"amend {a.file}", cfg)
+     if specstore.is_active(root):
+         tasks = specstore.change_dir(root, tid) / "tasks.md"
+@@ -671,11 +675,10 @@ def plan_add(a, root, cfg):
+ def _recorded_plan_run(root: Path, tid: str) -> str:
+     """The run named by the ticket's latest `plan.added` event, when that is a run of this store."""
+     source = None
+-    for p in sorted((root / "log").glob("*.jsonl")):
+-        for ln in p.read_text(encoding="utf-8").splitlines():
+-            e = json.loads(ln)
+-            if e.get("event") == "plan.added" and e.get("ticket") == tid:
+-                source = e.get("source")
++    for ln in store.log_lines(root):
++        e = json.loads(ln)
++        if e.get("event") == "plan.added" and e.get("ticket") == tid:
++            source = e.get("source")
+     if not source or "/" in source or not (root / "runs" / source / "meta.yaml").exists():
+         raise Refused(f"no recorded planner run found for {tid} (latest plan.added source: {source or 'none'}); "
+                       "pass --run RUN or --file F")
+@@ -689,10 +692,7 @@ def subticket_add(a, root, cfg):
+     if not a.run and not a.file:
+         a.run = _recorded_plan_run(root, parent["id"])
+     if a.run:
+-        d = _run_dir(root, a.run)
+-        meta = store.read_yaml(d / "meta.yaml")
+-        if meta.get("ticket") != parent["id"] or meta.get("role") != "planner" or meta.get("status") != "PLANNED":
+-            raise Refused(f"{a.run} is not a PLANNED planner run of {parent['id']}")
++        d = _planner_run(root, a.run, parent["id"])
+         text = status.strip_trailer((d / "output.md").read_text(encoding="utf-8"))
+     else:
+         text = Path(a.file).read_text(encoding="utf-8")
+@@ -751,7 +751,7 @@ def _planner_needed(root: Path, t: dict, spec_text: str) -> str | None:
+     subs = store.subtickets_of(root, t["id"])
+     if subs:
+         return f"it already has sub-tickets: {', '.join(s['id'] for s in subs)}"
+-    planned = compose._runs_for(root, t["id"], "planner", "")
++    planned = [r for r, _ in store.ticket_runs(root, t["id"], "planner", finished=True)]
+     if planned:
+         return f"a planner already ran on it: {planned[-1]}"
+     writer = compose._last_run_meta(root, t["id"], "spec_writer", "")
+@@ -815,10 +815,7 @@ def ticket_ready_implementers(a, root, cfg):
+     ready = subtickets.ready_implementers(subs, status_of)
+     for s in subs:  # a dependency that just became met releases its dependant (siblings at merge; other parents here)
+         if s["id"] in ready and s["status"] == "waiting-dependencies":
+-            s["status"] = "ready-for-implementer"
+-            s["history"].append({"ts": store.now(), "from": "waiting-dependencies", "to": "ready-for-implementer", "by": "ready-implementers"})
+-            store.save_ticket(root, s)
+-            store.log_event(root, "ticket.transition", ticket=s["id"], **{"from": "waiting-dependencies", "to": "ready-for-implementer", "by": "ready-implementers"})
++            store.record_transition(root, s, "ready-for-implementer", "ready-implementers")
+     out({"ok": True, "parent": a.id, "ready": ready, "subtickets": [s["id"] for s in every],
+          "remaining": [s["id"] for s in subs if s["status"] not in ("merged", "parked", "closed")],
+          "in_flight": [s["id"] for s in subs if s["in_flight"] or s["status"] in subtickets.IN_FLIGHT_STATES],
+@@ -845,7 +842,7 @@ def ticket_head(a, root, cfg):
+         else:
+             # A conflict run that did not merge the integration branch in. Counted once per
+             # implementer run (this command may be called more than once), so the loop is bounded.
+-            last = compose._runs_for(root, t["id"], "implementer", "")
++            last = [r for r, _ in store.ticket_runs(root, t["id"], "implementer", finished=True)]
+             if last and last[-1] != t.get("conflict_counted_run"):
+                 t["conflict_runs"] = int(t.get("conflict_runs") or 0) + 1
+                 t["conflict_counted_run"] = last[-1]
+@@ -997,10 +994,7 @@ def merge_cmd(a, root, cfg):
+         for s in store.subtickets_of(root, t["parent"]):
+             if s["status"] == "waiting-dependencies" and all(
+                     store.load_ticket(root, dep)["status"] in subtickets.SATISFIED for dep in s["depends_on"]):
+-                s["status"] = "ready-for-implementer"
+-                s["history"].append({"ts": store.now(), "from": "waiting-dependencies", "to": "ready-for-implementer", "by": "merge"})
+-                store.save_ticket(root, s)
+-                store.log_event(root, "ticket.transition", ticket=s["id"], **{"from": "waiting-dependencies", "to": "ready-for-implementer", "by": "merge"})
++                store.record_transition(root, s, "ready-for-implementer", "merge")
+                 released.append(s["id"])
+     gitops.remove_worktree(repo, root / "worktrees" / t["id"])
+     out({"ok": True, "id": t["id"], "state": "merged", "base_before": before, "main_after": after, "released": released})
+@@ -1060,11 +1054,7 @@ def ticket_parent_check(a, root, cfg):
+         raise Refused(f"{parent['id']} has no sub-tickets")
+     subs, superseded = subtickets.split_plan(every)
+     if all(s["status"] == "merged" for s in subs) and parent["status"] == "planned":
+-        frm = parent["status"]
+-        parent["status"] = "ready-for-parent-verify"
+-        parent["history"].append({"ts": store.now(), "from": frm, "to": "ready-for-parent-verify", "by": "parent-check"})
+-        store.save_ticket(root, parent)
+-        store.log_event(root, "ticket.transition", ticket=parent["id"], **{"from": frm, "to": "ready-for-parent-verify", "by": "parent-check"})
++        store.record_transition(root, parent, "ready-for-parent-verify", "parent-check")
+     reuse = _reused_subticket_run(root, cfg, parent) if parent["status"] == "ready-for-parent-verify" else None
+     out({"ok": True, "id": parent["id"], "state": parent["status"],
+          "subtickets": {s["id"]: s["status"] for s in subs}, "superseded": [s["id"] for s in superseded],
+@@ -1087,6 +1077,21 @@ def _next_n(d: Path, kind: str) -> int:
+     return len(list(d.glob(f"{kind}-*"))) + 1
+ 
+ 
++def _refuse_unless_applies(root: Path, text: str, refusal: str) -> None:
++    """Refuse spec `text` when it does not validate or its deltas do not apply to current truth."""
++    _, deltas, errors = specstore.validate(text)
++    errors += specstore.applies(root, deltas) if not errors else []
++    if errors:
++        raise Refused(f"{refusal}: " + "; ".join(errors))
++
++
++def _copy_record(d: Path, kind: str, src) -> Path:
++    """Copy `src` into approvals directory `d` as the next `<kind>-<n>.md`."""
++    dest = d / f"{kind}-{_next_n(d, kind)}.md"
++    shutil.copyfile(src, dest)
++    return dest
++
++
+ def approve_spec(a, root, cfg):
+     t = store.load_ticket(root, a.id)
+     if a.edit:
+@@ -1099,10 +1104,7 @@ def approve_spec(a, root, cfg):
+     pinned: list[str] = []
+     if specstore.is_active(root):
+         # Part K: refuse a malformed version or a delta that does not apply; nothing is written.
+-        _, deltas, errors = specstore.validate(text)
+-        errors += specstore.applies(root, deltas) if not errors else []
+-        if errors:
+-            raise Refused("spec not pinned: " + "; ".join(errors))
++        _refuse_unless_applies(root, text, "spec not pinned")
+     if t["status"] != "awaiting-spec-gate":
+         raise Refused(f"{t['id']} is {t['status']}, not awaiting-spec-gate")
+     if a.edit:
+@@ -1129,8 +1131,7 @@ def request_changes(a, root, cfg):
+     if t["status"] != "awaiting-spec-gate":
+         raise Refused(f"{t['id']} is {t['status']}, not awaiting-spec-gate")
+     d = _approval_dir(root, t["id"])
+-    dest = d / f"changes-{_next_n(d, 'changes')}.md"
+-    shutil.copyfile(a.notes, dest)
++    dest = _copy_record(d, "changes", a.notes)
+     frm = t["status"]
+     t["status"] = "ready-for-spec-writer"
+     t["round"]["spec"] = 0
+@@ -1193,18 +1194,15 @@ def resolve(a, root, cfg):
+                           f"implementer's run start; {t['id']} is {st} ({reason or 'no park'})")
+         if reason.startswith("ESCALATE from reviewer"):
+             # Back to its checks, same round: the reviewer runs again with the ruling in its input.
+-            head, moved = t.get("head"), _set_aside_failed_rows(root, t)
+-            store.log_event(root, "results.superseded", ticket=t["id"], head=head, roles=moved)
+-            dest = d / f"ruling-{_next_n(d, 'ruling')}.md"
+-            shutil.copyfile(a.ruling, dest)
++            head, moved = _supersede(root, t)
++            dest = _copy_record(d, "ruling", a.ruling)
+             move("checks-in-flight", "ruling", {"ruling": _rel(root, dest), "head": head, "superseded": moved})
+             return
+         if reason.startswith("BLOCKED") or start_bug:  # an implementer's or the gate's BLOCKED: back to the implementer, same round
+             to = "ready-for-implementer"
+         else:
+             to = "ready-for-planner" if "planner" in reason else "ready-for-critic"
+-        dest = d / f"ruling-{_next_n(d, 'ruling')}.md"
+-        shutil.copyfile(a.ruling, dest)
++        dest = _copy_record(d, "ruling", a.ruling)
+         move(to, "ruling", {"ruling": _rel(root, dest)})
+     elif a.accept_paths:
+         # The merge gate refused a protected path the pinned spec does not declare; the human accepts
+@@ -1216,8 +1214,7 @@ def resolve(a, root, cfg):
+         paths, _ = undeclared_protected(root, cfg, t, head)
+         if not paths:
+             raise Refused(f"nothing to accept: {t['id']} has no undeclared protected path at {head[:9]}")
+-        dest = d / f"ruling-{_next_n(d, 'ruling')}.md"
+-        shutil.copyfile(a.accept_paths, dest)
++        dest = _copy_record(d, "ruling", a.accept_paths)
+         t["accepted_paths"] = sorted(set(t.get("accepted_paths") or []) | set(paths))
+         move("checks-in-flight", "accept-paths", {"ruling": _rel(root, dest), "head": head, "accepted": paths})
+     elif a.to:
+@@ -1231,8 +1228,7 @@ def resolve(a, root, cfg):
+         # (a harness or gate defect, a killed checker). Round unchanged.
+         if st != "parked" or parked.get("from") not in ("checks-in-flight", "ready-for-merge"):
+             raise Refused(f"--redispatch applies to a sub-ticket parked from its checks; {t['id']} is {st} (from {parked.get('from')})")
+-        head, moved = t.get("head"), _set_aside_failed_rows(root, t)
+-        store.log_event(root, "results.superseded", ticket=t["id"], head=head, roles=moved)
++        head, moved = _supersede(root, t)
+         move("checks-in-flight", "redispatch", {"head": head, "superseded": moved})
+     elif a.replan:
+         # After a failed parent-close check: back to the planner with F as a ruling. Its new
+@@ -1245,8 +1241,7 @@ def resolve(a, root, cfg):
+         unmerged = [f"{s['id']} is {s['status']}" for s in subtickets.split_plan(subs)[0] if s["status"] != "merged"]
+         if unmerged:
+             raise Refused(f"--replan needs every sub-ticket merged: {', '.join(unmerged)}")
+-        dest = d / f"ruling-{_next_n(d, 'ruling')}.md"
+-        shutil.copyfile(a.replan, dest)
++        dest = _copy_record(d, "ruling", a.replan)
+         move("ready-for-planner", "replan", {"ruling": _rel(root, dest)})
+     elif a.close:
+         if st == "closed":
+@@ -1257,6 +1252,13 @@ def resolve(a, root, cfg):
+                       "--replan F | --close")
+ 
+ 
++def _supersede(root: Path, t: dict) -> tuple:
++    """Set aside the head's failed result rows and log it; returns (head, roles moved)."""
++    head, moved = t.get("head"), _set_aside_failed_rows(root, t)
++    store.log_event(root, "results.superseded", ticket=t["id"], head=head, roles=moved)
++    return head, moved
++
++
+ def _set_aside_failed_rows(root: Path, t: dict) -> list[str]:
+     """Move the head's rows that did not pass under results/<head>/superseded-<n>/, so the join cannot
+     read them as current and the build runs only the checkers with no row. The reviewer row stays
+@@ -1648,10 +1650,7 @@ def stats_cmd(a):
+ 
+ def spec_tasks(a, root, cfg):
+     t = store.load_ticket(root, a.id)
+-    d = _run_dir(root, a.run)
+-    meta = store.read_yaml(d / "meta.yaml")
+-    if meta.get("ticket") != t["id"] or meta.get("role") != "planner" or meta.get("status") != "PLANNED":
+-        raise Refused(f"{a.run} is not a PLANNED planner run of {t['id']}")
++    d = _planner_run(root, a.run, t["id"])
+     if not specstore.is_active(root):
+         out({"ok": True, "id": t["id"], "skipped": "no spec store (factory init not run)"})
+         return
+@@ -1690,7 +1689,7 @@ def _reused_subticket_run(root: Path, cfg: dict, t: dict) -> str | None:
+     if s["status"] != "merged" or not after or not s.get("head"):
+         return None
+     repo = gitops.repo_root()
+-    if gitops.rev(repo, gitops.integration_branch(cfg, repo)) != after:
++    if gitops.integration_tip(cfg, repo) != after:
+         return None
+     row = store.results_for(root, s["head"]).get("verifier") or {}
+     rid = row.get("run_id")
+@@ -1718,16 +1717,11 @@ def _parent_close_verified(root: Path, cfg: dict, t: dict) -> str | None:
+     if any(s["status"] != "merged" for s in subs):
+         return None
+     repo = gitops.repo_root()
+-    runs = root / "runs"
+-    for d in sorted(runs.iterdir()) if runs.exists() else []:
+-        mp = d / "meta.yaml"
+-        if not mp.exists():
+-            continue
+-        m = store.read_yaml(mp)
+-        if m.get("ticket") != t["id"] or m.get("role") != "verifier" or m.get("status") != "VERIFIED" or not m.get("head"):
++    for rid, m in store.ticket_runs(root, t["id"], "verifier"):
++        if m.get("status") != "VERIFIED" or not m.get("head"):
+             continue
+         if all(gitops.head_contains(repo, m["head"], s["merge"]["main_after"]) for s in subs if s["merge"].get("main_after")):
+-            return d.name
++            return rid
+     return _reused_subticket_run(root, cfg, t)
+ 
+ 
+@@ -1758,10 +1752,7 @@ def status_parse(a, root, cfg):
+ 
+ 
+ def log_tail(a, root, cfg):
+-    files = sorted((root / "log").glob("*.jsonl")) if (root / "log").exists() else []
+-    lines: list[str] = []
+-    for p in files:
+-        lines.extend(p.read_text(encoding="utf-8").splitlines())
++    lines = list(store.log_lines(root))
+     if a.event:
+         lines = [ln for ln in lines if json.loads(ln).get("event") == a.event]
+     if a.ticket:
+diff --git a/factory/compose.py b/factory/compose.py
+index 893a8f8..e5bd846 100644
+--- a/factory/compose.py
++++ b/factory/compose.py
+@@ -13,19 +13,6 @@ from pathlib import Path
+ from factory import instance, specstore, store, subtickets
+ 
+ 
+-def _runs_for(root: Path, ticket: str, role: str, exclude: str) -> list[str]:
+-    runs = root / "runs"
+-    out = []
+-    if runs.exists():
+-        for p in sorted(runs.iterdir()):
+-            if p.name == exclude or not (p / "meta.yaml").exists():
+-                continue
+-            m = store.read_yaml(p / "meta.yaml")
+-            if m.get("ticket") == ticket and m.get("role") == role and m.get("finished"):
+-                out.append(p.name)
+-    return out
+-
+-
+ def _approvals(root: Path, ticket: str, kind: str) -> list[Path]:
+     d = root / "approvals" / ticket
+     return sorted(d.glob(f"{kind}-*.md")) if d.exists() else []
+@@ -43,7 +30,7 @@ def triage_capabilities(root: Path, tid: str) -> list[str] | None:
+     finished triage output, split on commas and whitespace, backticks and periods stripped, unknown
+     names (`none`, `new`) dropped. None when there is no such run or no such line: the ticket then
+     gets the whole of current truth and the decision log, as before the line existed."""
+-    runs = _runs_for(root, tid, "triage", "")
++    runs = [r for r, _ in store.ticket_runs(root, tid, "triage", finished=True)]
+     p = root / "runs" / runs[-1] / "output.md" if runs else None
+     if p is None or not p.exists():
+         return None
+@@ -69,8 +56,8 @@ def capability_index(paths: list[Path]) -> str:
+ 
+ 
+ def _last_run_meta(root: Path, ticket: str, role: str, exclude: str) -> dict | None:
+-    runs = _runs_for(root, ticket, role, exclude)
+-    return store.read_yaml(root / "runs" / runs[-1] / "meta.yaml") if runs else None
++    runs = [m for r, m in store.ticket_runs(root, ticket, role, finished=True) if r != exclude]
++    return runs[-1] if runs else None
+ 
+ 
+ def gate_entries(cfg: dict) -> list[tuple[str, list[str] | None]]:
+@@ -282,11 +269,11 @@ def compose(root: Path, cfg: dict, meta: dict, t: dict) -> tuple[str, list[str]]
+             parts.append("\n## Capability index: every capability in current truth\n\nName the capabilities this "
+                          "request touches on your `Capabilities:` line. The spec writer receives those in full and "
+                          "this index for the rest.\n\n" + capability_index(every))
+-        prior = _runs_for(root, tid, "triage", run_id)
++        prior = [r for r, _ in store.ticket_runs(root, tid, "triage", finished=True) if r != run_id]
+         if prior:
+             add(f"runs/{prior[-1]}/output.md", "Your previous Triage output (the question you asked is answered above)")
+     elif role == "spec_writer":
+-        tri = _runs_for(root, tid, "triage", run_id)
++        tri = [r for r, _ in store.ticket_runs(root, tid, "triage", finished=True) if r != run_id]
+         if tri:
+             add(f"runs/{tri[-1]}/output.md", "Ticket (Triage output)")
+         add(t["request"], "Request (raw)")
+@@ -294,7 +281,7 @@ def compose(root: Path, cfg: dict, meta: dict, t: dict) -> tuple[str, list[str]]
+         add_truth(sel)
+         add_decisions()
+         if rnd >= 1 and version >= 1:
+-            crit = _runs_for(root, tid, "critic", run_id)
++            crit = [r for r, _ in store.ticket_runs(root, tid, "critic", finished=True) if r != run_id]
+             if crit:
+                 add(f"runs/{crit[-1]}/output.md", "Critic findings on your previous version")
+             add(f"specs/{tid}/v{version}.md", f"Your previous spec (v{version})")
+@@ -314,7 +301,7 @@ def compose(root: Path, cfg: dict, meta: dict, t: dict) -> tuple[str, list[str]]
+         add_decisions()
+         add_approved_changes()
+         if rnd >= 2 and version >= 2:
+-            crit = _runs_for(root, tid, "critic", run_id)
++            crit = [r for r, _ in store.ticket_runs(root, tid, "critic", finished=True) if r != run_id]
+             if crit:
+                 add(f"runs/{crit[-1]}/output.md", "Your prior findings (round %d)" % (rnd - 1))
+             # the smaller of the diff and the previous version: a rewrite's diff outgrows the version
+@@ -400,7 +387,7 @@ def compose(root: Path, cfg: dict, meta: dict, t: dict) -> tuple[str, list[str]]
+             else:
+                 add(f"specs/{tid}/subticket.md", f"Sub-ticket {tid}")
+                 add_spec(f"specs/{parent}/v{av}.md", f"Parent spec (v{av}, pinned)")
+-                impl = _runs_for(root, tid, "implementer", run_id)
++                impl = [r for r, _ in store.ticket_runs(root, tid, "implementer", finished=True) if r != run_id]
+                 if impl:
+                     add(f"runs/{impl[-1]}/output.md", "PR description (the implementer's output)")
+                 diff_rel = f"runs/{run_id}/diff.patch"
+@@ -409,8 +396,8 @@ def compose(root: Path, cfg: dict, meta: dict, t: dict) -> tuple[str, list[str]]
+                 prnd = t["round"]["pr"]
+                 if prnd >= 2:  # both checkers' findings from the previous round (doc §Routing table, Implementer row)
+                     for r in ("reviewer", "verifier"):
+-                        prev = [x for x in _runs_for(root, tid, r, run_id)
+-                                if store.read_yaml(root / "runs" / x / "meta.yaml").get("round") == prnd - 1]
++                        prev = [x for x, m in store.ticket_runs(root, tid, r, finished=True)
++                                if x != run_id and m.get("round") == prnd - 1]
+                         if prev:
+                             who = "Your" if r == role else f"The {r}'s"
+                             add(f"runs/{prev[-1]}/output.md", f"{who} prior findings (round {prnd - 1})")
+diff --git a/factory/cost.py b/factory/cost.py
+index 77640fc..6037e08 100644
+--- a/factory/cost.py
++++ b/factory/cost.py
+@@ -39,6 +39,12 @@ def _records(path: str):
+                 continue
+ 
+ 
++def _log_records(store: str):
++    """Each parseable record of a store's event log, `log/*.jsonl` in file-name order."""
++    for lf in sorted(glob.glob(os.path.join(store, "log", "*.jsonl"))):
++        yield from _records(lf)
++
++
+ def _user_text(o: dict) -> str | None:
+     """The text of a user record, or None for any other record."""
+     if o.get("type") != "user":
+@@ -126,15 +132,14 @@ def _store_paths(store: str) -> set[str]:
+     """A store's path and its paths before each `store.migrated` event in its log."""
+     here = os.path.realpath(store)
+     paths = {here}
+-    for lf in glob.glob(os.path.join(store, "log", "*.jsonl")):
+-        for e in _records(lf):
+-            if e.get("event") != "store.migrated" or not e.get("from") or not e.get("to"):
+-                continue
+-            src, dst = e["from"], e["to"].rstrip("/")
+-            if os.path.isabs(src):
+-                paths.add(os.path.realpath(src))
+-            elif here.endswith(os.sep + os.path.normpath(dst)):
+-                paths.add(os.path.realpath(os.path.join(here[:-len(os.path.normpath(dst))], src)))
++    for e in _log_records(store):
++        if e.get("event") != "store.migrated" or not e.get("from") or not e.get("to"):
++            continue
++        src, dst = e["from"], e["to"].rstrip("/")
++        if os.path.isabs(src):
++            paths.add(os.path.realpath(src))
++        elif here.endswith(os.sep + os.path.normpath(dst)):
++            paths.add(os.path.realpath(os.path.join(here[:-len(os.path.normpath(dst))], src)))
+     return paths
+ 
+ 
+diff --git a/factory/drive.py b/factory/drive.py
+index 74392cc..0b2dee2 100644
+--- a/factory/drive.py
++++ b/factory/drive.py
+@@ -189,12 +189,12 @@ class Driver:
+             # check): parked verbatim, so `resolve --ruling` treats it as an implementer's BLOCKED.
+             err = start.get("error")
+             blocked = isinstance(err, str) and err.startswith("BLOCKED ")
+-            self.park(ticket, err if blocked else f"harness-bug: run start {role}: {start.get('stderr') or ''}", [])
++            self.park(ticket, err if blocked else _harness_bug(f"run start {role}", start), [])
+             return None
+         rid = start["run_id"]
+         comp = call("run", "compose", rid)
+         if not comp["ok"]:
+-            self.park(ticket, f"harness-bug: run compose {role}: {comp.get('stderr') or ''}", [rid])
++            self.park(ticket, _harness_bug(f"run compose {role}", comp), [rid])
+             return None
+         run = os.path.realpath(self.root / "runs" / rid)
+         wt = os.path.realpath(start["worktree"]) if start.get("worktree") else None
+@@ -222,19 +222,17 @@ class Driver:
+             # A failed call is treated as a thrown agent() call: the run is recorded KILLED and the
+             # ticket parked with the error, so no run is left in flight. No retry.
+             call("run", "finish", rid, "--status-override", "KILLED", "--reply", reply_path)
+-            if role in CHECKERS:
+-                call("run", "cleanup", rid)
++            _cleanup_checker(role, rid)
+             self.running.pop(rid, None)
+             self.step(f"{role} {rid}: KILLED", ticket)
+             self.park(ticket, f"agent call failed: {role}: {_failure_message(reply, err, code)}", [rid])
+             return None
+         # run finish reads the output file for every run: a missing or blank one is EMPTY-OUTPUT.
+         fin = call("run", "finish", rid, "--reply", reply_path)
+-        if role in CHECKERS:
+-            call("run", "cleanup", rid)
++        _cleanup_checker(role, rid)
+         self.running.pop(rid, None)
+         if not fin["ok"]:
+-            self.park(ticket, f"harness-bug: run finish {role}: {fin.get('stderr') or ''}", [rid])
++            self.park(ticket, _harness_bug(f"run finish {role}", fin), [rid])
+             return None
+         if fin.get("parked"):  # the tripwire saw a listed live file change: do not route on STATUS
+             self.step(f"parked: {fin['parked']}", ticket)
+@@ -289,11 +287,11 @@ class Driver:
+                     return parked
+                 added = call("spec", "add", T, "--from-run", w["runId"])
+                 if not added["ok"]:
+-                    self.park(T, f"harness-bug: spec add: {added.get('stderr') or ''}", [w["runId"]])
++                    self.park(T, _harness_bug("spec add", added), [w["runId"]])
+                     return parked
+                 tr = self.transition("ready-for-critic", "spec:init")
+                 if not tr["ok"]:
+-                    self.park(T, f"harness-bug: transition to critic: {tr.get('stderr') or ''}", [w["runId"]])
++                    self.park(T, _harness_bug("transition to critic", tr), [w["runId"]])
+                     return parked
+                 rnd = _spec_round(tr, rnd)
+                 state = "ready-for-critic"
+@@ -314,7 +312,7 @@ class Driver:
+             if rnd < self.max_spec:
+                 tr = self.transition("ready-for-spec-writer", "spec:+1")
+                 if not tr["ok"]:
+-                    self.park(T, f"harness-bug: round increment refused: {tr.get('stderr') or ''}", [c["runId"]])
++                    self.park(T, _harness_bug("round increment refused", tr), [c["runId"]])
+                     return parked
+                 rnd = _spec_round(tr, rnd)
+                 state = "ready-for-spec-writer"
+@@ -331,7 +329,7 @@ class Driver:
+             # A spec that needs one sub-ticket becomes it without a planner run; the harness decides which.
+             whole = call("plan", "whole-spec", T)
+             if not whole["ok"]:
+-                self.park(T, f"harness-bug: plan whole-spec: {whole.get('stderr') or ''}", [])
++                self.park(T, _harness_bug("plan whole-spec", whole), [])
+                 return parked
+             if whole.get("planner") == "skipped":
+                 self.step(f"planner skipped ({whole.get('reason')}); one sub-ticket from the whole spec")
+@@ -350,7 +348,7 @@ class Driver:
+                                    ("subticket add", ("subticket", "add", T, "--run", p["runId"]))):
+                     res = call(*argv)
+                     if not res["ok"]:
+-                        self.park(T, f"harness-bug: {what}: {res.get('stderr') or ''}", [p["runId"]])
++                        self.park(T, _harness_bug(what, res), [p["runId"]])
+                         return parked
+             self.transition("planned")
+             state = "planned"
+@@ -365,7 +363,7 @@ class Driver:
+             while True:
+                 ready = call("ticket", "ready-implementers", T)
+                 if not ready["ok"]:
+-                    self.park(T, f"harness-bug: ready-implementers: {ready.get('stderr') or ''}", [])
++                    self.park(T, _harness_bug("ready-implementers", ready), [])
+                     return parked
+                 # A parent planned with no sub-tickets (e.g. by an older intake): create them once from
+                 # the planner run its recorded plan names, or park the parent saying why.
+@@ -443,19 +441,19 @@ class Driver:
+                     return
+                 moved = call("ticket", "head", st)
+                 if not moved["ok"]:
+-                    self.park(st, f"harness-bug: ticket head: {moved.get('stderr') or ''}", [impl["runId"]])
++                    self.park(st, _harness_bug("ticket head", moved), [impl["runId"]])
+                     return
+                 if moved.get("merge_refused"):
+                     # A conflict run that did not merge the integration branch in: no point checking that head.
+                     j = call("ticket", "join", st)
+                     if j["ok"] and j.get("decision") == "conflict":
+                         continue
+-                    self.park(st, (j.get("reason") or "") if j["ok"] else f"harness-bug: join: {j.get('stderr') or ''}",
++                    self.park(st, (j.get("reason") or "") if j["ok"] else _harness_bug("join", j),
+                               [impl["runId"]])
+                     return
+                 tr = self.transition("checks-in-flight", "pr:init", st)
+                 if not tr["ok"]:
+-                    self.park(st, f"harness-bug: transition to checks: {tr.get('stderr') or ''}", [impl["runId"]])
++                    self.park(st, _harness_bug("transition to checks", tr), [impl["runId"]])
+                     return
+             elif show["state"] != "checks-in-flight":
+                 return  # parked, merged, closed or waiting: nothing for this loop to do
+@@ -465,13 +463,13 @@ class Driver:
+             head_now = call("ticket", "head", st)
+             sha = head_now.get("head") if head_now["ok"] else None
+             if not isinstance(sha, str) or not re.fullmatch(r"[0-9a-f]{40}", sha):
+-                self.park(st, f"harness-bug: no head for the checkers: {head_now.get('stderr') or ''}", [])
++                self.park(st, _harness_bug("no head for the checkers", head_now), [])
+                 return
+             roles = list(CHECKERS)
+             if not implemented:
+                 rows = call("results", "show", st)
+                 if not rows["ok"]:
+-                    self.park(st, f"harness-bug: results show: {rows.get('stderr') or ''}", [])
++                    self.park(st, _harness_bug("results show", rows), [])
+                     return
+                 missing = rows.get("missing") or []
+                 roles = [r for r in roles if r in missing or (r == "verifier" and "ci" in missing)]
+@@ -483,7 +481,7 @@ class Driver:
+                 rec = call("results", "record", st, "--head", sha, "--role", role, "--output", r["outputPath"],
+                            "--run", r["runId"], *(["--killed"] if r["status"] == "KILLED" else []))
+                 if not rec["ok"]:
+-                    self.park(st, f"harness-bug: results record {role}: {rec.get('stderr') or ''}", [r["runId"]])
++                    self.park(st, _harness_bug(f"results record {role}", rec), [r["runId"]])
+                     return None
+                 return r
+ 
+@@ -493,7 +491,7 @@ class Driver:
+             outs = [r["runId"] for r in checked]
+             join = call("ticket", "join", st)
+             if not join["ok"]:
+-                self.park(st, f"harness-bug: join: {join.get('stderr') or ''}", outs)
++                self.park(st, _harness_bug("join", join), outs)
+                 return
+             decision, reason = join.get("decision"), join.get("reason") or ""
+             self.step(f"join: {decision} ({reason})", st)
+@@ -514,12 +512,12 @@ class Driver:
+                     self.transition("ready-for-implementer", None, st)
+                     continue
+                 self.park(st, (again.get("reason") or "") if again["ok"] and again.get("decision") == "park"
+-                          else f"harness-bug: merge: {m.get('stderr') or ''}", outs)
++                          else _harness_bug("merge", m), outs)
+                 return
+             if decision == "revise":
+                 tr = self.transition("ready-for-implementer", join.get("round_op"), st)
+                 if not tr["ok"]:
+-                    self.park(st, f"harness-bug: round increment refused: {tr.get('stderr') or ''}", outs)
++                    self.park(st, _harness_bug("round increment refused", tr), outs)
+                     return
+                 continue
+             if decision == "conflict":
+@@ -571,8 +569,7 @@ class Driver:
+             await asyncio.gather(*waits)
+         for rid, r in list(self.running.items()):
+             call("run", "finish", rid, "--status-override", "KILLED")
+-            if r["role"] in CHECKERS:
+-                call("run", "cleanup", rid)
++            _cleanup_checker(r["role"], rid)
+             self.running.pop(rid)
+             self.procs.pop(rid, None)
+             self.step(f"{r['role']} {rid}: KILLED", r["ticket"])
+@@ -599,6 +596,17 @@ async def _all(aws) -> list:
+         raise
+ 
+ 
++def _harness_bug(what: str, res: dict) -> str:
++    """The park reason for a store command `what` that failed with result `res`."""
++    return f"harness-bug: {what}: {res.get('stderr') or ''}"
++
++
++def _cleanup_checker(role: str, rid: str) -> None:
++    """Remove a checker run's checkout; other roles have none."""
++    if role in CHECKERS:
++        call("run", "cleanup", rid)
++
++
+ def _spec_round(tr: dict, rnd: int) -> int:
+     spec = (tr.get("round") or {}).get("spec")
+     return spec if isinstance(spec, int) and not isinstance(spec, bool) else rnd
+@@ -623,7 +631,7 @@ def _same_ticket_guard(root: Path, tid: str) -> None:
+     if not store.ticket_path(root, tid).exists():
+         return
+     t = store.load_ticket(root, tid)
+-    runs = [r for x in (t, *store.subtickets_of(root, tid)) for r in x.get("in_flight") or []]
++    runs = store.in_flight_runs(root, t)
+     if runs:
+         raise store.Refused(f"{tid} has runs in flight on it or its sub-tickets: {', '.join(runs)}; "
+                             "drive it again once they finish")
+diff --git a/factory/gitops.py b/factory/gitops.py
+index 253f6bd..c1484be 100644
+--- a/factory/gitops.py
++++ b/factory/gitops.py
+@@ -39,6 +39,11 @@ def rev(repo: Path, ref: str) -> str:
+     return git(repo, "rev-parse", ref)
+ 
+ 
++def integration_tip(cfg: dict, repo: Path) -> str:
++    """The commit at the tip of the integration branch."""
++    return rev(repo, integration_branch(cfg, repo))
++
++
+ def branch_of(tid: str) -> str:
+     return f"factory/{tid}"
+ 
+diff --git a/factory/specstore.py b/factory/specstore.py
+index 2e31ea4..85c05b3 100644
+--- a/factory/specstore.py
++++ b/factory/specstore.py
+@@ -270,19 +270,12 @@ def critic_rounds(root: Path, tid: str) -> str:
+     """`## Critic rounds`: per finished critic run of the ticket, oldest first."""
+     from factory import status  # local import: status has no store dependency
+ 
+-    runs = root / "runs"
+     entries = []
+-    if runs.exists():
+-        for d in sorted(runs.iterdir()):
+-            mp = d / "meta.yaml"
+-            if not mp.exists():
+-                continue
+-            m = store.read_yaml(mp)
+-            if m.get("ticket") != tid or m.get("role") != "critic" or not m.get("finished"):
+-                continue
+-            body = (d / "output.md").read_text(encoding="utf-8") if (d / "output.md").exists() else ""
+-            entries.append(f"round {m.get('round')} · spec v{m.get('spec_version')} · {m['run_id']} · {m.get('status')}\n\n"
+-                           + status.strip_trailer(body).rstrip() + "\n")
++    for run_id, m in store.ticket_runs(root, tid, "critic", finished=True):
++        out = root / "runs" / run_id / "output.md"
++        body = out.read_text(encoding="utf-8") if out.exists() else ""
++        entries.append(f"round {m.get('round')} · spec v{m.get('spec_version')} · {m['run_id']} · {m.get('status')}\n\n"
++                       + status.strip_trailer(body).rstrip() + "\n")
+     return "## Critic rounds\n\n" + ("\n".join(entries) if entries else "none\n")
+ 
+ 
+diff --git a/factory/stats.py b/factory/stats.py
+index e56e6d1..a8c8040 100644
+--- a/factory/stats.py
++++ b/factory/stats.py
+@@ -21,7 +21,7 @@ from datetime import datetime
+ from pathlib import Path
+ 
+ from factory.cli import ROLES
+-from factory.cost import _records, _when, gate_failures, match_transcripts, transcript_usage
++from factory.cost import _log_records, _when, gate_failures, match_transcripts, transcript_usage
+ from factory.store import Refused, read_yaml
+ 
+ # Verdicts that change what happens next, from any role.
+@@ -69,10 +69,9 @@ def _load(store: str) -> tuple[list[dict], list[dict]]:
+         m.update(_store=store, _id=os.path.basename(d), _dir=d, _started=_when(m.get("started")))
+         runs.append(m)
+     events = []
+-    for lf in sorted(glob.glob(os.path.join(store, "log", "*.jsonl"))):
+-        for e in _records(lf):
+-            if isinstance(e, dict) and e.get("ts"):
+-                events.append({**e, "_ts": _when(e["ts"])})
++    for e in _log_records(store):
++        if isinstance(e, dict) and e.get("ts"):
++            events.append({**e, "_ts": _when(e["ts"])})
+     events.sort(key=lambda e: e["_ts"])
+     return runs, events
+ 
+diff --git a/factory/store.py b/factory/store.py
+index 9e12804..7ef578b 100644
+--- a/factory/store.py
++++ b/factory/store.py
+@@ -92,6 +92,13 @@ def log_event(root: Path, event: str, **fields) -> dict:
+     return line
+ 
+ 
++def log_lines(root: Path):
++    """Each line of the event log, `log/*.jsonl` in file-name order; the caller parses it."""
++    d = root / "log"
++    for p in sorted(d.glob("*.jsonl")) if d.exists() else []:
++        yield from p.read_text(encoding="utf-8").splitlines()
++
++
+ def ticket_path(root: Path, tid: str) -> Path:
+     return root / "tickets" / f"{tid}.yaml"
+ 
+@@ -116,19 +123,46 @@ def save_ticket(root: Path, t: dict) -> None:
+ def clear_scratch(root: Path, tid: str) -> None:
+     """Remove runs/<id>/scratch of each finished run of ticket `tid`; runs in flight, other tickets'
+     runs and every path outside runs/*/scratch are left alone."""
+-    for d in (root / "runs").glob("*/scratch"):
+-        meta = d.parent / "meta.yaml"
+-        m = read_yaml(meta) if meta.exists() else None
+-        if not m or m.get("ticket") != tid or not m.get("finished"):
+-            continue
++    for rid, _ in ticket_runs(root, tid, finished=True):
++        d = root / "runs" / rid / "scratch"
+         if d.is_symlink():
+             d.unlink()
+-        else:
++        elif d.is_dir():
+             # factory: plain rmtree fails on a read-only directory inside scratch (a Go module cache,
+             # say); add a chmod-and-retry handler if a run ever leaves one
+             shutil.rmtree(d)
+ 
+ 
++def ticket_runs(root: Path, ticket: str, role: str | None = None, finished: bool = False):
++    """(run_id, meta) of each run of `ticket` in run-id order, only `role`'s when given and only
++    finished ones when `finished`. A run whose meta.yaml is missing or still empty is skipped."""
++    runs = root / "runs"
++    for d in sorted(runs.iterdir()) if runs.exists() else []:
++        mp = d / "meta.yaml"
++        m = read_yaml(mp) if mp.exists() else None
++        if (not m or m.get("ticket") != ticket or (role is not None and m.get("role") != role)
++                or (finished and not m.get("finished"))):
++            continue
++        yield d.name, m
++
++
++def in_flight_runs(root: Path, t: dict) -> list[str]:
++    """The runs in flight on ticket `t` and on its sub-tickets."""
++    return [r for x in (t, *subtickets_of(root, t["id"])) for r in x.get("in_flight") or []]
++
++
++def record_transition(root: Path, t: dict, to: str, by: str, history: dict | None = None,
++                      event: dict | None = None) -> str:
++    """Move ticket `t` to status `to`: append its history entry (plus `history`), save it and log
++    `ticket.transition` (plus `event`). Returns the status it left."""
++    frm = t["status"]
++    t["status"] = to
++    t["history"].append({"ts": now(), "from": frm, "to": to, "by": by, **(history or {})})
++    save_ticket(root, t)
++    log_event(root, "ticket.transition", ticket=t["id"], **{"from": frm, "to": to, "by": by, **(event or {})})
++    return frm
++
++
+ def park_ticket(root: Path, t: dict, reason: str, outputs: list[str], question: str | None = None,
+                 by: str = "park") -> None:
+     """Park ticket `t` (the caller has checked it is not parked or closed): record where it came

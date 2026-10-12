@@ -2491,3 +2491,25 @@
 {"ts": "2026-10-12T15:58:47+00:00", "event": "approval.recorded", "ticket": "T-0046", "kind": "spec", "version": 3, "by": "dphang"}
 {"ts": "2026-10-12T15:58:47+00:00", "event": "change.pinned", "ticket": "T-0046", "version": 3, "files": ["openspec/changes/T-0046/proposal.md", "openspec/changes/T-0046/design.md", "openspec/changes/T-0046/specs/harness-code/spec.md", "openspec/changes/T-0046/verification.md"]}
 {"ts": "2026-10-12T15:58:47+00:00", "event": "ticket.transition", "ticket": "T-0046", "from": "awaiting-spec-gate", "to": "ready-for-planner", "by": "dphang"}
+{"ts": "2026-10-12T15:59:29+00:00", "event": "ticket.created", "ticket": "T-0046.1", "parent": "T-0046", "status": "ready-for-implementer"}
+{"ts": "2026-10-12T15:59:29+00:00", "event": "tasks.written", "ticket": "T-0046", "source": "plan:whole-spec"}
+{"ts": "2026-10-12T15:59:29+00:00", "event": "plan.skipped", "ticket": "T-0046", "subticket": "T-0046.1", "reason": "one sub-ticket: no NEEDS-SPLIT, no seam heading, no earlier planner run"}
+{"ts": "2026-10-12T15:59:37+00:00", "event": "ticket.transition", "ticket": "T-0046", "from": "ready-for-planner", "to": "planned", "by": "workflow", "round": {"spec": 2, "pr": 0}}
+{"ts": "2026-10-12T16:00:07+00:00", "event": "run.started", "ticket": "T-0046.1", "run": "run-0474-implementer", "role": "implementer", "model": "opus"}
+{"ts": "2026-10-12T16:30:22+00:00", "event": "run.finished", "ticket": "T-0046.1", "run": "run-0474-implementer", "role": "implementer", "status": "READY-FOR-REVIEW", "wall_s": 1816}
+{"ts": "2026-10-12T16:30:42+00:00", "event": "ticket.transition", "ticket": "T-0046.1", "from": "ready-for-implementer", "to": "checks-in-flight", "by": "workflow", "round": {"spec": 0, "pr": 1}}
+{"ts": "2026-10-12T16:30:59+00:00", "event": "run.started", "ticket": "T-0046.1", "run": "run-0475-reviewer", "role": "reviewer", "model": "fable"}
+{"ts": "2026-10-12T16:31:00+00:00", "event": "run.started", "ticket": "T-0046.1", "run": "run-0476-verifier", "role": "verifier", "model": "opus"}
+{"ts": "2026-10-12T16:34:24+00:00", "event": "run.finished", "ticket": "T-0046.1", "run": "run-0475-reviewer", "role": "reviewer", "status": "APPROVE", "wall_s": 205}
+{"ts": "2026-10-12T16:34:24+00:00", "event": "escalation.queued", "ticket": "T-0046.1", "run": "run-0475-reviewer", "items": ["Protected path `factory/**` touched (`cli.py`, `compose.py`, `cost.py`, `drive.py`, `gitops.py`, `specstore.py`, `stats.py`, `store.py`). The approved spec's Risk section declares `factory/**`, so the merge gate needs no further approval; listed for the record."]}
+{"ts": "2026-10-12T16:34:51+00:00", "event": "result.recorded", "ticket": "T-0046.1", "head": "b1123b0bb2430ff9d23d9302c34e133b522c5aa2", "role": "reviewer", "status": "APPROVE", "run": "run-0475-reviewer"}
+{"ts": "2026-10-12T16:47:02+00:00", "event": "request.created", "ticket": "T-0049", "source": "/private/tmp/claude-501/-Users-dphang-dev-nanobot/c69bfd1d-97a6-43e3-9d5a-a517c28d382c/scratchpad/debloat/g-diagram.md"}
+{"ts": "2026-10-12T16:47:02+00:00", "event": "ticket.created", "ticket": "T-0049", "status": "ready-for-triage"}
+{"ts": "2026-10-12T16:50:53+00:00", "event": "run.finished", "ticket": "T-0046.1", "run": "run-0476-verifier", "role": "verifier", "status": "VERIFIED", "wall_s": 1193}
+{"ts": "2026-10-12T16:51:12+00:00", "event": "result.recorded", "ticket": "T-0046.1", "head": "b1123b0bb2430ff9d23d9302c34e133b522c5aa2", "role": "verifier", "status": "VERIFIED", "run": "run-0476-verifier"}
+{"ts": "2026-10-12T16:51:12+00:00", "event": "result.recorded", "ticket": "T-0046.1", "head": "b1123b0bb2430ff9d23d9302c34e133b522c5aa2", "role": "ci", "status": "PASS", "run": "run-0476-verifier"}
+{"ts": "2026-10-12T16:51:31+00:00", "event": "ticket.transition", "ticket": "T-0046.1", "from": "checks-in-flight", "to": "ready-for-merge", "by": "workflow", "round": {"spec": 0, "pr": 1}}
+{"ts": "2026-10-12T16:51:39+00:00", "event": "merge.done", "ticket": "T-0046.1", "head": "b1123b0bb2430ff9d23d9302c34e133b522c5aa2", "base_before": "34de412fd5fa7f410654e6f6c496877e9608cad1", "main_after": "1709f27dbb05df6dcdac0a90390b558f778b56f4"}
+{"ts": "2026-10-12T16:51:59+00:00", "event": "ticket.transition", "ticket": "T-0046", "from": "planned", "to": "ready-for-parent-verify", "by": "parent-check"}
+{"ts": "2026-10-12T16:52:19+00:00", "event": "change.archived", "ticket": "T-0046", "archived_to": "openspec/changes/archive/2026-10-12-T-0046", "capabilities": ["harness-code"], "decisions": 5}
+{"ts": "2026-10-12T16:52:27+00:00", "event": "ticket.transition", "ticket": "T-0046", "from": "ready-for-parent-verify", "to": "closed", "by": "workflow", "round": {"spec": 2, "pr": 0}}
