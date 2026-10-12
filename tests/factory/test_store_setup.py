@@ -13,16 +13,15 @@ exempts (`init`, `paths`), so the file passes in a checkout with an uncommitted 
 """
 from __future__ import annotations
 
-import json
 import os
 import shutil
 import subprocess
 from pathlib import Path
 
-REPO = Path(__file__).resolve().parents[2]
-BIN = REPO / "bin" / "factory"
+from ._cli import BIN, REPO, STRIP
+from ._cli import js_ok as js
+
 FIXTURE_INSTANCE = Path(__file__).resolve().parent / "fixtures" / "instance"
-STRIP = ("FACTORY_INSTANCE", "FACTORY_REPO", "FACTORY_STATE", "FACTORY_INTEGRATION_BRANCH", "FACTORY_CWD")
 RULE = "runs/** -whitespace"
 
 
@@ -31,11 +30,6 @@ def cli(cwd: Path, *argv: str, **env: str) -> subprocess.CompletedProcess:
     e = {k: v for k, v in os.environ.items() if k not in STRIP}
     e.update({"PYTHONDONTWRITEBYTECODE": "1", **env})
     return subprocess.run([str(BIN), *argv], capture_output=True, text=True, env=e, cwd=cwd)
-
-
-def js(cp: subprocess.CompletedProcess) -> dict:
-    assert cp.returncode == 0, cp.stderr
-    return json.loads(cp.stdout.strip().splitlines()[-1])
 
 
 def git(repo: Path, *argv: str) -> subprocess.CompletedProcess:

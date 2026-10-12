@@ -6,31 +6,16 @@ Black-box through `bin/factory` on a throwaway store (FACTORY_STATE), as test_de
 """
 from __future__ import annotations
 
-import json
-import os
 import subprocess
 from pathlib import Path
 
 import pytest
-import yaml
 
-REPO = Path(__file__).resolve().parents[2]
-BIN = REPO / "bin" / "factory"
+from ._cli import ticket
+from ._cli import js_ok as js
+from ._cli import run_env as run
+
 RULING = "Ruling: take the second approach.\n"
-
-
-def run(env: dict, *argv: str) -> subprocess.CompletedProcess:
-    return subprocess.run([str(BIN), *argv], capture_output=True, text=True,
-                          env={**os.environ, "PYTHONDONTWRITEBYTECODE": "1", **env}, cwd=REPO)
-
-
-def js(cp: subprocess.CompletedProcess) -> dict:
-    assert cp.returncode == 0, cp.stderr
-    return json.loads(cp.stdout.strip().splitlines()[-1])
-
-
-def ticket(store: Path, tid: str) -> dict:
-    return yaml.safe_load((store / "tickets" / f"{tid}.yaml").read_text())
 
 
 @pytest.fixture

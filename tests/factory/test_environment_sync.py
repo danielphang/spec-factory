@@ -17,8 +17,8 @@ from pathlib import Path
 import pytest
 import yaml
 
-REPO = Path(__file__).resolve().parents[2]
-BIN = REPO / "bin" / "factory"
+from ._cli import BIN, REPO
+
 FIXTURE_INSTANCE = Path(__file__).resolve().parent / "fixtures" / "instance"
 GIT_ID = {"GIT_AUTHOR_NAME": "f", "GIT_AUTHOR_EMAIL": "f@x", "GIT_COMMITTER_NAME": "f", "GIT_COMMITTER_EMAIL": "f@x"}
 DUMP = "env > synced.env"  # a sync that records the environment it ran in

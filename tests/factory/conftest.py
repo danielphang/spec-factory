@@ -11,8 +11,12 @@ subprocess environment (the shepherd's scratch target) still overrides it.
 from __future__ import annotations
 
 import os
+import sys
 from pathlib import Path
 
 _HERE = Path(__file__).resolve()
 os.environ["FACTORY_INSTANCE"] = str(_HERE.parent / "fixtures" / "instance")
 os.environ.setdefault("FACTORY_REPO", str(_HERE.parents[2]))
+# No .pyc in the checkout: the variable covers every Python subprocess, the flag in-process importlib loads.
+os.environ["PYTHONDONTWRITEBYTECODE"] = "1"
+sys.dont_write_bytecode = True

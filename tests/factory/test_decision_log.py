@@ -8,26 +8,15 @@ from __future__ import annotations
 
 import datetime as dt
 import json
-import os
 import re
-import subprocess
 from pathlib import Path
 
 import pytest
 import yaml
 
-REPO = Path(__file__).resolve().parents[2]
-BIN = REPO / "bin" / "factory"
+from ._cli import REPO, js, run, ticket
+
 FENCE = "`" * 3
-
-
-def run(store: Path, *argv: str) -> subprocess.CompletedProcess:
-    env = {**os.environ, "FACTORY_STATE": str(store), "PYTHONDONTWRITEBYTECODE": "1"}
-    return subprocess.run([str(BIN), *argv], capture_output=True, text=True, env=env, cwd=REPO)
-
-
-def js(cp):
-    return json.loads(cp.stdout.strip().splitlines()[-1])
 
 
 def today() -> str:
@@ -45,10 +34,6 @@ def log_lines(store: Path) -> list[str]:
 
 def events(store: Path, name: str) -> list[dict]:
     return [json.loads(ln) for ln in run(store, "log", "tail", "-n", "200", "--event", name).stdout.splitlines()]
-
-
-def ticket(store: Path) -> dict:
-    return yaml.safe_load((store / "tickets" / "T-0001.yaml").read_text())
 
 
 @pytest.fixture

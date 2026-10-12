@@ -15,9 +15,8 @@ from pathlib import Path
 
 import pytest
 
-REPO = Path(__file__).resolve().parents[2]
-BIN = REPO / "bin" / "factory"
-STRIP = ("FACTORY_INSTANCE", "FACTORY_REPO", "FACTORY_STATE", "FACTORY_INTEGRATION_BRANCH", "FACTORY_CWD")
+from ._cli import BIN, REPO, STRIP
+
 FENCE = "`" * 3
 
 BULLET = [

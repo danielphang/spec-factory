@@ -19,8 +19,8 @@ from pathlib import Path
 import pytest
 import yaml
 
-REPO = Path(__file__).resolve().parents[2]
-BIN = REPO / "bin" / "factory"
+from ._cli import BIN, REPO
+
 FIXTURE_INSTANCE = Path(__file__).resolve().parent / "fixtures" / "instance"
 UNSCOPED = "git diff --check main...HEAD"
 SCOPED = "sh -c 'exit 7'"

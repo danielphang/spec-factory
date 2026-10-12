@@ -9,33 +9,18 @@ Black-box through `bin/factory` on a throwaway store (FACTORY_STATE), as test_de
 """
 from __future__ import annotations
 
-import json
-import os
 import subprocess
 from pathlib import Path
 
 import pytest
 import yaml
 
-REPO = Path(__file__).resolve().parents[2]
-BIN = REPO / "bin" / "factory"
+from ._cli import run, ticket
+from ._cli import js_ok as js
+
 NOTE = "Re-plan: add one fix for the case-insensitive path.\n"
 SECTION = "## Sub-tickets already under T-0001"
 FIRST_PLAN = "ST-1 / First\nDepends on: none\nParallel-safe: yes\n\nST-2 / Second\nDepends on: ST-1\nParallel-safe: yes\n"
-
-
-def run(store: Path, *argv: str) -> subprocess.CompletedProcess:
-    env = {**os.environ, "FACTORY_STATE": str(store), "PYTHONDONTWRITEBYTECODE": "1"}
-    return subprocess.run([str(BIN), *argv], capture_output=True, text=True, env=env, cwd=REPO)
-
-
-def js(cp: subprocess.CompletedProcess) -> dict:
-    assert cp.returncode == 0, cp.stderr
-    return json.loads(cp.stdout.strip().splitlines()[-1])
-
-
-def ticket(store: Path, tid: str) -> dict:
-    return yaml.safe_load((store / "tickets" / f"{tid}.yaml").read_text())
 
 
 def files(d: Path) -> list[str]:
