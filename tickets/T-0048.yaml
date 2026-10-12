@@ -1,0 +1,28 @@
+id: T-0048
+type: null
+title: 'De-bloat E: docs: freeze the dev/ build documents as history, fix stale ''not yet run'' claims,
+  one home per mechanism in README, history to the changelog, and clean the harness-docs current truth
+  (about 1,150 lines leave the maintained set)'
+request: requests/T-0048.md
+source: /private/tmp/claude-501/-Users-dphang-dev-nanobot/c69bfd1d-97a6-43e3-9d5a-a517c28d382c/scratchpad/debloat/e-docs.md
+status: ready-for-triage
+round:
+  spec: 0
+  pr: 0
+spec:
+  version: 0
+  approved_version: null
+plan: null
+in_flight: []
+parked: null
+created: '2026-10-12T00:32:02+00:00'
+history: []
+parent: null
+depends_on: []
+parallel_safe: true
+branch: null
+head: null
+merge:
+  base_before: null
+  main_after: null
+parent_base: null

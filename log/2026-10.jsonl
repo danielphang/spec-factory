@@ -2341,3 +2341,13 @@
 {"ts": "2026-10-12T00:12:57+00:00", "event": "change.archived", "ticket": "T-0043", "archived_to": "openspec/changes/archive/2026-10-12-T-0043", "capabilities": ["factory-stats", "harness-docs", "live-store-guard"], "decisions": 19}
 {"ts": "2026-10-12T00:13:08+00:00", "event": "ticket.transition", "ticket": "T-0043", "from": "ready-for-parent-verify", "to": "closed", "by": "workflow", "round": {"spec": 2, "pr": 0}}
 {"ts": "2026-10-12T00:13:48+00:00", "event": "harness.accepted", "instance": "/Users/dphang/dev/spec-factory/.factory", "old": "8f9c2a96193e4aef8207f6dfd750c334e78f43a5", "new": "41417c1789d40b26370b10f2bdcae6a84f903a9d"}
+{"ts": "2026-10-12T00:32:01+00:00", "event": "request.created", "ticket": "T-0044", "source": "/private/tmp/claude-501/-Users-dphang-dev-nanobot/c69bfd1d-97a6-43e3-9d5a-a517c28d382c/scratchpad/debloat/a-dead.md"}
+{"ts": "2026-10-12T00:32:01+00:00", "event": "ticket.created", "ticket": "T-0044", "status": "ready-for-triage"}
+{"ts": "2026-10-12T00:32:01+00:00", "event": "request.created", "ticket": "T-0045", "source": "/private/tmp/claude-501/-Users-dphang-dev-nanobot/c69bfd1d-97a6-43e3-9d5a-a517c28d382c/scratchpad/debloat/b-tests.md"}
+{"ts": "2026-10-12T00:32:01+00:00", "event": "ticket.created", "ticket": "T-0045", "status": "ready-for-triage"}
+{"ts": "2026-10-12T00:32:01+00:00", "event": "request.created", "ticket": "T-0046", "source": "/private/tmp/claude-501/-Users-dphang-dev-nanobot/c69bfd1d-97a6-43e3-9d5a-a517c28d382c/scratchpad/debloat/c-helpers.md"}
+{"ts": "2026-10-12T00:32:01+00:00", "event": "ticket.created", "ticket": "T-0046", "status": "ready-for-triage"}
+{"ts": "2026-10-12T00:32:02+00:00", "event": "request.created", "ticket": "T-0047", "source": "/private/tmp/claude-501/-Users-dphang-dev-nanobot/c69bfd1d-97a6-43e3-9d5a-a517c28d382c/scratchpad/debloat/d-split.md"}
+{"ts": "2026-10-12T00:32:02+00:00", "event": "ticket.created", "ticket": "T-0047", "status": "ready-for-triage"}
+{"ts": "2026-10-12T00:32:02+00:00", "event": "request.created", "ticket": "T-0048", "source": "/private/tmp/claude-501/-Users-dphang-dev-nanobot/c69bfd1d-97a6-43e3-9d5a-a517c28d382c/scratchpad/debloat/e-docs.md"}
+{"ts": "2026-10-12T00:32:02+00:00", "event": "ticket.created", "ticket": "T-0048", "status": "ready-for-triage"}

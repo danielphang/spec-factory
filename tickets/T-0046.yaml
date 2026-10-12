@@ -1,0 +1,27 @@
+id: T-0046
+type: null
+title: 'De-bloat C: one helper for each pattern the harness writes out several times (runs scan, log read,
+  status transition, park on a failed call) (about 90 lines)'
+request: requests/T-0046.md
+source: /private/tmp/claude-501/-Users-dphang-dev-nanobot/c69bfd1d-97a6-43e3-9d5a-a517c28d382c/scratchpad/debloat/c-helpers.md
+status: ready-for-triage
+round:
+  spec: 0
+  pr: 0
+spec:
+  version: 0
+  approved_version: null
+plan: null
+in_flight: []
+parked: null
+created: '2026-10-12T00:32:01+00:00'
+history: []
+parent: null
+depends_on: []
+parallel_safe: true
+branch: null
+head: null
+merge:
+  base_before: null
+  main_after: null
+parent_base: null
