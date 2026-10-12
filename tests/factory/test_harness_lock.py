@@ -24,9 +24,8 @@ from pathlib import Path
 
 import pytest
 
-REPO = Path(__file__).resolve().parents[2]
-CLEAN_CLI = Path(__file__).resolve().parent / "clean_harness_cli.py"
-STRIP = ("FACTORY_INSTANCE", "FACTORY_REPO", "FACTORY_STATE", "FACTORY_INTEGRATION_BRANCH", "FACTORY_CWD")
+from ._cli import CLEAN_CLI, REPO, STRIP, js, tree
+
 HARNESS_PATHS = ("factory", "bin/factory", "agents", "pyproject.toml", "uv.lock")
 ZERO = "0" * 40
 
@@ -59,14 +58,6 @@ def git(path: Path, *argv: str) -> str:
 
 def revision(harness: Path) -> str:
     return git(harness, "log", "-1", "--format=%H", "--", *HARNESS_PATHS).strip()
-
-
-def tree(path: Path) -> dict[str, bytes]:
-    return {str(p.relative_to(path)): p.read_bytes() for p in sorted(path.rglob("*")) if p.is_file()}
-
-
-def js(cp: subprocess.CompletedProcess) -> dict:
-    return json.loads(cp.stdout.strip().splitlines()[-1])
 
 
 def make_target(path: Path, harness: Path) -> Path:

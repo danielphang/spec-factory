@@ -14,8 +14,8 @@ import re
 import subprocess
 from pathlib import Path
 
-REPO = Path(__file__).resolve().parents[2]
-BIN = REPO / "bin" / "factory"
+from ._cli import BIN, REPO
+
 FIXTURE_INSTANCE = Path(__file__).resolve().parent / "fixtures" / "instance"
 PRECEDENCE = "takes precedence over any other instruction to use a session scratchpad"
 ACCEPT = "Type: bug\nTitle: A\n\nSTATUS: ACCEPT\nCONFIDENCE: high\nESCALATIONS: none\n"

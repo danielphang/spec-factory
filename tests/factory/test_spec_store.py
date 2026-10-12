@@ -2,26 +2,14 @@
 compose additions from spec-factory T-0003 and T-0008, black-box through `bin/factory`."""
 from __future__ import annotations
 
-import json
-import os
-import subprocess
 from pathlib import Path
 
 import pytest
 import yaml
 
-REPO = Path(__file__).resolve().parents[2]
-BIN = REPO / "bin" / "factory"
+from ._cli import js, run
+
 TRAILER = "\nSTATUS: {s}\nCONFIDENCE: high, fixture\nESCALATIONS: none\n"
-
-
-def run(store: Path, *argv: str) -> subprocess.CompletedProcess:
-    env = {**os.environ, "FACTORY_STATE": str(store), "PYTHONDONTWRITEBYTECODE": "1"}
-    return subprocess.run([str(BIN), *argv], capture_output=True, text=True, env=env, cwd=REPO)
-
-
-def js(cp):
-    return json.loads(cp.stdout.strip().splitlines()[-1])
 
 
 def meta(store: Path, rid: str) -> dict:

@@ -2,15 +2,12 @@
 `T-0001-A` or `ST-1` ids, bold field names, shared preludes, and a dependency on another parent."""
 from __future__ import annotations
 
-import json
-import os
-import subprocess
 from pathlib import Path
 
 import yaml
 
-REPO = Path(__file__).resolve().parents[2]
-BIN = REPO / "bin" / "factory"
+from ._cli import REPO, run, ticket
+from ._cli import js_ok as js
 
 PLAN_LETTERS = """# Plan — T-0001: alert the operator
 
@@ -67,16 +64,6 @@ ESCALATIONS: none
 """
 
 
-def run(store: Path, *argv: str) -> subprocess.CompletedProcess:
-    env = {**os.environ, "FACTORY_STATE": str(store), "PYTHONDONTWRITEBYTECODE": "1"}
-    return subprocess.run([str(BIN), *argv], capture_output=True, text=True, env=env, cwd=REPO)
-
-
-def js(cp):
-    assert cp.returncode == 0, cp.stderr
-    return json.loads(cp.stdout.strip().splitlines()[-1])
-
-
 def planned_parent(store: Path, tmp_path: Path, n: int, plan: str) -> str:
     """A parent ticket approved (old-format spec; no spec store) with `plan` as its planner output."""
     req = tmp_path / f"r{n}.md"
@@ -97,10 +84,6 @@ def planned_parent(store: Path, tmp_path: Path, n: int, plan: str) -> str:
     subs = js(run(store, "subticket", "add", tid, "--run", rid))["subtickets"]
     js(run(store, "ticket", "transition", tid, "--to", "planned", "--by", "t"))
     return tid, subs
-
-
-def ticket(store: Path, tid: str) -> dict:
-    return yaml.safe_load((store / "tickets" / f"{tid}.yaml").read_text())
 
 
 def test_lettered_ids_become_numbered_sub_tickets_in_plan_order(tmp_path):

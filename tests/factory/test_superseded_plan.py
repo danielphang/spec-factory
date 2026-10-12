@@ -10,34 +10,19 @@ Black-box through `bin/factory` on a throwaway store (FACTORY_STATE), as test_re
 from __future__ import annotations
 
 import json
-import os
 import subprocess
 from pathlib import Path
 
 import pytest
-import yaml
 
-REPO = Path(__file__).resolve().parents[2]
-BIN = REPO / "bin" / "factory"
+from ._cli import run, ticket
+from ._cli import js_ok as js
+
 OLD_PLAN = ("ST-1 / Base\nDepends on: none\nParallel-safe: yes\n\nST-2 / Dropped\nDepends on: none\nParallel-safe: yes\n\n"
             "ST-3 / Unstarted\nDepends on: ST-2\nParallel-safe: yes\n")
 NEW_PLAN = "ST-1 / Redo\nDepends on: T-0001.1\nParallel-safe: yes\n"
 SUPERSEDES_LINE = ("Not merged and planned from an earlier approved version, so a new plan supersedes them and may "
                    "not depend on them: T-0001.2, T-0001.3")
-
-
-def run(store: Path, *argv: str) -> subprocess.CompletedProcess:
-    env = {**os.environ, "FACTORY_STATE": str(store), "PYTHONDONTWRITEBYTECODE": "1"}
-    return subprocess.run([str(BIN), *argv], capture_output=True, text=True, env=env, cwd=REPO)
-
-
-def js(cp: subprocess.CompletedProcess) -> dict:
-    assert cp.returncode == 0, cp.stderr
-    return json.loads(cp.stdout.strip().splitlines()[-1])
-
-
-def ticket(store: Path, tid: str) -> dict:
-    return yaml.safe_load((store / "tickets" / f"{tid}.yaml").read_text())
 
 
 def add_plan(store: Path, tmp_path: Path, text: str, name: str) -> subprocess.CompletedProcess:

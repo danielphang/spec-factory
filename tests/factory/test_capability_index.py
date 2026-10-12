@@ -9,15 +9,13 @@ decision often names no capability. Black-box through `bin/factory`.
 """
 from __future__ import annotations
 
-import os
-import subprocess
 from pathlib import Path
 
 import pytest
 import yaml
 
-REPO = Path(__file__).resolve().parents[2]
-BIN = REPO / "bin" / "factory"
+from ._cli import REPO, run
+
 CAPS = ("alpha", "beta", "gamma")
 SPEC = "\n".join([
     "=== proposal.md", "## Problem", "Beta is lax.", "## Evidence", "Read `openspec/specs/gamma/spec.md`.",
@@ -25,11 +23,6 @@ SPEC = "\n".join([
     "=== specs/beta/spec.md", "## MODIFIED Requirements", "### Requirement: The beta part works",
     "The beta part SHALL work strictly.", "#### Scenario: strict", "- WHEN `true`", "- THEN it exits 0",
     "=== verification.md", "## Acceptance", "- strict → NEW; today lax", ""])
-
-
-def run(store: Path, *argv: str) -> subprocess.CompletedProcess:
-    env = {**os.environ, "FACTORY_STATE": str(store), "PYTHONDONTWRITEBYTECODE": "1"}
-    return subprocess.run([str(BIN), *argv], capture_output=True, text=True, env=env, cwd=REPO)
 
 
 def ok(store: Path, *argv: str) -> str:

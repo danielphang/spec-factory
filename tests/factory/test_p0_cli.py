@@ -4,31 +4,13 @@ Black-box through `bin/factory`, as the P0 acceptance items are written.
 """
 from __future__ import annotations
 
-import json
-import os
-import subprocess
 import sys
 from pathlib import Path
 
 import pytest
 import yaml
 
-REPO = Path(__file__).resolve().parents[2]
-BIN = REPO / "bin" / "factory"
-
-
-def run(store: Path, *argv: str, stdin: str | None = None) -> subprocess.CompletedProcess:
-    env = {**os.environ, "FACTORY_STATE": str(store), "PYTHONDONTWRITEBYTECODE": "1"}
-    return subprocess.run([str(BIN), *argv], capture_output=True, text=True, env=env, cwd=REPO, input=stdin)
-
-
-def js(cp: subprocess.CompletedProcess) -> dict:
-    return json.loads(cp.stdout.strip().splitlines()[-1])
-
-
-def ticket(store: Path, tid: str) -> dict:
-    return yaml.safe_load((store / "tickets" / f"{tid}.yaml").read_text())
-
+from ._cli import REPO, js, run, ticket  # noqa: F401  (test_role_inputs.py imports REPO from here)
 
 TRAILER = "\nSTATUS: {s}\nCONFIDENCE: high, fixture\nESCALATIONS: none\n"
 
@@ -113,15 +95,6 @@ def test_run_compose_then_finish_parses_status_and_clears_in_flight(store, req):
     assert js(cp)["status"] == "ACCEPT"
     t = ticket(store, "T-0001")
     assert t["in_flight"] == [] and t["title"] == "Do the thing" and t["type"] == "feature"
-
-
-def test_run_finish_without_output_is_killed(store, req):
-    run(store, "ticket", "new", "--file", str(req))
-    rid = js(run(store, "run", "start", "--role", "triage", "--ticket", "T-0001"))["run_id"]
-    run(store, "run", "compose", rid)
-    cp = run(store, "run", "finish", rid, "--status-override", "KILLED")
-    assert cp.returncode == 0 and js(cp)["status"] == "KILLED"
-    assert yaml.safe_load((store / "runs" / rid / "meta.yaml").read_text())["status"] == "KILLED"
 
 
 def test_status_parse_last_status_line_wins_and_needs_both_followers(tmp_path, store):

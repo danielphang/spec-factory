@@ -19,8 +19,8 @@ from pathlib import Path
 
 import yaml
 
-REPO = Path(__file__).resolve().parents[2]
-BIN = REPO / "bin" / "factory"
+from ._cli import BIN, REPO
+
 STUBS = Path(__file__).resolve().parent / "fixtures" / "stubs"
 MAX_SPEC_ROUNDS = 2  # factory/config.yaml max_rounds.spec
 MAX_PR_ROUNDS = 2  # factory/config.yaml max_rounds.pr

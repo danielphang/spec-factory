@@ -20,11 +20,10 @@ from pathlib import Path
 import pytest
 import yaml
 
+from ._cli import BIN, REPO
 from .test_parent_close_reuse import _build, _parent_verifier_runs
 from .test_shepherd import Shepherd
 
-REPO = Path(__file__).resolve().parents[2]
-BIN = REPO / "bin" / "factory"
 REASON = "one sub-ticket: no NEEDS-SPLIT, no seam heading, no earlier planner run"
 SPEC_WRITER_OUTPUT = """=== proposal.md
 ## Problem

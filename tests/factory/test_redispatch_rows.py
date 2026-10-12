@@ -11,26 +11,15 @@ Black-box through `bin/factory` on a throwaway store (FACTORY_STATE), as test_re
 from __future__ import annotations
 
 import json
-import os
-import subprocess
 from pathlib import Path
 
 import pytest
 
-REPO = Path(__file__).resolve().parents[2]
-BIN = REPO / "bin" / "factory"
+from ._cli import js_ok as js
+from ._cli import run_env as run
+
 HEAD = "ab" * 20
 ST = "T-0001.1"
-
-
-def run(env: dict, *argv: str) -> subprocess.CompletedProcess:
-    return subprocess.run([str(BIN), *argv], capture_output=True, text=True,
-                          env={**os.environ, "PYTHONDONTWRITEBYTECODE": "1", **env}, cwd=REPO)
-
-
-def js(cp: subprocess.CompletedProcess) -> dict:
-    assert cp.returncode == 0, cp.stderr
-    return json.loads(cp.stdout.strip().splitlines()[-1])
 
 
 @pytest.fixture

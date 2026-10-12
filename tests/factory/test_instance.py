@@ -6,35 +6,16 @@ harness resolves the instance the way it does for an operator: from the working 
 """
 from __future__ import annotations
 
-import json
 import os
 import subprocess
-import sys
 from pathlib import Path
 
 import pytest
 import yaml
 
-REPO = Path(__file__).resolve().parents[2]
-BIN = REPO / "bin" / "factory"
-CLEAN_CLI = Path(__file__).resolve().parent / "clean_harness_cli.py"
-STRIP = ("FACTORY_INSTANCE", "FACTORY_REPO", "FACTORY_STATE", "FACTORY_INTEGRATION_BRANCH", "FACTORY_CWD",
-         "FACTORY_DISPATCH")
+from ._cli import BIN, REPO, STRIP, cli, js, tree
+
 NOT_FOUND = "no .factory/instance.yaml found from {cwd}; run factory init --repo-name NAME, or set FACTORY_INSTANCE"
-
-
-def cli(cwd: Path, *argv: str, **extra: str) -> subprocess.CompletedProcess:
-    env = {k: v for k, v in os.environ.items() if k not in STRIP}
-    env.update({"PYTHONDONTWRITEBYTECODE": "1", **extra})
-    # init and paths are exempt from the harness lock and keep exercising bin/factory's own hand-over
-    # of the caller's directory; every other command runs the launcher that stubs only the
-    # uncommitted-edit refusal (design C.4), so the suite runs in a checkout with an uncommitted edit.
-    cmd = [str(BIN)] if argv[:1] in (("init",), ("paths",)) else [sys.executable, str(CLEAN_CLI)]
-    return subprocess.run([*cmd, *argv], capture_output=True, text=True, env=env, cwd=cwd)
-
-
-def js(cp: subprocess.CompletedProcess) -> dict:
-    return json.loads(cp.stdout.strip().splitlines()[-1])
 
 
 def git_repo(path: Path) -> Path:
@@ -43,10 +24,6 @@ def git_repo(path: Path) -> Path:
                  ["-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "--allow-empty", "-m", "init"]):
         subprocess.run(["git", "-C", str(path), *argv], check=True, capture_output=True)
     return path
-
-
-def tree(path: Path) -> dict[str, bytes]:
-    return {str(p.relative_to(path)): p.read_bytes() for p in sorted(path.rglob("*")) if p.is_file()}
 
 
 def harness_status() -> str:
