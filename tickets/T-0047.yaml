@@ -1,21 +1,47 @@
 id: T-0047
-type: null
-title: 'De-bloat D: split the 2,000-line factory/cli.py into modules by job (drift, setup, gates, human
-  decisions); cli.py keeps the parser and main'
+type: chore
+title: 'De-bloat D: split factory/cli.py into modules by job (drift, setup, gates, human decisions), with
+  cli.py keeping the parser and main'
 request: requests/T-0047.md
 source: /private/tmp/claude-501/-Users-dphang-dev-nanobot/c69bfd1d-97a6-43e3-9d5a-a517c28d382c/scratchpad/debloat/d-split.md
-status: ready-for-triage
+status: ready-for-planner
 round:
-  spec: 0
+  spec: 1
   pr: 0
 spec:
-  version: 0
-  approved_version: null
+  version: 2
+  approved_version: 2
 plan: null
 in_flight: []
 parked: null
 created: '2026-10-12T00:32:02+00:00'
-history: []
+history:
+- ts: '2026-10-12T16:55:16+00:00'
+  from: ready-for-triage
+  to: ready-for-spec-writer
+  by: workflow
+  round:
+    spec: 0
+    pr: 0
+- ts: '2026-10-12T17:34:02+00:00'
+  from: ready-for-spec-writer
+  to: ready-for-critic
+  by: workflow
+  round:
+    spec: 1
+    pr: 0
+- ts: '2026-10-12T17:41:24+00:00'
+  from: ready-for-critic
+  to: awaiting-spec-gate
+  by: workflow
+  round:
+    spec: 1
+    pr: 0
+- ts: '2026-10-12T18:07:07+00:00'
+  from: awaiting-spec-gate
+  to: ready-for-planner
+  by: dphang
+  approved_version: 2
 parent: null
 depends_on: []
 parallel_safe: true

@@ -1,0 +1,28 @@
+run_id: run-0479-critic
+role: critic
+ticket: T-0047
+model: fable
+round: 1
+spec_version: 1
+started: '2026-10-12T17:34:11+00:00'
+finished: '2026-10-12T17:41:15+00:00'
+wall_s: 424
+status: APPROVE
+input_sources:
+- specs/T-0047/v1.md
+- openspec/specs/build-dispatch/spec.md
+- openspec/specs/factory-stats/spec.md
+- openspec/specs/harness-code/spec.md
+- openspec/specs/harness-docs/spec.md
+- openspec/specs/harness-suite/spec.md
+- openspec/specs/human-resolution/spec.md
+- openspec/specs/live-store-guard/spec.md
+- openspec/specs/merge-gate/spec.md
+- openspec/specs/spec-amendment/spec.md
+- openspec/specs/store-setup/spec.md
+- decisions.md
+confidence: high. Every cited line, the dependency closure of the move, the acceptance commands that run
+  no test suite, and the diff of the MODIFIED requirements were checked on the cited commit; only the
+  suite result rests on the writer's prototype.
+escalations: []
+escalations_note: null

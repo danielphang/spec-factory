@@ -1,0 +1,16 @@
+run_id: run-0477-triage
+role: triage
+ticket: T-0047
+model: opus
+round: 0
+spec_version: 0
+started: '2026-10-12T16:53:54+00:00'
+finished: '2026-10-12T16:55:06+00:00'
+wall_s: 72
+status: ACCEPT
+input_sources:
+- requests/T-0047.md
+confidence: high. I verified the line counts, the importers, the `copy2` patch, the doc references and
+  the duplicate search on the current `main`.
+escalations: []
+escalations_note: null
