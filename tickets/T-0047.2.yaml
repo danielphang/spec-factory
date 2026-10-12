@@ -3,7 +3,7 @@ type: sub-ticket
 title: Move instance and store setup to factory/setup.py
 request: requests/T-0047.md
 source: plan:run-0480-planner
-status: parked
+status: checks-in-flight
 round:
   spec: 0
   pr: 1
@@ -12,14 +12,7 @@ spec:
   approved_version: 2
 plan: null
 in_flight: []
-parked:
-  reason: EMPTY-OUTPUT from verifier
-  since: '2026-10-12T20:29:33+00:00'
-  from: checks-in-flight
-  outputs:
-  - run-0486-verifier
-  - run-0487-verifier
-  question: null
+parked: null
 created: '2026-10-12T18:12:55+00:00'
 history:
 - ts: '2026-10-12T19:19:23+00:00'
@@ -38,6 +31,13 @@ history:
   to: parked
   by: park
   reason: EMPTY-OUTPUT from verifier
+- ts: '2026-10-12T20:39:18+00:00'
+  from: parked
+  to: checks-in-flight
+  by: dphang
+  resolve: redispatch
+  head: 634117766e31f55980921ec1f9250d3d40e07c04
+  superseded: []
 parent: T-0047
 depends_on:
 - T-0047.1

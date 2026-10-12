@@ -2564,3 +2564,5 @@
 {"ts": "2026-10-12T20:29:02+00:00", "event": "run.finished", "ticket": "T-0047.2", "run": "run-0487-verifier", "role": "verifier", "status": "EMPTY-OUTPUT", "wall_s": 244}
 {"ts": "2026-10-12T20:29:33+00:00", "event": "ticket.parked", "ticket": "T-0047.2", "from": "checks-in-flight", "reason": "EMPTY-OUTPUT from verifier"}
 {"ts": "2026-10-12T20:29:33+00:00", "event": "escalation.queued", "ticket": "T-0047.2", "items": ["EMPTY-OUTPUT from verifier"]}
+{"ts": "2026-10-12T20:39:18+00:00", "event": "results.superseded", "ticket": "T-0047.2", "head": "634117766e31f55980921ec1f9250d3d40e07c04", "roles": []}
+{"ts": "2026-10-12T20:39:18+00:00", "event": "human.resolved", "ticket": "T-0047.2", "kind": "redispatch", "by": "dphang", "from": "parked", "to": "checks-in-flight"}
