@@ -1,21 +1,42 @@
 id: T-0053
-type: null
-title: 'Add docs/standards.md: the operator''s consolidated writing and design standards, self-contained
-  and exportable (spec-factory #110)'
+type: chore
+title: 'Add `docs/standards.md`, the operator''s writing and design standards in one self-contained file,
+  point to it from README, and stop `docs/north-star.md` naming the private port (spec-factory #110)'
 request: requests/T-0053.md
 source: /private/tmp/claude-501/-Users-dphang-dev-nanobot/c69bfd1d-97a6-43e3-9d5a-a517c28d382c/scratchpad/req-110.md
-status: ready-for-triage
+status: awaiting-spec-gate
 round:
-  spec: 0
+  spec: 1
   pr: 0
 spec:
-  version: 0
+  version: 1
   approved_version: null
 plan: null
 in_flight: []
 parked: null
 created: '2026-10-13T20:57:09+00:00'
-history: []
+history:
+- ts: '2026-10-13T21:45:51+00:00'
+  from: ready-for-triage
+  to: ready-for-spec-writer
+  by: workflow
+  round:
+    spec: 0
+    pr: 0
+- ts: '2026-10-13T21:50:17+00:00'
+  from: ready-for-spec-writer
+  to: ready-for-critic
+  by: workflow
+  round:
+    spec: 1
+    pr: 0
+- ts: '2026-10-13T21:53:30+00:00'
+  from: ready-for-critic
+  to: awaiting-spec-gate
+  by: workflow
+  round:
+    spec: 1
+    pr: 0
 parent: null
 depends_on: []
 parallel_safe: true

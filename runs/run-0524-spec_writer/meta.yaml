@@ -1,0 +1,19 @@
+run_id: run-0524-spec_writer
+role: spec_writer
+ticket: T-0053
+model: opus
+round: 0
+spec_version: 0
+started: '2026-10-13T21:45:59+00:00'
+finished: '2026-10-13T21:49:56+00:00'
+wall_s: 237
+status: READY-FOR-CRITIC
+input_sources:
+- runs/run-0523-triage/output.md
+- requests/T-0053.md
+- openspec/specs/harness-docs/spec.md
+- decisions.md
+confidence: high. The text, its hash, the north-star line, the README budget and every scenario were checked
+  on base and on a prototype.
+escalations: []
+escalations_note: null

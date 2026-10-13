@@ -2772,3 +2772,13 @@
 {"ts": "2026-10-13T20:57:09+00:00", "event": "request.created", "ticket": "T-0053", "source": "/private/tmp/claude-501/-Users-dphang-dev-nanobot/c69bfd1d-97a6-43e3-9d5a-a517c28d382c/scratchpad/req-110.md"}
 {"ts": "2026-10-13T20:57:09+00:00", "event": "ticket.created", "ticket": "T-0053", "status": "ready-for-triage"}
 {"ts": "2026-10-13T21:04:56+00:00", "event": "decision.recorded", "ticket": "T-0053", "by": "dphang", "line": "2026-10-13 T-0053 This repo is public: no new file, spec or role output names the private port's product, its people or its data; the Nanobot fork's existing branch names and checkout paths stay until #111 finds a scrub that breaks nothing (operator, 2026-10-13)", "via": "decision add"}
+{"ts": "2026-10-13T21:44:36+00:00", "event": "run.started", "ticket": "T-0053", "run": "run-0523-triage", "role": "triage", "model": "opus"}
+{"ts": "2026-10-13T21:45:41+00:00", "event": "run.finished", "ticket": "T-0053", "run": "run-0523-triage", "role": "triage", "status": "ACCEPT", "wall_s": 65}
+{"ts": "2026-10-13T21:45:51+00:00", "event": "ticket.transition", "ticket": "T-0053", "from": "ready-for-triage", "to": "ready-for-spec-writer", "by": "workflow", "round": {"spec": 0, "pr": 0}}
+{"ts": "2026-10-13T21:45:59+00:00", "event": "run.started", "ticket": "T-0053", "run": "run-0524-spec_writer", "role": "spec_writer", "model": "opus"}
+{"ts": "2026-10-13T21:49:56+00:00", "event": "run.finished", "ticket": "T-0053", "run": "run-0524-spec_writer", "role": "spec_writer", "status": "READY-FOR-CRITIC", "wall_s": 237}
+{"ts": "2026-10-13T21:50:09+00:00", "event": "spec.added", "ticket": "T-0053", "version": 1, "source": "run-0524-spec_writer"}
+{"ts": "2026-10-13T21:50:17+00:00", "event": "ticket.transition", "ticket": "T-0053", "from": "ready-for-spec-writer", "to": "ready-for-critic", "by": "workflow", "round": {"spec": 1, "pr": 0}}
+{"ts": "2026-10-13T21:50:27+00:00", "event": "run.started", "ticket": "T-0053", "run": "run-0525-critic", "role": "critic", "model": "fable"}
+{"ts": "2026-10-13T21:53:21+00:00", "event": "run.finished", "ticket": "T-0053", "run": "run-0525-critic", "role": "critic", "status": "APPROVE", "wall_s": 174}
+{"ts": "2026-10-13T21:53:30+00:00", "event": "ticket.transition", "ticket": "T-0053", "from": "ready-for-critic", "to": "awaiting-spec-gate", "by": "workflow", "round": {"spec": 1, "pr": 0}}
