@@ -1,0 +1,16 @@
+run_id: run-0496-triage
+role: triage
+ticket: T-0050
+model: opus
+round: 0
+spec_version: 0
+started: '2026-10-12T23:49:18+00:00'
+finished: '2026-10-12T23:50:46+00:00'
+wall_s: 88
+status: ACCEPT
+input_sources:
+- requests/T-0050.md
+confidence: high. Every evidence item was checked against the code, the instance file and the store's
+  event log, and the counts match the request exactly.
+escalations: []
+escalations_note: null

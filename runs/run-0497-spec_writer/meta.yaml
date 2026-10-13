@@ -1,0 +1,20 @@
+run_id: run-0497-spec_writer
+role: spec_writer
+ticket: T-0050
+model: opus
+round: 0
+spec_version: 0
+started: '2026-10-12T23:51:04+00:00'
+finished: '2026-10-13T00:20:05+00:00'
+wall_s: 1741
+status: READY-FOR-CRITIC
+input_sources:
+- runs/run-0496-triage/output.md
+- requests/T-0050.md
+- openspec/specs/build-dispatch/spec.md
+- decisions.md
+confidence: high. Every NEW scenario was run on this checkout and on a patched scratch copy, and printed
+  the stated today and after outputs. The full suite was run on the patched copy, which is where the two
+  fixtures that break were found.
+escalations: []
+escalations_note: null

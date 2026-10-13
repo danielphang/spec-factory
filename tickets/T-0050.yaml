@@ -1,21 +1,42 @@
 id: T-0050
-type: null
-title: 'The harness owns each role''s model: run start refuses a --model the instance doesn''t name (spec-factory
-  #107)'
+type: bug
+title: '`run start` takes each role''s model from the instance and refuses a `--model` that differs, so
+  a Workflow run cannot start on a model the instance never named'
 request: requests/T-0050.md
 source: /private/tmp/claude-501/-Users-dphang-dev-nanobot/c69bfd1d-97a6-43e3-9d5a-a517c28d382c/scratchpad/req-107.md
-status: ready-for-triage
+status: awaiting-spec-gate
 round:
-  spec: 0
+  spec: 1
   pr: 0
 spec:
-  version: 0
+  version: 1
   approved_version: null
 plan: null
 in_flight: []
 parked: null
 created: '2026-10-12T23:48:25+00:00'
-history: []
+history:
+- ts: '2026-10-12T23:50:55+00:00'
+  from: ready-for-triage
+  to: ready-for-spec-writer
+  by: workflow
+  round:
+    spec: 0
+    pr: 0
+- ts: '2026-10-13T00:20:23+00:00'
+  from: ready-for-spec-writer
+  to: ready-for-critic
+  by: workflow
+  round:
+    spec: 1
+    pr: 0
+- ts: '2026-10-13T00:24:56+00:00'
+  from: ready-for-critic
+  to: awaiting-spec-gate
+  by: workflow
+  round:
+    spec: 1
+    pr: 0
 parent: null
 depends_on: []
 parallel_safe: true
