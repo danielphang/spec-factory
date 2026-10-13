@@ -2771,3 +2771,4 @@
 {"ts": "2026-10-13T19:49:54+00:00", "event": "human.resolved", "ticket": "T-0052.1", "kind": "redispatch", "by": "dphang", "from": "parked", "to": "checks-in-flight"}
 {"ts": "2026-10-13T20:57:09+00:00", "event": "request.created", "ticket": "T-0053", "source": "/private/tmp/claude-501/-Users-dphang-dev-nanobot/c69bfd1d-97a6-43e3-9d5a-a517c28d382c/scratchpad/req-110.md"}
 {"ts": "2026-10-13T20:57:09+00:00", "event": "ticket.created", "ticket": "T-0053", "status": "ready-for-triage"}
+{"ts": "2026-10-13T21:04:56+00:00", "event": "decision.recorded", "ticket": "T-0053", "by": "dphang", "line": "2026-10-13 T-0053 This repo is public: no new file, spec or role output names the private port's product, its people or its data; the Nanobot fork's existing branch names and checkout paths stay until #111 finds a scrub that breaks nothing (operator, 2026-10-13)", "via": "decision add"}
