@@ -296,6 +296,8 @@ def _sync_environment(cfg: dict, sync: str | None, meta: dict, repo: Path, wt: P
 
 
 # A kept last message that says the run ended its turn still waiting on a command it started.
+# factory: a word match, not a reading of intent: any message that mentions waiting matches. It only
+# adds a phrase to a park a human reads; replace it if a misleading waiting reason is seen.
 WAITING = re.compile(r"\bwait(?:ing)?\b|\bstill (?:running|in progress)\b|\bin the background\b", re.I)
 
 
