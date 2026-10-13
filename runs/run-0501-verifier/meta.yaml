@@ -1,0 +1,27 @@
+run_id: run-0501-verifier
+role: verifier
+ticket: T-0050.1
+model: fable
+round: 1
+spec_version: 1
+started: '2026-10-13T06:14:33+00:00'
+finished: '2026-10-13T06:28:16+00:00'
+wall_s: 823
+status: VERIFIED
+input_sources:
+- specs/T-0050.1/subticket.md
+- specs/T-0050/v1.md
+- runs/run-0499-implementer/output.md
+- runs/run-0501-verifier/diff.patch
+gate_skipped: []
+environment_files: []
+branch: factory/T-0050.1
+base: 2fbc170453cc3c549c487a6dd2c326b2b636e626
+head: b3b978dce1d5544c7f346695292b8ef37f64eaae
+worktree: /Users/dphang/dev/spec-factory/.factory/store/runs/run-0501-verifier/wt
+confidence: high. Every NEW scenario printed verification.md's "today" text on the base and exactly its
+  THEN on the PR; both REGRESSION scenarios, both gates and the three parity scenarios pass; probes at
+  the boundaries (empty, case, ordering of guards, missing ticket) show the refusal is general, not tied
+  to the tested inputs.
+escalations: []
+escalations_note: null

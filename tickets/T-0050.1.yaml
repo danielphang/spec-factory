@@ -1,0 +1,49 @@
+id: T-0050.1
+type: sub-ticket
+title: '`run start` takes each role''s model from the instance and refuses a `--model` that differs, so
+  a Workflow run cannot start on a model the instance never named'
+request: requests/T-0050.md
+source: plan:whole-spec
+status: merged
+round:
+  spec: 0
+  pr: 1
+spec:
+  version: 1
+  approved_version: 1
+plan: null
+in_flight: []
+parked: null
+created: '2026-10-13T05:55:53+00:00'
+history:
+- ts: '2026-10-13T06:14:15+00:00'
+  from: ready-for-implementer
+  to: checks-in-flight
+  by: workflow
+  round:
+    spec: 0
+    pr: 1
+- ts: '2026-10-13T06:28:56+00:00'
+  from: checks-in-flight
+  to: ready-for-merge
+  by: workflow
+  round:
+    spec: 0
+    pr: 1
+- ts: '2026-10-13T06:29:06+00:00'
+  from: ready-for-merge
+  to: merged
+  by: merge
+  head: b3b978dce1d5544c7f346695292b8ef37f64eaae
+parent: T-0050
+depends_on: []
+parallel_safe: true
+branch: factory/T-0050.1
+head: b3b978dce1d5544c7f346695292b8ef37f64eaae
+merge:
+  base_before: 2fbc170453cc3c549c487a6dd2c326b2b636e626
+  main_after: c59cecd1acf428c8d3b2ba6e567046c64b9eef0a
+parent_base: null
+label: whole-spec
+planned_from: 1
+merge_refused: null

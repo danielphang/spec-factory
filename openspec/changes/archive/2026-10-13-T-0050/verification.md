@@ -47,3 +47,7 @@ Suggested fix: give the sed expression.
 Not checked
 - The build scenario's exact line set and final state (`parked runs=reviewer=fable`) depend on the reviewer finishing after the verifier's refused start parks the sub-ticket, both dispatched together by build.js. That needs part A built; the writer reports it from the prototype and the intake and run-start scenarios I could reason about hold, so I take it as plausible rather than verified.
 - The claim that only those 7 tests error without the fixture edits: consistent with my grep of `--model` callers, not confirmed by a suite run.
+
+## Verifier results
+
+b3b978dce1d5544c7f346695292b8ef37f64eaae · T-0050.1 · VERIFIED · run-0501-verifier

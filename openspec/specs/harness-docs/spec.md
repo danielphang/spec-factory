@@ -422,3 +422,10 @@ defined in `factory/gates.py`.
 #### Scenario: The README and the principles name gates.py for the moved gate commands
 - WHEN `echo "$(grep -c 'factory/gates.py. .ticket_join., .merge_cmd., .archive_cmd.' README.md) $(grep -c 'factory/cli.py. .ticket_join.' README.md) $(grep -c 'factory/gates.py. (.merge.)' docs/principles.md) $(grep -c 'guards in .factory/cli.py.:' docs/principles.md) $(grep -cE '^def (ticket_join|merge_cmd|archive_cmd)\(' factory/gates.py 2>/dev/null)"`
 - THEN it prints exactly `1 0 1 0 3`
+
+### Requirement: The documents record that run start owns each role's model
+`dev/build-harness.spec.md`'s `run start` entry MUST say the model comes from the instance's `models[R]` and SHALL list the refusal of a differing `--model` among its guards, with its error; `README.md`'s role-call paragraph under "The intake workflow, step by step" SHALL say that `run start` refuses a `--model` the instance does not name.
+
+#### Scenario: The build spec and the README describe the model check
+- WHEN `echo "old=$(grep -c 'default .config.yaml. .models\[R\]' dev/build-harness.spec.md) guard=$(grep -c 'refused for <R>: the instance names' dev/build-harness.spec.md) readme=$(sed -n '/^### The intake workflow, step by step/,/sequenceDiagram/p' README.md | grep -c -- '--model')"`
+- THEN it prints `old=0 guard=1 readme=<n>` with n of 1 or more
