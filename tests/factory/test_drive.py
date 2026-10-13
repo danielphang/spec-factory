@@ -54,7 +54,7 @@ def test_two_empty_outputs_park_with_both_runs_and_keep_the_last_message(tmp_pat
     assert cp.returncode == 0, cp.stderr
     assert res["state"] == "parked"
     parked = s.ticket()["parked"]
-    assert parked["reason"] == "EMPTY-OUTPUT from triage"
+    assert parked["reason"] == "EMPTY-OUTPUT from triage: ended its turn waiting on a background command"
     assert [m["status"] for m in s.runs()] == ["EMPTY-OUTPUT", "EMPTY-OUTPUT"]
     for m in s.runs():
         kept = (s.root / "runs" / m["run_id"] / "last-message.md").read_text()
