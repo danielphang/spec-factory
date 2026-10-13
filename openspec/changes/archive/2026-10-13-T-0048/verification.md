@@ -98,3 +98,7 @@ Suggested fix: none needed; one clause in Acceptance saying why this added scena
 Not findings, noted for the implementer: the restated scenarios bound the parts the Proposed change leaves to its wording. `**Not built**` must stay at a line start (two scenarios use it as a range end); the Built entries must keep their order (the #85 scenario ranges from "Spec amendment and drift" to "Re-plan after a re-spec"); "Current truth for the factory itself" must appear exactly once after the rename. The spec's checks cover each of these.
 
 What I could not check: the "simulated later change" claim (restated scenarios hold after one more changelog entry and a verifier-prompt edit) and the prototype's 1,101-line result. The rules in Decisions (find an entry by its opening words, no `tail -1`, no entry count, no `main`-relative "untouched" checks) are visible in every restated WHEN I read, which is what the claim rests on.
+
+## Verifier results
+
+08ad85edf30076259c47b7fc816976f45270e805 · T-0048.1 · VERIFIED · run-0515-verifier

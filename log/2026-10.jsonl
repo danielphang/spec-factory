@@ -2717,3 +2717,12 @@
 {"ts": "2026-10-13T18:30:41+00:00", "event": "human.resolved", "ticket": "T-0048.1", "kind": "redispatch", "by": "dphang", "from": "parked", "to": "checks-in-flight"}
 {"ts": "2026-10-13T18:30:41+00:00", "event": "request.created", "ticket": "T-0052", "source": "/private/tmp/claude-501/-Users-dphang-dev-nanobot/c69bfd1d-97a6-43e3-9d5a-a517c28d382c/scratchpad/req-108.md"}
 {"ts": "2026-10-13T18:30:41+00:00", "event": "ticket.created", "ticket": "T-0052", "status": "ready-for-triage"}
+{"ts": "2026-10-13T18:31:50+00:00", "event": "run.started", "ticket": "T-0048.1", "run": "run-0515-verifier", "role": "verifier", "model": "opus"}
+{"ts": "2026-10-13T18:37:41+00:00", "event": "run.finished", "ticket": "T-0048.1", "run": "run-0515-verifier", "role": "verifier", "status": "VERIFIED", "wall_s": 351}
+{"ts": "2026-10-13T18:38:03+00:00", "event": "result.recorded", "ticket": "T-0048.1", "head": "08ad85edf30076259c47b7fc816976f45270e805", "role": "verifier", "status": "VERIFIED", "run": "run-0515-verifier"}
+{"ts": "2026-10-13T18:38:03+00:00", "event": "result.recorded", "ticket": "T-0048.1", "head": "08ad85edf30076259c47b7fc816976f45270e805", "role": "ci", "status": "PASS", "run": "run-0515-verifier"}
+{"ts": "2026-10-13T18:38:22+00:00", "event": "ticket.transition", "ticket": "T-0048.1", "from": "checks-in-flight", "to": "ready-for-merge", "by": "workflow", "round": {"spec": 0, "pr": 1}}
+{"ts": "2026-10-13T18:38:31+00:00", "event": "merge.done", "ticket": "T-0048.1", "head": "08ad85edf30076259c47b7fc816976f45270e805", "base_before": "7231670f2303856db8c1ed709a402be43c251754", "main_after": "0e26a646cc06b2b9ca50caf89cf9b5e1aff54993"}
+{"ts": "2026-10-13T18:38:49+00:00", "event": "ticket.transition", "ticket": "T-0048", "from": "planned", "to": "ready-for-parent-verify", "by": "parent-check"}
+{"ts": "2026-10-13T18:39:14+00:00", "event": "change.archived", "ticket": "T-0048", "archived_to": "openspec/changes/archive/2026-10-13-T-0048", "capabilities": ["harness-docs"], "decisions": 11}
+{"ts": "2026-10-13T18:39:23+00:00", "event": "ticket.transition", "ticket": "T-0048", "from": "ready-for-parent-verify", "to": "closed", "by": "workflow", "round": {"spec": 1, "pr": 0}}

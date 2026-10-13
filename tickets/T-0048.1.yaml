@@ -5,7 +5,7 @@ title: 'Shrink the maintained documents: freeze the three `dev/` build documents
   update the `harness-docs` current truth to match'
 request: requests/T-0048.md
 source: plan:whole-spec
-status: checks-in-flight
+status: merged
 round:
   spec: 0
   pr: 1
@@ -38,14 +38,27 @@ history:
   resolve: redispatch
   head: 08ad85edf30076259c47b7fc816976f45270e805
   superseded: []
+- ts: '2026-10-13T18:38:22+00:00'
+  from: checks-in-flight
+  to: ready-for-merge
+  by: workflow
+  round:
+    spec: 0
+    pr: 1
+- ts: '2026-10-13T18:38:30+00:00'
+  from: ready-for-merge
+  to: merged
+  by: merge
+  head: 08ad85edf30076259c47b7fc816976f45270e805
 parent: T-0048
 depends_on: []
 parallel_safe: true
 branch: factory/T-0048.1
 head: 08ad85edf30076259c47b7fc816976f45270e805
 merge:
-  base_before: null
-  main_after: null
+  base_before: 7231670f2303856db8c1ed709a402be43c251754
+  main_after: 0e26a646cc06b2b9ca50caf89cf9b5e1aff54993
 parent_base: null
 label: whole-spec
 planned_from: 1
+merge_refused: null
