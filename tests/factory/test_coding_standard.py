@@ -47,7 +47,7 @@ def system_prompts(tmp_path_factory) -> dict[str, str]:
     for role, status in (("implementer", ["status=ready-for-implementer"]),
                          ("reviewer", ["status=checks-in-flight", "in_flight=[]", f"head={head}"])):
         cli(t, "ticket", "set", "T-0001", *status, **store)
-        cp = cli(t, "run", "start", "--role", role, "--ticket", "T-0001", "--model", "opus", **store)
+        cp = cli(t, "run", "start", "--role", role, "--ticket", "T-0001", **store)
         run_id = json.loads(cp.stdout.strip().splitlines()[-1])["run_id"]
         prompts[role] = (tmp / "s" / "runs" / run_id / "system-prompt.txt").read_text()
     return prompts

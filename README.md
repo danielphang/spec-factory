@@ -253,7 +253,9 @@ in (`parked.from`).
 
 Every role call, in either workflow, is the same three store commands around one agent. `run start`
 creates the run directory and its prompt, and refuses unless the ticket is in that role's ready
-state. `run compose` writes `input.md`. The role agent runs. `run finish` reads the `STATUS:` line
+state. It takes the role's model from `instance.yaml` and records it. It refuses a `--model` that
+names another model, so a model the clerk misreported parks the ticket before the agent starts.
+`run compose` writes `input.md`. The role agent runs. `run finish` reads the `STATUS:` line
 and records it. Each command goes through the clerk.
 
 ```mermaid
