@@ -1,0 +1,28 @@
+run_id: run-0514-reviewer
+role: reviewer
+ticket: T-0048.1
+model: fable
+round: 1
+spec_version: 1
+started: '2026-10-13T18:25:57+00:00'
+finished: '2026-10-13T18:29:37+00:00'
+wall_s: 220
+status: APPROVE
+input_sources:
+- specs/T-0048.1/subticket.md
+- specs/T-0048/v1.md
+- runs/run-0513-implementer/output.md
+- runs/run-0514-reviewer/diff.patch
+gate_skipped: []
+environment_files: []
+branch: factory/T-0048.1
+base: 7231670f2303856db8c1ed709a402be43c251754
+head: 08ad85edf30076259c47b7fc816976f45270e805
+worktree: /Users/dphang/dev/spec-factory/.factory/store/runs/run-0514-reviewer/wt
+confidence: high. Every dictated sentence is in the diff as given; the frozen-document, briefing, line-count
+  and store-figure checks I ran in the worktree print the spec's expected values; the one finding is a
+  true-but-incomplete pointer the spec itself worded.
+escalations:
+- '`.factory/context.md` (infra, `.factory/**`) is touched and is declared on the approved spec''s `Protected
+  paths:` line; listed for the record, no action needed.'
+escalations_note: null

@@ -5,14 +5,14 @@ title: 'Shrink the maintained documents: freeze the three `dev/` build documents
   update the `harness-docs` current truth to match'
 request: requests/T-0048.md
 source: /private/tmp/claude-501/-Users-dphang-dev-nanobot/c69bfd1d-97a6-43e3-9d5a-a517c28d382c/scratchpad/debloat/e-docs.md
-status: ready-for-planner
+status: planned
 round:
   spec: 1
   pr: 0
 spec:
   version: 1
   approved_version: 1
-plan: null
+plan: plans/T-0048.md
 in_flight: []
 parked: null
 created: '2026-10-12T00:32:02+00:00'
@@ -43,6 +43,13 @@ history:
   to: ready-for-planner
   by: dphang
   approved_version: 1
+- ts: '2026-10-13T18:13:09+00:00'
+  from: ready-for-planner
+  to: planned
+  by: workflow
+  round:
+    spec: 1
+    pr: 0
 parent: null
 depends_on: []
 parallel_safe: true

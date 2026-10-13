@@ -1,0 +1,51 @@
+id: T-0048.1
+type: sub-ticket
+title: 'Shrink the maintained documents: freeze the three `dev/` build documents as history, fix README''s
+  stale "not yet run" claims, describe each mechanism once in README, move history to the changelog, and
+  update the `harness-docs` current truth to match'
+request: requests/T-0048.md
+source: plan:whole-spec
+status: checks-in-flight
+round:
+  spec: 0
+  pr: 1
+spec:
+  version: 1
+  approved_version: 1
+plan: null
+in_flight: []
+parked: null
+created: '2026-10-13T18:12:59+00:00'
+history:
+- ts: '2026-10-13T18:25:40+00:00'
+  from: ready-for-implementer
+  to: checks-in-flight
+  by: workflow
+  round:
+    spec: 0
+    pr: 1
+- ts: '2026-10-13T18:26:05+00:00'
+  from: checks-in-flight
+  to: parked
+  by: park
+  reason: 'harness-bug: run start verifier: model fable refused for verifier: the instance names opus
+
+    {''ok'': false, ''error'': ''model fable refused for verifier: the instance names opus''}'
+- ts: '2026-10-13T18:30:40+00:00'
+  from: parked
+  to: checks-in-flight
+  by: dphang
+  resolve: redispatch
+  head: 08ad85edf30076259c47b7fc816976f45270e805
+  superseded: []
+parent: T-0048
+depends_on: []
+parallel_safe: true
+branch: factory/T-0048.1
+head: 08ad85edf30076259c47b7fc816976f45270e805
+merge:
+  base_before: null
+  main_after: null
+parent_base: null
+label: whole-spec
+planned_from: 1
