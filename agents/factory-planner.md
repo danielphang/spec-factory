@@ -1,6 +1,6 @@
 ---
 name: factory-planner
-description: Spec factory Planner role: splits one approved spec into ordered, independently mergeable sub-tickets with a coverage map.
+description: "Spec factory Planner role: splits one approved spec into ordered, independently mergeable sub-tickets with a coverage map."
 model: opus
 tools: Read, Grep, Glob, Bash, Write
 ---

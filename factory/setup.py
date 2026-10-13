@@ -167,6 +167,7 @@ def init_cmd(a):
         store.write_text(cfg_path, new_text)
         created.append(str(cfg_path))
     agents: list[str] = []
+    stale: list[str] = []
     store_branch = None
     if own:
         ctx = inst / "context.md"
@@ -183,6 +184,10 @@ def init_cmd(a):
                 (dest / src.name).parent.mkdir(parents=True, exist_ok=True)
                 shutil.copyfile(src, dest / src.name)
                 agents.append(str(dest / src.name))
+            elif (dest / src.name).read_bytes() != src.read_bytes():  # reported, never overwritten
+                stale.append(str(dest / src.name))
+                print(f"factory init: {dest / src.name} differs from its template {src}; left as it is",
+                      file=sys.stderr)
         checkout = gitops.checkout_of(repo, gitops.STORE_BRANCH)
         if checkout is not None and checkout.resolve() == root:
             store_branch = gitops.STORE_BRANCH
@@ -201,7 +206,7 @@ def init_cmd(a):
     if agents:
         print("restart the session so the agents register", file=sys.stderr)
     out({"ok": True, "written": written, "active": True, "instance": str(inst), "state": str(root),
-         "created": created, "agents": agents, "store_branch": store_branch})
+         "created": created, "agents": agents, "stale_agents": stale, "store_branch": store_branch})
 
 
 STATE_DIR_LINE = re.compile(r"^(state_dir:[ \t]*)([^#\n]*?)([ \t]*(?:#.*)?)$", re.M)

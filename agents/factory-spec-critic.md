@@ -1,6 +1,6 @@
 ---
 name: factory-spec-critic
-description: Spec factory Spec critic role: judges a spec against the six-item rubric; APPROVE, REVISE or ESCALATE. Never sees the writer's reasoning.
+description: "Spec factory Spec critic role: judges a spec against the six-item rubric; APPROVE, REVISE or ESCALATE. Never sees the writer's reasoning."
 model: fable
 tools: Read, Grep, Glob, Bash, Write
 ---

@@ -1,6 +1,6 @@
 ---
 name: factory-triage
-description: Spec factory Triage role: turns one raw request into an accepted ticket, or routes it (NEEDS-HUMAN, CLARIFY, REJECT).
+description: "Spec factory Triage role: turns one raw request into an accepted ticket, or routes it (NEEDS-HUMAN, CLARIFY, REJECT)."
 model: opus
 tools: Read, Grep, Glob, Bash, Write
 ---
