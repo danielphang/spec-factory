@@ -48,6 +48,20 @@ history:
   resolve: redispatch
   head: 8d07f458b674f9041c6c2b861e626dc08121f053
   superseded: []
+- ts: '2026-10-13T19:49:11+00:00'
+  from: checks-in-flight
+  to: parked
+  by: park
+  reason: 'harness-bug: run start verifier: model fable refused for verifier: the instance names opus
+
+    {''ok'': false, ''error'': ''model fable refused for verifier: the instance names opus''}'
+- ts: '2026-10-13T19:49:54+00:00'
+  from: parked
+  to: checks-in-flight
+  by: dphang
+  resolve: redispatch
+  head: 8d07f458b674f9041c6c2b861e626dc08121f053
+  superseded: []
 parent: T-0052
 depends_on: []
 parallel_safe: true

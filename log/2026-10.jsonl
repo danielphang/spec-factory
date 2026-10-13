@@ -2765,3 +2765,7 @@
 {"ts": "2026-10-13T19:46:27+00:00", "event": "escalation.queued", "ticket": "T-0052.1", "items": ["harness-bug: run start verifier: model fable refused for verifier: the instance names opus"]}
 {"ts": "2026-10-13T19:47:53+00:00", "event": "results.superseded", "ticket": "T-0052.1", "head": "8d07f458b674f9041c6c2b861e626dc08121f053", "roles": []}
 {"ts": "2026-10-13T19:47:54+00:00", "event": "human.resolved", "ticket": "T-0052.1", "kind": "redispatch", "by": "dphang", "from": "parked", "to": "checks-in-flight"}
+{"ts": "2026-10-13T19:49:11+00:00", "event": "ticket.parked", "ticket": "T-0052.1", "from": "checks-in-flight", "reason": "harness-bug: run start verifier: model fable refused for verifier: the instance names opus\n{'ok': false, 'error': 'model fable refused for verifier: the instance names opus'}"}
+{"ts": "2026-10-13T19:49:11+00:00", "event": "escalation.queued", "ticket": "T-0052.1", "items": ["harness-bug: run start verifier: model fable refused for verifier: the instance names opus\n{'ok': false, 'error': 'model fable refused for verifier: the instance names opus'}"]}
+{"ts": "2026-10-13T19:49:54+00:00", "event": "results.superseded", "ticket": "T-0052.1", "head": "8d07f458b674f9041c6c2b861e626dc08121f053", "roles": []}
+{"ts": "2026-10-13T19:49:54+00:00", "event": "human.resolved", "ticket": "T-0052.1", "kind": "redispatch", "by": "dphang", "from": "parked", "to": "checks-in-flight"}
