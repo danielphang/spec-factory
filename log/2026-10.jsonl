@@ -2697,3 +2697,6 @@
 {"ts": "2026-10-13T17:18:39+00:00", "event": "run.started", "ticket": "T-0048", "run": "run-0512-critic", "role": "critic", "model": "fable"}
 {"ts": "2026-10-13T17:23:42+00:00", "event": "run.finished", "ticket": "T-0048", "run": "run-0512-critic", "role": "critic", "status": "APPROVE", "wall_s": 303}
 {"ts": "2026-10-13T17:23:51+00:00", "event": "ticket.transition", "ticket": "T-0048", "from": "ready-for-critic", "to": "awaiting-spec-gate", "by": "workflow", "round": {"spec": 1, "pr": 0}}
+{"ts": "2026-10-13T18:12:26+00:00", "event": "approval.recorded", "ticket": "T-0048", "kind": "spec", "version": 1, "by": "dphang"}
+{"ts": "2026-10-13T18:12:26+00:00", "event": "change.pinned", "ticket": "T-0048", "version": 1, "files": ["openspec/changes/T-0048/proposal.md", "openspec/changes/T-0048/design.md", "openspec/changes/T-0048/specs/harness-docs/spec.md", "openspec/changes/T-0048/verification.md"]}
+{"ts": "2026-10-13T18:12:26+00:00", "event": "ticket.transition", "ticket": "T-0048", "from": "awaiting-spec-gate", "to": "ready-for-planner", "by": "dphang"}
