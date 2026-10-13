@@ -1,21 +1,56 @@
 id: T-0051
-type: null
-title: 'Get one harness-suite run well under the 10-minute tool-call cap, so roles stop backgrounding
-  it (spec-factory #106)'
+type: chore
+title: 'Get one harness-suite run well under the 10-minute tool-call cap, and name a background wait in
+  the EMPTY-OUTPUT park reason (spec-factory #106)'
 request: requests/T-0051.md
 source: /private/tmp/claude-501/-Users-dphang-dev-nanobot/c69bfd1d-97a6-43e3-9d5a-a517c28d382c/scratchpad/req-106.md
-status: ready-for-triage
+status: awaiting-spec-gate
 round:
-  spec: 0
+  spec: 2
   pr: 0
 spec:
-  version: 0
+  version: 2
   approved_version: null
 plan: null
 in_flight: []
 parked: null
 created: '2026-10-13T06:31:08+00:00'
-history: []
+history:
+- ts: '2026-10-13T06:33:36+00:00'
+  from: ready-for-triage
+  to: ready-for-spec-writer
+  by: workflow
+  round:
+    spec: 0
+    pr: 0
+- ts: '2026-10-13T07:49:58+00:00'
+  from: ready-for-spec-writer
+  to: ready-for-critic
+  by: workflow
+  round:
+    spec: 1
+    pr: 0
+- ts: '2026-10-13T07:56:17+00:00'
+  from: ready-for-critic
+  to: ready-for-spec-writer
+  by: workflow
+  round:
+    spec: 2
+    pr: 0
+- ts: '2026-10-13T08:01:49+00:00'
+  from: ready-for-spec-writer
+  to: ready-for-critic
+  by: workflow
+  round:
+    spec: 2
+    pr: 0
+- ts: '2026-10-13T08:04:24+00:00'
+  from: ready-for-critic
+  to: awaiting-spec-gate
+  by: workflow
+  round:
+    spec: 2
+    pr: 0
 parent: null
 depends_on: []
 parallel_safe: true

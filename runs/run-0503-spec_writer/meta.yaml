@@ -1,0 +1,23 @@
+run_id: run-0503-spec_writer
+role: spec_writer
+ticket: T-0051
+model: opus
+round: 0
+spec_version: 0
+started: '2026-10-13T06:33:50+00:00'
+finished: '2026-10-13T07:49:40+00:00'
+wall_s: 4550
+status: READY-FOR-CRITIC
+input_sources:
+- runs/run-0502-triage/output.md
+- requests/T-0051.md
+- openspec/specs/build-dispatch/spec.md
+- openspec/specs/gate-commands/spec.md
+- openspec/specs/harness-docs/spec.md
+- openspec/specs/harness-suite/spec.md
+- decisions.md
+confidence: high. Every behaviour item was run on main and on a prototype of the change with the stated
+  results; two base timing runs are inferred from a measured one, and the time bounds hold for this machine
+  only.
+escalations: []
+escalations_note: null

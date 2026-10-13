@@ -1,0 +1,27 @@
+run_id: run-0505-spec_writer
+role: spec_writer
+ticket: T-0051
+model: opus
+round: 2
+spec_version: 1
+started: '2026-10-13T07:56:26+00:00'
+finished: '2026-10-13T08:01:31+00:00'
+wall_s: 305
+status: READY-FOR-CRITIC
+input_sources:
+- runs/run-0502-triage/output.md
+- requests/T-0051.md
+- openspec/specs/build-dispatch/spec.md
+- openspec/specs/gate-commands/spec.md
+- openspec/specs/harness-code/spec.md
+- openspec/specs/harness-docs/spec.md
+- openspec/specs/harness-suite/spec.md
+- openspec/specs/human-resolution/spec.md
+- decisions.md
+- runs/run-0504-critic/output.md
+- specs/T-0051/v1.md
+confidence: high, `main` is still at `88c65e1`, and the one changed acceptance command was run as written
+  on `main`, where it fails for the stated reason, and on a locked prototype, where it passes. The other
+  items are unchanged from round 1 and the critic reproduced them.
+escalations: []
+escalations_note: null

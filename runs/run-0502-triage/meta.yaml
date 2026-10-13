@@ -1,0 +1,17 @@
+run_id: run-0502-triage
+role: triage
+ticket: T-0051
+model: opus
+round: 0
+spec_version: 0
+started: '2026-10-13T06:31:46+00:00'
+finished: '2026-10-13T06:33:25+00:00'
+wall_s: 99
+status: ACCEPT
+input_sources:
+- requests/T-0051.md
+confidence: high. Every path, line and test name the request cites was checked on this checkout. The one
+  discrepancy (`.factory/config` does not exist; the gate commands live in `.factory/instance.yaml`) does
+  not change the intent.
+escalations: []
+escalations_note: null

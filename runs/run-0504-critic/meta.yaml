@@ -1,0 +1,23 @@
+run_id: run-0504-critic
+role: critic
+ticket: T-0051
+model: fable
+round: 1
+spec_version: 1
+started: '2026-10-13T07:50:07+00:00'
+finished: '2026-10-13T07:56:08+00:00'
+wall_s: 361
+status: REVISE
+input_sources:
+- specs/T-0051/v1.md
+- openspec/specs/build-dispatch/spec.md
+- openspec/specs/gate-commands/spec.md
+- openspec/specs/harness-code/spec.md
+- openspec/specs/harness-docs/spec.md
+- openspec/specs/harness-suite/spec.md
+- openspec/specs/human-resolution/spec.md
+- decisions.md
+confidence: high, every cited location was confirmed on the checkout and four acceptance commands reproduced
+  the spec's "fails today" output; the one blocking finding is a gloss the writer can fix in one sentence.
+escalations: []
+escalations_note: null

@@ -1,0 +1,26 @@
+run_id: run-0506-critic
+role: critic
+ticket: T-0051
+model: fable
+round: 2
+spec_version: 2
+started: '2026-10-13T08:01:58+00:00'
+finished: '2026-10-13T08:04:15+00:00'
+wall_s: 137
+status: APPROVE
+input_sources:
+- specs/T-0051/v2.md
+- openspec/specs/build-dispatch/spec.md
+- openspec/specs/gate-commands/spec.md
+- openspec/specs/harness-code/spec.md
+- openspec/specs/harness-docs/spec.md
+- openspec/specs/harness-suite/spec.md
+- openspec/specs/human-resolution/spec.md
+- decisions.md
+- runs/run-0504-critic/output.md
+- specs/T-0051/v1.md
+confidence: high, every round-1 finding is fixed in the text and the one changed acceptance command reproduced
+  its "fails today" output on the checkout; the timings and lock delta remain for the verifier, as in
+  round 1.
+escalations: []
+escalations_note: null
