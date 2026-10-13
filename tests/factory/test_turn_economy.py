@@ -102,7 +102,7 @@ def run_prompts(tmp_path_factory) -> dict[str, str]:
                          ("implementer", ["status=ready-for-implementer", "in_flight=[]"]),
                          ("reviewer", checks), ("verifier", checks)):
         _cli(t, "ticket", "set", "T-0001", *status, **store)
-        cp = _cli(t, "run", "start", "--role", role, "--ticket", "T-0001", "--model", "opus", **store)
+        cp = _cli(t, "run", "start", "--role", role, "--ticket", "T-0001", **store)
         run_id = json.loads(cp.stdout.strip().splitlines()[-1])["run_id"]
         prompts[role] = (tmp / "s" / "runs" / run_id / "system-prompt.txt").read_text()
     return prompts

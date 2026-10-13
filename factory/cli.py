@@ -200,6 +200,9 @@ def _planner_run(root: Path, run: str, tid: str) -> Path:
 def run_start(a, root, cfg):
     if a.role not in ROLES:
         raise Refused(f"unknown role {a.role}; roles: {', '.join(ROLES)}")
+    model = cfg["models"][a.role]  # the instance is the only source of a role's model; --model only cross-checks it
+    if a.model is not None and a.model != model:
+        raise Refused(f"model {a.model} refused for {a.role}: the instance names {model}")
     t = store.load_ticket(root, a.ticket)
     parent_close = a.role == "verifier" and t["status"] == "ready-for-parent-verify"
     ready = cfg["ready_state"][a.role]
@@ -217,7 +220,6 @@ def run_start(a, root, cfg):
         compose.environment_sync(cfg)  # so does a malformed environment_sync
     baseline = tripwire.baseline(cfg)  # hashed before the run id is reserved: a refusal writes nothing
     rid = store.next_run_id(root, a.role)
-    model = a.model or cfg["models"][a.role]
     d = root / "runs" / rid
     meta = {"run_id": rid, "role": a.role, "ticket": t["id"], "model": model, "round": t["round"]["spec"],
             "spec_version": t["spec"]["version"], "started": store.now(), "finished": None,
@@ -699,7 +701,7 @@ def build_parser() -> argparse.ArgumentParser:
     p = rn.add_parser("start")
     p.add_argument("--role", required=True)
     p.add_argument("--ticket", required=True)
-    p.add_argument("--model")
+    p.add_argument("--model", help="must match the instance's model for the role")
     p.set_defaults(fn=run_start)
     p = rn.add_parser("compose")
     p.add_argument("run")
