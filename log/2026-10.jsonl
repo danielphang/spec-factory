@@ -2761,3 +2761,7 @@
 {"ts": "2026-10-13T19:44:20+00:00", "event": "result.recorded", "ticket": "T-0052.1", "head": "8d07f458b674f9041c6c2b861e626dc08121f053", "role": "reviewer", "status": "APPROVE", "run": "run-0522-reviewer"}
 {"ts": "2026-10-13T19:44:58+00:00", "event": "results.superseded", "ticket": "T-0052.1", "head": "8d07f458b674f9041c6c2b861e626dc08121f053", "roles": []}
 {"ts": "2026-10-13T19:44:58+00:00", "event": "human.resolved", "ticket": "T-0052.1", "kind": "redispatch", "by": "dphang", "from": "parked", "to": "checks-in-flight"}
+{"ts": "2026-10-13T19:46:27+00:00", "event": "ticket.parked", "ticket": "T-0052.1", "from": "checks-in-flight", "reason": "harness-bug: run start verifier: model fable refused for verifier: the instance names opus"}
+{"ts": "2026-10-13T19:46:27+00:00", "event": "escalation.queued", "ticket": "T-0052.1", "items": ["harness-bug: run start verifier: model fable refused for verifier: the instance names opus"]}
+{"ts": "2026-10-13T19:47:53+00:00", "event": "results.superseded", "ticket": "T-0052.1", "head": "8d07f458b674f9041c6c2b861e626dc08121f053", "roles": []}
+{"ts": "2026-10-13T19:47:54+00:00", "event": "human.resolved", "ticket": "T-0052.1", "kind": "redispatch", "by": "dphang", "from": "parked", "to": "checks-in-flight"}
