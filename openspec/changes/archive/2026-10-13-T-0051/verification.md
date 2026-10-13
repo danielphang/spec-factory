@@ -95,3 +95,7 @@ none
 - [SHOULD-FIX] 6, sub-ticket / current truth / play unglossed → RESOLVED. Sub-ticket is glossed before T-0047.2 (Problem paragraph 2), checker in Problem bullet 3, current truth and plays at their first use in Evidence, and the Workflow scripts where the three park sites are introduced.
 - [NIT] 2, stand-in check blind to a swallow-and-restart fix → RESOLVED. The script prints the stand-in's final verifier count and the THEN expects `counter 800`; on `main` it prints a count below 800 (confirmed above).
 - [NIT] 1, `test_drive_build.py:60` left off Tests to change → RESOLVED. It is named, with the reason it stays green (`drive.py:241`, `and said`), which I confirmed.
+
+## Verifier results
+
+5e00a1f5261b2576ae6243b46ac8895f71042ff9 · T-0051.1 · VERIFIED · run-0508-verifier

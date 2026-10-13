@@ -1,0 +1,28 @@
+run_id: run-0509-reviewer
+role: reviewer
+ticket: T-0051.1
+model: fable
+round: 1
+spec_version: 3
+started: '2026-10-13T16:31:49+00:00'
+finished: '2026-10-13T16:35:13+00:00'
+wall_s: 204
+status: APPROVE
+input_sources:
+- specs/T-0051.1/subticket.md
+- specs/T-0051/v3.md
+- runs/run-0507-implementer/output.md
+- runs/run-0509-reviewer/diff.patch
+gate_skipped: []
+environment_files: []
+branch: factory/T-0051.1
+base: 88c65e147495debccaef62986a15df1ee54b59f4
+head: 5e00a1f5261b2576ae6243b46ac8895f71042ff9
+worktree: /Users/dphang/dev/spec-factory/.factory/store/runs/run-0509-reviewer/wt
+confidence: high. Every lettered part is present and matches the spec's Decisions line for line; the two
+  assertion changes are exactly those listed; the failure paths (`call()`, `clerk()`) were read and never
+  throw, so the new `waiting` read is safe; no undeclared protected path is touched.
+escalations: []
+escalations_note: 'none. For the record (declared on the spec''s Risk line, so the merge gate accepts
+  them): `pyproject.toml`, `uv.lock`, `factory/cli.py`, `factory/drive.py`, `factory/workflows/intake.js`,
+  `factory/workflows/build.js`.'

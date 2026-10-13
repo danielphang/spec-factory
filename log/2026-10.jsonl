@@ -2667,3 +2667,22 @@
 {"ts": "2026-10-13T16:08:17+00:00", "event": "approval.recorded", "ticket": "T-0051", "kind": "spec", "version": 3, "by": "dphang"}
 {"ts": "2026-10-13T16:08:17+00:00", "event": "change.pinned", "ticket": "T-0051", "version": 3, "files": ["openspec/changes/T-0051/proposal.md", "openspec/changes/T-0051/design.md", "openspec/changes/T-0051/specs/harness-suite/spec.md", "openspec/changes/T-0051/specs/gate-commands/spec.md", "openspec/changes/T-0051/specs/build-dispatch/spec.md", "openspec/changes/T-0051/specs/harness-docs/spec.md", "openspec/changes/T-0051/verification.md"]}
 {"ts": "2026-10-13T16:08:17+00:00", "event": "ticket.transition", "ticket": "T-0051", "from": "awaiting-spec-gate", "to": "ready-for-planner", "by": "dphang"}
+{"ts": "2026-10-13T16:09:09+00:00", "event": "ticket.created", "ticket": "T-0051.1", "parent": "T-0051", "status": "ready-for-implementer"}
+{"ts": "2026-10-13T16:09:09+00:00", "event": "tasks.written", "ticket": "T-0051", "source": "plan:whole-spec"}
+{"ts": "2026-10-13T16:09:09+00:00", "event": "plan.skipped", "ticket": "T-0051", "subticket": "T-0051.1", "reason": "one sub-ticket: no NEEDS-SPLIT, no seam heading, no earlier planner run"}
+{"ts": "2026-10-13T16:09:19+00:00", "event": "ticket.transition", "ticket": "T-0051", "from": "ready-for-planner", "to": "planned", "by": "workflow", "round": {"spec": 2, "pr": 0}}
+{"ts": "2026-10-13T16:09:48+00:00", "event": "run.started", "ticket": "T-0051.1", "run": "run-0507-implementer", "role": "implementer", "model": "opus"}
+{"ts": "2026-10-13T16:31:10+00:00", "event": "run.finished", "ticket": "T-0051.1", "run": "run-0507-implementer", "role": "implementer", "status": "READY-FOR-REVIEW", "wall_s": 1282}
+{"ts": "2026-10-13T16:31:31+00:00", "event": "ticket.transition", "ticket": "T-0051.1", "from": "ready-for-implementer", "to": "checks-in-flight", "by": "workflow", "round": {"spec": 0, "pr": 1}}
+{"ts": "2026-10-13T16:31:49+00:00", "event": "run.started", "ticket": "T-0051.1", "run": "run-0508-verifier", "role": "verifier", "model": "opus"}
+{"ts": "2026-10-13T16:31:49+00:00", "event": "run.started", "ticket": "T-0051.1", "run": "run-0509-reviewer", "role": "reviewer", "model": "fable"}
+{"ts": "2026-10-13T16:35:13+00:00", "event": "run.finished", "ticket": "T-0051.1", "run": "run-0509-reviewer", "role": "reviewer", "status": "APPROVE", "wall_s": 204}
+{"ts": "2026-10-13T16:35:32+00:00", "event": "result.recorded", "ticket": "T-0051.1", "head": "5e00a1f5261b2576ae6243b46ac8895f71042ff9", "role": "reviewer", "status": "APPROVE", "run": "run-0509-reviewer"}
+{"ts": "2026-10-13T16:48:51+00:00", "event": "run.finished", "ticket": "T-0051.1", "run": "run-0508-verifier", "role": "verifier", "status": "VERIFIED", "wall_s": 1022}
+{"ts": "2026-10-13T16:49:10+00:00", "event": "result.recorded", "ticket": "T-0051.1", "head": "5e00a1f5261b2576ae6243b46ac8895f71042ff9", "role": "verifier", "status": "VERIFIED", "run": "run-0508-verifier"}
+{"ts": "2026-10-13T16:49:10+00:00", "event": "result.recorded", "ticket": "T-0051.1", "head": "5e00a1f5261b2576ae6243b46ac8895f71042ff9", "role": "ci", "status": "PASS", "run": "run-0508-verifier"}
+{"ts": "2026-10-13T16:49:30+00:00", "event": "ticket.transition", "ticket": "T-0051.1", "from": "checks-in-flight", "to": "ready-for-merge", "by": "workflow", "round": {"spec": 0, "pr": 1}}
+{"ts": "2026-10-13T16:49:39+00:00", "event": "merge.done", "ticket": "T-0051.1", "head": "5e00a1f5261b2576ae6243b46ac8895f71042ff9", "base_before": "88c65e147495debccaef62986a15df1ee54b59f4", "main_after": "9dbd4f8959fbfa1c8d93c5a957ad3484d8a57f59"}
+{"ts": "2026-10-13T16:50:02+00:00", "event": "ticket.transition", "ticket": "T-0051", "from": "planned", "to": "ready-for-parent-verify", "by": "parent-check"}
+{"ts": "2026-10-13T16:50:23+00:00", "event": "change.archived", "ticket": "T-0051", "archived_to": "openspec/changes/archive/2026-10-13-T-0051", "capabilities": ["build-dispatch", "gate-commands", "harness-docs", "harness-suite"], "decisions": 10}
+{"ts": "2026-10-13T16:50:35+00:00", "event": "ticket.transition", "ticket": "T-0051", "from": "ready-for-parent-verify", "to": "closed", "by": "workflow", "round": {"spec": 2, "pr": 0}}
