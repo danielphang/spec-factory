@@ -1,0 +1,16 @@
+run_id: run-0516-triage
+role: triage
+ticket: T-0052
+model: opus
+round: 0
+spec_version: 0
+started: '2026-10-13T18:40:36+00:00'
+finished: '2026-10-13T18:41:52+00:00'
+wall_s: 76
+status: ACCEPT
+input_sources:
+- requests/T-0052.md
+confidence: high, because I reproduced the parse failures, the copy-only-when-missing logic and the byte-identical
+  Nanobot copies on the current checkout.
+escalations: []
+escalations_note: null

@@ -1,0 +1,22 @@
+run_id: run-0520-critic
+role: critic
+ticket: T-0052
+model: fable
+round: 2
+spec_version: 2
+started: '2026-10-13T19:10:59+00:00'
+finished: '2026-10-13T19:12:56+00:00'
+wall_s: 117
+status: APPROVE
+input_sources:
+- specs/T-0052/v2.md
+- openspec/specs/harness-docs/spec.md
+- openspec/specs/store-setup/spec.md
+- decisions.md
+- runs/run-0518-critic/output.md
+- specs/T-0052/v1.md
+confidence: high; every round-1 finding is fixed in the text with the gloss the finding asked for, every
+  path and line the changed text cites exists at `525d73f`, and the two acceptance commands and the operator
+  check I ran print what the spec says they print today.
+escalations: []
+escalations_note: null

@@ -1,0 +1,19 @@
+run_id: run-0518-critic
+role: critic
+ticket: T-0052
+model: fable
+round: 1
+spec_version: 1
+started: '2026-10-13T18:59:37+00:00'
+finished: '2026-10-13T19:07:37+00:00'
+wall_s: 480
+status: REVISE
+input_sources:
+- specs/T-0052/v1.md
+- openspec/specs/harness-docs/spec.md
+- openspec/specs/store-setup/spec.md
+- decisions.md
+confidence: high; every cited path, line and "today" result was checked on this checkout, and the one
+  BLOCKING finding is a gloss the rubric names explicitly, with a one-clause fix.
+escalations: []
+escalations_note: null

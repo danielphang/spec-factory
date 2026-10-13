@@ -1,21 +1,56 @@
 id: T-0052
-type: null
-title: 'Fix the four role agent templates'' YAML frontmatter, test it, and have init report stale target
-  copies (spec-factory #108)'
+type: bug
+title: Fix the YAML frontmatter in four role agent templates, test every template's frontmatter, and have
+  `factory init` report a target copy that differs from its template
 request: requests/T-0052.md
 source: /private/tmp/claude-501/-Users-dphang-dev-nanobot/c69bfd1d-97a6-43e3-9d5a-a517c28d382c/scratchpad/req-108.md
-status: ready-for-triage
+status: awaiting-spec-gate
 round:
-  spec: 0
+  spec: 2
   pr: 0
 spec:
-  version: 0
+  version: 2
   approved_version: null
 plan: null
 in_flight: []
 parked: null
 created: '2026-10-13T18:30:41+00:00'
-history: []
+history:
+- ts: '2026-10-13T18:42:03+00:00'
+  from: ready-for-triage
+  to: ready-for-spec-writer
+  by: workflow
+  round:
+    spec: 0
+    pr: 0
+- ts: '2026-10-13T18:59:26+00:00'
+  from: ready-for-spec-writer
+  to: ready-for-critic
+  by: workflow
+  round:
+    spec: 1
+    pr: 0
+- ts: '2026-10-13T19:07:47+00:00'
+  from: ready-for-critic
+  to: ready-for-spec-writer
+  by: workflow
+  round:
+    spec: 2
+    pr: 0
+- ts: '2026-10-13T19:10:50+00:00'
+  from: ready-for-spec-writer
+  to: ready-for-critic
+  by: workflow
+  round:
+    spec: 2
+    pr: 0
+- ts: '2026-10-13T19:13:05+00:00'
+  from: ready-for-critic
+  to: awaiting-spec-gate
+  by: workflow
+  round:
+    spec: 2
+    pr: 0
 parent: null
 depends_on: []
 parallel_safe: true

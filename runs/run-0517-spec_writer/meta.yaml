@@ -1,0 +1,21 @@
+run_id: run-0517-spec_writer
+role: spec_writer
+ticket: T-0052
+model: opus
+round: 0
+spec_version: 0
+started: '2026-10-13T18:42:11+00:00'
+finished: '2026-10-13T18:59:07+00:00'
+wall_s: 1016
+status: READY-FOR-CRITIC
+input_sources:
+- runs/run-0516-triage/output.md
+- requests/T-0052.md
+- openspec/specs/harness-docs/spec.md
+- openspec/specs/store-setup/spec.md
+- decisions.md
+confidence: high. I reproduced each failure on this checkout and saw every store-setup scenario print
+  its expected result on a scratch prototype, whose full suite passed (590). The only thing I could not
+  check is Claude Code's own frontmatter parser.
+escalations: []
+escalations_note: null
