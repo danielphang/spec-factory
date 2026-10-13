@@ -1,0 +1,19 @@
+run_id: run-0511-spec_writer
+role: spec_writer
+ticket: T-0048
+model: opus
+round: 0
+spec_version: 0
+started: '2026-10-13T16:56:10+00:00'
+finished: '2026-10-13T17:18:11+00:00'
+wall_s: 1321
+status: READY-FOR-CRITIC
+input_sources:
+- runs/run-0510-triage/output.md
+- requests/T-0048.md
+- openspec/specs/harness-docs/spec.md
+- decisions.md
+confidence: medium. A prototype of every edit passed every scenario here, but the README line budget and
+  the change of the protected-path claim to "has fired" are calls the operator may overturn at the gate.
+escalations: []
+escalations_note: null

@@ -2687,3 +2687,13 @@
 {"ts": "2026-10-13T16:50:23+00:00", "event": "change.archived", "ticket": "T-0051", "archived_to": "openspec/changes/archive/2026-10-13-T-0051", "capabilities": ["build-dispatch", "gate-commands", "harness-docs", "harness-suite"], "decisions": 10}
 {"ts": "2026-10-13T16:50:35+00:00", "event": "ticket.transition", "ticket": "T-0051", "from": "ready-for-parent-verify", "to": "closed", "by": "workflow", "round": {"spec": 2, "pr": 0}}
 {"ts": "2026-10-13T16:50:56+00:00", "event": "harness.accepted", "instance": "/Users/dphang/dev/spec-factory/.factory", "old": "b3b978dce1d5544c7f346695292b8ef37f64eaae", "new": "5e00a1f5261b2576ae6243b46ac8895f71042ff9"}
+{"ts": "2026-10-13T16:54:05+00:00", "event": "run.started", "ticket": "T-0048", "run": "run-0510-triage", "role": "triage", "model": "opus"}
+{"ts": "2026-10-13T16:55:48+00:00", "event": "run.finished", "ticket": "T-0048", "run": "run-0510-triage", "role": "triage", "status": "ACCEPT", "wall_s": 103}
+{"ts": "2026-10-13T16:55:58+00:00", "event": "ticket.transition", "ticket": "T-0048", "from": "ready-for-triage", "to": "ready-for-spec-writer", "by": "workflow", "round": {"spec": 0, "pr": 0}}
+{"ts": "2026-10-13T16:56:10+00:00", "event": "run.started", "ticket": "T-0048", "run": "run-0511-spec_writer", "role": "spec_writer", "model": "opus"}
+{"ts": "2026-10-13T17:18:11+00:00", "event": "run.finished", "ticket": "T-0048", "run": "run-0511-spec_writer", "role": "spec_writer", "status": "READY-FOR-CRITIC", "wall_s": 1321}
+{"ts": "2026-10-13T17:18:20+00:00", "event": "spec.added", "ticket": "T-0048", "version": 1, "source": "run-0511-spec_writer"}
+{"ts": "2026-10-13T17:18:30+00:00", "event": "ticket.transition", "ticket": "T-0048", "from": "ready-for-spec-writer", "to": "ready-for-critic", "by": "workflow", "round": {"spec": 1, "pr": 0}}
+{"ts": "2026-10-13T17:18:39+00:00", "event": "run.started", "ticket": "T-0048", "run": "run-0512-critic", "role": "critic", "model": "fable"}
+{"ts": "2026-10-13T17:23:42+00:00", "event": "run.finished", "ticket": "T-0048", "run": "run-0512-critic", "role": "critic", "status": "APPROVE", "wall_s": 303}
+{"ts": "2026-10-13T17:23:51+00:00", "event": "ticket.transition", "ticket": "T-0048", "from": "ready-for-critic", "to": "awaiting-spec-gate", "by": "workflow", "round": {"spec": 1, "pr": 0}}
