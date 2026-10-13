@@ -1,5 +1,7 @@
 # Spec: Build the spec factory, local-Mac v0 (Nanobot fork, branch `feat/lionbot-v3`)
 
+> **Frozen as history.** This document records how the harness was first specified and built, and parts of it describe a design the code never had. It is no longer kept in step with `docs/design.md` or the code, and no change updates it; `README.md` and `docs/design.md` describe the system.
+
 Ticket: (Triage, ACCEPT) "Build the spec-factory harness, smallest-thing-that-works variant"
 Spec version: 4 · Round: 4 (post-gate amend pass; round reset) · Writer: spec_writer
 Design doc: `/tmp/claude-0/-home-user/0cb0ba38-97f2-51cf-86de-970d4ebec94b/scratchpad/spec-factory-v5.md` (cited as "doc §<section>": doc §Harness table piece N, doc §Routing table, doc §Routing rules, doc §Human gates, doc §Shared preamble)

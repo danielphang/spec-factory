@@ -1,5 +1,7 @@
 # Plan: Build the spec factory, local-Mac v0 — sub-tickets (plan v2)
 
+> **Frozen as history.** This document records how the harness was first specified and built, and parts of it describe a design the code never had. It is no longer kept in step with `docs/design.md` or the code, and no change updates it; `README.md` and `docs/design.md` describe the system.
+
 Parent: `dev/build-harness.spec.md` in `danielphang/spec-factory` (https://github.com/danielphang/spec-factory/blob/main/dev/build-harness.spec.md); approved text = `spec-build-v4.md` (STATUS NEEDS-SPLIT; 84 acceptance items, of which 71–84 are the gate's round-4 amendments A–N), pinned by the human gate. The v1 rulings stand (every Open question on its proposed default; same-user deploy keys for v0; post-hoc budget kill; standing allowlist for real runs, never `bypassPermissions`; first acceptance run interactive; Nanobot gate commands unknown and carried as BH-1's open question; split along seams S1–S5), plus the amendments and the doc-v5 deltas folded into them.
 Planner: planner · Plan version: 2 (re-plan after the gate amended the pinned spec; supersedes `plan-build-v1.md`) · Design doc: `spec-factory-v5.md`
 
