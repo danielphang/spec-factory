@@ -2746,3 +2746,18 @@
 {"ts": "2026-10-13T19:29:41+00:00", "event": "approval.recorded", "ticket": "T-0052", "kind": "spec", "version": 2, "by": "dphang"}
 {"ts": "2026-10-13T19:29:41+00:00", "event": "change.pinned", "ticket": "T-0052", "version": 2, "files": ["openspec/changes/T-0052/proposal.md", "openspec/changes/T-0052/design.md", "openspec/changes/T-0052/specs/store-setup/spec.md", "openspec/changes/T-0052/specs/harness-docs/spec.md", "openspec/changes/T-0052/verification.md"]}
 {"ts": "2026-10-13T19:29:41+00:00", "event": "ticket.transition", "ticket": "T-0052", "from": "awaiting-spec-gate", "to": "ready-for-planner", "by": "dphang"}
+{"ts": "2026-10-13T19:30:17+00:00", "event": "ticket.created", "ticket": "T-0052.1", "parent": "T-0052", "status": "ready-for-implementer"}
+{"ts": "2026-10-13T19:30:17+00:00", "event": "tasks.written", "ticket": "T-0052", "source": "plan:whole-spec"}
+{"ts": "2026-10-13T19:30:17+00:00", "event": "plan.skipped", "ticket": "T-0052", "subticket": "T-0052.1", "reason": "one sub-ticket: no NEEDS-SPLIT, no seam heading, no earlier planner run"}
+{"ts": "2026-10-13T19:30:27+00:00", "event": "ticket.transition", "ticket": "T-0052", "from": "ready-for-planner", "to": "planned", "by": "workflow", "round": {"spec": 2, "pr": 0}}
+{"ts": "2026-10-13T19:30:57+00:00", "event": "run.started", "ticket": "T-0052.1", "run": "run-0521-implementer", "role": "implementer", "model": "opus"}
+{"ts": "2026-10-13T19:41:36+00:00", "event": "run.finished", "ticket": "T-0052.1", "run": "run-0521-implementer", "role": "implementer", "status": "READY-FOR-REVIEW", "wall_s": 639}
+{"ts": "2026-10-13T19:41:55+00:00", "event": "ticket.transition", "ticket": "T-0052.1", "from": "ready-for-implementer", "to": "checks-in-flight", "by": "workflow", "round": {"spec": 0, "pr": 1}}
+{"ts": "2026-10-13T19:42:12+00:00", "event": "run.started", "ticket": "T-0052.1", "run": "run-0522-reviewer", "role": "reviewer", "model": "fable"}
+{"ts": "2026-10-13T19:42:20+00:00", "event": "ticket.parked", "ticket": "T-0052.1", "from": "checks-in-flight", "reason": "harness-bug: run start verifier: model fable refused for verifier: the instance names opus\n  {'ok': false, 'error': 'model fable refused for verifier: the instance names opus'}"}
+{"ts": "2026-10-13T19:42:20+00:00", "event": "escalation.queued", "ticket": "T-0052.1", "items": ["harness-bug: run start verifier: model fable refused for verifier: the instance names opus\n  {'ok': false, 'error': 'model fable refused for verifier: the instance names opus'}"]}
+{"ts": "2026-10-13T19:43:59+00:00", "event": "run.finished", "ticket": "T-0052.1", "run": "run-0522-reviewer", "role": "reviewer", "status": "APPROVE", "wall_s": 107}
+{"ts": "2026-10-13T19:43:59+00:00", "event": "escalation.queued", "ticket": "T-0052.1", "run": "run-0522-reviewer", "items": ["for the record only, no action needed: the diff touches the protected paths `agents/**` (four template files) and `factory/**` (`factory/setup.py`), both declared in the approved spec's Risk section, so the merge gate merges them without further approval."]}
+{"ts": "2026-10-13T19:44:20+00:00", "event": "result.recorded", "ticket": "T-0052.1", "head": "8d07f458b674f9041c6c2b861e626dc08121f053", "role": "reviewer", "status": "APPROVE", "run": "run-0522-reviewer"}
+{"ts": "2026-10-13T19:44:58+00:00", "event": "results.superseded", "ticket": "T-0052.1", "head": "8d07f458b674f9041c6c2b861e626dc08121f053", "roles": []}
+{"ts": "2026-10-13T19:44:58+00:00", "event": "human.resolved", "ticket": "T-0052.1", "kind": "redispatch", "by": "dphang", "from": "parked", "to": "checks-in-flight"}

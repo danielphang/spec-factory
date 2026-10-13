@@ -1,0 +1,49 @@
+id: T-0052.1
+type: sub-ticket
+title: Fix the YAML frontmatter in four role agent templates, test every template's frontmatter, and have
+  `factory init` report a target copy that differs from its template
+request: requests/T-0052.md
+source: plan:whole-spec
+status: checks-in-flight
+round:
+  spec: 0
+  pr: 1
+spec:
+  version: 2
+  approved_version: 2
+plan: null
+in_flight: []
+parked: null
+created: '2026-10-13T19:30:17+00:00'
+history:
+- ts: '2026-10-13T19:41:54+00:00'
+  from: ready-for-implementer
+  to: checks-in-flight
+  by: workflow
+  round:
+    spec: 0
+    pr: 1
+- ts: '2026-10-13T19:42:20+00:00'
+  from: checks-in-flight
+  to: parked
+  by: park
+  reason: "harness-bug: run start verifier: model fable refused for verifier: the instance names opus\n\
+    \  {'ok': false, 'error': 'model fable refused for verifier: the instance names opus'}"
+- ts: '2026-10-13T19:44:58+00:00'
+  from: parked
+  to: checks-in-flight
+  by: dphang
+  resolve: redispatch
+  head: 8d07f458b674f9041c6c2b861e626dc08121f053
+  superseded: []
+parent: T-0052
+depends_on: []
+parallel_safe: true
+branch: factory/T-0052.1
+head: 8d07f458b674f9041c6c2b861e626dc08121f053
+merge:
+  base_before: null
+  main_after: null
+parent_base: null
+label: whole-spec
+planned_from: 2
