@@ -2620,3 +2620,6 @@
 {"ts": "2026-10-13T00:20:31+00:00", "event": "run.started", "ticket": "T-0050", "run": "run-0498-critic", "role": "critic", "model": "fable"}
 {"ts": "2026-10-13T00:24:47+00:00", "event": "run.finished", "ticket": "T-0050", "run": "run-0498-critic", "role": "critic", "status": "APPROVE", "wall_s": 256}
 {"ts": "2026-10-13T00:24:57+00:00", "event": "ticket.transition", "ticket": "T-0050", "from": "ready-for-critic", "to": "awaiting-spec-gate", "by": "workflow", "round": {"spec": 1, "pr": 0}}
+{"ts": "2026-10-13T05:55:17+00:00", "event": "approval.recorded", "ticket": "T-0050", "kind": "spec", "version": 1, "by": "dphang"}
+{"ts": "2026-10-13T05:55:17+00:00", "event": "change.pinned", "ticket": "T-0050", "version": 1, "files": ["openspec/changes/T-0050/proposal.md", "openspec/changes/T-0050/design.md", "openspec/changes/T-0050/specs/build-dispatch/spec.md", "openspec/changes/T-0050/specs/harness-docs/spec.md", "openspec/changes/T-0050/verification.md"]}
+{"ts": "2026-10-13T05:55:17+00:00", "event": "ticket.transition", "ticket": "T-0050", "from": "awaiting-spec-gate", "to": "ready-for-planner", "by": "dphang"}

@@ -4,13 +4,13 @@ title: '`run start` takes each role''s model from the instance and refuses a `--
   a Workflow run cannot start on a model the instance never named'
 request: requests/T-0050.md
 source: /private/tmp/claude-501/-Users-dphang-dev-nanobot/c69bfd1d-97a6-43e3-9d5a-a517c28d382c/scratchpad/req-107.md
-status: awaiting-spec-gate
+status: ready-for-planner
 round:
   spec: 1
   pr: 0
 spec:
   version: 1
-  approved_version: null
+  approved_version: 1
 plan: null
 in_flight: []
 parked: null
@@ -37,6 +37,11 @@ history:
   round:
     spec: 1
     pr: 0
+- ts: '2026-10-13T05:55:16+00:00'
+  from: awaiting-spec-gate
+  to: ready-for-planner
+  by: dphang
+  approved_version: 1
 parent: null
 depends_on: []
 parallel_safe: true
