@@ -4,13 +4,13 @@ title: 'Get one harness-suite run well under the 10-minute tool-call cap, and na
   the EMPTY-OUTPUT park reason (spec-factory #106)'
 request: requests/T-0051.md
 source: /private/tmp/claude-501/-Users-dphang-dev-nanobot/c69bfd1d-97a6-43e3-9d5a-a517c28d382c/scratchpad/req-106.md
-status: awaiting-spec-gate
+status: ready-for-planner
 round:
   spec: 2
   pr: 0
 spec:
-  version: 2
-  approved_version: null
+  version: 3
+  approved_version: 3
 plan: null
 in_flight: []
 parked: null
@@ -51,6 +51,11 @@ history:
   round:
     spec: 2
     pr: 0
+- ts: '2026-10-13T16:08:17+00:00'
+  from: awaiting-spec-gate
+  to: ready-for-planner
+  by: dphang
+  approved_version: 3
 parent: null
 depends_on: []
 parallel_safe: true
