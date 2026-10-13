@@ -1,0 +1,49 @@
+id: T-0053.1
+type: sub-ticket
+title: 'Add `docs/standards.md`, the operator''s writing and design standards in one self-contained file,
+  point to it from README, and stop `docs/north-star.md` naming the private port (spec-factory #110)'
+request: requests/T-0053.md
+source: plan:whole-spec
+status: merged
+round:
+  spec: 0
+  pr: 1
+spec:
+  version: 2
+  approved_version: 2
+plan: null
+in_flight: []
+parked: null
+created: '2026-10-13T21:57:24+00:00'
+history:
+- ts: '2026-10-13T22:02:41+00:00'
+  from: ready-for-implementer
+  to: checks-in-flight
+  by: workflow
+  round:
+    spec: 0
+    pr: 1
+- ts: '2026-10-13T22:07:26+00:00'
+  from: checks-in-flight
+  to: ready-for-merge
+  by: workflow
+  round:
+    spec: 0
+    pr: 1
+- ts: '2026-10-13T22:07:34+00:00'
+  from: ready-for-merge
+  to: merged
+  by: merge
+  head: 21f90c4e2d6ef5d8180c954ff3c2ff02711744aa
+parent: T-0053
+depends_on: []
+parallel_safe: true
+branch: factory/T-0053.1
+head: 21f90c4e2d6ef5d8180c954ff3c2ff02711744aa
+merge:
+  base_before: 525d73fdd4d3a2d70f66961195f9f9e19ac44c7d
+  main_after: af439c457ddefefc7e651430c6a23d6ad8e1e135
+parent_base: null
+label: whole-spec
+planned_from: 2
+merge_refused: null

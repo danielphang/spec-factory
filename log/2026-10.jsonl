@@ -2786,3 +2786,22 @@
 {"ts": "2026-10-13T21:56:50+00:00", "event": "approval.recorded", "ticket": "T-0053", "kind": "spec", "version": 2, "by": "dphang"}
 {"ts": "2026-10-13T21:56:50+00:00", "event": "change.pinned", "ticket": "T-0053", "version": 2, "files": ["openspec/changes/T-0053/proposal.md", "openspec/changes/T-0053/design.md", "openspec/changes/T-0053/specs/harness-docs/spec.md", "openspec/changes/T-0053/verification.md"]}
 {"ts": "2026-10-13T21:56:50+00:00", "event": "ticket.transition", "ticket": "T-0053", "from": "awaiting-spec-gate", "to": "ready-for-planner", "by": "dphang"}
+{"ts": "2026-10-13T21:57:24+00:00", "event": "ticket.created", "ticket": "T-0053.1", "parent": "T-0053", "status": "ready-for-implementer"}
+{"ts": "2026-10-13T21:57:24+00:00", "event": "tasks.written", "ticket": "T-0053", "source": "plan:whole-spec"}
+{"ts": "2026-10-13T21:57:24+00:00", "event": "plan.skipped", "ticket": "T-0053", "subticket": "T-0053.1", "reason": "one sub-ticket: no NEEDS-SPLIT, no seam heading, no earlier planner run"}
+{"ts": "2026-10-13T21:57:33+00:00", "event": "ticket.transition", "ticket": "T-0053", "from": "ready-for-planner", "to": "planned", "by": "workflow", "round": {"spec": 1, "pr": 0}}
+{"ts": "2026-10-13T21:58:03+00:00", "event": "run.started", "ticket": "T-0053.1", "run": "run-0526-implementer", "role": "implementer", "model": "opus"}
+{"ts": "2026-10-13T22:02:22+00:00", "event": "run.finished", "ticket": "T-0053.1", "run": "run-0526-implementer", "role": "implementer", "status": "READY-FOR-REVIEW", "wall_s": 259}
+{"ts": "2026-10-13T22:02:41+00:00", "event": "ticket.transition", "ticket": "T-0053.1", "from": "ready-for-implementer", "to": "checks-in-flight", "by": "workflow", "round": {"spec": 0, "pr": 1}}
+{"ts": "2026-10-13T22:02:59+00:00", "event": "run.started", "ticket": "T-0053.1", "run": "run-0527-verifier", "role": "verifier", "model": "opus"}
+{"ts": "2026-10-13T22:03:00+00:00", "event": "run.started", "ticket": "T-0053.1", "run": "run-0528-reviewer", "role": "reviewer", "model": "fable"}
+{"ts": "2026-10-13T22:04:44+00:00", "event": "run.finished", "ticket": "T-0053.1", "run": "run-0528-reviewer", "role": "reviewer", "status": "APPROVE", "wall_s": 104}
+{"ts": "2026-10-13T22:05:04+00:00", "event": "result.recorded", "ticket": "T-0053.1", "head": "21f90c4e2d6ef5d8180c954ff3c2ff02711744aa", "role": "reviewer", "status": "APPROVE", "run": "run-0528-reviewer"}
+{"ts": "2026-10-13T22:06:49+00:00", "event": "run.finished", "ticket": "T-0053.1", "run": "run-0527-verifier", "role": "verifier", "status": "VERIFIED", "wall_s": 230}
+{"ts": "2026-10-13T22:07:07+00:00", "event": "result.recorded", "ticket": "T-0053.1", "head": "21f90c4e2d6ef5d8180c954ff3c2ff02711744aa", "role": "verifier", "status": "VERIFIED", "run": "run-0527-verifier"}
+{"ts": "2026-10-13T22:07:07+00:00", "event": "result.recorded", "ticket": "T-0053.1", "head": "21f90c4e2d6ef5d8180c954ff3c2ff02711744aa", "role": "ci", "status": "PASS", "run": "run-0527-verifier"}
+{"ts": "2026-10-13T22:07:26+00:00", "event": "ticket.transition", "ticket": "T-0053.1", "from": "checks-in-flight", "to": "ready-for-merge", "by": "workflow", "round": {"spec": 0, "pr": 1}}
+{"ts": "2026-10-13T22:07:35+00:00", "event": "merge.done", "ticket": "T-0053.1", "head": "21f90c4e2d6ef5d8180c954ff3c2ff02711744aa", "base_before": "525d73fdd4d3a2d70f66961195f9f9e19ac44c7d", "main_after": "af439c457ddefefc7e651430c6a23d6ad8e1e135"}
+{"ts": "2026-10-13T22:07:54+00:00", "event": "ticket.transition", "ticket": "T-0053", "from": "planned", "to": "ready-for-parent-verify", "by": "parent-check"}
+{"ts": "2026-10-13T22:08:12+00:00", "event": "change.archived", "ticket": "T-0053", "archived_to": "openspec/changes/archive/2026-10-13-T-0053", "capabilities": ["harness-docs"], "decisions": 6}
+{"ts": "2026-10-13T22:08:21+00:00", "event": "ticket.transition", "ticket": "T-0053", "from": "ready-for-parent-verify", "to": "closed", "by": "workflow", "round": {"spec": 1, "pr": 0}}

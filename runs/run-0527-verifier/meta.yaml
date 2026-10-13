@@ -1,0 +1,26 @@
+run_id: run-0527-verifier
+role: verifier
+ticket: T-0053.1
+model: opus
+round: 1
+spec_version: 2
+started: '2026-10-13T22:02:59+00:00'
+finished: '2026-10-13T22:06:49+00:00'
+wall_s: 230
+status: VERIFIED
+input_sources:
+- specs/T-0053.1/subticket.md
+- specs/T-0053/v2.md
+- runs/run-0526-implementer/output.md
+- runs/run-0527-verifier/diff.patch
+gate_skipped: []
+environment_files: []
+branch: factory/T-0053.1
+base: 525d73fdd4d3a2d70f66961195f9f9e19ac44c7d
+head: 21f90c4e2d6ef5d8180c954ff3c2ff02711744aa
+worktree: /Users/dphang/dev/spec-factory/.factory/store/runs/run-0527-verifier/wt
+confidence: high. All five scenarios, both current-truth checks and both gates ran on `21f90c4` and gave
+  the spec's expected output, every NEW scenario failed on base for the reason the spec states, and the
+  copied text is byte-identical to the approved appendix.
+escalations: []
+escalations_note: null
