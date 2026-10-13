@@ -1024,7 +1024,7 @@ has not been tried, is in `docs/design.md`, "Running on another agent host".
 | `docs/principles.md` | The fourteen learned principles, each with its incident, citation and implementing mechanism |
 | `docs/decided-against.md` | Approaches tried or offered and dropped, with the evidence and what would reopen each |
 | `docs/golden.md` | The fixed golden set every prompt-change replay runs, with each entry's base and known catch, the baseline table, and the rule for changing the set |
-| `docs/writing.md` | The writing standard for every section a person reads; the preamble names the runtime's copy |
+| `docs/writing.md`, `docs/standards.md` | The writing standard for every section a person reads; the preamble names the runtime's copy. `docs/standards.md` collects it with the operator's other writing and design standards in one file that can be copied out of the repo; no prompt reads it |
 | `docs/coding.md` | The coding standard for the implementer and code reviewer; their prompts name the runtime's copy |
 | `dev/` | The issue index (`dev/issues.md`), kept live; and the build spec, its plan and the P0 walking skeleton, frozen as history from building the factory |
 | `factory/` | The harness package: the store CLI, its role prompts and its two workflow scripts (`factory/workflows/`) |

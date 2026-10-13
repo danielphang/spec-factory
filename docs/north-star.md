@@ -18,7 +18,7 @@ Success is measured as:
 - tokens and wall time per change;
 - defects that escape to the target, and reverts.
 
-The factory serves its own development (spec-factory) and its targets (today, the Lionbot v3.5 port).
+The factory serves its own development (spec-factory) and its targets (today, a port of the Nanobot chat bot).
 
 ## What it will not trade away
 
