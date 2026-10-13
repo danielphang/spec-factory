@@ -38,7 +38,7 @@ It does not stop a write to an absolute path.
 | Spec critic | judges the spec against a six-item rubric | Fable |
 | Planner | splits an approved spec into sub-tickets that can each be one merge | Opus |
 | Implementer | builds one sub-ticket on its own branch | Opus |
-| Code reviewer | judges the diff against the spec's intent | Fable |
+| Code reviewer | judges the diff against the spec's intent, and leaves the test suite and the gate commands to the verifier | Fable |
 | Verifier | runs the acceptance items and the gate commands on the result | Opus |
 | Retro | reads what went wrong and proposes rule changes (not yet built) | Fable |
 
@@ -91,8 +91,8 @@ directories and `models` entries use.
 | Verifier (`verifier`) | the same as the code reviewer; the final run on a parent gets the spec, where it works, and any ruling | VERIFIED · FAILED · SPEC-DEFECT | a verdict for that commit, `verifier.yaml`, and the gate result, `ci.yaml` |
 | Clerk (`clerk`) | one `bin/factory` command | none | nothing; it returns the command's output, exit code and errors to the script |
 
-A run that returns no output is recorded as killed, and its ticket parks. The retro has a model
-entry but no prompt and no way to run yet.
+A run that returns no output is run once more, then parks its ticket ("Empty output", under "What
+is built and what is not"). The retro has a model entry but no prompt and no way to run yet.
 
 ### What depends on Claude Code
 
@@ -124,7 +124,8 @@ agent hosts is under "Where this can go".
 | sub-ticket | one independently mergeable piece of a planned ticket; `T-0012.4` |
 | gate | a point where a human must decide before the pipeline continues; the spec gate is the main one |
 | gate commands | the target's own check commands, such as lint and tests (`gate_commands` in `instance.yaml`); the verifier runs them and records the gate result. No human is involved |
-| merge gate | the harness's check before a merge: both verdicts and the gate result on the same commit, which is the branch's tip and contains the integration branch, and every protected path the change touches declared in the approved spec. A protected path is one `instance.yaml` lists under `protected_paths` because a change to it is sensitive, such as the harness's own code. No human is involved, except that a refusal for an undeclared protected path parks the sub-ticket for a human |
+| merge gate | the harness's check before a merge: both verdicts and the gate result on the same commit, which is the branch's tip and contains the integration branch, and every protected path the change touches declared in the approved spec. No human is involved, except that a refusal for an undeclared protected path parks the sub-ticket for a human |
+| protected path | a path `instance.yaml` lists under `protected_paths` because a change to it is sensitive, such as the harness's own code |
 | checker | the code reviewer or the verifier: a role that judges a commit and cannot change it |
 | parent | a ticket that has sub-tickets; its final check verifies the whole spec |
 | PR description | the implementer's final report on what it changed; there is no pull request in local mode |
@@ -135,10 +136,7 @@ agent hosts is under "Where this can go".
 | round | one author-then-judge pass: the spec writer and the critic, or the implementer and both checkers; the spec and the code each get two before a human is asked |
 | integration branch | the branch finished sub-tickets are merged into; `integration_branch` in `instance.yaml`, `main` here |
 | current truth | one document per capability saying what the system does now; the pipeline keeps it |
-| target | a repo the factory works on |
-| instance | a target's `.factory/` directory: its config, its briefing for the roles, its store |
-| store branch | `factory-store`, the target's branch for its store; checked out as a git worktree at the store's path and never merged into the integration branch |
-| runtime | the pinned checkout of the harness that runs tickets; distinct from the dev checkout |
+| target, instance, runtime, store branch | defined under "Where it runs" |
 
 ## How a ticket moves
 
@@ -154,8 +152,8 @@ The build workflow first asks the harness whether the spec needs splitting, with
 from the whole spec, naming every scenario in it, and no planner runs. A spec needs only one when
 the spec writer did not mark it too large for one merge (`NEEDS-SPLIT`), no heading in it names
 seams (the places the writer says the work splits), and no planner has run on it before. Otherwise
-the planner runs, splitting the spec into sub-tickets with dependencies. The one-sub-ticket path is
-tested, and has not yet run on a real ticket.
+the planner runs, splitting the spec into sub-tickets with dependencies. The one-sub-ticket path
+has run on real tickets on both targets.
 When a sub-ticket's dependencies are merged, an implementer builds it on a branch in its own
 working copy. The reviewer and the verifier then judge the same commit, independently. The harness
 makes one decision from their verdicts: merge; send back for one revision; send back
@@ -163,14 +161,11 @@ to merge in a `main` that moved; or park for a human. A merge is a local `--no-f
 judged commit into the integration branch, one merge at a time.
 
 When every sub-ticket has merged, one more verifier run checks the whole spec against the
-integration branch. That final run is skipped when the spec had one sub-ticket, the text of that
-sub-ticket names every acceptance scenario of the spec (a command with its expected output), and
-the integration branch has not moved since it merged: the sub-ticket's verifier already checked
-the same code against the same starting point. On success the harness folds the spec into current truth and closes the
-ticket. If the target has no spec store yet (no `openspec/` tree), the fold is refused and the
-ticket parks; the human then closes it as applied with `resolve --close`, and current truth is
-not updated. While that final run is in progress, the ticket's record lists it as in flight, like
-any other run.
+integration branch. In one narrow case that run is skipped ("The build workflow, step by step").
+On success the harness folds the spec into current truth and closes the ticket. If the target has
+no spec store yet (no `openspec/` tree), the fold is refused and the ticket parks; the human then
+closes it as applied with `resolve --close`, and current truth is not updated. While that final
+run is in progress, the ticket's record lists it as in flight, like any other run.
 
 At any step a role can say it needs a human: a question, an escalation, a blocked build. The
 harness parks the ticket. So does running out of rounds, or a role that ended without output
@@ -327,8 +322,11 @@ checkers on the same commit. The harness's join turns their verdicts into one de
 - **park**: anything else.
 
 When every sub-ticket has merged, one more verifier run checks the whole spec on the integration
-branch. That run is skipped when the ticket had a single sub-ticket, its sub-ticket text names
-every scenario, and the branch has not moved since its merge. On VERIFIED, `archive` folds the spec into current truth and closes the ticket.
+branch. That run is skipped when the spec had one sub-ticket, the text of that sub-ticket names
+every acceptance scenario of the spec (a command with its expected output), and the integration
+branch has not moved since it merged. In that case the sub-ticket's verifier already checked the
+same code against the same starting point. On VERIFIED, `archive` folds the spec into current
+truth and closes the ticket.
 
 ```mermaid
 flowchart TD
@@ -372,11 +370,8 @@ Three places:
 - Each **target** holds only a `.factory/` directory, its instance: `instance.yaml` (config),
   `context.md` (the briefing every role reads first), the store, and `harness.lock`, the one
   harness commit this target has agreed to run with. The store is the target's record of every
-  ticket. A store that `factory init` creates is a git worktree of the store branch,
-  `factory-store`, at a path the integration branch has never tracked, so committing the store
-  never moves the integration branch. Two targets run on the runtime today: this repo and a
-  chat-bot repo. Both stores were made before the store branch existed and were moved onto it, at
-  `.factory/store`, with `factory store migrate`.
+  ticket, a git worktree of its own branch, the store branch `factory-store` ("How the factory
+  uses git"). Two targets run on the runtime today: this repo and a chat-bot repo.
 
 ```mermaid
 flowchart TB
@@ -503,8 +498,8 @@ The harness changes git in five ways, all local; it never pushes.
   path, creating the branch with no history when none exists, and adds the path to the repo's git
   exclude file. `factory store migrate` creates the branch from an existing store, with one commit.
 - **The store branch.** `factory-store` is a separate line of history that is never merged into
-  the integration branch, so committing a record never moves the branch that sub-tickets merge
-  into.
+  the integration branch, so committing a record never moves the integration branch or sends a
+  sub-ticket waiting to merge back for a catch-up run.
 
 ```mermaid
 gitGraph
@@ -595,13 +590,14 @@ From inside the target repo, with `R` the runtime (`~/dev/spec-factory-harness`)
    run its tests, what kind of request to expect. Set `gate_commands` and `protected_paths` in
    `.factory/instance.yaml`. A `gate_commands` entry may declare `paths`, the git pathspecs the
    command covers: `{command: "<command>", paths: [":(exclude)dev/"]}`. A sub-ticket whose changes
-   touch none of them skips that command. Prefer exclude pathspecs, so a new file still runs the
-   command. A command with no `paths` runs on every sub-ticket, so an instance that declares none gets
-   no skips. Set `run_env` for any tool whose cache lives under HOME,
-   so it still finds that cache from inside the fresh temporary HOME. Set `environment_sync` to the
-   command that installs the repo's environment (for example `uv sync --frozen`), so each build
-   checkout starts synced: `run start` runs it in the checkout before the role starts, and refuses
-   the run if it fails.
+   touch none of them skips that command: the checkers are told it is SKIPPED, with the reason,
+   and the skip is recorded with the gate result. The implementer still gets every command. Prefer
+   exclude pathspecs, so a new file still runs the command. A command with no `paths` runs on every
+   sub-ticket, so an instance that declares none gets no skips. Set `run_env` for any tool whose
+   cache lives under HOME, so it still finds that cache from inside the fresh temporary HOME. Set
+   `environment_sync` to the command that installs the repo's environment (for example
+   `uv sync --frozen`), so each build checkout starts synced: `run start` runs it in the checkout
+   before the role starts, and refuses the run if it fails.
 
 The repo is now a target. "Starting a run" is the rest.
 
@@ -616,8 +612,7 @@ git -C "$S" add -A && git -C "$S" commit -m "store: <what changed>"
 git push origin factory-store
 ```
 
-A store commit never moves the integration branch, so it never sends a sub-ticket that is waiting
-to merge back for a catch-up run. Commit when a workflow finishes and before moving the runtime.
+Commit when a workflow finishes and before moving the runtime.
 Records that are not committed exist only in that checkout.
 
 ### Backing up or cloning a target
@@ -709,9 +704,9 @@ $RUNTIME/bin/factory paths      # the harness, its entry point, both workflow sc
 It then calls the Workflow tool with `scriptPath` set to the intake script and args
 `{ticket, repo: <runtime>, instance: <.factory>}`. After the spec gate, the same call with the build
 script. Add `inlineRoles: true` on every target for now: `agents/` ships agent definitions only for
-the intake roles and the planner, so a build without it fails at the first implementer call. With it, roles
-read their prompt from the run's `system-prompt.txt`, and run without per-role tool limits. Start the
-build script after the spec gate; the intake script has nothing to do past it.
+the intake roles and the planner, so a build without it fails at the first implementer call. "What
+depends on Claude Code" says what it changes. Start the build script after the spec gate; the
+intake script has nothing to do past it.
 
 In practice you ask the runner session in plain words, for example "run the intake workflow for
 T-0032 with inlineRoles". The Workflow tool runs in the background; Claude Code's `/workflows` view
@@ -725,8 +720,10 @@ same state.
 It takes a ticket through the same routes as the scripts, with the same round limits and park
 reasons, and writes the same records. It calls the harness in its own process, so no clerk agent
 relays store commands. Each role runs as its own headless `claude -p` process, with that role's
-prompt, model and tool limits. The driver is tested, and has not yet run a real ticket. Until it
-has, the Workflow tool remains the tested route.
+prompt, model and tool limits. A role's file tools may edit only the run's output file, its scratch
+directory and the temporary directory; the implementer may also edit its own worktree. Shell
+commands are not limited. It has taken real tickets through intake and the build on the chat-bot
+target.
 
 1. From the target repo, start it on one ticket:
 
@@ -752,16 +749,12 @@ has, the Workflow tool remains the tested route.
    `KILLED`, parks nothing, and exits with 128 plus the signal number. Run the same command again to
    resume from the stored state.
 
-The driver needs no `FACTORY_DISPATCH=1`, even while runs of other tickets are in flight on the
-target. It is the dispatcher, the one process meant to write the store while runs work, so the
-live-store fence ("Where a human decides") exempts it from its in-flight check. Once started, it
-marks its own store calls. Its role processes never carry the marker. In place of that check, it
-guards the ticket it drives. It refuses to start on the same ticket, with exit 2 and nothing
-written, while that ticket or one of its sub-tickets has a run in flight. It also refuses while
-`drive/<ticket>.yaml` shows another driver of that ticket still running. From inside the store's
-`runs/` or `worktrees/` it is refused like any write, marker or not. A driver killed by SIGKILL has
-no chance to stop, so its runs stay in flight; clear them as "Where a human decides" says. If the
-refusal names a pid that is not a driver, delete that status file and drive again.
+The live-store fence ("Where a human decides") exempts the driver, because it is the dispatcher. It
+marks its own store calls, and never its role processes'. It guards the same ticket instead: it
+refuses with exit 2, writing nothing, while that ticket or a sub-ticket has a run in flight, or
+while `drive/<ticket>.yaml` shows another live driver. If the refusal names a pid that is not a
+driver, delete that file. A driver killed by SIGKILL leaves its runs in flight; clear them as
+"Where a human decides" says.
 
 Each role process's reply is kept as `reply.json` in its run directory. Its session id, cost in
 dollars, turn count and token usage are recorded under `claude:` in the run's `meta.yaml`. To give a
@@ -816,17 +809,14 @@ length on every one of those turns. The Nanobot port runs this way: its runner (
 reports harness problems to the session that owns this repo, which fixes them through tickets here.
 
 **Parallel intake works today.** Start one intake per ticket from a runner. Tickets share only the
-store, and every store write goes through `bin/factory`, which allocates run ids atomically. On
-2026-10-04 the two stores had 41 and 11 overlapping runs of different tickets (triage, spec writers,
-critics, planners). Each run has its own scratch directory in the store for its temporary files,
-cleared when its ticket moves on and kept while it is parked; this is tested but has not yet run on a
-real ticket.
+store, and every store write goes through `bin/factory`, which allocates run ids atomically. Each
+run has its own scratch directory in the store for its temporary files, cleared when its ticket
+moves on and kept while it is parked.
 
 **Parallel builds across tickets have not been tried.** Each sub-ticket builds in its own worktree,
 merges into the integration branch one at a time under a lock, and gets a catch-up run if the branch
 moved under it. Two builds at once also move the branch under each other, which costs catch-up runs.
-A store committed on its store branch no longer moves the integration branch. Until a real run
-shows the cost, run one build at a time per target.
+Until a real run shows the cost, run one build at a time per target.
 
 **Moving the runtime** happens only when no build is in flight on any target, because every target
 runs from the same runtime. Each target's runner then accepts the new revision between its builds.
@@ -865,7 +855,7 @@ FACTORY_DISPATCH=1 $RUNTIME/bin/factory run finish <run> --status-override KILLE
 | **Gate** | `factory approve-spec T-n [--edit F]` · `factory request-changes T-n F` · close | the spec's intent, risk declarations, operator steps, "tests to change"; a gate edit becomes a new spec version and is what gets pinned |
 | **Amend** | `factory spec amend T-n --file F --reason "<line>" --intent unchanged`, on an approved spec before archive, while no run is in flight on the ticket or its sub-tickets | that the approved spec must change after the gate, because another ticket merged first, a checker found a scenario that cannot pass as written, or you changed your mind. Amend only when the Problem, the Decisions and every requirement's statement stay as approved; otherwise restart, by re-spec and re-plan or by close and re-file. `--intent changed` prints what a restart keeps and discards. Later runs receive the amended version, but the amendment moves no ticket: resume it as usual, for example with `--ruling F` |
 | **Unstick** | `factory resolve T-n --answer F` (a role asked a question) · `--ruling F` (a role escalated, an implementer reported itself blocked, the harness blocked an implementer whose sub-ticket lists a test no merged sibling added, the harness parked a sub-ticket for spec drift, or the harness failed to start an implementer run, a `harness-bug: run start implementer:` park; a ruling on the code reviewer's escalation re-runs the checks, with the ruling in their input) · `--accept-paths F` (the merge gate refused a protected path the approved spec does not declare: accept it under the approved design, and the sub-ticket returns to its checks; `--ruling F` sends the sub-ticket back to its implementer instead) · `--redispatch` (re-run the checks on the same commit after an outside fix, or after a checker ended without output twice) · `--replan F` (the final check failed after every sub-ticket merged: back to the planner with a note; new sub-tickets take the next free ids) · `--to spec-gate` · `--close`; with `--answer` or `--close`, add `--decision "<line>"` to also record the answer as a standing decision | an answer, a ruling, an accepted protected path, a re-check, a re-plan, a re-scope, or closing |
-| **Record** | `factory decision add T-n "<line>"`, at any ticket state, closed included. It appends one dated line to the target's decision log, `decisions.md`, which the spec writer, critic and planner receive with their input | that a decision binds later tickets |
+| **Record** | `factory decision add T-n "<line>"`, at any ticket state, closed included: one dated line in the decision log | that a decision binds later tickets |
 | **Upgrade** | `factory --accept-harness <sha> <command>` | that this target adopts a new harness revision |
 
 A ticket the tripwire parked returns with a plain `ticket transition` to the state its record
@@ -936,120 +926,65 @@ the column can undercount.
 - **Intake.** A request becomes a ticket. Triage accepts or routes it. The spec writer and critic
   alternate until the critic approves or two rounds are up. The ticket waits for the human at the
   gate. Every one of these runs has been real, with real models.
-- **Build, local-only.** There is no remote git server, no pull request and no CI service yet. In
-  their place: each sub-ticket is built on a branch in its own working copy. The verifier runs the
-  repo's own check commands (`gate_commands` in `instance.yaml`: lint, tests) and records the
-  result where a CI result would go. The reviewer and verifier judge the same commit. A sub-ticket
-  that passes is merged into the local integration branch, one merge at a time. If `main` moved
-  during the build, the implementer merges it in before the checks re-run; two catch-up runs that
-  fail to merge it in park the sub-ticket. A check command that declares the paths it covers is
-  skipped for a sub-ticket whose changes touch none of them: the reviewer and verifier are told it
-  is SKIPPED, with the reason, and the skip is recorded with the check result. The implementer
-  still gets every command. The skip is tested, and no repo's configuration uses it yet.
-- **Spec store.** Specs live in an OpenSpec tree, a folder-per-change layout borrowed from the
-  OpenSpec project. A ticket's spec is a set of deltas against current truth. When a ticket closes,
-  `archive` applies the deltas, so the description of the system is kept current by the pipeline.
+- **Build, local-only.** There is no remote git server, no pull request and no CI service yet. Each
+  sub-ticket is built on its own branch, judged on one commit by the reviewer and the verifier,
+  and merged into the local integration branch one at a time ("How the factory uses git"). A gate
+  command that declares `paths` is SKIPPED for a sub-ticket that touches none of them ("Adopting
+  the factory in a repo"). The skip is recorded on a real sub-ticket.
+- **Spec store.** Specs live in an OpenSpec tree, as deltas against current truth. When a ticket
+  closes, `archive` applies the deltas, so the pipeline keeps the description of the system current.
 - **Instances and the harness lock.** One runtime serves any number of targets. Each adopts a new
   harness revision only when its operator accepts it. See "Where it runs".
-- **Store branch.** Each target's records live on `factory-store`, checked out at
-  `.factory/store`, so committing a record never moves the integration branch. Both targets'
-  stores were moved there with `factory store migrate`.
-- **Tripwire on live files.** An instance can list files outside the repo that no role run should
-  change, such as a live bot's credentials, under `tripwire` in `instance.yaml`: a `park` list and
-  an `escalate` list. The harness hashes each file when a run starts and compares when the run ends,
-  killed runs included. A changed `park` file parks the ticket; a changed `escalate` file is queued
-  for the operator and the run goes on. Neither prints a file's contents. It is tested, and has not
-  yet fired on a real ticket.
-- **Live-store fence.** While a run is in flight on a target, a write to its store without the
-  `FACTORY_DISPATCH=1` marker is refused. The workflow scripts mark their own commands, and the
-  operator marks one command at a time ("Where a human decides"). `factory drive` is exempt from
-  this in-flight check, because it is the dispatcher. It guards its own ticket instead: it refuses
-  to start on a ticket that has a run in flight or another live driver. Once started, it marks its
-  own store calls, and its role processes are never marked. A write run from inside the
-  store's `runs/` or `worktrees/` is refused even with the marker. The fence stops a role's tools,
-  such as its test suite, from changing the live records by accident; it is not isolation. It has
-  fired on a real target: a run left in flight by a stopped workflow blocked writes until the
-  operator finished it.
-- **Sibling tests check.** The planner may let a sub-ticket change a test file that an earlier
-  sub-ticket of the same spec added, for example a test that pinned that earlier sub-ticket's
-  interim behaviour. Before each implementer run, the harness checks in git that a merged earlier
-  sub-ticket added the file. If none did, the sub-ticket parks as blocked, and the human rules on it
-  as on any blocked build ("Where a human decides"). Any other existing test still changes only if
-  the approved spec lists it. It is tested, and has not yet fired on a real ticket.
-- **Spec amendment and drift.** An approved spec can go stale while its sub-tickets are built:
-  another ticket merges first, or a scenario turns out unable to pass as written.
-  `factory spec amend` replaces the approved spec with a corrected version, when the correction
-  keeps what the ticket is for ("Where a human decides"). Later runs receive the corrected version,
-  and archive writes its scenarios into current truth. Spec drift is a change since the spec was
-  written that the spec did not plan for. Before a sub-ticket's first implementer run, the harness
-  checks for two kinds: the sub-ticket's acceptance checks name another sub-ticket of the same
-  spec that has not merged and is not one of its dependencies, or a test changed beside a file the
-  spec names, and no "Tests to change" list names it. A merge of another sub-ticket of the same
-  spec is not drift, because the plan expects its changes; any other commit or merge still counts.
-  On drift the sub-ticket parks as blocked, and the human amends the spec or rules on it. The
-  critic also receives every other approved spec not yet archived, and blocks a scenario whose
-  setup would not hold whichever of the two tickets merges first. The drift check has fired on
-  real sub-tickets, twice for a sibling's merge; that exception is tested but has not yet run on a
-  real ticket.
-- **Re-plan after a re-spec.** When the human sends a planned parent back to the spec gate and
-  approves a new spec version, the planner splits it again under the same parent. Each sub-ticket
-  records the approved version it was planned from. The new plan supersedes the old plan's
-  sub-tickets that have not merged: they keep their records and ids, but are no longer dispatched,
-  no longer park the parent, and no longer hold back its final check or close. Old sub-tickets that
-  merged stay merged and count as done work. A new plan may not depend on a sub-ticket it
-  supersedes. It is tested, and has not yet fired on a real ticket.
-- **Empty output.** A role run that ends without writing its output file is run once more on the
-  same inputs, and the harness keeps the agent's last message with the run. A second run in a row
-  that ends the same way parks the ticket. When either run's last message says it was still waiting
-  on a command it started, the park reason adds `ended its turn waiting on a background command`,
-  because a plain re-run is likely to end the same way. The harness enforces no time or token budget and cannot
-  tell why a run stopped, so it never labels such a run a budget kill. The code reviewer judges the
-  diff and leaves the test suite and the gate commands to the verifier. Every role is told to wait
-  for the commands it starts before it ends its turn. It has fired on a real ticket: both runs of
-  one verifier ended their turns waiting for the test suite.
-- **Protected paths at merge.** The merge gate refuses a change to a protected path that the
-  approved spec does not declare on the `Protected paths:` line of its Risk section, and names
-  each such path. The human approves that line at the spec gate, so a declared path merges with
-  no further approval. A refused sub-ticket parks as blocked. The human answers with
-  `resolve --accept-paths F`, which accepts the paths for that sub-ticket and returns it to its
-  checks, whose passing results stand, or with `resolve --ruling F`, which sends it back to its
-  implementer. It is tested, and has not yet fired on a real ticket.
-- **The driver, `factory drive`.** An ordinary command that takes a ticket through intake, or
-  through the build after the spec gate, on the same routes as the workflow scripts: the same round
-  limits, refusals and park reasons, and the same records. It calls the harness in its own process,
-  so no clerk agent relays store commands. Each role runs as one `claude -p` process with its
-  role's prompt and model, under Claude Code's `auto` permission mode. Its file tools may edit only
-  the run's output file, its scratch directory and the temporary directory; the implementer may
-  also edit its own worktree. Shell commands are not limited. Each process's reply and cost are
-  recorded with its run. A commit's two checkers run at once, and ready sub-tickets build at once
-  up to `--parallel N`. The workflow scripts are unchanged beside it. It is tested, and has not yet
-  run a real ticket.
+- **Store branch.** Each target's records live on their own branch, `factory-store`, checked out
+  as the store ("How the factory uses git").
+- **Tripwire on live files.** The harness hashes the files outside the repo that `tripwire` in
+  `instance.yaml` lists, such as a live bot's credentials, when a run starts and ends. A changed
+  file parks the ticket or is queued for the operator (`docs/design.md`, "Tripwire on live files").
+  It is tested, and has not yet fired on a real ticket.
+- **Live-store fence.** While a run is in flight, a store write without the `FACTORY_DISPATCH=1`
+  marker is refused ("Where a human decides"). It guards against accidents and is not isolation.
+  It has fired on a real target, when a stopped workflow left a run in flight.
+- **Sibling tests check.** Before each implementer run, the harness checks in git that a test the
+  sub-ticket may change as added by a sibling was added by a merged earlier sub-ticket of the same
+  spec. If not, the sub-ticket parks as blocked (`docs/design.md`, "Tests a sibling added"). It is
+  tested, and has not yet fired on a real ticket.
+- **Spec amendment and drift.** `factory spec amend` replaces an approved spec with a corrected
+  version that keeps what the ticket is for ("Where a human decides"). A change the spec did not
+  plan for parks a sub-ticket as spec drift before its first implementer run; a sibling's merge
+  is not drift (`docs/design.md`, "Spec drift"). The drift check has fired on real sub-tickets;
+  the sibling-merge exception is tested but has not yet run on a real ticket.
+- **Re-plan after a re-spec.** When a planned parent's spec goes back to the gate and a new version
+  is approved, the planner splits it again under the same parent. The new plan supersedes the old
+  plan's unmerged sub-tickets, which keep their records but are no longer dispatched or waited on.
+  It has fired on a real ticket.
+- **Empty output.** A role run that ends without writing its output is run once more on the same
+  inputs. A second in a row parks the ticket, and the reason adds `ended its turn waiting on a
+  background command` when either run's last message says it was waiting (`docs/design.md`,
+  "Routing table"). Every role is told to wait for its commands before it ends its turn. It has
+  fired on a real ticket: both runs of one verifier ended their turns waiting for the test suite.
+- **Protected paths at merge.** The merge gate refuses a protected path that the approved spec's
+  Risk section does not declare ("How the factory uses git"), and the sub-ticket parks for the
+  human ("Where a human decides"). It has fired on a real ticket, which the operator accepted with
+  `--accept-paths`.
+- **The driver, `factory drive`.** A command that takes a ticket through intake or the build on the
+  workflow scripts' routes, each role as one `claude -p` process ("Driving a ticket from a shell
+  with `factory drive`"). The workflow scripts are unchanged beside it. It has taken real tickets
+  through both on the chat-bot target.
 - **Per-role effort, for driver runs only.** An optional `effort:` map in `instance.yaml` gives a
   role an effort level, which `factory drive` passes to that role's process. A role not listed gets
   Claude Code's default. The workflow scripts ignore the map, so a role they run has a model and no
   effort level. Neither target sets it yet.
-- **Counting catch and cost, `factory stats`.** A command that reads one or more stores and
-  prints, per role and model, the runs, verdicts, outcome changes, BLOCKING findings and tokens;
-  where tickets park; and which runs wrote and critiqued each spec a later role found defective
-  ("Counting what each role catches and costs"). It takes a run's tokens from its cost record,
-  else from its Claude Code transcript, and counts each model call once. `factory/cost.py` now
-  counts the same way; it used to count most calls about twice. `factory stats` writes nothing,
-  and it skips the live-store fence and the harness lock. It has run over both targets' stores.
+- **Counting catch and cost, `factory stats`.** A read-only command that counts, per role and
+  model, how often each role's verdicts changed what happened next and what its runs cost
+  ("Counting what each role catches and costs"). It has run over both targets' stores.
 
 **Not built**
 
-- **Rendering the prompts.** The role prompts in `docs/prompts/` are copied from the design doc by
-  hand. The planned `factory render` command that would generate and check them does not exist.
-- **Remote mode.** Pull requests, a CI service running the checks, and a separate git identity per
-  role with server-side permissions. Today one machine and one identity do everything. That is fine
-  for one operator and not for a team.
-- **The retro role.** Reads the log and proposes changes to the prompts and rules from what went
-  wrong. No run has produced one yet.
-- **A status page.** `factory report TICKET` would render where a ticket is from the store alone.
-  Today you read the store's YAML or ask the session running it.
-- **Current truth for the factory itself.** The spec store holds only the capabilities that
-  tickets have changed since it was created, not the whole factory. This page is the hand-written
-  stand-in for the rest until they are written from the tests.
+Everything under "Where this can go" is named work, not built. Today one machine and one identity
+do everything, which suits one operator and not a team. The role prompts in `docs/prompts/` are
+copied from the design doc by hand. No retro has run. This page stands in for the capabilities no
+ticket has changed since the spec store was created. The status page, `factory report TICKET`, is
+not built; today you read the store's YAML.
 
 ## Where this can go
 
@@ -1064,7 +999,7 @@ from `docs/design.md` and changes only when the design does.*
   not move it are reverted.
 - **Generated prompts.** `factory render` produces `docs/prompts/` from the design doc and
   `render --check` refuses drift, so the design doc is the only place a prompt is edited.
-- **The factory described by itself.** Its own capabilities in current truth, kept there by
+- **Current truth for the factory itself.** Its own capabilities in current truth, kept there by
   `archive`, so a page like this one is written from the spec store instead of by hand.
 - **Many targets.** Any repo adopts the factory with `factory init`; one runtime serves them all,
   each on the revision it accepted.
@@ -1072,27 +1007,10 @@ from `docs/design.md` and changes only when the design does.*
 ### Running on another agent host
 
 The factory should run on any agent host that can start an agent with a given prompt, model and
-working directory, and return its answer in a fixed shape. The store CLI, the prompts, the spec
-format and the store carry over unchanged. Only the pieces in "What depends on Claude Code" need a
-counterpart. Neither OpenAI Codex nor Google Antigravity has a scripted orchestrator inside the
-agent session like Claude Code's Workflow tool. On either host, the workflow logic would move into
-an ordinary script that starts one headless agent run per role and reads its JSON reply. That
-script can call `bin/factory` itself, so the clerk role goes away. On Claude Code that script
-exists: `factory drive`, described under "Starting a run".
-
-| Need | Claude Code (today) | OpenAI Codex | Google Antigravity |
-|---|---|---|---|
-| Orchestrator | a Workflow tool script | an external script on the Codex SDK, or `codex exec` per role | an external script calling `agy -p` per role, or its Python SDK |
-| Reply in a fixed shape (the clerk's, today) | `agent(..., {schema})` | `--output-schema` | `--json-schema` |
-| Role definition | `.claude/agents/<role>.md`, or the prompt passed inline | `.codex/agents/<role>.toml` | `.agents/agents/<role>.md` |
-| Model per role | any Claude model | any OpenAI model, with a reasoning effort | Gemini tiers: `flash`, `pro`, `inherit` |
-| Tool limits for checkers | a tool list per agent | sandbox mode and MCP servers; no per-tool list found | a `tools` allowlist |
-| Project instructions | `CLAUDE.md` | `AGENTS.md` | `AGENTS.md`, `GEMINI.md` |
-
-On Antigravity, a tool call that needs approval is refused quietly and the run still exits 0. A port
-must therefore treat a missing reply as a failure. The table comes from each host's documentation,
-read on 2026-10-04, and has not been tried. The design is in `docs/design.md`, "Running on another
-agent host".
+working directory, and return its answer in a fixed shape. The store CLI, the prompts and the store
+carry over; only the pieces in "What depends on Claude Code" need a counterpart. On Claude Code
+that counterpart is `factory drive`. The comparison with OpenAI Codex and Google Antigravity, which
+has not been tried, is in `docs/design.md`, "Running on another agent host".
 
 ## Where things live
 
@@ -1108,7 +1026,7 @@ agent host".
 | `docs/golden.md` | The fixed golden set every prompt-change replay runs, with each entry's base and known catch, the baseline table, and the rule for changing the set |
 | `docs/writing.md` | The writing standard for every section a person reads; the preamble names the runtime's copy |
 | `docs/coding.md` | The coding standard for the implementer and code reviewer; their prompts name the runtime's copy |
-| `dev/` | Working documents from building the factory: the build spec, its plan, the P0 walking skeleton, the issue index (`dev/issues.md`) |
+| `dev/` | The issue index (`dev/issues.md`), kept live; and the build spec, its plan and the P0 walking skeleton, frozen as history from building the factory |
 | `factory/` | The harness package: the store CLI, its role prompts and its two workflow scripts (`factory/workflows/`) |
 | `bin/factory` | The harness entry point |
 | `agents/` | The role-agent templates `factory init` copies into a target's `.claude/agents/` |
@@ -1117,26 +1035,24 @@ agent host".
 
 ## Related work and history
 
-First written 2026-10-03, after the layout refactor (issue #19, ticket T-0012 on this repo: six
-sub-tickets merged, the whole spec verified 30/30 by the factory itself, then closed as applied
-because this repo had no spec store yet) and the first end-to-end builds on the chat-bot repo
-(issues #16 and #18). The two targets are this repo (instance B) and the nanobot fork at
-`~/dev/nanobot-upstream` (instance A); both run on the shared runtime, and both stores moved onto
-their store branch on 2026-10-04. The architecture subsections (what each role reads and writes,
-ticket states, both workflows step by step, what the factory keeps in a target, how it uses git,
-filing from an issue tracker, what you read at each stop, other agent hosts) were added on
-2026-10-04 at the operator's request; the target layout answers issue #55. Open work named above:
-`factory report` (#17); current-truth seeding (#21); registered agents for
-the build roles, which `inlineRoles` works around today (#24); a stopped run that stays in flight
-(#53). The driver, `factory drive`, answers #65 and absorbs per-role effort (#22), the operator's
-latest chat message reaching every role agent (#28), titles beside ticket ids in progress output
-(#47) and the checkers' tool limits (#24 part A); retiring the workflow scripts is a later ticket. `factory stats` answers #70 and absorbs the double count in `factory/cost.py` (#61);
-feeding its figures to the retro is #42. Earlier sources: prompt changes borrowed from the ponytail project (#20); the documentation
-standard this page follows (#23); each run's scratch directory (#35); the store branch (#46). The
-design document is `docs/design.md`, its changelog `docs/changelog.md`; the working documents from
-building the harness are under `dev/`; the issue index is `dev/issues.md`. The store holds 51
-tickets and 63 sub-tickets at `.factory/store/`; the runtime is at `~/dev/spec-factory-harness`,
-commit `9dbd4f8`, and its harness revision `5e00a1f` equals this repo's `harness.lock`.
+- Earlier work: the first end-to-end builds on the chat-bot repo (#16, #18); the layout refactor
+  (#19); prompt changes borrowed from the ponytail project (#20); the documentation standard this
+  page follows (#23); each run's scratch directory (#35); the store branch (#46); the target layout
+  (#55).
+- The driver, `factory drive` (#65). It absorbs per-role effort (#22), the operator's latest chat
+  message reaching every role agent (#28), titles beside ticket ids in progress output (#47) and
+  the checkers' tool limits (#24 part A). Retiring the workflow scripts is a later ticket.
+- `factory stats` (#70). It absorbs the double count in `factory/cost.py` (#61); feeding its
+  figures to the retro is #42.
+- Open work named above: `factory report` (#17); current-truth seeding (#21); registered agents
+  for the build roles, which `inlineRoles` works around today (#24); a stopped run that stays in
+  flight (#53).
+
+The two targets are this repo (instance B) and the nanobot fork at `~/dev/nanobot-upstream`
+(instance A); both run on the shared runtime. How this page and the design came to be is in
+`docs/changelog.md`; the issue index is `dev/issues.md`. The store holds 51 tickets and 64
+sub-tickets at `.factory/store/`; the runtime is at `~/dev/spec-factory-harness`, commit
+`9dbd4f8`, and its harness revision `5e00a1f` equals this repo's `harness.lock`.
 
 ## Maintaining this page
 
@@ -1145,9 +1061,9 @@ by whoever changes the system, in the same ticket, and the code reviewer checks 
 document.
 
 - **Ground truth only above "Where this can go".** A thing appears in the sections above only
-  after it has run on a real ticket. Until then it belongs under "Where this can go" (if the design
-  intends it) or under "Not built" (if it is named work). Never describe an intended behaviour in
-  the present tense.
+  once it is built and tested, and its entry says whether it has yet run on a real ticket. Until it
+  is built, it belongs under "Where this can go" (if the design intends it) or under "Not built"
+  (if it is named work). Never describe an intended behaviour in the present tense.
 - **Update with the change, not after it.** A sub-ticket that changes a command, a state, a stop
   or a path updates the sentence that describes it, re-derives any figure it quotes (counts, dates,
   paths, commits), and bumps the date in the status header. The reviewer treats a stale sentence
@@ -1182,9 +1098,8 @@ each section comes from:
 | Related work and history | `.factory/store/tickets/`, `dev/issues.md`, `docs/changelog.md` | `ls .factory/store/tickets | wc -l`; `git log --oneline -20` |
 
 Then two checks before it lands, in this order. First, the session that owns the harness code
-reads the draft against the running revision and corrects every as-built fact (today this caught
-two: a target described as cut over that was not, and a bound stated on the wrong case). Second,
-an independent reader with no project context reads it against "Maintaining this page" and the
+reads the draft against the running revision and corrects every as-built fact. Second, an
+independent reader with no project context reads it against "Maintaining this page" and the
 writing standard; every term they stumble on is a finding. Both passes are the same ones the
 critic and reviewer run on a spec, applied to this document. When the factory's own capabilities
 are in current truth (#21), the first pass becomes a diff against the spec store and most of this

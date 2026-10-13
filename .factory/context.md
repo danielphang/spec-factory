@@ -6,9 +6,8 @@ design and the harness that runs it:
   `docs/changelog.md`;
 - `docs/prompts/`, each file a verbatim copy of one prompt block in the design doc; it changes only
   by re-copying that block;
-- `dev/`, the working documents for building the factory itself: `dev/build-harness.spec.md` (the
-  spec for building the harness), `dev/build-harness.plan.md` (the Planner's decomposition of it),
-  `dev/P0-intake-skeleton.md` (the walking skeleton) and `dev/issues.md` (this repo's issue index);
+- `dev/`: `dev/issues.md`, this repo's issue index, kept live; and the build spec, its plan and the
+  P0 walking skeleton, frozen as history from building the harness, which no change updates;
 - the harness, as code in this repo: `factory/` (the package, its role prompts and its workflow
   scripts), `bin/factory` (the entry point), `agents/` (the agent definition templates) and
   `tests/factory/` (its suite). Install with `uv sync --frozen`; test with
@@ -32,8 +31,8 @@ line numbers or commit SHAs into a spec. Never read or write `~/.nanobot/` (live
 
 Acceptance commands must be runnable as written from `~/dev/spec-factory` (grep, sed, diff,
 `git diff --check` against the documents, the harness suite). A change to the design doc keeps its
-own conventions: its changelog entry in `docs/changelog.md`, `dev/build-harness.spec.md`
-consistent with the new text, and any `docs/prompts/` file whose block changed re-copied from it.
+own conventions: its changelog entry in `docs/changelog.md`, and any `docs/prompts/` file whose
+block changed re-copied from it.
 
 The request is an issue draft, written from a real pipeline run: where in the documents,
 what happened (the evidence), why it matters, a proposed fix, and the Nanobot-side commit

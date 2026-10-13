@@ -1,5 +1,7 @@
 # P0: intake walking skeleton
 
+> **Frozen as history.** This document records how the harness was first specified and built, and parts of it describe a design the code never had. It is no longer kept in step with `docs/design.md` or the code, and no change updates it; `README.md` and `docs/design.md` describe the system.
+
 Parent: `dev/build-harness.spec.md` (v4). This is not a sub-ticket of `dev/build-harness.plan.md`; it is a cut through it. It builds BH-1-lite, BH-4, and BH-5 and defers BH-2a, BH-2b, BH-3, BH-6, BH-7. Nothing built here is thrown away: the agent definitions, the `factory` CLI, and `intake.js` are the same files the full plan grows.
 
 ## Why first
