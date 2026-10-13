@@ -60,8 +60,16 @@ def test_last_message_is_kept_for_an_empty_output_run(tmp_path):
     s.ok("run", "finish", s.rid)
     text = "The suite is still running; I'll write the review when it ends.\nsecond line"
     res = s.ok("run", "last-message", s.rid, f"--text={text}")
-    assert res == {"ok": True, "run_id": s.rid, "last_message": f"runs/{s.rid}/last-message.md"}
+    assert res == {"ok": True, "run_id": s.rid, "last_message": f"runs/{s.rid}/last-message.md",
+                   "waiting": True}
     assert (s.run_dir / "last-message.md").read_text() == text + "\n"
+
+
+def test_last_message_that_is_not_about_waiting_prints_waiting_false(tmp_path):
+    s = Store(tmp_path)
+    s.ok("run", "finish", s.rid)
+    res = s.ok("run", "last-message", s.rid, "--text=I could not finish: the input file was missing.")
+    assert res["waiting"] is False
 
 
 def test_last_message_is_refused_for_a_run_that_wrote_its_output(tmp_path):

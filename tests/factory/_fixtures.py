@@ -220,15 +220,19 @@ def started(cp: subprocess.CompletedProcess) -> None:
 FIXTURE_INSTANCE = Path(__file__).resolve().parent / "fixtures" / "instance"
 
 STANDIN = '''#!{python}
-import json, os, pathlib, sys, time
+import fcntl, json, os, pathlib, sys, time
 cwd = pathlib.Path.cwd(); log = pathlib.Path(os.environ["STANDIN_LOG"])
 with log.open("a") as f:
     f.write(json.dumps({{"argv": sys.argv[1:], "cwd": str(cwd), "pid": os.getpid(),
                         "dispatch": os.environ.get("FACTORY_DISPATCH")}}) + "\\n")
 role = cwd.name.split("-", 2)[2]
 plays = json.loads(os.environ.get("STANDIN_PLAYS") or "{{}}").get(role) or [{{"say": ""}}]
-nf = log.with_name(log.name + ".n-" + role); n = int(nf.read_text()) + 1 if nf.exists() else 1
-nf.write_text(str(n)); p = plays[min(n, len(plays)) - 1]
+nf = log.with_name(log.name + ".n-" + role)
+with open(log.with_name(log.name + ".lock"), "w") as lk:  # copies of one role may start at once
+    fcntl.flock(lk, fcntl.LOCK_EX)
+    n = int(nf.read_text()) + 1 if nf.exists() else 1
+    nf.write_text(str(n))
+p = plays[min(n, len(plays)) - 1]
 time.sleep(p.get("sleep", 0))
 text, err = p.get("say", ""), "fail" in p
 if "write" in p:
@@ -286,7 +290,7 @@ class Store(CliStore):
 # ----- the build store of `factory drive` (test_drive_build.py) -----------------------------------
 
 BUILD_STANDIN = '''#!{python}
-import json, os, pathlib, re, sys, time
+import fcntl, json, os, pathlib, re, sys, time
 t0 = time.time()
 cwd = pathlib.Path.cwd(); log = pathlib.Path(os.environ["STANDIN_LOG"])
 with log.open("a") as f:
@@ -294,8 +298,12 @@ with log.open("a") as f:
                         "dispatch": os.environ.get("FACTORY_DISPATCH")}}) + "\\n")
 role = cwd.name.split("-", 2)[2]
 plays = json.loads(os.environ.get("STANDIN_PLAYS") or "{{}}").get(role) or [{{"say": ""}}]
-nf = log.with_name(log.name + ".n-" + role); n = int(nf.read_text()) + 1 if nf.exists() else 1
-nf.write_text(str(n)); p = plays[min(n, len(plays)) - 1]
+nf = log.with_name(log.name + ".n-" + role)
+with open(log.with_name(log.name + ".lock"), "w") as lk:  # copies of one role may start at once
+    fcntl.flock(lk, fcntl.LOCK_EX)
+    n = int(nf.read_text()) + 1 if nf.exists() else 1
+    nf.write_text(str(n))
+p = plays[min(n, len(plays)) - 1]
 time.sleep(p.get("sleep", 0))
 text, err = p.get("say", ""), "fail" in p
 if "write" in p:

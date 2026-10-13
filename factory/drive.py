@@ -48,6 +48,9 @@ ALLOWED = "Read,Grep,Glob,Bash,WebFetch,WebSearch"
 PROMPT = ("Your entire input is the file {run}/input.md; read it first and follow it. "
           "Write your complete output to {run}/output.md and return the same text.")
 KILL_AFTER_S = 10
+# Added to an EMPTY-OUTPUT park when either run's last message says it was still waiting on a
+# command: a plain re-dispatch would likely end the same way.
+WAITING_REASON = ": ended its turn waiting on a background command"
 
 
 def call(*argv: str) -> dict:
@@ -179,7 +182,8 @@ class Driver:
         second = await self.run_once(role, ticket)
         if not second or second["status"] != "EMPTY-OUTPUT":
             return second
-        self.park(ticket, f"EMPTY-OUTPUT from {role}", [first["runId"], second["runId"]])
+        waiting = WAITING_REASON if first["waiting"] or second["waiting"] else ""
+        self.park(ticket, f"EMPTY-OUTPUT from {role}{waiting}", [first["runId"], second["runId"]])
         return None
 
     async def run_once(self, role: str, ticket: str) -> dict | None:
@@ -238,11 +242,13 @@ class Driver:
             self.step(f"parked: {fin['parked']}", ticket)
             return None
         said = reply.get("result").strip() if isinstance(reply.get("result"), str) else ""
+        waiting = False
         if fin["status"] == "EMPTY-OUTPUT" and said:
-            call("run", "last-message", rid, "--text=" + said[-4000:])
+            waiting = call("run", "last-message", rid, "--text=" + said[-4000:]).get("waiting") is True
         esc = fin.get("escalations") or []
         self.step(f"{role} {rid}: {fin['status']}" + (f" (+{len(esc)} escalations)" if esc else ""), ticket)
-        return {"runId": rid, "status": fin["status"], "escalations": esc, "outputPath": os.path.join(run, "output.md")}
+        return {"runId": rid, "status": fin["status"], "escalations": esc, "outputPath": os.path.join(run, "output.md"),
+                "waiting": waiting}
 
     # ----- intake: factory/workflows/intake.js from `// --- start` ---------------------------
 

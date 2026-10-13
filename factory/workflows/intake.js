@@ -72,6 +72,10 @@ async function park(reason, outputs, phase) {
   log(`${TICKET} parked: ${reason}`)
 }
 
+// Added to an EMPTY-OUTPUT park when either run's last message says it was still waiting on a
+// command: a plain re-dispatch would likely end the same way.
+const WAITING_REASON = ': ended its turn waiting on a background command'
+
 // An EMPTY-OUTPUT run is re-dispatched once, same role, same inputs; a second in a row parks the ticket
 // with both runs. The agent call reports no reason a run stopped, so neither is a budget kill.
 async function runRole(role, phase) {
@@ -80,7 +84,8 @@ async function runRole(role, phase) {
   log(`${role} ${first.runId}: EMPTY-OUTPUT; re-dispatching ${role} once`)
   const second = await runOnce(role, phase)
   if (!second || second.status !== 'EMPTY-OUTPUT') return second
-  await park(`EMPTY-OUTPUT from ${role}`, [first.runId, second.runId], phase)
+  const waiting = first.waiting || second.waiting ? WAITING_REASON : ''
+  await park(`EMPTY-OUTPUT from ${role}${waiting}`, [first.runId, second.runId], phase)
   return null
 }
 
@@ -123,11 +128,13 @@ async function runOnce(role, phase) {
   // An EMPTY-OUTPUT run keeps the agent's last message, so a human can see why it stopped. A failure
   // here never parks and never changes the route.
   const said = typeof out === 'string' ? out.trim() : ''
+  let waiting = false
   if (fin.status === 'EMPTY-OUTPUT' && said) {
-    await clerk(`${BIN} run last-message ${runId} '--text=${said.slice(-4000).replace(/'/g, "'\\''")}'`, phase, `run last-message ${role}`)
+    const kept = await clerk(`${BIN} run last-message ${runId} '--text=${said.slice(-4000).replace(/'/g, "'\\''")}'`, phase, `run last-message ${role}`)
+    waiting = kept.waiting === true
   }
   log(`${role} ${runId}: ${fin.status}${fin.escalations && fin.escalations.length ? ` (+${fin.escalations.length} escalations)` : ''}`)
-  return { runId, status: fin.status, escalations: fin.escalations || [] }
+  return { runId, status: fin.status, escalations: fin.escalations || [], waiting }
 }
 
 async function transition(to, roundOp, phase) {

@@ -6,7 +6,7 @@ table, and human gates. This page is the system as it runs today; install and us
 
 | | |
 |---|---|
-| **Status** | Current state as of 2026-10-12. Intake works end to end. Build works, in local-only mode. |
+| **Status** | Current state as of 2026-10-13. Intake works end to end. Build works, in local-only mode. |
 | **Reader** | Technical, seeing this project for the first time. Terms specific to this system are defined in "Terms used on this page" or at first use. |
 | **Scope** | What runs now. The intended design and its reasoning are in `docs/design.md`; where the two disagree, this page is right about what runs and the design is amended. |
 | **Internal references** | Ticket ids, issue numbers and who did what are in "Related work and history" near the end. |
@@ -573,7 +573,9 @@ uv sync --frozen --project ~/dev/spec-factory-harness
 
 `uv sync` gives the harness its interpreter and dependencies (`pyproject.toml`, `uv.lock`);
 `bin/factory` runs the `factory` package with that environment. The runtime is what targets run;
-the dev checkout is where you merge.
+the dev checkout is where you merge. The suite runs across every CPU core with pytest-xdist, set
+once in `pyproject.toml`, so that one run stays well under the 10-minute limit of a single agent
+tool call.
 
 ### Adopting the factory in a repo
 
@@ -998,11 +1000,13 @@ the column can undercount.
   supersedes. It is tested, and has not yet fired on a real ticket.
 - **Empty output.** A role run that ends without writing its output file is run once more on the
   same inputs, and the harness keeps the agent's last message with the run. A second run in a row
-  that ends the same way parks the ticket. The harness enforces no time or token budget and cannot
+  that ends the same way parks the ticket. When either run's last message says it was still waiting
+  on a command it started, the park reason adds `ended its turn waiting on a background command`,
+  because a plain re-run is likely to end the same way. The harness enforces no time or token budget and cannot
   tell why a run stopped, so it never labels such a run a budget kill. The code reviewer judges the
   diff and leaves the test suite and the gate commands to the verifier. Every role is told to wait
-  for the commands it starts before it ends its turn. It is tested, and has not yet fired on a real
-  ticket.
+  for the commands it starts before it ends its turn. It has fired on a real ticket: both runs of
+  one verifier ended their turns waiting for the test suite.
 - **Protected paths at merge.** The merge gate refuses a change to a protected path that the
   approved spec does not declare on the `Protected paths:` line of its Risk section, and names
   each such path. The human approves that line at the spec gate, so a declared path merges with

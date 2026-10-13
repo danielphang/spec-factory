@@ -295,6 +295,12 @@ def _sync_environment(cfg: dict, sync: str | None, meta: dict, repo: Path, wt: P
     raise Refused(f"environment_sync failed (exit {cp.returncode}) in {wt}; its command and output are in {log}")
 
 
+# A kept last message that says the run ended its turn still waiting on a command it started.
+# factory: a word match, not a reading of intent: any message that mentions waiting matches. It only
+# adds a phrase to a park a human reads; replace it if a misleading waiting reason is seen.
+WAITING = re.compile(r"\bwait(?:ing)?\b|\bstill (?:running|in progress)\b|\bin the background\b", re.I)
+
+
 def run_last_message(a, root, cfg):
     """Keep the agent's last message with a run that ended EMPTY-OUTPUT, so a human can see why."""
     d = _run_dir(root, a.run)
@@ -302,7 +308,8 @@ def run_last_message(a, root, cfg):
     if st != "EMPTY-OUTPUT":
         raise Refused(f"{a.run} is {st or 'not finished'}, not EMPTY-OUTPUT: no last message to keep")
     store.write_text(d / "last-message.md", a.text + "\n")
-    out({"ok": True, "run_id": a.run, "last_message": _rel(root, d / "last-message.md")})
+    out({"ok": True, "run_id": a.run, "last_message": _rel(root, d / "last-message.md"),
+         "waiting": bool(WAITING.search(a.text))})
 
 
 def run_cleanup(a, root, cfg):
