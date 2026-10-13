@@ -4,13 +4,13 @@ title: 'Add `docs/standards.md`, the operator''s writing and design standards in
   point to it from README, and stop `docs/north-star.md` naming the private port (spec-factory #110)'
 request: requests/T-0053.md
 source: /private/tmp/claude-501/-Users-dphang-dev-nanobot/c69bfd1d-97a6-43e3-9d5a-a517c28d382c/scratchpad/req-110.md
-status: awaiting-spec-gate
+status: ready-for-planner
 round:
   spec: 1
   pr: 0
 spec:
-  version: 1
-  approved_version: null
+  version: 2
+  approved_version: 2
 plan: null
 in_flight: []
 parked: null
@@ -37,6 +37,11 @@ history:
   round:
     spec: 1
     pr: 0
+- ts: '2026-10-13T21:56:50+00:00'
+  from: awaiting-spec-gate
+  to: ready-for-planner
+  by: dphang
+  approved_version: 2
 parent: null
 depends_on: []
 parallel_safe: true

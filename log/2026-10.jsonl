@@ -2782,3 +2782,7 @@
 {"ts": "2026-10-13T21:50:27+00:00", "event": "run.started", "ticket": "T-0053", "run": "run-0525-critic", "role": "critic", "model": "fable"}
 {"ts": "2026-10-13T21:53:21+00:00", "event": "run.finished", "ticket": "T-0053", "run": "run-0525-critic", "role": "critic", "status": "APPROVE", "wall_s": 174}
 {"ts": "2026-10-13T21:53:30+00:00", "event": "ticket.transition", "ticket": "T-0053", "from": "ready-for-critic", "to": "awaiting-spec-gate", "by": "workflow", "round": {"spec": 1, "pr": 0}}
+{"ts": "2026-10-13T21:56:49+00:00", "event": "spec.added", "ticket": "T-0053", "version": 2, "source": "gate edit /private/tmp/claude-501/-Users-dphang-dev-nanobot/c69bfd1d-97a6-43e3-9d5a-a517c28d382c/scratchpad/T-0053-v2.md"}
+{"ts": "2026-10-13T21:56:50+00:00", "event": "approval.recorded", "ticket": "T-0053", "kind": "spec", "version": 2, "by": "dphang"}
+{"ts": "2026-10-13T21:56:50+00:00", "event": "change.pinned", "ticket": "T-0053", "version": 2, "files": ["openspec/changes/T-0053/proposal.md", "openspec/changes/T-0053/design.md", "openspec/changes/T-0053/specs/harness-docs/spec.md", "openspec/changes/T-0053/verification.md"]}
+{"ts": "2026-10-13T21:56:50+00:00", "event": "ticket.transition", "ticket": "T-0053", "from": "awaiting-spec-gate", "to": "ready-for-planner", "by": "dphang"}
