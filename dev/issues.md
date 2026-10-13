@@ -107,7 +107,7 @@ A fix closes its issue through a reviewed change on `main`; the merge column is 
 | [104](https://github.com/danielphang/spec-factory/issues/104) | README: a diagram of a spec's life (versions, changes after the gate, current truth and decisions feeding later tickets) | T-0049 (ready for triage; #96 row 2a.6, after #101) | — | — |
 | [105](https://github.com/danielphang/spec-factory/issues/105) | Run the spec validator at spec add, not first at the human gate | not in intake (p1) | — | — |
 | [106](https://github.com/danielphang/spec-factory/issues/106) | Harness suite takes 7–10 min, at the 10-minute tool-call cap: roles background it and return EMPTY-OUTPUT (#41 again) | not in intake (p1) | — | — |
-| [107](https://github.com/danielphang/spec-factory/issues/107) | The Workflow clerk retyped `factory config`: 10 verifier runs on fable, not the instance's opus; `run start` should own the model | not in intake (p1) | — | — |
+| [107](https://github.com/danielphang/spec-factory/issues/107) | The Workflow clerk retyped `factory config`: 10 verifier runs on fable, not the instance's opus; `run start` should own the model | T-0050 (closed by archive 2026-10-13; spec v1 as is, part B cut; merged c59cecd; live 2026-10-13, runtime `c59cecd`, harness `b3b978d`; its own verifier run-0501 ran on fable, the 11th case, on the pre-fix runtime) | `c59cecd` | — |
 
 Issues 1–10 are applied and can be closed against their merge; 11 applied (`9168ce1`); 13 and 14 fold into #21 (checklists until it archives); 15 closed as superseded. #12 was a duplicate of #11.
 New findings go straight to GitHub issues; this file is the index.
