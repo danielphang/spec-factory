@@ -112,6 +112,7 @@ A fix closes its issue through a reviewed change on `main`; the merge column is 
 | [109](https://github.com/danielphang/spec-factory/issues/109) | The clerk retypes `factory config` in 5 of 8 builds: a digest in config, and the scripts re-read on mismatch | not in intake (p1; after #110) | — | — |
 | [110](https://github.com/danielphang/spec-factory/issues/110) | `docs/standards.md`: the operator's consolidated writing and design standards, self-contained; `docs/writing.md` and the prompts unchanged | T-0053 (closed by archive 2026-10-13; spec v2 = v1 with two current-truth lines reworded (operator gate edit); merged af439c4; docs only) | `af439c4` | — |
 | [111](https://github.com/danielphang/spec-factory/issues/111) | Remove the private target's branch names and paths from this public repo without breaking replays, current truth or the frozen docs | not in intake (p2; existing names accepted for now, operator 2026-10-13) | — | — |
+| [112](https://github.com/danielphang/spec-factory/issues/112) | The clerk pretty-printed `run finish`'s JSON and the build parked a finished implementer; the script parses only single-line JSON, and no `resolve` route covers that park | not in intake (p1; same class as #109, a different relay; found on the Nanobot target 2026-10-14) | — | — |
 
 Issues 1–10 are applied and can be closed against their merge; 11 applied (`9168ce1`); 13 and 14 fold into #21 (checklists until it archives); 15 closed as superseded. #12 was a duplicate of #11.
 New findings go straight to GitHub issues; this file is the index.
