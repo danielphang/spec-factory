@@ -4,7 +4,7 @@ title: Fix the YAML frontmatter in four role agent templates, test every templat
   `factory init` report a target copy that differs from its template
 request: requests/T-0052.md
 source: /private/tmp/claude-501/-Users-dphang-dev-nanobot/c69bfd1d-97a6-43e3-9d5a-a517c28d382c/scratchpad/req-108.md
-status: planned
+status: closed
 round:
   spec: 2
   pr: 0
@@ -63,6 +63,18 @@ history:
   round:
     spec: 2
     pr: 0
+- ts: '2026-10-14T05:48:52+00:00'
+  from: planned
+  to: ready-for-parent-verify
+  by: parent-check
+- ts: '2026-10-14T05:48:54+00:00'
+  from: ready-for-parent-verify
+  to: closed
+  by: workflow
+  round:
+    spec: 2
+    pr: 0
+  verified_by: run-0532-verifier
 parent: null
 depends_on: []
 parallel_safe: true
@@ -71,4 +83,4 @@ head: null
 merge:
   base_before: null
   main_after: null
-parent_base: null
+parent_base: 43a289e000c971ecc22d5303d387e3669bf5d987

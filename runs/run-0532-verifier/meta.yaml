@@ -1,0 +1,63 @@
+run_id: run-0532-verifier
+role: verifier
+ticket: T-0052.1
+model: opus
+round: 2
+spec_version: 2
+started: '2026-10-14T05:39:22+00:00'
+finished: '2026-10-14T05:48:50+00:00'
+wall_s: 568
+status: VERIFIED
+input_sources:
+- specs/T-0052.1/subticket.md
+- specs/T-0052/v2.md
+- runs/run-0530-implementer/output.md
+- runs/run-0532-verifier/diff.patch
+- runs/run-0522-reviewer/output.md
+- runs/run-0529-verifier/output.md
+gate_skipped: []
+environment_files: []
+branch: factory/T-0052.1
+base: 43a289e000c971ecc22d5303d387e3669bf5d987
+head: 380924577a12c60b93e59591f9aa7f53c0474d5c
+worktree: /Users/dphang/dev/spec-factory/.factory/store/runs/run-0532-verifier/wt
+confidence: high. All eight commands printed their THEN exactly on `3809245`, and every NEW command printed
+  the spec's stated "today" output on `43a289e`. Both gates passed, and the broken-template run fails
+  on exactly the two new cases.
+escalations:
+- 'Outside the criteria: `factory init` now exits 1 with `PermissionError`, and prints no JSON, when a
+  `.claude/agents/factory-*.md` copy exists but cannot be read. Before this change it skipped such a copy
+  silently and exited 0. The input is unusual and the implementer disclosed it. It is the same shape as
+  round 1''s directory case, which this round fixed by listing the path. Whether to treat an unreadable
+  copy the same way is the operator''s call.'
+escalations_note: null
+claude:
+  session_id: 214164bc-a4ed-4b79-8997-dca0898818b7
+  total_cost_usd: 1.0683678
+  num_turns: 14
+  usage:
+    input_tokens: 28
+    cache_creation_input_tokens: 46476
+    cache_read_input_tokens: 2358339
+    output_tokens: 11239
+    output_tokens_details:
+      thinking_tokens: 1364
+    server_tool_use:
+      web_search_requests: 0
+      web_fetch_requests: 0
+    service_tier: standard
+    cache_creation:
+      ephemeral_1h_input_tokens: 46476
+      ephemeral_5m_input_tokens: 0
+    inference_geo: global
+    iterations:
+    - input_tokens: 2
+      output_tokens: 2132
+      cache_read_input_tokens: 186492
+      cache_creation_input_tokens: 2447
+      cache_creation:
+        ephemeral_5m_input_tokens: 0
+        ephemeral_1h_input_tokens: 2447
+      type: message
+    speed: standard
+    fallback_credit: null

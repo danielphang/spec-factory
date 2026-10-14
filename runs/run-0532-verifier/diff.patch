@@ -1,0 +1,201 @@
+diff --git a/README.md b/README.md
+index 5e1f823..4d58325 100644
+--- a/README.md
++++ b/README.md
+@@ -460,7 +460,7 @@ The store's path is `state_dir` in `instance.yaml`. `factory init` creates a new
+ |---|---|---|---|---|
+ | `instance.yaml`, `context.md` | integration | `factory init`, then edited by the operator | the operator | durable |
+ | `harness.lock` | integration | `factory init`; `--accept-harness` rewrites it | the operator | durable |
+-| `.claude/agents/factory-*.md` | integration | `factory init`, when they are missing | the operator, if the target keeps them | durable |
++| `.claude/agents/factory-*.md` | integration | `factory init`, when they are missing; it reports a copy that differs from its template and leaves it as it is | the operator, if the target keeps them | durable |
+ | Store records: requests, tickets, specs, plans, runs, results, approvals, current truth, changes, decisions, log | `factory-store` | the harness, through the workflows' clerk or `factory drive`, and the operator's commands | the operator, with `git -C <store> commit`; the harness commits the store once, the first commit `store migrate` makes | durable |
+ | `runs/*/scratch/`, `runs/*/wt/`, `worktrees/` | none; git ignores them | `run start` | never | scratch until the ticket moves on (kept while parked); checker checkouts until `run cleanup`; implementer checkouts until the merge |
+ | `drive/<ticket>.yaml` | none; git ignores it | `factory drive` | never | a live view of one driver process, rewritten at each step; read by the next drive of that ticket, which refuses to start while it shows a live driver; kept until that next drive |
+@@ -584,7 +584,9 @@ From inside the target repo, with `R` the runtime (`~/dev/spec-factory-harness`)
+    branch out instead, which restores the store. When more than one remote carries the branch it
+    refuses and names each; pick one with `git branch factory-store <remote>/factory-store` and run
+    `init` again. It also refuses from inside the store, and at a store path the integration branch
+-   has ever tracked. Idempotent.
++   has ever tracked. Idempotent. An agent copy already in `.claude/agents/` is never overwritten:
++   one that differs from its template is listed under `stale_agents` in the JSON output and named
++   on stderr.
+ 2. Restart the Claude Code session so the agents register.
+ 3. Fill in `.factory/context.md`, the briefing every role reads first: which repo this is, how to
+    run its tests, what kind of request to expect. Set `gate_commands` and `protected_paths` in
+diff --git a/agents/factory-planner.md b/agents/factory-planner.md
+index 1e717ab..5406bf2 100644
+--- a/agents/factory-planner.md
++++ b/agents/factory-planner.md
+@@ -1,6 +1,6 @@
+ ---
+ name: factory-planner
+-description: Spec factory Planner role: splits one approved spec into ordered, independently mergeable sub-tickets with a coverage map.
++description: "Spec factory Planner role: splits one approved spec into ordered, independently mergeable sub-tickets with a coverage map."
+ model: opus
+ tools: Read, Grep, Glob, Bash, Write
+ ---
+diff --git a/agents/factory-spec-critic.md b/agents/factory-spec-critic.md
+index 204a99d..7f49cd5 100644
+--- a/agents/factory-spec-critic.md
++++ b/agents/factory-spec-critic.md
+@@ -1,6 +1,6 @@
+ ---
+ name: factory-spec-critic
+-description: Spec factory Spec critic role: judges a spec against the six-item rubric; APPROVE, REVISE or ESCALATE. Never sees the writer's reasoning.
++description: "Spec factory Spec critic role: judges a spec against the six-item rubric; APPROVE, REVISE or ESCALATE. Never sees the writer's reasoning."
+ model: fable
+ tools: Read, Grep, Glob, Bash, Write
+ ---
+diff --git a/agents/factory-spec-writer.md b/agents/factory-spec-writer.md
+index b2db1e5..087954c 100644
+--- a/agents/factory-spec-writer.md
++++ b/agents/factory-spec-writer.md
+@@ -1,6 +1,6 @@
+ ---
+ name: factory-spec-writer
+-description: Spec factory Spec writer role: investigates the repo and writes one spec in the factory format for an accepted ticket.
++description: "Spec factory Spec writer role: investigates the repo and writes one spec in the factory format for an accepted ticket."
+ model: opus
+ tools: Read, Grep, Glob, Bash, Write
+ ---
+diff --git a/agents/factory-triage.md b/agents/factory-triage.md
+index 86fc614..824db75 100644
+--- a/agents/factory-triage.md
++++ b/agents/factory-triage.md
+@@ -1,6 +1,6 @@
+ ---
+ name: factory-triage
+-description: Spec factory Triage role: turns one raw request into an accepted ticket, or routes it (NEEDS-HUMAN, CLARIFY, REJECT).
++description: "Spec factory Triage role: turns one raw request into an accepted ticket, or routes it (NEEDS-HUMAN, CLARIFY, REJECT)."
+ model: opus
+ tools: Read, Grep, Glob, Bash, Write
+ ---
+diff --git a/docs/changelog.md b/docs/changelog.md
+index 4e0d323..28a3fa7 100644
+--- a/docs/changelog.md
++++ b/docs/changelog.md
+@@ -78,4 +78,6 @@ Six review rounds ran on this doc, using the reviewer prompt in the appendix. Ro
+ 
+ 73. After issue #110 (2026-10-13), where the operator had no single written copy of their own standards for specs, design pages, reports and records: the rules sat in four places, `docs/writing.md`, the spec writer's prompt, a target repository's `AGENTS.md`, and corrections the operator gave in conversation, which survived only in one session's memory notes. A new file, `docs/standards.md`, holds the operator's text of them in one place, self-contained so that a copy taken out of the repo still makes sense. No role prompt, no `docs/prompts/` file and not `docs/writing.md` names it, so no role's behaviour changes; pointing a prompt at it is a later prompt change, which waits until the golden set, the fixed tickets in `docs/golden.md` that every prompt change is replayed on, has a baseline. README's `docs/writing.md` row in "Where things live" now names `docs/standards.md` too, so README gains no line. `docs/north-star.md` now names the factory's current target as a port of the Nanobot chat bot, since this public repo names no private product. Rejected: editing `docs/writing.md`, which every role prompt names, so that edit would be a prompt change; and a new README row, which would not fit README's 1,110-line bound once other queued changes use their lines.
+ 
++74. After issue #108 (2026-10-13), where Claude Code could not load four of the six role agent templates in `agents/` (planner, spec critic, spec writer and triage): each one's frontmatter, the YAML header that names the agent, held an unquoted description containing a colon and a space, which YAML reads as a second key, so the header did not parse. No run failed, because every workflow run passes `inlineRoles: true` and `factory drive` starts each role with its prompt inline. The four descriptions are now quoted, with their words unchanged. The harness suite now parses every template's frontmatter, one case per template, and requires `name`, `description`, `model` and `tools`; no test read these headers before. `factory init` still never overwrites an existing copy in a target's `.claude/agents/`; it now lists each copy that differs from its template under `stale_agents` in its JSON output and names it on stderr, and still exits 0. Nanobot's copies, byte-identical to the old templates, are refreshed by its Driver after the merge and the runtime upgrade. Rejected: rephrasing the descriptions without the colon, which changes their words; overwriting a differing copy, which would discard an operator's deliberate edit; and refusing with exit 2, because a stale copy does not stop a run that uses `inlineRoles`.
++
+ Declined: a dedicated merge agent (merging is gate config plus human gates, not a judgment call).
+diff --git a/factory/setup.py b/factory/setup.py
+index 2f8474f..ce69419 100644
+--- a/factory/setup.py
++++ b/factory/setup.py
+@@ -167,6 +167,7 @@ def init_cmd(a):
+         store.write_text(cfg_path, new_text)
+         created.append(str(cfg_path))
+     agents: list[str] = []
++    stale: list[str] = []
+     store_branch = None
+     if own:
+         ctx = inst / "context.md"
+@@ -183,6 +184,11 @@ def init_cmd(a):
+                 (dest / src.name).parent.mkdir(parents=True, exist_ok=True)
+                 shutil.copyfile(src, dest / src.name)
+                 agents.append(str(dest / src.name))
++            elif not (dest / src.name).is_file() or (dest / src.name).read_bytes() != src.read_bytes():
++                # reported, never overwritten
++                stale.append(str(dest / src.name))
++                print(f"factory init: {dest / src.name} differs from its template {src}; left as it is",
++                      file=sys.stderr)
+         checkout = gitops.checkout_of(repo, gitops.STORE_BRANCH)
+         if checkout is not None and checkout.resolve() == root:
+             store_branch = gitops.STORE_BRANCH
+@@ -201,7 +207,7 @@ def init_cmd(a):
+     if agents:
+         print("restart the session so the agents register", file=sys.stderr)
+     out({"ok": True, "written": written, "active": True, "instance": str(inst), "state": str(root),
+-         "created": created, "agents": agents, "store_branch": store_branch})
++         "created": created, "agents": agents, "stale_agents": stale, "store_branch": store_branch})
+ 
+ 
+ STATE_DIR_LINE = re.compile(r"^(state_dir:[ \t]*)([^#\n]*?)([ \t]*(?:#.*)?)$", re.M)
+diff --git a/tests/factory/test_agent_templates.py b/tests/factory/test_agent_templates.py
+new file mode 100644
+index 0000000..991f955
+--- /dev/null
++++ b/tests/factory/test_agent_templates.py
+@@ -0,0 +1,79 @@
++"""Role agent templates (`agents/*.md`): every template's frontmatter parses and carries the keys
++Claude Code needs, and `factory init` reports an installed copy that differs from its template
++without overwriting it.
++"""
++from __future__ import annotations
++
++from pathlib import Path
++
++import pytest
++import yaml
++
++from ._cli import REPO, cli, git_repo, js
++
++TEMPLATES = sorted((REPO / "agents").glob("*.md"))
++
++
++@pytest.mark.parametrize("template", TEMPLATES, ids=[p.name for p in TEMPLATES])
++def test_template_frontmatter_parses_and_carries_the_agent_keys(template):
++    lines = template.read_text(encoding="utf-8").splitlines()
++    assert lines[:1] == ["---"], f"{template.name}: line 1 is not ---"
++    assert "---" in lines[1:], f"{template.name}: frontmatter has no closing ---"
++    header = yaml.safe_load("\n".join(lines[1:lines.index("---", 1)]))
++    assert isinstance(header, dict), f"{template.name}: frontmatter is not a mapping"
++    missing = {"name", "description", "model", "tools"} - set(header)
++    assert not missing, f"{template.name}: frontmatter lacks {sorted(missing)}"
++
++
++def initialised(tmp_path: Path) -> Path:
++    t = git_repo(tmp_path / "target")
++    cp = cli(t, "init", "--repo-name", "demo")
++    assert cp.returncode == 0, cp.stderr
++    return t
++
++
++def test_init_lists_an_edited_copy_and_leaves_it(tmp_path):
++    t = initialised(tmp_path)
++    copy = t / ".claude" / "agents" / "factory-planner.md"
++    copy.write_bytes(copy.read_bytes() + b"local edit\n")
++    kept = copy.read_bytes()
++    cp = cli(t, "init")
++    assert cp.returncode == 0, cp.stderr
++    out = js(cp)
++    assert [Path(p).name for p in out["stale_agents"]] == ["factory-planner.md"]
++    assert out["agents"] == []
++    assert copy.read_bytes() == kept
++    template = REPO / "agents" / "factory-planner.md"
++    assert f"factory init: {copy} differs from its template {template}; left as it is" in cp.stderr
++    assert "restart the session" not in cp.stdout + cp.stderr
++
++
++def test_init_creates_a_deleted_copy_and_does_not_list_it(tmp_path):
++    t = initialised(tmp_path)
++    copy = t / ".claude" / "agents" / "factory-triage.md"
++    copy.unlink()
++    cp = cli(t, "init")
++    assert cp.returncode == 0, cp.stderr
++    out = js(cp)
++    assert [Path(p).name for p in out["agents"]] == ["factory-triage.md"]
++    assert out["stale_agents"] == []
++    assert copy.read_bytes() == (REPO / "agents" / "factory-triage.md").read_bytes()
++    assert "differs" not in cp.stderr
++
++
++def test_init_with_matching_copies_lists_none(tmp_path):
++    cp = cli(initialised(tmp_path), "init")
++    assert cp.returncode == 0, cp.stderr
++    assert js(cp)["stale_agents"] == [] and js(cp)["agents"] == []
++    assert "differs" not in cp.stderr
++
++
++def test_init_lists_a_directory_in_place_of_a_copy_and_leaves_it(tmp_path):
++    t = initialised(tmp_path)
++    copy = t / ".claude" / "agents" / "factory-stub.md"
++    copy.unlink()
++    copy.mkdir()
++    cp = cli(t, "init")
++    assert cp.returncode == 0, cp.stderr
++    assert [Path(p).name for p in js(cp)["stale_agents"]] == ["factory-stub.md"]
++    assert copy.is_dir() and not any(copy.iterdir())

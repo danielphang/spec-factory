@@ -4,10 +4,10 @@ title: Fix the YAML frontmatter in four role agent templates, test every templat
   `factory init` report a target copy that differs from its template
 request: requests/T-0052.md
 source: plan:whole-spec
-status: checks-in-flight
+status: merged
 round:
   spec: 0
-  pr: 1
+  pr: 2
 spec:
   version: 2
   approved_version: 2
@@ -62,14 +62,41 @@ history:
   resolve: redispatch
   head: 8d07f458b674f9041c6c2b861e626dc08121f053
   superseded: []
+- ts: '2026-10-14T05:30:51+00:00'
+  from: checks-in-flight
+  to: ready-for-implementer
+  by: workflow
+  round:
+    spec: 0
+    pr: 2
+- ts: '2026-10-14T05:39:20+00:00'
+  from: ready-for-implementer
+  to: checks-in-flight
+  by: workflow
+  round:
+    spec: 0
+    pr: 2
+- ts: '2026-10-14T05:48:51+00:00'
+  from: checks-in-flight
+  to: ready-for-merge
+  by: workflow
+  round:
+    spec: 0
+    pr: 2
+- ts: '2026-10-14T05:48:52+00:00'
+  from: ready-for-merge
+  to: merged
+  by: merge
+  head: 380924577a12c60b93e59591f9aa7f53c0474d5c
 parent: T-0052
 depends_on: []
 parallel_safe: true
 branch: factory/T-0052.1
-head: 8d07f458b674f9041c6c2b861e626dc08121f053
+head: 380924577a12c60b93e59591f9aa7f53c0474d5c
 merge:
-  base_before: null
-  main_after: null
+  base_before: 43a289e000c971ecc22d5303d387e3669bf5d987
+  main_after: 75cfd422e20c2a1c79d7188f7119801669cf8b18
 parent_base: null
 label: whole-spec
 planned_from: 2
+merge_refused: null

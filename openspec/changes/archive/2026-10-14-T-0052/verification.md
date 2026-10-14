@@ -88,3 +88,8 @@ Prior findings
 
 Out-of-scope observations
 - none new.
+
+## Verifier results
+
+380924577a12c60b93e59591f9aa7f53c0474d5c · T-0052.1 · VERIFIED · run-0532-verifier
+8d07f458b674f9041c6c2b861e626dc08121f053 · T-0052.1 · FAILED · run-0529-verifier

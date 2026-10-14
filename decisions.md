@@ -284,3 +284,10 @@
 2026-10-13 T-0053 Standing: no role prompt, `docs/writing.md`, `agents/` or `factory/` file names `docs/standards.md` until a spec that changes prompts says so. Its requirement is the record.
 2026-10-13 T-0053 The north-star sentence uses the operator's example wording verbatim.
 2026-10-13 T-0053 The changelog entry takes the next free number, whichever of T-0052, #109 or this ticket merges first.
+2026-10-14 T-0052 The four descriptions are wrapped in double quotes with their words unchanged. Rejected: rephrasing them without `: `, which changes what each agent's description says.
+2026-10-14 T-0052 The suite test checks every `agents/*.md`, one case per template, and each failure names its template. It requires a parseable header that is a mapping with `name`, `description`, `model` and `tools`.
+2026-10-14 T-0052 `factory init` reports an existing copy that differs from its template in a new JSON field, `stale_agents` (each copy's path, as `agents` gives created copies' paths), and with one stderr line per copy naming the copy and its template. The exit stays 0 and the copy is left byte for byte as it was. Rejected: overwriting it, which would discard an operator's deliberate edit. Rejected: refusing with exit 2, because a stale copy does not stop a run that uses `inlineRoles`.
+2026-10-14 T-0052 "Differs" means any byte difference. A copy the operator edited on purpose is reported too: that is a report, not a refusal.
+2026-10-14 T-0052 The comparison runs only where init installs copies: for the target's own store (the directory under the target's `.factory/` that holds the factory's tickets and run records). An init pointed at another store by the `FACTORY_STATE` environment variable, as the tests do with a throwaway store, does not read `.claude/agents/`, and its `stale_agents` is `[]`.
+2026-10-14 T-0052 A run of init that only reports differing copies writes no `store.initialised` log event and prints no "restart the session" line, because it wrote nothing.
+2026-10-14 T-0052 Standing rule for later tickets: `factory init` never overwrites a target's existing agent copy; it reports one that differs from its template.

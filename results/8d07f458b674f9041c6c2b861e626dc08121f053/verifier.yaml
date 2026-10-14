@@ -1,0 +1,6 @@
+ticket: T-0052.1
+head: 8d07f458b674f9041c6c2b861e626dc08121f053
+role: verifier
+status: FAILED
+run_id: run-0529-verifier
+at: '2026-10-14T05:30:51+00:00'
