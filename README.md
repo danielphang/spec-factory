@@ -1054,7 +1054,7 @@ The two targets are this repo (instance B) and the nanobot fork at `~/dev/nanobo
 (instance A); both run on the shared runtime. How this page and the design came to be is in
 `docs/changelog.md`; the issue index is `dev/issues.md`. The store holds 53 tickets and 66
 sub-tickets at `.factory/store/`; the runtime is at `~/dev/spec-factory-harness`, commit
-`af439c4`, and its harness revision `5e00a1f` equals this repo's `harness.lock`.
+`75cfd42`, and its harness revision `3809245` equals this repo's `harness.lock`.
 
 ## Maintaining this page
 
