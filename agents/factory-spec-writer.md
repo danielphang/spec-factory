@@ -1,6 +1,6 @@
 ---
 name: factory-spec-writer
-description: Spec factory Spec writer role: investigates the repo and writes one spec in the factory format for an accepted ticket.
+description: "Spec factory Spec writer role: investigates the repo and writes one spec in the factory format for an accepted ticket."
 model: opus
 tools: Read, Grep, Glob, Bash, Write
 ---

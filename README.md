@@ -460,7 +460,7 @@ The store's path is `state_dir` in `instance.yaml`. `factory init` creates a new
 |---|---|---|---|---|
 | `instance.yaml`, `context.md` | integration | `factory init`, then edited by the operator | the operator | durable |
 | `harness.lock` | integration | `factory init`; `--accept-harness` rewrites it | the operator | durable |
-| `.claude/agents/factory-*.md` | integration | `factory init`, when they are missing | the operator, if the target keeps them | durable |
+| `.claude/agents/factory-*.md` | integration | `factory init`, when they are missing; it reports a copy that differs from its template and leaves it as it is | the operator, if the target keeps them | durable |
 | Store records: requests, tickets, specs, plans, runs, results, approvals, current truth, changes, decisions, log | `factory-store` | the harness, through the workflows' clerk or `factory drive`, and the operator's commands | the operator, with `git -C <store> commit`; the harness commits the store once, the first commit `store migrate` makes | durable |
 | `runs/*/scratch/`, `runs/*/wt/`, `worktrees/` | none; git ignores them | `run start` | never | scratch until the ticket moves on (kept while parked); checker checkouts until `run cleanup`; implementer checkouts until the merge |
 | `drive/<ticket>.yaml` | none; git ignores it | `factory drive` | never | a live view of one driver process, rewritten at each step; read by the next drive of that ticket, which refuses to start while it shows a live driver; kept until that next drive |
@@ -584,7 +584,9 @@ From inside the target repo, with `R` the runtime (`~/dev/spec-factory-harness`)
    branch out instead, which restores the store. When more than one remote carries the branch it
    refuses and names each; pick one with `git branch factory-store <remote>/factory-store` and run
    `init` again. It also refuses from inside the store, and at a store path the integration branch
-   has ever tracked. Idempotent.
+   has ever tracked. Idempotent. An agent copy already in `.claude/agents/` is never overwritten:
+   one that differs from its template is listed under `stale_agents` in the JSON output and named
+   on stderr.
 2. Restart the Claude Code session so the agents register.
 3. Fill in `.factory/context.md`, the briefing every role reads first: which repo this is, how to
    run its tests, what kind of request to expect. Set `gate_commands` and `protected_paths` in
