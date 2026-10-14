@@ -66,3 +66,14 @@ def test_init_with_matching_copies_lists_none(tmp_path):
     assert cp.returncode == 0, cp.stderr
     assert js(cp)["stale_agents"] == [] and js(cp)["agents"] == []
     assert "differs" not in cp.stderr
+
+
+def test_init_lists_a_directory_in_place_of_a_copy_and_leaves_it(tmp_path):
+    t = initialised(tmp_path)
+    copy = t / ".claude" / "agents" / "factory-stub.md"
+    copy.unlink()
+    copy.mkdir()
+    cp = cli(t, "init")
+    assert cp.returncode == 0, cp.stderr
+    assert [Path(p).name for p in js(cp)["stale_agents"]] == ["factory-stub.md"]
+    assert copy.is_dir() and not any(copy.iterdir())

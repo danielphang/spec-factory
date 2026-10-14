@@ -184,7 +184,8 @@ def init_cmd(a):
                 (dest / src.name).parent.mkdir(parents=True, exist_ok=True)
                 shutil.copyfile(src, dest / src.name)
                 agents.append(str(dest / src.name))
-            elif (dest / src.name).read_bytes() != src.read_bytes():  # reported, never overwritten
+            elif not (dest / src.name).is_file() or (dest / src.name).read_bytes() != src.read_bytes():
+                # reported, never overwritten
                 stale.append(str(dest / src.name))
                 print(f"factory init: {dest / src.name} differs from its template {src}; left as it is",
                       file=sys.stderr)
