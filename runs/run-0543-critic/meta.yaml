@@ -1,0 +1,53 @@
+run_id: run-0543-critic
+role: critic
+ticket: T-0049
+model: fable
+round: 1
+spec_version: 1
+started: '2026-10-19T17:07:42+00:00'
+finished: '2026-10-19T17:12:14+00:00'
+wall_s: 272
+status: APPROVE
+input_sources:
+- specs/T-0049/v1.md
+- openspec/specs/build-dispatch/spec.md
+- openspec/specs/harness-docs/spec.md
+- openspec/specs/human-resolution/spec.md
+- openspec/specs/role-inputs/spec.md
+- openspec/specs/spec-amendment/spec.md
+- openspec/specs/sub-ticket-planning/spec.md
+- decisions.md
+confidence: high, because I ran every acceptance command on today's README and on a prototype built from
+  the spec's own text, and parsed both diagrams with Mermaid.
+escalations: []
+escalations_note: null
+claude:
+  session_id: 19b81303-4067-46b4-b138-523da9fb305d
+  total_cost_usd: 6.065702249999998
+  num_turns: 19
+  usage:
+    input_tokens: 578
+    cache_creation_input_tokens: 211884
+    cache_read_input_tokens: 3164169
+    output_tokens: 20624
+    output_tokens_details:
+      thinking_tokens: 8473
+    server_tool_use:
+      web_search_requests: 0
+      web_fetch_requests: 0
+    service_tier: standard
+    cache_creation:
+      ephemeral_1h_input_tokens: 211884
+      ephemeral_5m_input_tokens: 0
+    inference_geo: global
+    iterations:
+    - input_tokens: 32
+      output_tokens: 1884
+      cache_read_input_tokens: 203617
+      cache_creation_input_tokens: 4747
+      cache_creation:
+        ephemeral_5m_input_tokens: 0
+        ephemeral_1h_input_tokens: 4747
+      type: message
+    speed: standard
+    fallback_credit: null

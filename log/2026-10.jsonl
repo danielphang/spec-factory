@@ -2875,3 +2875,16 @@
 {"ts": "2026-10-19T07:31:20+00:00", "event": "change.archived", "ticket": "T-0054", "archived_to": "openspec/changes/archive/2026-10-19-T-0054", "capabilities": ["build-dispatch", "harness-docs", "harness-suite", "human-resolution", "live-store-guard"], "decisions": 15}
 {"ts": "2026-10-19T07:31:21+00:00", "event": "ticket.transition", "ticket": "T-0054", "from": "ready-for-parent-verify", "to": "closed", "by": "workflow", "round": {"spec": 2, "pr": 0}}
 {"ts": "2026-10-19T07:31:54+00:00", "event": "harness.accepted", "instance": "/Users/dphang/dev/spec-factory/.factory", "old": "380924577a12c60b93e59591f9aa7f53c0474d5c", "new": "e12ca713eb3b8594445773d44e87790fd480faa1"}
+{"ts": "2026-10-19T16:51:23+00:00", "event": "run.started", "ticket": "T-0049", "run": "run-0541-triage", "role": "triage", "model": "opus"}
+{"ts": "2026-10-19T16:52:49+00:00", "event": "run.finished", "ticket": "T-0049", "run": "run-0541-triage", "role": "triage", "status": "ACCEPT", "wall_s": 86}
+{"ts": "2026-10-19T16:52:49+00:00", "event": "ticket.transition", "ticket": "T-0049", "from": "ready-for-triage", "to": "ready-for-spec-writer", "by": "workflow", "round": {"spec": 0, "pr": 0}}
+{"ts": "2026-10-19T16:52:49+00:00", "event": "run.started", "ticket": "T-0049", "run": "run-0542-spec_writer", "role": "spec_writer", "model": "opus"}
+{"ts": "2026-10-19T17:07:41+00:00", "event": "run.finished", "ticket": "T-0049", "run": "run-0542-spec_writer", "role": "spec_writer", "status": "READY-FOR-CRITIC", "wall_s": 892}
+{"ts": "2026-10-19T17:07:41+00:00", "event": "spec.added", "ticket": "T-0049", "version": 1, "source": "run-0542-spec_writer"}
+{"ts": "2026-10-19T17:07:42+00:00", "event": "ticket.transition", "ticket": "T-0049", "from": "ready-for-spec-writer", "to": "ready-for-critic", "by": "workflow", "round": {"spec": 1, "pr": 0}}
+{"ts": "2026-10-19T17:07:42+00:00", "event": "run.started", "ticket": "T-0049", "run": "run-0543-critic", "role": "critic", "model": "fable"}
+{"ts": "2026-10-19T17:12:14+00:00", "event": "run.finished", "ticket": "T-0049", "run": "run-0543-critic", "role": "critic", "status": "APPROVE", "wall_s": 272}
+{"ts": "2026-10-19T17:12:15+00:00", "event": "ticket.transition", "ticket": "T-0049", "from": "ready-for-critic", "to": "awaiting-spec-gate", "by": "workflow", "round": {"spec": 1, "pr": 0}}
+{"ts": "2026-10-19T23:08:54+00:00", "event": "approval.recorded", "ticket": "T-0049", "kind": "spec", "version": 1, "by": "dphang"}
+{"ts": "2026-10-19T23:08:54+00:00", "event": "change.pinned", "ticket": "T-0049", "version": 1, "files": ["openspec/changes/T-0049/proposal.md", "openspec/changes/T-0049/design.md", "openspec/changes/T-0049/specs/harness-docs/spec.md", "openspec/changes/T-0049/verification.md"]}
+{"ts": "2026-10-19T23:08:54+00:00", "event": "ticket.transition", "ticket": "T-0049", "from": "awaiting-spec-gate", "to": "ready-for-planner", "by": "dphang"}

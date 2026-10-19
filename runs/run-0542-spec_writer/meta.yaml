@@ -1,0 +1,54 @@
+run_id: run-0542-spec_writer
+role: spec_writer
+ticket: T-0049
+model: opus
+round: 0
+spec_version: 0
+started: '2026-10-19T16:52:49+00:00'
+finished: '2026-10-19T17:07:41+00:00'
+wall_s: 892
+status: READY-FOR-CRITIC
+input_sources:
+- runs/run-0541-triage/output.md
+- requests/T-0049.md
+- openspec/specs/build-dispatch/spec.md
+- openspec/specs/harness-docs/spec.md
+- openspec/specs/human-resolution/spec.md
+- openspec/specs/role-inputs/spec.md
+- openspec/specs/spec-amendment/spec.md
+- openspec/specs/sub-ticket-planning/spec.md
+- decisions.md
+confidence: high. Every edge is traced to code at `81482fe`, the prototype parses with Mermaid 11.17.2,
+  and a run of all 80 `harness-docs` scenarios showed only the three budget checks change.
+escalations: []
+escalations_note: null
+claude:
+  session_id: da037ce1-eb94-48ee-93dc-49269e99955a
+  total_cost_usd: 6.731901999999999
+  num_turns: 65
+  usage:
+    input_tokens: 128
+    cache_creation_input_tokens: 300560
+    cache_read_input_tokens: 14312650
+    output_tokens: 73219
+    output_tokens_details:
+      thinking_tokens: 33739
+    server_tool_use:
+      web_search_requests: 0
+      web_fetch_requests: 0
+    service_tier: standard
+    cache_creation:
+      ephemeral_1h_input_tokens: 300560
+      ephemeral_5m_input_tokens: 0
+    inference_geo: global
+    iterations:
+    - input_tokens: 2
+      output_tokens: 11477
+      cache_read_input_tokens: 299804
+      cache_creation_input_tokens: 756
+      cache_creation:
+        ephemeral_5m_input_tokens: 0
+        ephemeral_1h_input_tokens: 756
+      type: message
+    speed: standard
+    fallback_credit: null

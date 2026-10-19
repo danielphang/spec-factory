@@ -1,0 +1,322 @@
+=== proposal.md
+## Problem
+`README.md` is the page a new reader learns this system from. Its one flow diagram, under "How a
+ticket moves", shows only the simple case. A request becomes a spec. A human approves the spec at
+the spec gate, the one sign-off before any code is written. The build then carries it to a closed
+ticket, and the spec never changes on the way.
+
+In practice a spec changes often, and the diagram draws none of it. A spec goes through numbered
+versions while the reviewing agent (the critic) sends it back. The human can edit it at the gate.
+After the gate it can be amended, or sent back to the gate for a new plan that replaces the
+unbuilt parts of the old one. When a ticket closes, its spec is folded into current truth: one
+document per capability that says what the system does now. Its decisions go into the decision
+log, the file of standing decisions every later ticket must follow. The agents on later tickets
+read both. README describes each of these routes in prose, in different sections. No diagram shows
+how a change to a spec spreads, which is what the operator asked for.
+
+Two smaller faults come with it. The existing diagram shows a "clerk" agent relaying every record
+to the store. The clerk exists only when the pipeline runs as a Claude Code Workflow script. The
+other way to run it, `factory drive`, calls the harness (the code that enforces the pipeline's
+rules) in its own process and has no clerk. Second, README has a line budget of 1,110 lines,
+written into the checks on the documents, and it is at 1,109 lines. Any diagram breaks that
+budget. This change raises it to 1,185 lines, a figure the operator approves at this gate.
+
+## Evidence
+- README at `81482fe` is 1,109 lines (`wc -l README.md`). "How a ticket moves" runs from
+  README:141 to README:219. Its one diagram is README:176-216, with its caption at README:218-219.
+  The clerk node at README:209 reads `CL["clerk agent<br/>runs one bin/factory command per
+  record"]:::orch` and says nothing about which way of running the pipeline it belongs to.
+- Every route the new diagram draws is in the code at `81482fe`. design.md part E lists each edge
+  with its file and lines. The routes agree with current truth in `openspec/specs/role-inputs/spec.md`,
+  `openspec/specs/spec-amendment/spec.md`, `openspec/specs/sub-ticket-planning/spec.md` and
+  `openspec/specs/human-resolution/spec.md`.
+- The request says the planner receives current truth. It does not: `factory/compose.py:325` gives
+  the planner the decision log only (`add_decisions()  # no current truth for the planner`). The
+  diagram draws what the code does.
+- `factory/specstore.py:6-7` names three writers of the decision log: `archive`, `decision add` and
+  `resolve --decision`. The diagram draws all three.
+- No Mermaid parser is installed here. `which mmdc` finds nothing, and the repo has no
+  `node_modules`. The acceptance check is therefore structural.
+- To check the draft anyway, I installed `mermaid@11.17.2` and `jsdom` from npm into this run's
+  scratch directory (`--ignore-scripts`, throwaway HOME). I ran `mermaid.parse` on every Mermaid
+  block of a prototype README built from design.md parts A to C. All 7 blocks printed `ok`, the
+  two in "How a ticket moves" as `flowchart-v2`: both diagrams parse. A copy with one brace
+  dropped and one quote unclosed printed `FAIL Parse error` for both blocks, so the parse check
+  does catch errors.
+- The prototype is 1,173 lines. On it, the five scenarios of this change print what their THEN
+  lines say. On README at `81482fe`, the NEW ones print `classes=0 … later=0`,
+  `workflow=0 launch=0 drive=0`, `blocks=1 bad=0` and `names=0` (verification.md). The structural
+  check printed `blocks=2 bad=2` on the broken copy, so it catches the same two faults the parser
+  caught.
+- I ran every WHEN of current truth `harness-docs` (80 commands) on a scratch clone at `81482fe`,
+  then again with the prototype README committed. Exactly three outputs changed, each from
+  `readme=within` to `readme=over`. Those are the three requirements that hard-code 1,110 (spec
+  lines 418-421, 460-471, 475-479), restated here with 1,185. With 1,185 they print what their
+  THEN lines say on the prototype. No other capability's scenarios read README (`grep -l README.md
+  openspec/specs/*/spec.md` finds only `harness-docs`).
+- `grep -rln '1110\|clerk agent<br\|How a ticket moves' tests/` finds no test that reads README's
+  text, so no test changes.
+
+## Root cause
+README's diagram (README:176-216) was drawn before the routes that change a spec after the gate
+existed. Later tickets added `spec amend`, the drift check, re-planning and the role inputs, and
+each described itself in prose: the **Gate**, **Amend**, **Unstick** and **Record** rows of "Where
+a human decides" (README:858-861) and the "Spec amendment and drift" and "Re-plan after a
+re-spec" entries (README:954-962). The clerk label dates from before `factory drive`
+(`factory/drive.py:1`, "the dispatcher as an ordinary process, with no clerk"). The line budget is
+hard-coded in three `harness-docs` requirements: "README stays within its line budget" (spec line
+418), and the #108 and #109 records (lines 460 and 475).
+
+## Out of scope
+- No behaviour change. No file under `factory/`, `bin/`, `agents/` or `tests/` changes.
+- `docs/design.md`, `docs/changelog.md` and `docs/prompts/` are unchanged.
+- The existing diagram changes only on its clerk node line. Its intake and build subgraph labels,
+  "(agents, driven by the script)", are left as they are; see Out-of-scope observations.
+- Re-ports onto a new upstream base (#103 part C) and the prompt blocks (#83 C).
+- Every other README section, except the status date and one row of "Regenerating this page from
+  scratch".
+
+## Open questions
+none
+
+## Decisions
+- One new diagram, in a new subsection "How a spec changes and feeds later tickets" placed
+  directly after the first diagram of "How a ticket moves", before "Ticket states". Rejected:
+  two diagrams, because the second repeats the three colour lines and the gate node and adds no
+  route.
+- README's line budget rises from 1,110 to 1,185 lines: the prototype's 1,173 lines plus 12 lines
+  of slack. The operator approves the figure at this gate. A later change that needs more room
+  still raises it in its own spec.
+- The decision log is drawn with all three of its writers, so the diagram does not imply that
+  `archive` is the only one.
+- The planner's input edge carries the decision log only, as `factory/compose.py:325` does. This
+  corrects the request, which said the planner also reads current truth.
+- The acceptance check of the diagrams is structural: balanced quotes and brackets, an opening
+  `flowchart LR` and a closed fence. Rejected: running `npx -y @mermaid-js/mermaid-cli`, which
+  needs a network install and a browser download. The spec writer's parse of the prototype is
+  recorded under Evidence, and the operator step below checks the rendering.
+- The "How a ticket moves" row of "Regenerating this page from scratch" names the modules the new
+  diagram is drawn from, so a rebuild of the page can redraw it.
+- No changelog entry. `docs/changelog.md` records changes to `docs/design.md`, which this change
+  leaves alone.
+- One "parked ticket" node stands for both a parked sub-ticket and a parked parent. Each edge
+  label names the command that applies.
+
+## Risk
+The change is documentation only, in `README.md`. A wrong edge would mislead a reader; it cannot
+change what the pipeline does. The three restated budget requirements are the only current truth
+whose checks change. Each still checks the same documents, against a higher bound.
+Protected paths: none
+
+## Operator steps
+- After merging and pushing `main`, open `README.md` on GitHub and confirm that both diagrams
+  under "How a ticket moves" render. GitHub renders Mermaid. That is a full render, which no
+  acceptance command here can do without a network install.
+=== design.md
+## Proposed change
+One sub-ticket, all in `README.md`. The diff is about 70 lines.
+
+**A. New subsection.** Insert the text below between the existing diagram's caption (README:218-219,
+ending "…and the clerk relay.*") and `### Ticket states` (README:221). Keep one blank line before
+`### Ticket states`. The prose may be reworded, but every claim must stay true to part E. The
+diagram's edges, the three `classDef` lines and the subgraph title `"a later ticket"` must stay as
+given, because the acceptance checks them.
+
+````markdown
+### How a spec changes and feeds later tickets
+
+A spec changes in a few set ways, and every version it passes through stays in the store. Each spec
+writer output becomes the spec's next numbered version, and the critic judges the newest. At the
+gate a human approves the newest version or sends it back with notes (`request-changes`). An edit
+made at the gate is approved as the next version. Approval pins one version: the build works from
+it, and the harness copies it into the ticket's change folder, `openspec/changes/<id>/`. Every
+sub-ticket records the version it was planned from as `planned_from`. Before a sub-ticket's first
+implementer run, the drift check parks it when the spec no longer matches the integration branch,
+for example when a test changed there that the spec's "Tests to change" does not list. After the
+gate a human changes the spec in one of two ways. `spec amend` pins the next version when the
+intent is unchanged; the plan stands, and `resolve --ruling` resumes the parked sub-ticket. A
+re-spec, `resolve --to spec-gate`, sends a parked parent back to the gate; the plan made from a
+newer approved version supersedes every unmerged sub-ticket of an older one, and its sub-tickets
+take the next free ids. When the final check fails after every sub-ticket merged,
+`resolve --replan` sends the parent back to the planner. On success, `archive` folds the spec's
+changes into current truth and appends its Decisions lines to the decision log, which a human can
+also add to. A later ticket's triage reads an index of current truth and names the capabilities it
+touches. Its spec writer and critic receive those capabilities in full and the decision log; its
+planner receives the decision log only.
+
+```mermaid
+flowchart LR
+  classDef human fill:#fbf0dc,stroke:#9a5b00,color:#1b2430
+  classDef orch fill:#f3f5f8,stroke:#1b2430,color:#1b2430
+  classDef store fill:#dcefef,stroke:#0f6e73,color:#1b2430
+
+  SW["Spec writer"]:::orch -- "each output is the next version" --> V[("spec versions<br/>v1 · v2 · … · vN")]:::store
+  V --> SC["Spec critic"]:::orch
+  SC -. "revise · once" .-> SW
+  SC -- approve --> G{"Spec gate"}:::human
+  G -. "request-changes · notes" .-> SW
+  G -- "approve-spec pins vN · --edit F pins F as vN+1" --> CF[("change folder<br/>the pinned version")]:::store
+  CF --> PL["Planner, or the whole spec<br/>as one sub-ticket"]:::orch
+  PL -- "planned_from = the pinned version<br/>supersedes unmerged sub-tickets of an older one" --> SB[("sub-tickets")]:::store
+  SB --> DR["drift check<br/>before a first implementer run"]:::store
+  DR -- "no drift" --> BL["implementer · checks · merge"]:::orch
+  BL -- "every sub-ticket merged" --> PC["Verifier<br/>whole spec"]:::orch
+  PK{"parked ticket"}:::human
+  DR -. "BLOCKED: spec drift" .-> PK
+  PC -. "fails" .-> PK
+  PK -- "spec amend · intent unchanged" --> AM[("next version pinned<br/>plan kept")]:::store
+  AM -- "resolve --ruling F" --> BL
+  PK -- "resolve --to spec-gate · re-spec" --> G
+  PK -- "resolve --replan F · every sub-ticket merged" --> PL
+  PC -- verified --> AR["archive"]:::store
+  AR -- "folds the changes" --> CT[("current truth<br/>one spec per capability")]:::store
+  AR -- "appends the Decisions lines" --> DL[("decision log<br/>decisions.md")]:::store
+  HD["a human<br/>decision add · resolve --decision"]:::human -- "appends a line" --> DL
+
+  subgraph L["a later ticket"]
+    direction LR
+    TR2["Triage"]:::orch -- "Capabilities: line" --> SW2["Spec writer · critic"]:::orch
+    PL2["Planner"]:::orch
+  end
+  CT -- "index of every capability" --> TR2
+  CT -- "named capabilities in full · index of the rest" --> SW2
+  DL -- "the whole log" --> SW2
+  DL -- "the whole log · no current truth" --> PL2
+```
+
+*A spec's life, from its first version to the current truth later tickets read. Colours as above;
+dashed edges are the bounded loops and the routes to a human.*
+````
+
+**B. Clerk node.** Replace README:209 with this line, and change nothing else in that diagram:
+
+```
+  CL["clerk agent · Workflow-script path only<br/>runs one bin/factory command per record, all but<br/>the settings the launch copy carries; factory drive needs none"]:::orch
+```
+
+**C. Regeneration table.** In "Regenerating this page from scratch", replace the `| How a ticket
+moves |` row (README:1096) with:
+
+```
+| How a ticket moves | `factory/workflows/intake.js`, `build.js` (the `phase(...)` blocks and the `STATUS` routes); `factory/gates.py` `ticket_join`, `merge_cmd`, `archive_cmd`; for the spec's life, `factory/human.py` (`approve_spec`, `request_changes`, `spec_amend`, `resolve`), `factory/subtickets.py` `split_plan`, `factory/drift.py` `_check_drift`, `factory/specstore.py` `archive` and `factory/compose.py` `compose` (each role's inputs) | read the code; confirm against the last closed ticket's run log in `.factory/store/log/` |
+```
+
+**D. Status date.** Set the date in README's **Status** row to the day of the change, as "Maintaining
+this page" asks.
+
+**E. PR description.** Copy this table into the PR description. It is the request's own check that
+each labelled edge cites a code route. Re-check each line number against the branch's base.
+
+| Edge in the new diagram | Route in the code at `81482fe` |
+|---|---|
+| Spec writer → spec versions, "each output is the next version" | `factory/drive.py:287-294`, `factory/workflows/intake.js:184,188` (`spec add --from-run`); `factory/cli.py:407-410` `spec_add`; `factory/common.py:29-39` `_add_spec_version` |
+| spec versions → Spec critic | `factory/compose.py:297-298` (the critic reads `specs/<id>/v<version>.md`) |
+| Spec critic → Spec writer, "revise · once" | `factory/drive.py:315-322` (REVISE, below the round limit); `factory/workflows/intake.js:203-204` |
+| Spec critic → Spec gate, "approve" | `factory/drive.py:307-308`; `factory/workflows/intake.js:197-198` |
+| Spec gate → Spec writer, "request-changes · notes" | `factory/human.py:164-177`; `factory/cli.py:790`; the notes reach the writer at `factory/compose.py:293-294` |
+| Spec gate → change folder, "approve-spec pins vN · --edit F pins F as vN+1" | `factory/human.py:130-160` (`--edit` at 146, `specstore.pin` at 148); `factory/cli.py:788` |
+| change folder → Planner, or the whole spec as one sub-ticket | `factory/drive.py:336-354`; `factory/cli.py:499-515` `_planner_needed`, 518-546 `plan_whole_spec` |
+| Planner → sub-tickets, "planned_from … supersedes …" | `factory/cli.py:487` (in `_create_subtickets`, used by both); `factory/cli.py:461-473`; `factory/subtickets.py:159-175` `split_plan`, `superseded_by_plan`; the next free ids at `factory/compose.py:329-330` |
+| sub-tickets → drift check | `factory/cli.py:195-197` (`run start` for an implementer); `factory/drift.py:42-50` |
+| drift check → implementer · checks · merge, "no drift" | `factory/drift.py:56` (no findings, no refusal) |
+| drift check → parked ticket, "BLOCKED: spec drift" | `factory/drift.py:57-58`; parked as given by `factory/drive.py:190-196` |
+| implementer · checks · merge → Verifier, "every sub-ticket merged" | `factory/drive.py:403-418` |
+| Verifier → parked ticket, "fails" | `factory/drive.py:417-418` |
+| parked ticket → next version pinned, "spec amend · intent unchanged" | `factory/human.py:31-98` (plan kept at 76-79); `factory/cli.py:717` |
+| next version pinned → implementer, "resolve --ruling F" | `factory/human.py:236-237`; with a ruling on file the drift check is skipped, `factory/drift.py:50` |
+| parked ticket → Spec gate, "resolve --to spec-gate · re-spec" | `factory/human.py:265-270`; `factory/cli.py:799` |
+| parked ticket → Planner, "resolve --replan F · every sub-ticket merged" | `factory/human.py:278-290`; `factory/cli.py:803` |
+| Verifier → archive, "verified" | `factory/drive.py:421`; `factory/gates.py:291-303` `archive_cmd` |
+| archive → current truth, "folds the changes" | `factory/specstore.py:405-414` |
+| archive → decision log, "appends the Decisions lines" | `factory/specstore.py:415-417` |
+| a human → decision log, "appends a line" | `factory/human.py:330-334` (`decision add`), 190-196 (`resolve --decision`); `factory/specstore.py:6-7` |
+| Triage → Spec writer · critic, "Capabilities: line" | `factory/compose.py:28-43` `triage_capabilities`, 210-218 `selected` |
+| current truth → Triage, "index of every capability" | `factory/compose.py:265-270` |
+| current truth → Spec writer · critic, "named capabilities in full · index of the rest" | `factory/compose.py:220-229`, 280-281, 299-300 |
+| decision log → Spec writer · critic, "the whole log" | `factory/compose.py:231-237`, 282, 301 |
+| decision log → Planner, "the whole log · no current truth" | `factory/compose.py:325` |
+| clerk node (part B) | `factory/workflows/build.js:18-20` (the launch copy carries the settings), 45-50 `clerk()`; `factory/drive.py:1-5` (no clerk) |
+
+## Tests to change
+none. No test reads README's text (Evidence). The three `harness-docs` requirements that hard-code
+1,110 are restated under MODIFIED in the capability spec.
+=== specs/harness-docs/spec.md
+## ADDED Requirements
+### Requirement: README draws how a spec changes and feeds later tickets
+`README.md`'s "How a ticket moves" SHALL hold a subsection "How a spec changes and feeds later tickets", placed before "Ticket states", whose one Mermaid diagram uses the section's three colour classes. Its edges SHALL draw `request-changes`, `approve-spec --edit`, `planned_from`, the drift check, `spec amend` with `resolve --ruling`, `resolve --to spec-gate`, `resolve --replan`, `archive` writing current truth and `decisions.md`, and `decision add` writing the log. A subgraph titled "a later ticket" SHALL hold that ticket's triage, spec writer, critic and planner.
+
+#### Scenario: The spec's-life diagram draws every route after the critic
+- WHEN `(D=$(awk '/^### How a spec changes and feeds later tickets$/{s=1;next} s&&/^#/{s=0} s&&/^[`][`][`]mermaid$/{f=1;next} f&&/^[`][`][`]$/{f=0;s=0} f' README.md); E=$(printf '%s\n' "$D" | grep -E -- '-->|\.->'); y() { printf '%s\n' "$E" | grep -qF -- "$1" && echo yes || echo no; }; L=$(printf '%s\n' "$D" | sed -n '/^ *subgraph .*"a later ticket"/,/^ *end$/p'); echo "classes=$(printf '%s\n' "$D" | grep -cE '^ *classDef (human|orch|store) ') request=$(y request-changes) edit=$(y '--edit') amend=$(y 'spec amend') respec=$(y '--to spec-gate') replan=$(y '--replan') ruling=$(y '--ruling') planned=$(y planned_from) drift=$(y drift) truth=$(y 'current truth') log=$(y decisions.md) writers=$(y 'decision add') later=$(printf '%s\n' "$L" | grep -oE 'Triage|Spec writer|critic|Planner' | sort -u | grep -c .)")`
+- THEN it prints exactly `classes=3 request=yes edit=yes amend=yes respec=yes replan=yes ruling=yes planned=yes drift=yes truth=yes log=yes writers=yes later=4`
+
+### Requirement: The clerk node says it exists only on the Workflow-script path
+The clerk node of the first diagram in "How a ticket moves" SHALL say that the clerk exists only on the Workflow-script path, that the launch copy carries the settings it does not relay, and that `factory drive` needs no clerk.
+
+#### Scenario: The clerk node names the Workflow-script path, the launch copy and factory drive
+- WHEN `(C=$(sed -n '/^## How a ticket moves/,/^### /p' README.md | grep 'clerk agent'); echo "clerk=$(printf '%s\n' "$C" | grep -c .) workflow=$(printf '%s' "$C" | grep -c 'Workflow-script path only') launch=$(printf '%s' "$C" | grep -c 'launch copy') drive=$(printf '%s' "$C" | grep -c 'factory drive')")`
+- THEN it prints exactly `clerk=1 workflow=1 launch=1 drive=1`
+
+### Requirement: The diagrams of How a ticket moves are well formed
+"How a ticket moves" SHALL hold two Mermaid blocks. Each SHALL open with `flowchart LR` and close its fence, and on every line its quotes, square brackets, parentheses and braces SHALL balance once quoted labels are set aside. This is a structural check, not a parse.
+
+#### Scenario: Both diagrams of How a ticket moves have balanced quotes and brackets
+- WHEN `(awk '/^## How a ticket moves/{s=1} /^### Ticket states/{s=0} !s{next} /^[`][`][`]mermaid$/{b++;f=1;n=0;next} f&&/^[`][`][`]$/{f=0;next} !f{next} {n++; l=$0; gsub(/"[^"]*"/,"Q",l); if (n==1 && l!="flowchart LR") bad++; if (index(l,"\"")) bad++; o=l; c1=gsub(/\[/,"",o); c2=gsub(/\]/,"",o); c3=gsub(/\(/,"",o); c4=gsub(/\)/,"",o); c5=gsub(/\{/,"",o); c6=gsub(/\}/,"",o); if (c1!=c2||c3!=c4||c5!=c6) bad++} END{if (f) bad++; print "blocks=" b+0 " bad=" bad+0}' README.md)`
+- THEN it prints exactly `blocks=2 bad=0`
+
+### Requirement: The regeneration table names the modules the spec's-life diagram is drawn from
+The "How a ticket moves" row of README's "Regenerating this page from scratch" SHALL name `factory/human.py`, `factory/subtickets.py`, `factory/drift.py`, `factory/specstore.py` and `factory/compose.py`.
+
+#### Scenario: The How a ticket moves row names the five modules
+- WHEN `(R=$(grep '^| How a ticket moves |' README.md); echo "row=$(printf '%s\n' "$R" | grep -c .) names=$(printf '%s' "$R" | grep -oF -e factory/human.py -e factory/subtickets.py -e factory/drift.py -e factory/specstore.py -e factory/compose.py | sort -u | grep -c .)")`
+- THEN it prints exactly `row=1 names=5`
+
+## MODIFIED Requirements
+### Requirement: README stays within its line budget
+`README.md` SHALL be at most 1,185 lines long; a later change that needs more room raises this bound in its own spec, where the operator approves it at the gate.
+
+#### Scenario: README is at most 1,185 lines
+- WHEN `(echo "readme=$(wc -l < README.md | awk '{print ($1 <= 1185 ? "within" : "over")}')")`
+- THEN it prints exactly `readme=within`
+
+### Requirement: The documents record the template fix and init's report of a differing agent copy
+`README.md`'s `.claude/agents/factory-*.md` row SHALL say that init reports a copy that differs from its template, and step 1 of "Adopting the factory in a repo" SHALL name `stale_agents`. `docs/changelog.md` SHALL hold one entry for issue #108, numbered without a gap, that names `frontmatter`, `stale_agents` and `Nanobot`. README MUST stay within its 1,185-line budget, and both documents MUST carry no whitespace error.
+
+#### Scenario: README describes init's report of a differing agent copy
+- WHEN `(echo "row=$(grep '^| .\.claude/agents/factory-\*\.md. |' README.md | grep -c 'differs from its template') step=$(sed -n '/^### Adopting the factory in a repo/,/^2\. /p' README.md | tr '\n' ' ' | grep -c 'stale_agents') missing=$(grep '^| .\.claude/agents/factory-\*\.md. |' README.md | grep -c 'when they are missing')")`
+- THEN it prints exactly `row=1 step=1 missing=1`
+
+#### Scenario: The changelog records issue 108 in one entry without a numbering gap
+- WHEN `(awk '/^[0-9]+\. /{n++; if (index($0, n ". ") != 1) bad=1} END{print (bad ? "GAPPED" : "CONTIGUOUS")}' docs/changelog.md; E=$(grep '^[0-9]*\. After issue #108 ' docs/changelog.md); printf '%s\n' "$E" | grep -c .; printf '%s' "$E" | grep -oF -e frontmatter -e stale_agents -e Nanobot | sort -u | grep -c .)`
+- THEN it prints `CONTIGUOUS`, then `1`, then `3`
+
+#### Scenario: README stays within its line budget and both documents pass the whitespace check
+- WHEN `(E=$(git hash-object -t tree /dev/null); echo "readme=$(wc -l < README.md | awk '{print ($1 <= 1185 ? "within" : "over")}')"; git diff --check $E HEAD -- README.md docs/changelog.md >/dev/null; echo "check=$?")`
+- THEN it prints exactly `readme=within`, then `check=0`
+
+### Requirement: The documents record the launch copy and the route back to checks
+`README.md`'s "Starting a run" SHALL tell the operator to launch the copy `factory launch-script` writes. Its "Where a human decides" SHALL list `launch-script` among the commands that are not writes, and its **Unstick** row SHALL name `resolve --to checks`. `docs/design.md` SHALL list `launch-script` in the live-store fence's read-only list and describe the `--to checks` route. `docs/changelog.md` SHALL hold one entry opening `After issue #109`, naming #112, `launch-script` and `--to checks`, numbered without a gap. README SHALL stay within its 1,185-line budget, and the maintained documents SHALL carry no whitespace error.
+
+#### Scenario: The README, the design doc and the changelog describe the launch copy and the route back to checks
+Run from the repository root of the checkout under test.
+- WHEN `(y() { [ "$1" -gt 0 ] && echo yes || echo no; }; R=$(tr '\n' ' ' < README.md | tr -s ' '); echo "start=$(y $(sed -n '/^## Starting a run/,/^### Driving a ticket/p' README.md | grep -c 'factory launch-script')) unstick=$(y $(grep '^| \*\*Unstick\*\*' README.md | grep -c -- '--to checks')) writes=$(y $(printf '%s' "$R" | grep -o 'A write is any command except [^;]*;' | grep -c 'launch-script')) list=$(printf '%s' "$R" | grep -o 'A write is any command except [^;]*;' | grep -c .) fence=$(y $(grep '^\*\*Only the dispatcher writes a live store' docs/design.md | grep -c 'launch-script')) route=$(y $(grep -c -- '--to checks' docs/design.md)) readme=$(wc -l < README.md | awk '{print ($1 <= 1185 ? "within" : "over")}')"; awk '/^[0-9]+\. /{n++; if (index($0, n ". ") != 1) bad=1} END{print (bad ? "GAPPED" : "CONTIGUOUS")}' docs/changelog.md; E=$(grep '^[0-9]*\. After issue #109 ' docs/changelog.md); echo "entries=$(printf '%s\n' "$E" | grep -c .) terms=$(printf '%s' "$E" | grep -oF -e '#112' -e 'launch-script' -e '--to checks' | sort -u | grep -c .)"; E0=$(git hash-object -t tree /dev/null); git diff --check $E0 HEAD -- README.md docs dev .factory/context.md; echo "exit=$?")`
+- THEN it prints exactly `start=yes unstick=yes writes=yes list=1 fence=yes route=yes readme=within`, `CONTIGUOUS`, `entries=1 terms=3`, `exit=0`, one per line
+=== verification.md
+## Acceptance
+- The spec's-life diagram draws every route after the critic → NEW. Today README has no such subsection, and it prints `classes=0 request=no edit=no amend=no respec=no replan=no ruling=no planned=no drift=no truth=no log=no writers=no later=0`.
+- The clerk node names the Workflow-script path, the launch copy and factory drive → NEW. Today the node says none of the three, and it prints `clerk=1 workflow=0 launch=0 drive=0`.
+- Both diagrams of How a ticket moves have balanced quotes and brackets → NEW. Today the section holds one diagram, and it prints `blocks=1 bad=0`. The existing diagram's half of the check (`bad=0`) already holds and must keep holding.
+- The How a ticket moves row names the five modules → NEW. Today the row names none of them, and it prints `row=1 names=0`.
+- README is at most 1,185 lines → REGRESSION. README is 1,109 lines today; the prototype is 1,173.
+- README describes init's report of a differing agent copy → REGRESSION (restated unchanged).
+- The changelog records issue 108 in one entry without a numbering gap → REGRESSION (restated unchanged).
+- README stays within its line budget and both documents pass the whitespace check → REGRESSION.
+- The README, the design doc and the changelog describe the launch copy and the route back to checks → REGRESSION.
+
+## Out-of-scope observations
+- The budget figure is hard-coded in three requirements, so every change that grows README past the bound must restate all three. A later docs change could have the #108 and #109 requirements check "its line budget" through the one budget requirement instead.
+- The existing diagram's subgraph labels, "intake workflow (agents, driven by the script)" and "build workflow (agents, driven by the script)", also describe only the Workflow-script path, since `factory drive` runs the same routes without a script. The ticket names only the clerk node, so they are left alone.
+- `.factory/store/tickets/T-0049.yaml` has `type: null` and a `source:` path under a session scratchpad, as triage noted. Not touched.
+
+STATUS: READY-FOR-CRITIC
+CONFIDENCE: high. Every edge is traced to code at `81482fe`, the prototype parses with Mermaid 11.17.2, and a run of all 80 `harness-docs` scenarios showed only the three budget checks change.
+ESCALATIONS: none
