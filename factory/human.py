@@ -252,9 +252,19 @@ def resolve(a, root, cfg):
         dest = _copy_record(d, "ruling", a.accept_paths)
         t["accepted_paths"] = sorted(set(t.get("accepted_paths") or []) | set(paths))
         move("checks-in-flight", "accept-paths", {"ruling": _rel(root, dest), "head": head, "accepted": paths})
+    elif a.to == "checks":
+        # A store command failed after the implementer finished (issue #112: its `run finish` reply
+        # did not parse): back to its checks at the branch tip, with the round step the build applies.
+        if not (st == "parked" and parked.get("from") == "ready-for-implementer" and reason.startswith("harness-bug:")
+                and store.implemented_since_ready(root, t["id"])):
+            raise Refused("--to checks applies to a sub-ticket parked by a harness-bug from ready-for-implementer after "
+                          f"its implementer run finished READY-FOR-REVIEW; {t['id']} is {st} ({reason or 'no park'})")
+        store.set_head(root, cfg, t)
+        store._apply_round(t, "pr:init", cfg)
+        move("checks-in-flight", "to-checks", {"head": t["head"]})
     elif a.to:
         if a.to != "spec-gate":
-            raise Refused("--to accepts only spec-gate")
+            raise Refused("--to accepts only spec-gate or checks")
         if st != "parked" or t["spec"]["version"] < 1:
             raise Refused(f"--to spec-gate needs a parked ticket with a spec version; {t['id']} is {st}")
         move("awaiting-spec-gate", "to-spec-gate", {})
@@ -283,7 +293,7 @@ def resolve(a, root, cfg):
             raise Refused(f"{t['id']} is already closed")
         move("closed", "close", decided("resolve --close"))
     else:
-        raise Refused("resolve needs one of --answer F | --ruling F | --accept-paths F | --to spec-gate | --redispatch | "
+        raise Refused("resolve needs one of --answer F | --ruling F | --accept-paths F | --to spec-gate|checks | --redispatch | "
                       "--replan F | --close")
 
 

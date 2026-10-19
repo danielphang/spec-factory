@@ -7,14 +7,18 @@ export const meta = {
     { title: 'Close', detail: 'one verifier run on the integration branch against the parent spec; VERIFIED archives, then closes' },
   ],
 }
-// args: { ticket, repo, instance?, state?, target?, integration?, stubs?, inlineRoles? }  — repo/instance/state/stubs/inlineRoles as in intake.js.
+// args: { ticket, repo, instance?, state?, target?, integration?, stubs?, inlineRoles? }  — repo/instance/state/stubs/inlineRoles as in intake.js;
+//   a launch copy takes its instance from the copy.
 // Local-commit stand-in (operator, 2026-10-02): no remote, no CI. The gate suite is run by the
 // verifier and recorded as the ci row; the merge is a local --no-ff merge into the integration
 // branch. The routing is build spec part H, build.js; the join itself is `factory ticket join`.
 
 const TICKET = args.ticket
 const REPO = args.repo
-const INSTANCE = args.instance
+// `factory launch-script build` writes a launch copy of this script with the next line set to the
+// instance's models, round limits and store, the harness revision and the instance: no clerk relays them.
+const LAUNCH = null
+const INSTANCE = LAUNCH ? LAUNCH.instance : args.instance
 let STATE = args.state || null  // set from `factory config` below when not given
 // target = the repo the implementer works in (default: the instance's repo, the parent of its `.factory/`);
 // integration = the branch merged into (default: config integration_branch, else the target's current branch).
@@ -44,8 +48,11 @@ async function clerk(cmd, phase, label) {
     `Report its stdout verbatim (do not reformat, summarize or re-encode it), its exit code, and its stderr verbatim.`,
     { agentType: INLINE ? 'general-purpose' : `${PREFIX}clerk`, model: MODELS.clerk, effort: 'low', phase, label: `clerk: ${label}`, schema: CLERK_SCHEMA })
   if (res === null) return { ok: false, exit: -1, stderr: 'clerk returned nothing' }
-  const lines = String(res.stdout || '').trim().split('\n').filter(l => l.trim())
+  // The whole reply first: a clerk has relayed one JSON value spread over several lines.
+  const text = String(res.stdout || '').trim()
   let parsed = null
+  try { parsed = JSON.parse(text) } catch (e) { parsed = null }
+  const lines = text.split('\n').filter(l => l.trim())
   for (let i = lines.length - 1; i >= 0 && parsed === null; i--) {
     try { parsed = JSON.parse(lines[i]) } catch (e) { parsed = null }
   }
@@ -222,7 +229,10 @@ async function buildOne(st) {
 }
 
 // --- start
-const cfg = await clerk(`${BIN} config`, 'Plan', 'config')
+if (LAUNCH && args.instance && args.instance !== LAUNCH.instance) {
+  return { ticket: TICKET, error: `launch copy written for instance ${LAUNCH.instance}, launched with ${args.instance}` }
+}
+const cfg = LAUNCH ? { ok: true, ...LAUNCH } : await clerk(`${BIN} config`, 'Plan', 'config')
 if (cfg.ok) { MODELS = cfg.models; MAX_PR = cfg.max_rounds.pr; if (!STATE) STATE = cfg.state_dir }
 if (!STATE) return { ticket: TICKET, error: `no store: factory config failed: ${cfg.stderr || cfg.error || ''}` }
 const show = await clerk(`${BIN} ticket show ${TICKET} --json`, 'Plan', 'ticket show')
