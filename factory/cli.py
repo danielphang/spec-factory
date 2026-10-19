@@ -15,7 +15,7 @@ from pathlib import Path
 
 import yaml
 
-from factory import compose, gitops, instance, specstore, status, store, subtickets, tripwire
+from factory import compose, gitops, instance, launch, specstore, status, store, subtickets, tripwire
 from factory.common import _add_spec_version, _rel, fence, out
 from factory.drift import _check_drift, _check_sibling_tests
 from factory.gates import (_parent_close_verified, archive_cmd, merge_cmd, results_record, results_show,
@@ -123,26 +123,6 @@ def ticket_set(a, root, cfg):
     out(res)
 
 
-def _apply_round(t: dict, op: str | None, cfg: dict) -> None:
-    if not op:
-        return
-    m = re.fullmatch(r"(spec|pr):(init|\+1|reset)", op)
-    if not m:
-        raise Refused(f"bad --round {op}; expected spec|pr:init|+1|reset")
-    loop, act = m.groups()
-    cur = t["round"][loop]
-    mx = cfg["max_rounds"][loop]
-    if act == "init":
-        if cur == 0:
-            t["round"][loop] = 1
-    elif act == "+1":
-        if cur + 1 > mx:
-            raise Refused(f"round.{loop} {cur} is at max_rounds {mx}")
-        t["round"][loop] = cur + 1
-    else:
-        t["round"][loop] = 0
-
-
 def _check_edge(cfg: dict, frm: str, to: str) -> None:
     if to not in cfg["routing"].get(frm, []):
         raise Refused(f"no route {frm} → {to}: not a routing edge")
@@ -161,7 +141,7 @@ def ticket_transition(a, root, cfg):
             raise Refused(f"{t['id']} has sub-tickets: it closes after a VERIFIED parent-close run (or `resolve {t['id']} --close`)")
         if specstore.is_active(root) and specstore.change_dir(root, t["id"]).exists():
             raise Refused(f"{t['id']} is verified but not archived: run `archive {t['id']}` first")
-    _apply_round(t, a.round, cfg)
+    store._apply_round(t, a.round, cfg)
     if a.to != "parked":
         t["parked"] = None
     store.record_transition(root, t, a.to, a.by,
@@ -642,7 +622,7 @@ def spec_tasks(a, root, cfg):
 # ----- misc ---------------------------------------------------------------------
 
 def config_cmd(a, root, cfg):
-    out({"ok": True, "models": cfg["models"], "max_rounds": cfg["max_rounds"], "state_dir": str(root)})
+    out({"ok": True, **launch.config_values(root, cfg)})
 
 
 def status_parse(a, root, cfg):
@@ -816,7 +796,9 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--answer")
     p.add_argument("--ruling")
     p.add_argument("--accept-paths", metavar="F", help="a sub-ticket the merge gate refused for undeclared protected paths: accept them under the approved design and return it to its reviewer and verifier")
-    p.add_argument("--to")
+    p.add_argument("--to", metavar="spec-gate|checks",
+                   help="spec-gate: a parked ticket with a spec back to the spec gate; checks: a sub-ticket parked "
+                        "by a harness-bug after its implementer finished READY-FOR-REVIEW back to its checks")
     p.add_argument("--redispatch", action="store_true")
     p.add_argument("--replan", metavar="F", help="a parked parent whose sub-tickets all merged: back to the planner with F as a ruling")
     p.add_argument("--close", action="store_true")
@@ -838,6 +820,10 @@ def build_parser() -> argparse.ArgumentParser:
     p.set_defaults(fn=drive_cmd)
     p = sp.add_parser("config")
     p.set_defaults(fn=config_cmd)
+    p = sp.add_parser("launch-script", help="write a launch copy of a workflow script, the instance's models, "
+                                            "round limits and store in one line; prints its path as `script`")
+    p.add_argument("name", choices=("intake", "build"))
+    p.set_defaults(fn=launch.launch_script)
     st = sp.add_parser("status").add_subparsers(dest="sub", required=True)
     p = st.add_parser("parse")
     p.add_argument("file")
@@ -856,7 +842,7 @@ def build_parser() -> argparse.ArgumentParser:
 # `paths` and `stats` never reach the fence (main() runs them before it); they are listed so this set
 # matches the documents' read-only list.
 READ_ONLY = {("ticket", "show"), ("ticket", "join"), ("results", "show"), ("config", None),
-             ("status", "parse"), ("log", "tail"), ("paths", None), ("stats", None)}
+             ("launch-script", None), ("status", "parse"), ("log", "tail"), ("paths", None), ("stats", None)}
 
 
 def main(argv: list[str] | None = None) -> int:

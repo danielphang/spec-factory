@@ -10,7 +10,8 @@ export const meta = {
 //   repo     = absolute path of the harness checkout (bin/factory lives under it); the clerk runs from it
 //   instance = absolute path of the target repo's `.factory/` (`factory paths` prints it); when given,
 //              every store command runs with FACTORY_INSTANCE=<instance>. Without it the harness walks
-//              up from `repo`, which finds only the harness repo's own instance
+//              up from `repo`, which finds only the harness repo's own instance. A launch copy takes its
+//              instance from the copy, and returns an error when given another
 //   state    = absolute path of the store (FACTORY_STATE); optional: by default the instance's own
 //              store, as `factory config` reports it
 //   stubs = directory of <role>-<n>.md fixture outputs; when set, every role is the factory-stub agent
@@ -21,7 +22,10 @@ export const meta = {
 
 const TICKET = args.ticket
 const REPO = args.repo
-const INSTANCE = args.instance
+// `factory launch-script intake` writes a launch copy of this script with the next line set to the
+// instance's models, round limits and store, the harness revision and the instance: no clerk relays them.
+const LAUNCH = null
+const INSTANCE = LAUNCH ? LAUNCH.instance : args.instance
 let STATE = args.state || null  // set from `factory config` below when not given
 const ENV = ['FACTORY_DISPATCH=1', INSTANCE ? `FACTORY_INSTANCE=${INSTANCE}` : '', STATE ? `FACTORY_STATE=${STATE}` : ''].filter(Boolean).join(' ')
 const BIN = `${ENV ? ENV + ' ' : ''}${REPO}/bin/factory`
@@ -53,8 +57,11 @@ async function clerk(cmd, phase, label) {
     `Report its stdout verbatim (do not reformat, summarize or re-encode it), its exit code, and its stderr verbatim.`,
     { agentType: INLINE ? 'general-purpose' : `${PREFIX}clerk`, model: MODELS.clerk, effort: 'low', phase, label: `clerk: ${label}`, schema: CLERK_SCHEMA })
   if (res === null) return { ok: false, exit: -1, stderr: 'clerk returned nothing' }
-  const lines = String(res.stdout || '').trim().split('\n').filter(l => l.trim())
+  // The whole reply first: a clerk has relayed one JSON value spread over several lines.
+  const text = String(res.stdout || '').trim()
   let parsed = null
+  try { parsed = JSON.parse(text) } catch (e) { parsed = null }
+  const lines = text.split('\n').filter(l => l.trim())
   for (let i = lines.length - 1; i >= 0 && parsed === null; i--) {
     try { parsed = JSON.parse(lines[i]) } catch (e) { parsed = null }
   }
@@ -143,7 +150,10 @@ async function transition(to, roundOp, phase) {
 }
 
 // --- start: read config and the ticket's stored state (resumption starts from what the store holds)
-const cfg = await clerk(`${BIN} config`, 'Triage', 'config')
+if (LAUNCH && args.instance && args.instance !== LAUNCH.instance) {
+  return { ticket: TICKET, error: `launch copy written for instance ${LAUNCH.instance}, launched with ${args.instance}` }
+}
+const cfg = LAUNCH ? { ok: true, ...LAUNCH } : await clerk(`${BIN} config`, 'Triage', 'config')
 if (cfg.ok) { MODELS = cfg.models; MAX = cfg.max_rounds.spec; if (!STATE) STATE = cfg.state_dir }
 if (!STATE) return { ticket: TICKET, error: `no store: factory config failed: ${cfg.stderr || cfg.error || ''}` }
 const show = await clerk(`${BIN} ticket show ${TICKET} --json`, 'Triage', 'ticket show')

@@ -6,7 +6,7 @@ table, and human gates. This page is the system as it runs today; install and us
 
 | | |
 |---|---|
-| **Status** | Current state as of 2026-10-13. Intake works end to end. Build works, in local-only mode. |
+| **Status** | Current state as of 2026-10-19. Intake works end to end. Build works, in local-only mode. |
 | **Reader** | Technical, seeing this project for the first time. Terms specific to this system are defined in "Terms used on this page" or at first use. |
 | **Scope** | What runs now. The intended design and its reasoning are in `docs/design.md`; where the two disagree, this page is right about what runs and the design is amended. |
 | **Internal references** | Ticket ids, issue numbers and who did what are in "Related work and history" near the end. |
@@ -249,9 +249,10 @@ in (`parked.from`).
 Every role call, in either workflow, is the same three store commands around one agent. `run start`
 creates the run directory and its prompt, and refuses unless the ticket is in that role's ready
 state. It takes the role's model from `instance.yaml` and records it. It refuses a `--model` that
-names another model, so a model the clerk misreported parks the ticket before the agent starts.
-`run compose` writes `input.md`. The role agent runs. `run finish` reads the `STATUS:` line
-and records it. Each command goes through the clerk.
+names another model, so a model the clerk misreported parks the ticket before the agent starts. A
+launch copy of a script, written by `factory launch-script` ("Starting a run"), carries the models
+itself, so no clerk relays them. `run compose` writes `input.md`. The role agent runs. `run finish`
+reads the `STATUS:` line and records it. Each command goes through the clerk.
 
 ```mermaid
 sequenceDiagram
@@ -696,19 +697,19 @@ To roll back, with no run in flight and the store committed:
 
 ## Starting a run
 
-A Claude Code session in the target repo asks the runtime where things are:
+A Claude Code session in the target repo has the runtime write a launch copy of the script:
 
 ```
-$RUNTIME/bin/factory paths      # the harness, its entry point, both workflow scripts,
-                                # the running revision, the instance and its store
+$RUNTIME/bin/factory launch-script intake   # or build; prints the copy's path as "script"
 ```
 
-It then calls the Workflow tool with `scriptPath` set to the intake script and args
-`{ticket, repo: <runtime>, instance: <.factory>}`. After the spec gate, the same call with the build
-script. Add `inlineRoles: true` on every target for now: `agents/` ships agent definitions only for
-the intake roles and the planner, so a build without it fails at the first implementer call. "What
-depends on Claude Code" says what it changes. Start the build script after the spec gate; the
-intake script has nothing to do past it.
+A launch copy is the script with the instance's models, round limits and store written into one
+line, so no agent relays them; it names the harness revision and instance it was written for. It
+has not yet run on a real ticket. The session calls the Workflow tool with `scriptPath` set to the
+printed `script` and args `{ticket, repo: <runtime>}`; after the spec gate, the same with `build`.
+Add `inlineRoles: true` on every target for now: `agents/` ships agent definitions only for the
+intake roles and the planner, so a build without it fails at the first implementer call. "What
+depends on Claude Code" says what it changes. The intake script has nothing to do past the gate.
 
 In practice you ask the runner session in plain words, for example "run the intake workflow for
 T-0032 with inlineRoles". The Workflow tool runs in the background; Claude Code's `/workflows` view
@@ -829,9 +830,9 @@ runs from the same runtime. Each target's runner then accepts the new revision b
 A run is in flight from `run start` until `run finish` records its result. While any run on a
 target is in flight, the harness refuses every write to that target's store that lacks this
 marker. A write is any command except `ticket show`, `ticket join`, `results show`, `config`,
-`status parse`, `log tail`, `paths` and `stats`; a command given `--accept-harness` is always a
-write. `factory drive` is exempt from this check and needs no marker, because it is the
-dispatcher; it guards its own ticket instead ("Driving a ticket from a shell with `factory drive`"). The
+`launch-script`, `status parse`, `log tail`, `paths` and `stats`; a command given
+`--accept-harness` is always a write. `factory drive` is exempt from this check and needs no
+marker, because it is the dispatcher; it guards its own ticket instead ("Driving a ticket from a shell with `factory drive`"). The
 workflow scripts already put the marker on their own commands. Put it in front of one command at
 a time:
 
@@ -856,7 +857,7 @@ FACTORY_DISPATCH=1 $RUNTIME/bin/factory run finish <run> --status-override KILLE
 | **File** | `factory ticket new --file <abs path>` | that this request is worth a ticket |
 | **Gate** | `factory approve-spec T-n [--edit F]` · `factory request-changes T-n F` · close | the spec's intent, risk declarations, operator steps, "tests to change"; a gate edit becomes a new spec version and is what gets pinned |
 | **Amend** | `factory spec amend T-n --file F --reason "<line>" --intent unchanged`, on an approved spec before archive, while no run is in flight on the ticket or its sub-tickets | that the approved spec must change after the gate, because another ticket merged first, a checker found a scenario that cannot pass as written, or you changed your mind. Amend only when the Problem, the Decisions and every requirement's statement stay as approved; otherwise restart, by re-spec and re-plan or by close and re-file. `--intent changed` prints what a restart keeps and discards. Later runs receive the amended version, but the amendment moves no ticket: resume it as usual, for example with `--ruling F` |
-| **Unstick** | `factory resolve T-n --answer F` (a role asked a question) · `--ruling F` (a role escalated, an implementer reported itself blocked, the harness blocked an implementer whose sub-ticket lists a test no merged sibling added, the harness parked a sub-ticket for spec drift, or the harness failed to start an implementer run, a `harness-bug: run start implementer:` park; a ruling on the code reviewer's escalation re-runs the checks, with the ruling in their input) · `--accept-paths F` (the merge gate refused a protected path the approved spec does not declare: accept it under the approved design, and the sub-ticket returns to its checks; `--ruling F` sends the sub-ticket back to its implementer instead) · `--redispatch` (re-run the checks on the same commit after an outside fix, or after a checker ended without output twice) · `--replan F` (the final check failed after every sub-ticket merged: back to the planner with a note; new sub-tickets take the next free ids) · `--to spec-gate` · `--close`; with `--answer` or `--close`, add `--decision "<line>"` to also record the answer as a standing decision | an answer, a ruling, an accepted protected path, a re-check, a re-plan, a re-scope, or closing |
+| **Unstick** | `factory resolve T-n --answer F` (a role asked a question) · `--ruling F` (a role escalated, an implementer reported itself blocked, the harness blocked an implementer whose sub-ticket lists a test no merged sibling added, the harness parked a sub-ticket for spec drift, or the harness failed to start an implementer run, a `harness-bug: run start implementer:` park; a ruling on the code reviewer's escalation re-runs the checks, with the ruling in their input) · `--accept-paths F` (the merge gate refused a protected path the approved spec does not declare: accept it under the approved design, and the sub-ticket returns to its checks; `--ruling F` sends the sub-ticket back to its implementer instead) · `--redispatch` (re-run the checks on the same commit after an outside fix, or after a checker ended without output twice) · `--replan F` (the final check failed after every sub-ticket merged: back to the planner with a note; new sub-tickets take the next free ids) · `--to spec-gate` · `--to checks` (a store command failed after the implementer finished, a `harness-bug:` park from ready-for-implementer after an implementer run that finished READY-FOR-REVIEW: the sub-ticket returns to its checks at its branch tip; not yet run on a real ticket) · `--close`; with `--answer` or `--close`, add `--decision "<line>"` to also record the answer as a standing decision | an answer, a ruling, an accepted protected path, a re-check, a re-plan, a re-scope, or closing |
 | **Record** | `factory decision add T-n "<line>"`, at any ticket state, closed included: one dated line in the decision log | that a decision binds later tickets |
 | **Upgrade** | `factory --accept-harness <sha> <command>` | that this target adopts a new harness revision |
 

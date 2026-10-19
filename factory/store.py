@@ -4,6 +4,7 @@ from __future__ import annotations
 import datetime as dt
 import hashlib
 import json
+import re
 import shutil
 from pathlib import Path
 
@@ -99,6 +100,26 @@ def log_lines(root: Path):
         yield from p.read_text(encoding="utf-8").splitlines()
 
 
+def implemented_since_ready(root: Path, tid: str) -> bool:
+    """Whether ticket `tid`'s newest implementer run started after the ticket last entered
+    ready-for-implementer, and finished READY-FOR-REVIEW. Read in the event log's order: its
+    timestamps are whole seconds. A move into the state is any event of the ticket whose `to`, or
+    for `ticket.created` whose `status`, is ready-for-implementer."""
+    entered = started = -1
+    run = status = None
+    for i, ln in enumerate(log_lines(root)):
+        e = json.loads(ln)
+        if e.get("ticket") != tid:
+            continue
+        if e.get("to") == "ready-for-implementer" or (e["event"] == "ticket.created" and e.get("status") == "ready-for-implementer"):
+            entered = i
+        elif e["event"] == "run.started" and e.get("role") == "implementer":
+            started, run, status = i, e.get("run"), None
+        elif e["event"] == "run.finished" and e.get("run") == run:
+            status = e.get("status")
+    return started > entered and status == "READY-FOR-REVIEW"
+
+
 def ticket_path(root: Path, tid: str) -> Path:
     return root / "tickets" / f"{tid}.yaml"
 
@@ -161,6 +182,52 @@ def record_transition(root: Path, t: dict, to: str, by: str, history: dict | Non
     save_ticket(root, t)
     log_event(root, "ticket.transition", ticket=t["id"], **{"from": frm, "to": to, "by": by, **(event or {})})
     return frm
+
+
+def _apply_round(t: dict, op: str | None, cfg: dict) -> None:
+    if not op:
+        return
+    m = re.fullmatch(r"(spec|pr):(init|\+1|reset)", op)
+    if not m:
+        raise Refused(f"bad --round {op}; expected spec|pr:init|+1|reset")
+    loop, act = m.groups()
+    cur = t["round"][loop]
+    mx = cfg["max_rounds"][loop]
+    if act == "init":
+        if cur == 0:
+            t["round"][loop] = 1
+    elif act == "+1":
+        if cur + 1 > mx:
+            raise Refused(f"round.{loop} {cur} is at max_rounds {mx}")
+        t["round"][loop] = cur + 1
+    else:
+        t["round"][loop] = 0
+
+
+def set_head(root: Path, cfg: dict, t: dict) -> bool:
+    """Set ticket `t`'s head to the tip of its branch and save it, as `ticket head` does; returns
+    whether the head changed. A merge-refused ticket whose new head contains the integration branch
+    is cleared of the refusal; one whose head does not is a conflict run that did not merge it in."""
+    from factory import gitops  # local: gitops imports this module
+    if not t.get("branch"):
+        raise Refused(f"{t['id']} has no branch yet")
+    repo = gitops.repo_root()
+    head = gitops.rev(repo, t["branch"])
+    changed = head != t.get("head")
+    t["head"] = head
+    if t.get("merge_refused"):
+        if gitops.head_contains(repo, head, gitops.integration_branch(cfg, repo)):
+            t["merge_refused"] = None
+            t["conflict_runs"] = 0
+        else:
+            # A conflict run that did not merge the integration branch in. Counted once per
+            # implementer run (this command may be called more than once), so the loop is bounded.
+            last = [r for r, _ in ticket_runs(root, t["id"], "implementer", finished=True)]
+            if last and last[-1] != t.get("conflict_counted_run"):
+                t["conflict_runs"] = int(t.get("conflict_runs") or 0) + 1
+                t["conflict_counted_run"] = last[-1]
+    save_ticket(root, t)
+    return changed
 
 
 def park_ticket(root: Path, t: dict, reason: str, outputs: list[str], question: str | None = None,

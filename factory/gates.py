@@ -11,25 +11,8 @@ from factory.store import Refused
 
 def ticket_head(a, root, cfg):
     t = store.load_ticket(root, a.id)
-    if not t.get("branch"):
-        raise Refused(f"{t['id']} has no branch yet")
-    repo = gitops.repo_root()
-    head = gitops.rev(repo, t["branch"])
-    changed = head != t.get("head")
-    t["head"] = head
-    if t.get("merge_refused"):
-        if gitops.head_contains(repo, head, gitops.integration_branch(cfg, repo)):
-            t["merge_refused"] = None
-            t["conflict_runs"] = 0
-        else:
-            # A conflict run that did not merge the integration branch in. Counted once per
-            # implementer run (this command may be called more than once), so the loop is bounded.
-            last = [r for r, _ in store.ticket_runs(root, t["id"], "implementer", finished=True)]
-            if last and last[-1] != t.get("conflict_counted_run"):
-                t["conflict_runs"] = int(t.get("conflict_runs") or 0) + 1
-                t["conflict_counted_run"] = last[-1]
-    store.save_ticket(root, t)
-    out({"ok": True, "id": t["id"], "head": head, "branch": t["branch"], "changed": changed,
+    changed = store.set_head(root, cfg, t)
+    out({"ok": True, "id": t["id"], "head": t["head"], "branch": t["branch"], "changed": changed,
          "merge_refused": t.get("merge_refused"), "conflict_runs": int(t.get("conflict_runs") or 0)})
 
 
