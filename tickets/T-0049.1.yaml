@@ -1,0 +1,49 @@
+id: T-0049.1
+type: sub-ticket
+title: 'README: a diagram of a spec''s life, covering its versions, changes after the gate, and how current
+  truth and the decision log feed later tickets'
+request: requests/T-0049.md
+source: plan:whole-spec
+status: merged
+round:
+  spec: 0
+  pr: 1
+spec:
+  version: 1
+  approved_version: 1
+plan: null
+in_flight: []
+parked: null
+created: '2026-10-19T23:09:08+00:00'
+history:
+- ts: '2026-10-19T23:15:27+00:00'
+  from: ready-for-implementer
+  to: checks-in-flight
+  by: workflow
+  round:
+    spec: 0
+    pr: 1
+- ts: '2026-10-19T23:20:17+00:00'
+  from: checks-in-flight
+  to: ready-for-merge
+  by: workflow
+  round:
+    spec: 0
+    pr: 1
+- ts: '2026-10-19T23:20:17+00:00'
+  from: ready-for-merge
+  to: merged
+  by: merge
+  head: 17fba148d8ecf5475b7aa7ddef46193437886317
+parent: T-0049
+depends_on: []
+parallel_safe: true
+branch: factory/T-0049.1
+head: 17fba148d8ecf5475b7aa7ddef46193437886317
+merge:
+  base_before: 81482fe9967ad8219e44f192032a75c5f2d5c2a9
+  main_after: 1058db59b10fbd6c5d0cd592d8ae28ba4e9637a0
+parent_base: null
+label: whole-spec
+planned_from: 1
+merge_refused: null

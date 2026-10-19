@@ -1,0 +1,94 @@
+diff --git a/README.md b/README.md
+index bd3f277..bbcf389 100644
+--- a/README.md
++++ b/README.md
+@@ -206,7 +206,7 @@ flowchart LR
+   end
+   P2 --> PL
+ 
+-  CL["clerk agent<br/>runs one bin/factory command per record"]:::orch
++  CL["clerk agent · Workflow-script path only<br/>runs one bin/factory command per record, all but<br/>the settings the launch copy carries; factory drive needs none"]:::orch
+   I -. "every record" .-> CL
+   B -. "every record" .-> CL
+   CL --> ST[("the store<br/>tickets · runs · specs · verdicts · log · current truth")]:::store
+@@ -218,6 +218,71 @@ flowchart LR
+ *One ticket from request file to closed record. Orange is the human; grey is the agents; teal is
+ the store. Dashed edges are the bounded loops, the routes to a human, and the clerk relay.*
+ 
++### How a spec changes and feeds later tickets
++
++A spec changes in a few set ways, and every version it passes through stays in the store. Each spec
++writer output becomes the spec's next numbered version, and the critic judges the newest. At the
++gate a human approves a version, the newest by default, or sends it back with notes
++(`request-changes`). An edit made at the gate is approved as the next version. Approval pins one
++version: the build works from it, and the harness copies it into the ticket's change folder,
++`openspec/changes/<id>/`. Every sub-ticket records the version it was planned from as
++`planned_from`. Before a sub-ticket's first implementer run, the drift check parks it when the spec
++no longer matches the integration branch, for example when a test changed there that the spec's
++"Tests to change" does not list. After the gate a human changes the spec in one of two ways.
++`spec amend` pins the next version when the intent is unchanged; the plan stands, and
++`resolve --ruling` resumes the parked sub-ticket. A re-spec, `resolve --to spec-gate`, sends a
++parked parent back to the gate; the plan made from a newer approved version supersedes every
++unmerged sub-ticket of an older one, and its sub-tickets take the next free ids. When the final
++check fails after every sub-ticket merged, `resolve --replan` sends the parent back to the planner.
++On success, `archive` folds the spec's changes into current truth and appends its Decisions lines
++to the decision log, which a human can also add to. A later ticket's triage reads an index of
++current truth and names the capabilities it touches. Its spec writer and critic receive those
++capabilities in full and the decision log; its planner receives the decision log but no current
++truth.
++
++```mermaid
++flowchart LR
++  classDef human fill:#fbf0dc,stroke:#9a5b00,color:#1b2430
++  classDef orch fill:#f3f5f8,stroke:#1b2430,color:#1b2430
++  classDef store fill:#dcefef,stroke:#0f6e73,color:#1b2430
++
++  SW["Spec writer"]:::orch -- "each output is the next version" --> V[("spec versions<br/>v1 · v2 · … · vN")]:::store
++  V --> SC["Spec critic"]:::orch
++  SC -. "revise · once" .-> SW
++  SC -- approve --> G{"Spec gate"}:::human
++  G -. "request-changes · notes" .-> SW
++  G -- "approve-spec pins vN · --edit F pins F as vN+1" --> CF[("change folder<br/>the pinned version")]:::store
++  CF --> PL["Planner, or the whole spec<br/>as one sub-ticket"]:::orch
++  PL -- "planned_from = the pinned version<br/>supersedes unmerged sub-tickets of an older one" --> SB[("sub-tickets")]:::store
++  SB --> DR["drift check<br/>before a first implementer run"]:::store
++  DR -- "no drift" --> BL["implementer · checks · merge"]:::orch
++  BL -- "every sub-ticket merged" --> PC["Verifier<br/>whole spec"]:::orch
++  PK{"parked ticket"}:::human
++  DR -. "BLOCKED: spec drift" .-> PK
++  PC -. "fails" .-> PK
++  PK -- "spec amend · intent unchanged" --> AM[("next version pinned<br/>plan kept")]:::store
++  AM -- "resolve --ruling F" --> BL
++  PK -- "resolve --to spec-gate · re-spec" --> G
++  PK -- "resolve --replan F · every sub-ticket merged" --> PL
++  PC -- verified --> AR["archive"]:::store
++  AR -- "folds the changes" --> CT[("current truth<br/>one spec per capability")]:::store
++  AR -- "appends the Decisions lines" --> DL[("decision log<br/>decisions.md")]:::store
++  HD["a human<br/>decision add · resolve --decision"]:::human -- "appends a line" --> DL
++
++  subgraph L["a later ticket"]
++    direction LR
++    TR2["Triage"]:::orch -- "Capabilities: line" --> SW2["Spec writer · critic"]:::orch
++    PL2["Planner"]:::orch
++  end
++  CT -- "index of every capability" --> TR2
++  CT -- "named capabilities in full · index of the rest" --> SW2
++  DL -- "the whole log" --> SW2
++  DL -- "the whole log · no current truth" --> PL2
++```
++
++*A spec's life, from its first version to the current truth later tickets read. Colours as above;
++dashed edges are the bounded loops and the routes to a human.*
++
+ ### Ticket states
+ 
+ A ticket's state is one field in its file, `tickets/<id>.yaml`. The instance's routing table
+@@ -1093,7 +1158,7 @@ each section comes from:
+ |---|---|---|
+ | Roles, models | `.factory/instance.yaml` (`models`), `docs/prompts/` | read the files |
+ | Terms, routing, states | `instance.yaml` (`routing`, `ready_state`); `factory/cli.py` (`ticket transition` guards) | read the files |
+-| How a ticket moves | `factory/workflows/intake.js`, `build.js` (the `phase(...)` blocks and the `STATUS` routes); `factory/gates.py` `ticket_join`, `merge_cmd`, `archive_cmd` | read the code; confirm against the last closed ticket's run log in `.factory/store/log/` |
++| How a ticket moves | `factory/workflows/intake.js`, `build.js` (the `phase(...)` blocks and the `STATUS` routes); `factory/gates.py` `ticket_join`, `merge_cmd`, `archive_cmd`; for the spec's life, `factory/human.py` (`approve_spec`, `request_changes`, `spec_amend`, `resolve`), `factory/subtickets.py` `split_plan`, `factory/drift.py` `_check_drift`, `factory/specstore.py` `archive` and `factory/compose.py` `compose` (each role's inputs) | read the code; confirm against the last closed ticket's run log in `.factory/store/log/` |
+ | Where it runs, lock | `factory/instance.py` (`find`, `guard`), `instance.yaml` (`harness`, `state_dir`) | `~/dev/spec-factory-harness/bin/factory paths` (its `harness_revision` is the last commit touching harness code, not the runtime's HEAD); `cat .factory/harness.lock`, which must equal it |
+ | Where a human decides | `factory/cli.py` `build_parser()`: the `approve-spec`, `request-changes`, `resolve`, `--accept-harness` arguments and the `decision` subparser | `~/dev/spec-factory-harness/bin/factory --help`; `… resolve --help`; `… decision add --help` (the runtime, not the dev checkout) |
+ | Built / not built | `tests/factory/` (what has a test is built); `dev/issues.md` (what is named and open) | `uv run --frozen pytest -q -p no:cacheprovider tests/factory`; `gh issue list --state open` |

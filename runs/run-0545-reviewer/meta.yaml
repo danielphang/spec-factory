@@ -1,0 +1,55 @@
+run_id: run-0545-reviewer
+role: reviewer
+ticket: T-0049.1
+model: fable
+round: 1
+spec_version: 1
+started: '2026-10-19T23:15:27+00:00'
+finished: '2026-10-19T23:16:30+00:00'
+wall_s: 63
+status: APPROVE
+input_sources:
+- specs/T-0049.1/subticket.md
+- specs/T-0049/v1.md
+- runs/run-0544-implementer/output.md
+- runs/run-0545-reviewer/diff.patch
+gate_skipped: []
+environment_files: []
+branch: factory/T-0049.1
+base: 81482fe9967ad8219e44f192032a75c5f2d5c2a9
+head: 17fba148d8ecf5475b7aa7ddef46193437886317
+worktree: /Users/dphang/dev/spec-factory/.factory/store/runs/run-0545-reviewer/wt
+confidence: high. The diff is one documentation file, the diagram text is byte-identical to the approved
+  spec's, and the two prose deviations are verified against the cited code.
+escalations: []
+escalations_note: null
+claude:
+  session_id: 20e050b1-024e-498d-bd25-82dae07b21e8
+  total_cost_usd: 4.083212250000001
+  num_turns: 8
+  usage:
+    input_tokens: 226
+    cache_creation_input_tokens: 178242
+    cache_read_input_tokens: 1117849
+    output_tokens: 4733
+    output_tokens_details:
+      thinking_tokens: 859
+    server_tool_use:
+      web_search_requests: 0
+      web_fetch_requests: 0
+    service_tier: standard
+    cache_creation:
+      ephemeral_1h_input_tokens: 178242
+      ephemeral_5m_input_tokens: 0
+    inference_geo: global
+    iterations:
+    - input_tokens: 32
+      output_tokens: 1154
+      cache_read_input_tokens: 175192
+      cache_creation_input_tokens: 3050
+      cache_creation:
+        ephemeral_5m_input_tokens: 0
+        ephemeral_1h_input_tokens: 3050
+      type: message
+    speed: standard
+    fallback_credit: null

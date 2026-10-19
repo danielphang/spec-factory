@@ -1,0 +1,57 @@
+run_id: run-0546-verifier
+role: verifier
+ticket: T-0049.1
+model: opus
+round: 1
+spec_version: 1
+started: '2026-10-19T23:15:28+00:00'
+finished: '2026-10-19T23:20:17+00:00'
+wall_s: 289
+status: VERIFIED
+input_sources:
+- specs/T-0049.1/subticket.md
+- specs/T-0049/v1.md
+- runs/run-0544-implementer/output.md
+- runs/run-0546-verifier/diff.patch
+gate_skipped: []
+environment_files: []
+branch: factory/T-0049.1
+base: 81482fe9967ad8219e44f192032a75c5f2d5c2a9
+head: 17fba148d8ecf5475b7aa7ddef46193437886317
+worktree: /Users/dphang/dev/spec-factory/.factory/store/runs/run-0546-verifier/wt
+confidence: high. All nine commands are verbatim from the spec and gave the expected output in two shells,
+  all four NEW criteria fail on the base exactly as verification.md predicts, both gates pass, and mutation
+  probes show the structural checks catch real breakage. The only unverified part is the GitHub render,
+  which the spec assigns to the operator.
+escalations: []
+escalations_note: null
+claude:
+  session_id: f1c72c8a-32b3-45ba-8741-f856e565fd19
+  total_cost_usd: 2.1470434
+  num_turns: 13
+  usage:
+    input_tokens: 26
+    cache_creation_input_tokens: 186706
+    cache_read_input_tokens: 2076257
+    output_tokens: 11902
+    output_tokens_details:
+      thinking_tokens: 1321
+    server_tool_use:
+      web_search_requests: 0
+      web_fetch_requests: 0
+    service_tier: standard
+    cache_creation:
+      ephemeral_1h_input_tokens: 186706
+      ephemeral_5m_input_tokens: 0
+    inference_geo: global
+    iterations:
+    - input_tokens: 2
+      output_tokens: 2390
+      cache_read_input_tokens: 184101
+      cache_creation_input_tokens: 2605
+      cache_creation:
+        ephemeral_5m_input_tokens: 0
+        ephemeral_1h_input_tokens: 2605
+      type: message
+    speed: standard
+    fallback_credit: null

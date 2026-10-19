@@ -50,3 +50,7 @@ Evidence: `factory/workflows/build.js:18-20` says the launch copy carries the mo
 Suggested fix: "relays every record; the settings come from the launch copy, and factory drive needs no clerk" or similar; the scenario checks only the three phrases, so the wording is free.
 
 No blocking findings. The change is one README edit of about 70 lines, every edge is grounded in code I spot-checked, the acceptance commands fail today for the stated reasons and pass on a prototype built exactly as specified, both diagrams parse, and the only decision with weight (the budget) is explicit and goes to the operator at this gate.
+
+## Verifier results
+
+17fba148d8ecf5475b7aa7ddef46193437886317 · T-0049.1 · VERIFIED · run-0546-verifier
