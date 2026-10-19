@@ -116,3 +116,7 @@ Suggested fix: Move the gloss into step 1: "Claude Code's auto-mode classifier, 
 - [SHOULD-FIX] README budget → RESOLVED. Part F names the lines each edit replaces and the net growth (at most one line); Decision 13 records the rejected alternative; the implementer is told to stop and report rather than cut or exceed. The ranges and the 13-line count check out.
 - [NIT] Unstick row and "not yet run on a real ticket" → RESOLVED.
 - [NIT] `t0047-moved.py` counts this change → RESOLVED, in Risk.
+
+## Verifier results
+
+e12ca713eb3b8594445773d44e87790fd480faa1 · T-0054.1 · VERIFIED · run-0540-verifier

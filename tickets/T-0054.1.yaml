@@ -1,0 +1,50 @@
+id: T-0054.1
+type: sub-ticket
+title: 'Workflow builds stop parking on the clerk''s relays: the harness writes each role''s model into
+  a launch copy of the script, the scripts parse a reformatted reply, and `resolve` has a route back from
+  a park after a finished implementer (#109, #112)'
+request: requests/T-0054.md
+source: plan:whole-spec
+status: merged
+round:
+  spec: 0
+  pr: 1
+spec:
+  version: 3
+  approved_version: 3
+plan: null
+in_flight: []
+parked: null
+created: '2026-10-19T07:00:02+00:00'
+history:
+- ts: '2026-10-19T07:20:33+00:00'
+  from: ready-for-implementer
+  to: checks-in-flight
+  by: workflow
+  round:
+    spec: 0
+    pr: 1
+- ts: '2026-10-19T07:31:18+00:00'
+  from: checks-in-flight
+  to: ready-for-merge
+  by: workflow
+  round:
+    spec: 0
+    pr: 1
+- ts: '2026-10-19T07:31:19+00:00'
+  from: ready-for-merge
+  to: merged
+  by: merge
+  head: e12ca713eb3b8594445773d44e87790fd480faa1
+parent: T-0054
+depends_on: []
+parallel_safe: true
+branch: factory/T-0054.1
+head: e12ca713eb3b8594445773d44e87790fd480faa1
+merge:
+  base_before: 308d03857bced6dc4f33e62812d83c52fd73e4b2
+  main_after: 4c61f8482fd307cb3d4dea212ba545cc22a9f2b6
+parent_base: null
+label: whole-spec
+planned_from: 3
+merge_refused: null

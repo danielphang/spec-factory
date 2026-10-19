@@ -1,0 +1,49 @@
+Commit: e12ca713eb3b8594445773d44e87790fd480faa1
+
+How I ran it. A script (`scratch/extract.py`) copied the 15 WHEN commands verbatim out of the parent spec v3 in my input. It also copied the four fixture (GIVEN) blocks: `t0054-wf.mjs`/`t0054-impl.sh` and `t0024-*` from v3, `t0023-parent.sh` from the current-truth `openspec/specs/human-resolution/spec.md`, and `t0032-checks.sh` from `openspec/specs/build-dispatch/spec.md`. `scratch/run.sh` sources the GIVEN blocks once into a fresh `TMPDIR` under scratch. It then runs each WHEN with GNU bash 5.3 from the checkout's root, inside the HOME wrapper, after `uv sync --frozen`. The PR side ran in `wt` at e12ca71. The base side ran in a detached worktree of 308d038 at `scratch/base`, which I removed afterwards. Logs: `scratch/pr.log`, `scratch/base.log`, `scratch/pr15.log`, `scratch/base15.log`, `scratch/gate2.log`.
+
+Per criterion:
+1. NEW | A build launched from its launch copy runs the verifier on the instance's model while the clerk retypes it, and the script itself still parks | base: `Error: ENOENT: no such file or directory, open 'no launch copy'` / `copy: checks-in-flight runs=` / then the script half's 3 lines | PR: `agent reviewer T-0001.1 model=fable` / `agent verifier T-0001.1 model=opus` / `copy: merged runs=reviewer fable verifier opus` / `agent reviewer T-0001.1 model=fable` / `park T-0001.1: harness-bug: run start verifier: model fable refused for verifier: the instance names opus` / `script: parked runs=reviewer fable`, exactly the THEN | PASS
+2. NEW | An intake launched from its launch copy runs triage on the instance's model while the clerk retypes it | base: `Error: ENOENT …` / `ready-for-triage runs=` | PR: `agent triage T-0001 model=opus` / `closed runs=triage=opus` | PASS
+3. NEW | Each launch copy is a one-line change to its script, in a read-only file in a directory of its own, naming the harness revision and the instance | base: `intake: where=none changed=206 revision=0 instance=0 writable=no` / `build: where=none changed=310 …` / `checkout=unchanged store=unchanged dirs=0` | PR: `intake: where=own-dir changed=2 revision=1 instance=1 writable=no` / `build: where=own-dir changed=2 revision=1 instance=1 writable=no` / `checkout=unchanged store=unchanged dirs=2` | PASS (under bash 5.3 and zsh; see Escalations for /bin/sh)
+4. NEW | launch-script is refused with config's error where the instance has not accepted the running harness, and writes no copy | base: `config=2 launch=2 same=no lock=0 copies=0` | PR: `config=2 launch=2 same=yes lock=1 copies=0` | PASS
+5. NEW | launch-script removes a launch copy over an hour old and keeps a recent one and a directory that holds no launch copy | base: `old=gone other=kept fresh=gone new=none dirs=1` | PR: `old=gone other=kept fresh=kept new=written dirs=3` | PASS
+6. NEW | A launch copy launched for another instance returns an error naming its own and runs nothing | base: `refused=0 agents=0 checks-in-flight runs=0` | PR: `refused=1 agents=0 checks-in-flight runs=0` | PASS
+7. NEW | A build and an intake whose every store reply is relayed pretty-printed reach the ends they reach with one-line replies | base: `result: no JSON on stdout` / `build: T-0001.1 ready-for-implementer` / `result: no JSON on stdout` / `intake: T-0002 ready-for-triage` | PR: `agent implementer T-0001.1 model=opus` / `agent reviewer T-0001.1 model=fable` / `agent verifier T-0001.1 model=opus` / `build: T-0001.1 merged` / `agent triage T-0002 model=opus` / `intake: T-0002 closed` | PASS
+8. NEW | A sub-ticket parked when its implementer's finish did not parse returns to its checks at the branch tip, and the build then merges it | base: `resolve=2 parked head=other pr=0` / `parked implementer_runs=1` | PR: `resolve=0 checks-in-flight head=tip pr=1` / `agent reviewer T-0001.1 model=fable` / `agent verifier T-0001.1 model=opus` / `merged implementer_runs=1` | PASS
+9. NEW | The route back to checks is refused after a BLOCKED run, after a revise, from the checks, on a tripwire park and on a ticket that is not parked | base: all five lines `exit=2 refused=0 …` | PR: `blocked: exit=2 refused=1 parked store=unchanged`, `revised: …`, `checks: …`, `tripwire: …` (same form), `unparked: exit=2 refused=1 ready-for-implementer store=unchanged` | PASS
+10. REGRESSION | Unmarked writes from inside the target are refused while a run is in flight, init included | base: not run | PR: `init=2 new=2 transition=2 decision=2 store=unchanged agents=none` | PASS
+11. REGRESSION | The refusal names the throwaway store and not the marker | base: not run | PR: `rule=1 state=1 marker=0 json=1 inside=1` | PASS
+12. REGRESSION | A harness acceptance is refused while a run is in flight | base: not run | PR: `accept=2 store=unchanged` | PASS
+13. NEW | A launch copy is written unmarked while a run is in flight, and the target is unchanged | base: `launch=2 new=2 copies=0 store=unchanged` | PR: `launch=0 new=2 copies=1 store=unchanged` | PASS
+14. NEW | The README, the design doc and the changelog describe the launch copy and the route back to checks | base: `start=no unstick=no writes=no list=1 fence=no route=no readme=within` / `CONTIGUOUS` / `entries=0 terms=0` / `exit=0` | PR: `start=yes unstick=yes writes=yes list=1 fence=yes route=yes readme=within` / `CONTIGUOUS` / `entries=1 terms=3` / `exit=0`. README is 1,109 lines | PASS
+15. NEW | The suite passes, no existing test changes, and every test file this change adds fails on the base | base: `594 passed in 104.01s` / `changed=0 added=0`, with no file lines, as verification.md predicts, because there the merge base is the base itself | PR: `615 passed in 112.28s` / `changed=0 added=3` / `tests/factory/test_launch_script.py on the base: 4 failed, 1 error` / `tests/factory/test_resolve_to_checks.py on the base: 8 failed` / `tests/factory/test_workflow_launch_copy.py on the base: 7 failed, 1 passed`. Every summary includes `failed` | PASS
+
+Every base result matches what the spec's verification.md records for 308d038.
+
+Gate suite: PASS
+  `git diff --check main...HEAD` (wrapped, from `wt`): no output, exit 0.
+  `uv run --frozen pytest -q -p no:cacheprovider tests/factory` (wrapped, from `wt`): `615 passed in 116.69s (0:01:56)`, exit 0. Afterwards the system temporary directory held no `factory-launch-*` directory.
+
+Probes:
+- `clerk()`: I ran each script, PR and base, with a stub clerk that returns a variant `factory config` reply (`scratch/probe/clerk-probe.mjs`). Pretty-printed JSON, and pretty-printed JSON with CRLF line ends, get past config on the PR and fail on the base. One-line JSON followed by a log line still gets past config on both, so the old last-line scan is kept. A warning line before pretty JSON, a markdown-fenced pretty JSON, and a bare scalar `42` fail on both with `no JSON on stdout` or `no store`. The parse handles any one JSON value spread over lines, not just the tested replies. Mixed text is not covered, and the spec does not ask for it. → OK
+- `resolve --to checks` on cases outside the scenario list (`scratch/probe-resolve.sh`). Each case below is refused with exit 2, the `--to checks applies to …` error, and the tickets and log byte-identical:
+  - a harness-bug park with no implementer run;
+  - a park while an implementer run is still in flight;
+  - a READY-FOR-REVIEW run followed by a newer implementer run that is still in flight;
+  - a READY-FOR-REVIEW run followed by a BLOCKED run;
+  - the parent ticket T-0001 parked with a harness-bug reason;
+  - a second `--to checks` after a successful one.
+  The check reads the newest implementer run, not any finished run. → OK
+- `launch-script` input and cleanup boundaries:
+  - The invalid name `foo` gets argparse's exit 2, and no name gets exit 2 with no copy written.
+  - Cleanup removes an old intake copy.
+  - Cleanup keeps three directories: an old copy with a subdirectory added, an old empty `factory-launch-empty`, and an old `factory-launch-link` symlink to an old launch copy elsewhere. Both the symlink and its target survive.
+  - The written copy is mode `-r--r--r--`.
+  → OK
+- `run start` and `config` print one stdout line each, so the new whole-text parse is the path a pretty-printing clerk takes on those replies. → OK
+
+STATUS: VERIFIED
+CONFIDENCE: high. All 15 acceptance commands print their THEN on e12ca71, every NEW one printed verification.md's recorded failure on 308d038, both gates pass, and the probes show the parse and the route are general, not special-cased. The Workflow tool itself is untested, as the spec's Risk says.
+ESCALATIONS:
+- Scenario 3 ("Each launch copy is a one-line change …") depends on the shell. Under macOS `/bin/sh` (bash 3.2.57) the `$(case "$C" in … ) … esac)` inside it fails with `syntax error near unexpected token 'newline'` and prints `where= echo own-dir;; …`, whatever the code does. Under bash 5.3 and zsh it prints its THEN, and `sh -n` does not catch the error. The command runs as written in the operator's shell, so I did not report a SPEC-DEFECT. Once this scenario joins current truth, a later verifier that runs it under `/bin/sh` will see a failure the code did not cause. Rewriting it as `case … in (pattern)` with the leading parenthesis, or a `[ ]` test, would make it portable. That is the operator's call.

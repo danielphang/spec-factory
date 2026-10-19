@@ -5,14 +5,14 @@ title: 'Workflow builds stop parking on the clerk''s relays: the harness writes 
   a park after a finished implementer (#109, #112)'
 request: requests/T-0054.md
 source: /private/tmp/claude-501/-Users-dphang-dev-nanobot/c69bfd1d-97a6-43e3-9d5a-a517c28d382c/scratchpad/req-109-112.md
-status: ready-for-planner
+status: closed
 round:
   spec: 2
   pr: 0
 spec:
   version: 3
   approved_version: 3
-plan: null
+plan: plans/T-0054.md
 in_flight: []
 parked: null
 created: '2026-10-19T05:14:33+00:00'
@@ -57,6 +57,25 @@ history:
   to: ready-for-planner
   by: dphang
   approved_version: 3
+- ts: '2026-10-19T07:00:02+00:00'
+  from: ready-for-planner
+  to: planned
+  by: workflow
+  round:
+    spec: 2
+    pr: 0
+- ts: '2026-10-19T07:31:19+00:00'
+  from: planned
+  to: ready-for-parent-verify
+  by: parent-check
+- ts: '2026-10-19T07:31:20+00:00'
+  from: ready-for-parent-verify
+  to: closed
+  by: workflow
+  round:
+    spec: 2
+    pr: 0
+  verified_by: run-0540-verifier
 parent: null
 depends_on: []
 parallel_safe: true
@@ -65,4 +84,4 @@ head: null
 merge:
   base_before: null
   main_after: null
-parent_base: null
+parent_base: 308d03857bced6dc4f33e62812d83c52fd73e4b2

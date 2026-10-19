@@ -3,7 +3,7 @@
 ## Requirements
 
 ### Requirement: Unmarked writes to a live store are refused while a role run is in flight there
-While any run is in flight on an instance's own store, every `factory` command on that store except `ticket show`, `ticket join`, `results show`, `config`, `status parse`, `log tail`, `paths`, `drive` and `stats`, none of them given `--accept-harness`, MUST be refused with exit 2, writing nothing to the store, the instance or the repository, unless its environment has `FACTORY_DISPATCH=1`; the refusal SHALL name a throwaway `FACTORY_STATE` and SHALL NOT name the marker.
+While any run is in flight on an instance's own store, every `factory` command on that store except `ticket show`, `ticket join`, `results show`, `config`, `launch-script`, `status parse`, `log tail`, `paths`, `drive` and `stats`, none of them given `--accept-harness`, MUST be refused with exit 2, writing nothing to the store, the instance or the repository, unless its environment has `FACTORY_DISPATCH=1`; the refusal SHALL name a throwaway `FACTORY_STATE` and SHALL NOT name the marker.
 
 #### Scenario: Unmarked writes from inside the target are refused while a run is in flight, init included
 Run every command in this change from the repository root of the checkout under test, after `uv sync --frozen`, with `node` on `PATH`. Each WHEN runs in a subshell.
@@ -79,6 +79,11 @@ Needs the GIVEN block of "Unmarked writes from inside the target are refused whi
 Needs the GIVEN block of "Unmarked writes from inside the target are refused while a run is in flight, init included" run once.
 - WHEN `(. ${TMPDIR:-/tmp}/t0024-inflight.sh && A=$(cat $T/tgt/.factory/harness.lock) && S0=$(snap); $B --accept-harness $A ticket show T-0001 >/dev/null 2>&1; echo "accept=$? store=$([ "$(snap)" = "$S0" ] && echo unchanged || echo changed)")`
 - THEN it prints exactly `accept=2 store=unchanged`
+
+#### Scenario: A launch copy is written unmarked while a run is in flight, and the target is unchanged
+Needs the GIVEN block of "Unmarked writes from inside the target are refused while a run is in flight, init included" run once. The unmarked `ticket new` beside it shows the fence is up.
+- WHEN `(. ${TMPDIR:-/tmp}/t0024-inflight.sh && mkdir $T/tmp && S0=$(snap); TMPDIR=$T/tmp $B launch-script build >/dev/null 2>&1; l=$?; $B ticket new --file $T/req2.md >/dev/null 2>&1; n=$?; echo "launch=$l new=$n copies=$(ls $T/tmp | grep -c '^factory-launch-') store=$([ "$(snap)" = "$S0" ] && echo unchanged || echo changed)")`
+- THEN it prints exactly `launch=0 new=2 copies=1 store=unchanged`
 
 ### Requirement: Writes from inside a store's run directories or code checkouts are refused, marked or not
 Every `factory` command on an instance's own store except the read-only list above MUST be refused with exit 2, writing nothing, when the caller's directory lies under that store's `runs/` or `worktrees/`, whether or not its environment has `FACTORY_DISPATCH=1` and whether or not any run is in flight.

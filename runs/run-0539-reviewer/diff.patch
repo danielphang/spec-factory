@@ -1,0 +1,1039 @@
+diff --git a/README.md b/README.md
+index 777784b..65ec168 100644
+--- a/README.md
++++ b/README.md
+@@ -6,7 +6,7 @@ table, and human gates. This page is the system as it runs today; install and us
+ 
+ | | |
+ |---|---|
+-| **Status** | Current state as of 2026-10-13. Intake works end to end. Build works, in local-only mode. |
++| **Status** | Current state as of 2026-10-19. Intake works end to end. Build works, in local-only mode. |
+ | **Reader** | Technical, seeing this project for the first time. Terms specific to this system are defined in "Terms used on this page" or at first use. |
+ | **Scope** | What runs now. The intended design and its reasoning are in `docs/design.md`; where the two disagree, this page is right about what runs and the design is amended. |
+ | **Internal references** | Ticket ids, issue numbers and who did what are in "Related work and history" near the end. |
+@@ -249,9 +249,10 @@ in (`parked.from`).
+ Every role call, in either workflow, is the same three store commands around one agent. `run start`
+ creates the run directory and its prompt, and refuses unless the ticket is in that role's ready
+ state. It takes the role's model from `instance.yaml` and records it. It refuses a `--model` that
+-names another model, so a model the clerk misreported parks the ticket before the agent starts.
+-`run compose` writes `input.md`. The role agent runs. `run finish` reads the `STATUS:` line
+-and records it. Each command goes through the clerk.
++names another model, so a model the clerk misreported parks the ticket before the agent starts. A
++launch copy of a script, written by `factory launch-script` ("Starting a run"), carries the models
++itself, so no clerk relays them. `run compose` writes `input.md`. The role agent runs. `run finish`
++reads the `STATUS:` line and records it. Each command goes through the clerk.
+ 
+ ```mermaid
+ sequenceDiagram
+@@ -696,19 +697,19 @@ To roll back, with no run in flight and the store committed:
+ 
+ ## Starting a run
+ 
+-A Claude Code session in the target repo asks the runtime where things are:
++A Claude Code session in the target repo has the runtime write a launch copy of the script:
+ 
+ ```
+-$RUNTIME/bin/factory paths      # the harness, its entry point, both workflow scripts,
+-                                # the running revision, the instance and its store
++$RUNTIME/bin/factory launch-script intake   # or build; prints the copy's path as "script"
+ ```
+ 
+-It then calls the Workflow tool with `scriptPath` set to the intake script and args
+-`{ticket, repo: <runtime>, instance: <.factory>}`. After the spec gate, the same call with the build
+-script. Add `inlineRoles: true` on every target for now: `agents/` ships agent definitions only for
+-the intake roles and the planner, so a build without it fails at the first implementer call. "What
+-depends on Claude Code" says what it changes. Start the build script after the spec gate; the
+-intake script has nothing to do past it.
++A launch copy is the script with the instance's models, round limits and store written into one
++line, so no agent relays them; it names the harness revision and instance it was written for. It
++has not yet run on a real ticket. The session calls the Workflow tool with `scriptPath` set to the
++printed `script` and args `{ticket, repo: <runtime>}`; after the spec gate, the same with `build`.
++Add `inlineRoles: true` on every target for now: `agents/` ships agent definitions only for the
++intake roles and the planner, so a build without it fails at the first implementer call. "What
++depends on Claude Code" says what it changes. The intake script has nothing to do past the gate.
+ 
+ In practice you ask the runner session in plain words, for example "run the intake workflow for
+ T-0032 with inlineRoles". The Workflow tool runs in the background; Claude Code's `/workflows` view
+@@ -829,9 +830,9 @@ runs from the same runtime. Each target's runner then accepts the new revision b
+ A run is in flight from `run start` until `run finish` records its result. While any run on a
+ target is in flight, the harness refuses every write to that target's store that lacks this
+ marker. A write is any command except `ticket show`, `ticket join`, `results show`, `config`,
+-`status parse`, `log tail`, `paths` and `stats`; a command given `--accept-harness` is always a
+-write. `factory drive` is exempt from this check and needs no marker, because it is the
+-dispatcher; it guards its own ticket instead ("Driving a ticket from a shell with `factory drive`"). The
++`launch-script`, `status parse`, `log tail`, `paths` and `stats`; a command given
++`--accept-harness` is always a write. `factory drive` is exempt from this check and needs no
++marker, because it is the dispatcher; it guards its own ticket instead ("Driving a ticket from a shell with `factory drive`"). The
+ workflow scripts already put the marker on their own commands. Put it in front of one command at
+ a time:
+ 
+@@ -856,7 +857,7 @@ FACTORY_DISPATCH=1 $RUNTIME/bin/factory run finish <run> --status-override KILLE
+ | **File** | `factory ticket new --file <abs path>` | that this request is worth a ticket |
+ | **Gate** | `factory approve-spec T-n [--edit F]` · `factory request-changes T-n F` · close | the spec's intent, risk declarations, operator steps, "tests to change"; a gate edit becomes a new spec version and is what gets pinned |
+ | **Amend** | `factory spec amend T-n --file F --reason "<line>" --intent unchanged`, on an approved spec before archive, while no run is in flight on the ticket or its sub-tickets | that the approved spec must change after the gate, because another ticket merged first, a checker found a scenario that cannot pass as written, or you changed your mind. Amend only when the Problem, the Decisions and every requirement's statement stay as approved; otherwise restart, by re-spec and re-plan or by close and re-file. `--intent changed` prints what a restart keeps and discards. Later runs receive the amended version, but the amendment moves no ticket: resume it as usual, for example with `--ruling F` |
+-| **Unstick** | `factory resolve T-n --answer F` (a role asked a question) · `--ruling F` (a role escalated, an implementer reported itself blocked, the harness blocked an implementer whose sub-ticket lists a test no merged sibling added, the harness parked a sub-ticket for spec drift, or the harness failed to start an implementer run, a `harness-bug: run start implementer:` park; a ruling on the code reviewer's escalation re-runs the checks, with the ruling in their input) · `--accept-paths F` (the merge gate refused a protected path the approved spec does not declare: accept it under the approved design, and the sub-ticket returns to its checks; `--ruling F` sends the sub-ticket back to its implementer instead) · `--redispatch` (re-run the checks on the same commit after an outside fix, or after a checker ended without output twice) · `--replan F` (the final check failed after every sub-ticket merged: back to the planner with a note; new sub-tickets take the next free ids) · `--to spec-gate` · `--close`; with `--answer` or `--close`, add `--decision "<line>"` to also record the answer as a standing decision | an answer, a ruling, an accepted protected path, a re-check, a re-plan, a re-scope, or closing |
++| **Unstick** | `factory resolve T-n --answer F` (a role asked a question) · `--ruling F` (a role escalated, an implementer reported itself blocked, the harness blocked an implementer whose sub-ticket lists a test no merged sibling added, the harness parked a sub-ticket for spec drift, or the harness failed to start an implementer run, a `harness-bug: run start implementer:` park; a ruling on the code reviewer's escalation re-runs the checks, with the ruling in their input) · `--accept-paths F` (the merge gate refused a protected path the approved spec does not declare: accept it under the approved design, and the sub-ticket returns to its checks; `--ruling F` sends the sub-ticket back to its implementer instead) · `--redispatch` (re-run the checks on the same commit after an outside fix, or after a checker ended without output twice) · `--replan F` (the final check failed after every sub-ticket merged: back to the planner with a note; new sub-tickets take the next free ids) · `--to spec-gate` · `--to checks` (a store command failed after the implementer finished, a `harness-bug:` park from ready-for-implementer after an implementer run that finished READY-FOR-REVIEW: the sub-ticket returns to its checks at its branch tip; not yet run on a real ticket) · `--close`; with `--answer` or `--close`, add `--decision "<line>"` to also record the answer as a standing decision | an answer, a ruling, an accepted protected path, a re-check, a re-plan, a re-scope, or closing |
+ | **Record** | `factory decision add T-n "<line>"`, at any ticket state, closed included: one dated line in the decision log | that a decision binds later tickets |
+ | **Upgrade** | `factory --accept-harness <sha> <command>` | that this target adopts a new harness revision |
+ 
+diff --git a/docs/changelog.md b/docs/changelog.md
+index 28a3fa7..5e9e185 100644
+--- a/docs/changelog.md
++++ b/docs/changelog.md
+@@ -80,4 +80,6 @@ Six review rounds ran on this doc, using the reviewer prompt in the appendix. Ro
+ 
+ 74. After issue #108 (2026-10-13), where Claude Code could not load four of the six role agent templates in `agents/` (planner, spec critic, spec writer and triage): each one's frontmatter, the YAML header that names the agent, held an unquoted description containing a colon and a space, which YAML reads as a second key, so the header did not parse. No run failed, because every workflow run passes `inlineRoles: true` and `factory drive` starts each role with its prompt inline. The four descriptions are now quoted, with their words unchanged. The harness suite now parses every template's frontmatter, one case per template, and requires `name`, `description`, `model` and `tools`; no test read these headers before. `factory init` still never overwrites an existing copy in a target's `.claude/agents/`; it now lists each copy that differs from its template under `stale_agents` in its JSON output and names it on stderr, and still exits 0. Nanobot's copies, byte-identical to the old templates, are refreshed by its Driver after the merge and the runtime upgrade. Rejected: rephrasing the descriptions without the colon, which changes their words; overwriting a differing copy, which would discard an operator's deliberate edit; and refusing with exit 2, because a stale copy does not stop a run that uses `inlineRoles`.
+ 
++75. After issue #109 (2026-10-19), where the clerk, the agent that relays the store's command output to a workflow script, retyped a role's model in `factory config`'s reply, and the harness refused that role's run start and parked the sub-ticket; and issue #112, where the clerk relayed `run finish`'s one-line JSON reply over several lines, the script found no JSON, and it parked a sub-ticket whose implementer had finished, a park no `resolve` command covered. A new command, `factory launch-script intake|build`, writes a launch copy: the workflow script with its line `const LAUNCH = null` replaced by the instance's models, round limits and store as `config` prints them, the harness revision and the instance. The copy is read-only, in a new `factory-launch-*` directory under the temporary directory, and asks no clerk for the configuration. It refuses with config's error wherever config refuses, joins the live-store fence's read-only list, and first removes launch copies more than an hour old. A copy given another `instance` argument returns an error naming its own and runs nothing. Both scripts now parse a reply as one JSON value before trying its lines one at a time. `factory resolve <id> --to checks` returns a sub-ticket parked with a `harness-bug:` reason from ready-for-implementer, after its newest implementer run finished READY-FOR-REVIEW, to its checks at its branch tip, with the build's `pr:init` round step. `ticket head`'s body and the round step moved to `factory/store.py`, each one definition used by both callers. The scripts launched as they are keep their clerk path, so `run start`'s refusal of a model the instance does not name stays the backstop. Rejected: a fixed launch-copy path under the instance's `.factory/`, which a later launch would rewrite under a running workflow; a script that refuses to run without a copy, which breaks every check that runs the scripts directly; and removing every earlier copy, which could remove one another session is about to launch.
++
+ Declined: a dedicated merge agent (merging is gate config plus human gates, not a judgment call).
+diff --git a/docs/design.md b/docs/design.md
+index 9b394bf..e10ecb4 100644
+--- a/docs/design.md
++++ b/docs/design.md
+@@ -41,7 +41,7 @@ The prompts say what each role does. The harness enforces the wiring rules: fres
+ | # | Piece | What it must do | GitHub gives you | Minimum portable substitute |
+ |---|---|---|---|---|
+ | 1 | Ticket store | One record per ticket and sub-ticket: status, type, spec text and version, PR link, round counter, history. The spec gate pins the version the human approved, including any edits made at the gate. This is the state machine's memory. A store CLI (read, transition, record) fronts it: the dispatcher chooses the transition, the CLI rejects any not in the routing table and any round past the cutoff, and the clerk goes through it too | Issues + labels | Any tracker (Jira, Linear) or a table in a DB. A `factory-store` branch of YAML works to start: the pre-receive hook restricts it to harness and human identities and exempts it from the merge gate |
+-| 2 | Event dispatcher | Notice a state change and start the right role with the right inputs. Routes on the `STATUS:` line of the last output, per the routing table | Webhooks + Actions `on:` events | A loop (cron, every 1–5 min) that queries the store for tickets in a "ready for X" state and launches X. Polling is fine; nothing here is latency-sensitive. For a v0 inside one Claude Code session, a Workflow script: each agent() call is a fresh context, the fan-out, join, and round counters are plain code, and the same routing table lifts into the loop later. Three v0 limits. (1) The script has no filesystem or clock, so store reads and writes go through a clerk agent calling the CLI; the guards live in the CLI, not the clerk. The clerk never restates a command's output: it returns stdout verbatim with the exit code and stderr, and the script parses the JSON itself, since a schema shaped like the command's output lets the clerk re-type the answer and still validate. A non-zero exit is a refusal and no JSON on stdout is a failed store call; neither is ever read as an answer. (2) A hung agent blocks the join until a human skips it, so the piece-3 kill is post-hoc. (3) v0 gives fresh context, not isolation: every agent() call shares the session's checkout, credentials, and git identity. Use a worktree per call, run the clerk's CLI under a harness identity that has no verb for approval rows (humans write those directly), and treat v0 as exercising the routing table, not as producing trusted merges. `factory drive TICKET` is the external dispatcher, outside the Workflow tool: an ordinary Python process that routes as the two scripts do and calls the store CLI's own entry point in its own process, one call at a time. It has no clerk, so limit (1) does not apply to it. It starts each role as one headless `claude -p` process from the run's directory, with the role's prompt, model, effort and tool limits, and stops at the spec gate. Limits (2) and (3) still hold: no role process has a time limit, and every role process runs under the operator's own login and settings |
++| 2 | Event dispatcher | Notice a state change and start the right role with the right inputs. Routes on the `STATUS:` line of the last output, per the routing table | Webhooks + Actions `on:` events | A loop (cron, every 1–5 min) that queries the store for tickets in a "ready for X" state and launches X. Polling is fine; nothing here is latency-sensitive. For a v0 inside one Claude Code session, a Workflow script: each agent() call is a fresh context, the fan-out, join, and round counters are plain code, and the same routing table lifts into the loop later. Three v0 limits. (1) The script has no filesystem or clock, so store reads and writes go through a clerk agent calling the CLI; the guards live in the CLI, not the clerk. The clerk never restates a command's output: it returns stdout verbatim with the exit code and stderr, and the script parses the JSON itself, since a schema shaped like the command's output lets the clerk re-type the answer and still validate. A non-zero exit is a refusal and no JSON on stdout is a failed store call; neither is ever read as an answer. A launch copy of a script, which `factory launch-script` writes with the instance's models, round limits and store in one line, takes its configuration from that line instead of a clerk, and both scripts read a reply as one JSON value before they try its lines one at a time, so a reply the clerk spread over several lines still parses. (2) A hung agent blocks the join until a human skips it, so the piece-3 kill is post-hoc. (3) v0 gives fresh context, not isolation: every agent() call shares the session's checkout, credentials, and git identity. Use a worktree per call, run the clerk's CLI under a harness identity that has no verb for approval rows (humans write those directly), and treat v0 as exercising the routing table, not as producing trusted merges. `factory drive TICKET` is the external dispatcher, outside the Workflow tool: an ordinary Python process that routes as the two scripts do and calls the store CLI's own entry point in its own process, one call at a time. It has no clerk, so limit (1) does not apply to it. It starts each role as one headless `claude -p` process from the run's directory, with the role's prompt, model, effort and tool limits, and stops at the spec gate. Limits (2) and (3) still hold: no role process has a time limit, and every role process runs under the operator's own login and settings |
+ | 3 | Isolated run per role | Every role invocation starts in a clean checkout with no memory of earlier runs and only its declared inputs. This is what "fresh context per checker" means in practice | Actions job on a fresh runner | A container or VM per run (Docker, Firecracker, K8s Job). Run `claude -p` with the preamble + role prompt as the system prompt and the inputs on stdin. Destroy the environment after. A run that exceeds {time budget, token budget} is killed, recorded as a result row for that head and role so no join waits on it, and its ticket parked |
+ | 4 | Scoped credentials | Each role gets only the access its rules allow. Implementer: push to its own branch. Triage, spec writer, critic, planner, reviewer, verifier, and gate runner: read-only clone plus a shell, with no secrets in the environment, since they run PR code before any security check has passed (model access through a proxy sidecar that holds the key, so the container has none to leak; no git write token; restricted egress). Retro: push a branch and open a PR, nothing else. No role can push to main. Only the harness identity and humans write the ticket store; role outputs enter it through the dispatcher, and the merge gate accepts an approval row only if a human identity pushed it, judged by the server's pusher identity, not the commit author | Job-level `permissions:` on a per-job `GITHUB_TOKEN` | One git user or deploy key per role, with server-side rights set on the git host. Secrets injected per job from a vault or env, never baked into the image |
+ | 5 | Change proposal | A unit of review: a branch, its base, its head commit, and a place for the PR description and findings. Approvals attach to the head commit. Fix rounds push to the same branch, which is the ticket's identity | Pull requests | A branch naming convention (`ticket/<id>`) plus a record in the ticket store holding base, head SHA, and the description. GitLab MRs or Gerrit changes are direct equivalents |
+@@ -61,7 +61,7 @@ The prompts say what each role does. The harness enforces the wiring rules: fres
+ 
+ **Spec drift.** Between the writing of a spec and the build of one of its sub-tickets, other tickets merge, and a sibling that the sub-ticket's checks rely on may not have merged yet. The harness checks for this before the implementer spends a run on it. Every spec version the store keeps, from `spec add`, a gate edit or `spec amend`, records the integration branch's head when it was stored, as `integration_head` in `specs/<ticket id>/v<n>.yaml`; the value is null when the target repo or branch does not resolve. Before a sub-ticket's implementer run, `run start` checks for drift, ahead of the sibling-tests check. It checks only while the sub-ticket has no finished implementer run and no ruling on file. Two rules find drift. The sibling rule: the sub-ticket's Acceptance field names, by id or by plan label as a whole token, a sibling of the current plan that has not merged and that the sub-ticket does not depend on, directly or through other siblings. Nothing makes such a sibling merge first. The test rule counts from the head recorded with the parent's approved version. It is skipped when that version has no record, because it was stored before the record existed, or when the head is null or not a commit in the target repo. For each first-parent commit on the integration branch since that head that changed a file the version's design part names, each test file the commit changed is a finding, unless the design's `## Tests to change` or the sub-ticket's "Tests to change" lists it. A first-parent commit that is the recorded merge (`main_after`) of a merged sub-ticket of the same parent, from any of its plans, is not counted, because the plan expects its siblings' changes. Every other commit and merge still counts. Named files are the design part's backticked paths that exist at the integration branch's head, other than test files and `.md` documents, which nearly every ticket edits. A test file's name starts with `test_`, ends `_test.<ext>`, or contains `.test.`. The test rule approximates "a test pins behaviour the spec changes". Measured on two stores' history, it would have caught 9 of 10 known breaks, and it parks about half of all sub-tickets. On drift, `run start` refuses with exit 2, writes nothing, and gives an error that starts `BLOCKED from harness: spec drift:` and names each finding. The build parks the sub-ticket with that error as the reason. The human amends the spec (`factory spec amend`, Spec store below), rules, or both; `resolve --ruling` returns the sub-ticket to its implementer, and the ruling on file stops the check from repeating.
+ 
+-**Only the dispatcher writes a live store during a run.** The store CLI fences an instance's own store; a throwaway store (`FACTORY_STATE` naming another) is never fenced. The fence applies to every command except the read-only ones: `ticket show`, `ticket join`, `results show`, `config`, `status parse`, `log tail`, `paths` and `stats`. A command given `--accept-harness` is always fenced, because it rewrites the lock. The location rule is checked first: a write run from inside the own store's `runs/` or `worktrees/`, where roles do their work, is refused, with or without `FACTORY_DISPATCH=1` and with or without a run in flight. Then the in-flight rule: while any run is in flight on any ticket of the store, a write is refused unless its environment carries `FACTORY_DISPATCH=1`. Both workflow scripts put that marker in front of every clerk command. `factory drive` is the dispatcher, so it is exempt from the in-flight rule: it starts unmarked while runs of other tickets are in flight. It keeps the location rule and the lock, and given `--accept-harness` it is fenced in full, in-flight rule included. In place of the in-flight rule it has a same-ticket guard: it refuses to start on the same ticket, marked or not and on any store, while that ticket or one of its sub-tickets has a run in flight, or while the ticket's status file `drive/<ticket>.yaml` has no `ended` and names a live pid. Once started, it sets the marker in its own environment, so its own store calls are marked whether or not it was started marked. It removes the marker from the environment of every role process it starts, so a role's commands are never marked. The operator, or a runner session, puts it in front of one command that must write during a run, and never exports it. A refusal exits 2, writes nothing, and tells the caller to use a throwaway `FACTORY_STATE`; it never names the marker. The fence is checked before the harness lock, so a fenced command never reaches the lock and a fenced `--accept-harness` rewrites nothing. A marked command still meets the lock and its uncommitted-edit refusal unchanged. The fence guards against accidents, such as a role's test suite running `init` from its scratch directory. It is not isolation: a role that copies the marker and writes from outside the store still gets through.
++**Only the dispatcher writes a live store during a run.** The store CLI fences an instance's own store; a throwaway store (`FACTORY_STATE` naming another) is never fenced. The fence applies to every command except the read-only ones: `ticket show`, `ticket join`, `results show`, `config`, `launch-script`, `status parse`, `log tail`, `paths` and `stats`. A command given `--accept-harness` is always fenced, because it rewrites the lock. The location rule is checked first: a write run from inside the own store's `runs/` or `worktrees/`, where roles do their work, is refused, with or without `FACTORY_DISPATCH=1` and with or without a run in flight. Then the in-flight rule: while any run is in flight on any ticket of the store, a write is refused unless its environment carries `FACTORY_DISPATCH=1`. Both workflow scripts put that marker in front of every clerk command. `factory drive` is the dispatcher, so it is exempt from the in-flight rule: it starts unmarked while runs of other tickets are in flight. It keeps the location rule and the lock, and given `--accept-harness` it is fenced in full, in-flight rule included. In place of the in-flight rule it has a same-ticket guard: it refuses to start on the same ticket, marked or not and on any store, while that ticket or one of its sub-tickets has a run in flight, or while the ticket's status file `drive/<ticket>.yaml` has no `ended` and names a live pid. Once started, it sets the marker in its own environment, so its own store calls are marked whether or not it was started marked. It removes the marker from the environment of every role process it starts, so a role's commands are never marked. The operator, or a runner session, puts it in front of one command that must write during a run, and never exports it. A refusal exits 2, writes nothing, and tells the caller to use a throwaway `FACTORY_STATE`; it never names the marker. The fence is checked before the harness lock, so a fenced command never reaches the lock and a fenced `--accept-harness` rewrites nothing. A marked command still meets the lock and its uncommitted-edit refusal unchanged. The fence guards against accidents, such as a role's test suite running `init` from its scratch directory. It is not isolation: a role that copies the marker and writes from outside the store still gets through.
+ 
+ **Scratch directory per run.** Every run gets its own directory for temporary files, `runs/<run id>/scratch/` in the store, so runs that happen at the same time never write into one shared place and no run leaves files in a repository checkout. `run start` creates it for every role, after every guard has passed, and makes sure the store's `.gitignore` excludes `runs/*/scratch/`: an absent or empty `.gitignore` gets the harness's commented block, and an existing one keeps its own lines and gains only the lines it lacks. The composer names the directory's absolute path in a "Scratch directory" section of the run's input, directly after "Running code", and the shared preamble's SCRATCH FILES rule tells every role to put its own temporary files there and nowhere else, taking precedence over any other instruction to use a session scratchpad. When a ticket's status changes to anything other than `parked`, the harness removes the scratch directory of each finished run of that ticket; runs still in flight, other tickets' runs and every path outside `runs/*/scratch` are left alone. A park keeps the files because a human who answers a parked ticket may need to see what the run built; they are removed once the human sends the ticket on or closes it. So a role that wants a later reader to see what a prototype showed puts that in its output, since the directory is gone by the time the ticket's next role reads it.
+ 
+@@ -106,7 +106,7 @@ Rules the table relies on:
+ - A role run that ends without writing its output is EMPTY-OUTPUT, whatever stopped it. The agent call reports no reason, so an empty output is never recorded as a budget kill; the harness keeps the agent's last message with the run. The same role is re-dispatched once, on the same inputs and in the same round. A second EMPTY-OUTPUT in a row parks the ticket with both runs. When either run's last message says it is still waiting on a command it started, the park reason adds `ended its turn waiting on a background command`, because a plain re-dispatch is likely to end the same way.
+ - When a human resolves a parked ticket:
+   - A question returns to the role that asked, with the answer and that role's previous output (the output that asked it); a requester's CLARIFY answer returns to Triage the same way. When the answer is a standing decision, the human passes `--decision "<line>"` with the answer, or with the close, so that it lands in `decisions.md`.
+-  - BLOCKED, a critic ESCALATE, and a planner ESCALATE return to the role that emitted them with the ruling, same round, or the human re-scopes (spec gate or writer round reset) or closes. A sub-ticket parked `harness-bug: run start implementer:` from `ready-for-implementer`, because the harness failed to start its implementer run, also returns to its implementer with the ruling, same round. A ruling on any other harness-bug park is refused.
++  - BLOCKED, a critic ESCALATE, and a planner ESCALATE return to the role that emitted them with the ruling, same round, or the human re-scopes (spec gate or writer round reset) or closes. A sub-ticket parked `harness-bug: run start implementer:` from `ready-for-implementer`, because the harness failed to start its implementer run, also returns to its implementer with the ruling, same round. A ruling on any other harness-bug park is refused. A sub-ticket parked with a `harness-bug:` reason from `ready-for-implementer` after its newest implementer run finished READY-FOR-REVIEW, as when that run's `run finish` reply did not parse, returns to its checks with `resolve --to checks`: its head becomes its branch tip, and its PR round takes the step the build applies on that move: a first round's 0 becomes 1, and a later round is unchanged.
+   - A merge the gate refused for an undeclared protected path parks as BLOCKED. A ruling returns the sub-ticket to its implementer, same round. `resolve --accept-paths` instead adds the named paths to what that sub-ticket may change and returns it to its checks, whose passing results stand; every other merge condition still applies.
+   - A spec loop at max rounds goes to the spec gate.
+   - A parent-close FAILED or SPEC-DEFECT, an archive that does not apply, or a sub-ticket closed by the human, parks the parent: the human amends the spec and re-plans (new sub-tickets under the same parent) or closes the parent. A new plan made from a later approved version supersedes the earlier plan's sub-tickets that have not merged: they keep their records and ids, are no longer dispatched, and neither park the parent nor hold back its close. Merged ones stay merged and count toward the close.
+diff --git a/factory/cli.py b/factory/cli.py
+index 1b88875..ebf9200 100644
+--- a/factory/cli.py
++++ b/factory/cli.py
+@@ -15,7 +15,7 @@ from pathlib import Path
+ 
+ import yaml
+ 
+-from factory import compose, gitops, instance, specstore, status, store, subtickets, tripwire
++from factory import compose, gitops, instance, launch, specstore, status, store, subtickets, tripwire
+ from factory.common import _add_spec_version, _rel, fence, out
+ from factory.drift import _check_drift, _check_sibling_tests
+ from factory.gates import (_parent_close_verified, archive_cmd, merge_cmd, results_record, results_show,
+@@ -123,26 +123,6 @@ def ticket_set(a, root, cfg):
+     out(res)
+ 
+ 
+-def _apply_round(t: dict, op: str | None, cfg: dict) -> None:
+-    if not op:
+-        return
+-    m = re.fullmatch(r"(spec|pr):(init|\+1|reset)", op)
+-    if not m:
+-        raise Refused(f"bad --round {op}; expected spec|pr:init|+1|reset")
+-    loop, act = m.groups()
+-    cur = t["round"][loop]
+-    mx = cfg["max_rounds"][loop]
+-    if act == "init":
+-        if cur == 0:
+-            t["round"][loop] = 1
+-    elif act == "+1":
+-        if cur + 1 > mx:
+-            raise Refused(f"round.{loop} {cur} is at max_rounds {mx}")
+-        t["round"][loop] = cur + 1
+-    else:
+-        t["round"][loop] = 0
+-
+-
+ def _check_edge(cfg: dict, frm: str, to: str) -> None:
+     if to not in cfg["routing"].get(frm, []):
+         raise Refused(f"no route {frm} → {to}: not a routing edge")
+@@ -161,7 +141,7 @@ def ticket_transition(a, root, cfg):
+             raise Refused(f"{t['id']} has sub-tickets: it closes after a VERIFIED parent-close run (or `resolve {t['id']} --close`)")
+         if specstore.is_active(root) and specstore.change_dir(root, t["id"]).exists():
+             raise Refused(f"{t['id']} is verified but not archived: run `archive {t['id']}` first")
+-    _apply_round(t, a.round, cfg)
++    store._apply_round(t, a.round, cfg)
+     if a.to != "parked":
+         t["parked"] = None
+     store.record_transition(root, t, a.to, a.by,
+@@ -642,7 +622,7 @@ def spec_tasks(a, root, cfg):
+ # ----- misc ---------------------------------------------------------------------
+ 
+ def config_cmd(a, root, cfg):
+-    out({"ok": True, "models": cfg["models"], "max_rounds": cfg["max_rounds"], "state_dir": str(root)})
++    out({"ok": True, **launch.config_values(root, cfg)})
+ 
+ 
+ def status_parse(a, root, cfg):
+@@ -816,7 +796,9 @@ def build_parser() -> argparse.ArgumentParser:
+     p.add_argument("--answer")
+     p.add_argument("--ruling")
+     p.add_argument("--accept-paths", metavar="F", help="a sub-ticket the merge gate refused for undeclared protected paths: accept them under the approved design and return it to its reviewer and verifier")
+-    p.add_argument("--to")
++    p.add_argument("--to", metavar="spec-gate|checks",
++                   help="spec-gate: a parked ticket with a spec back to the spec gate; checks: a sub-ticket parked "
++                        "by a harness-bug after its implementer finished READY-FOR-REVIEW back to its checks")
+     p.add_argument("--redispatch", action="store_true")
+     p.add_argument("--replan", metavar="F", help="a parked parent whose sub-tickets all merged: back to the planner with F as a ruling")
+     p.add_argument("--close", action="store_true")
+@@ -838,6 +820,10 @@ def build_parser() -> argparse.ArgumentParser:
+     p.set_defaults(fn=drive_cmd)
+     p = sp.add_parser("config")
+     p.set_defaults(fn=config_cmd)
++    p = sp.add_parser("launch-script", help="write a launch copy of a workflow script, the instance's models, "
++                                            "round limits and store in one line; prints its path as `script`")
++    p.add_argument("name", choices=("intake", "build"))
++    p.set_defaults(fn=launch.launch_script)
+     st = sp.add_parser("status").add_subparsers(dest="sub", required=True)
+     p = st.add_parser("parse")
+     p.add_argument("file")
+@@ -856,7 +842,7 @@ def build_parser() -> argparse.ArgumentParser:
+ # `paths` and `stats` never reach the fence (main() runs them before it); they are listed so this set
+ # matches the documents' read-only list.
+ READ_ONLY = {("ticket", "show"), ("ticket", "join"), ("results", "show"), ("config", None),
+-             ("status", "parse"), ("log", "tail"), ("paths", None), ("stats", None)}
++             ("launch-script", None), ("status", "parse"), ("log", "tail"), ("paths", None), ("stats", None)}
+ 
+ 
+ def main(argv: list[str] | None = None) -> int:
+diff --git a/factory/gates.py b/factory/gates.py
+index ab9fd3a..ad5ddf2 100644
+--- a/factory/gates.py
++++ b/factory/gates.py
+@@ -11,25 +11,8 @@ from factory.store import Refused
+ 
+ def ticket_head(a, root, cfg):
+     t = store.load_ticket(root, a.id)
+-    if not t.get("branch"):
+-        raise Refused(f"{t['id']} has no branch yet")
+-    repo = gitops.repo_root()
+-    head = gitops.rev(repo, t["branch"])
+-    changed = head != t.get("head")
+-    t["head"] = head
+-    if t.get("merge_refused"):
+-        if gitops.head_contains(repo, head, gitops.integration_branch(cfg, repo)):
+-            t["merge_refused"] = None
+-            t["conflict_runs"] = 0
+-        else:
+-            # A conflict run that did not merge the integration branch in. Counted once per
+-            # implementer run (this command may be called more than once), so the loop is bounded.
+-            last = [r for r, _ in store.ticket_runs(root, t["id"], "implementer", finished=True)]
+-            if last and last[-1] != t.get("conflict_counted_run"):
+-                t["conflict_runs"] = int(t.get("conflict_runs") or 0) + 1
+-                t["conflict_counted_run"] = last[-1]
+-    store.save_ticket(root, t)
+-    out({"ok": True, "id": t["id"], "head": head, "branch": t["branch"], "changed": changed,
++    changed = store.set_head(root, cfg, t)
++    out({"ok": True, "id": t["id"], "head": t["head"], "branch": t["branch"], "changed": changed,
+          "merge_refused": t.get("merge_refused"), "conflict_runs": int(t.get("conflict_runs") or 0)})
+ 
+ 
+diff --git a/factory/human.py b/factory/human.py
+index f282e5b..f0151b3 100644
+--- a/factory/human.py
++++ b/factory/human.py
+@@ -252,9 +252,19 @@ def resolve(a, root, cfg):
+         dest = _copy_record(d, "ruling", a.accept_paths)
+         t["accepted_paths"] = sorted(set(t.get("accepted_paths") or []) | set(paths))
+         move("checks-in-flight", "accept-paths", {"ruling": _rel(root, dest), "head": head, "accepted": paths})
++    elif a.to == "checks":
++        # A store command failed after the implementer finished (issue #112: its `run finish` reply
++        # did not parse): back to its checks at the branch tip, with the round step the build applies.
++        if not (st == "parked" and parked.get("from") == "ready-for-implementer" and reason.startswith("harness-bug:")
++                and store.implemented_since_ready(root, t["id"])):
++            raise Refused("--to checks applies to a sub-ticket parked by a harness-bug from ready-for-implementer after "
++                          f"its implementer run finished READY-FOR-REVIEW; {t['id']} is {st} ({reason or 'no park'})")
++        store.set_head(root, cfg, t)
++        store._apply_round(t, "pr:init", cfg)
++        move("checks-in-flight", "to-checks", {"head": t["head"]})
+     elif a.to:
+         if a.to != "spec-gate":
+-            raise Refused("--to accepts only spec-gate")
++            raise Refused("--to accepts only spec-gate or checks")
+         if st != "parked" or t["spec"]["version"] < 1:
+             raise Refused(f"--to spec-gate needs a parked ticket with a spec version; {t['id']} is {st}")
+         move("awaiting-spec-gate", "to-spec-gate", {})
+@@ -283,7 +293,7 @@ def resolve(a, root, cfg):
+             raise Refused(f"{t['id']} is already closed")
+         move("closed", "close", decided("resolve --close"))
+     else:
+-        raise Refused("resolve needs one of --answer F | --ruling F | --accept-paths F | --to spec-gate | --redispatch | "
++        raise Refused("resolve needs one of --answer F | --ruling F | --accept-paths F | --to spec-gate|checks | --redispatch | "
+                       "--replan F | --close")
+ 
+ 
+diff --git a/factory/launch.py b/factory/launch.py
+new file mode 100644
+index 0000000..bc1c03b
+--- /dev/null
++++ b/factory/launch.py
+@@ -0,0 +1,57 @@
++"""`factory launch-script intake|build`: a launch copy of a workflow script, with the instance's
++values written into one line so no clerk relays them, and the values `factory config` prints."""
++from __future__ import annotations
++
++import json
++import shutil
++import tempfile
++import time
++from pathlib import Path
++
++from factory import instance
++from factory.common import out
++from factory.store import Refused
++
++LAUNCH_LINE = "const LAUNCH = null"
++WRITTEN_BY = "factory launch-script"
++
++
++def config_values(root: Path, cfg: dict) -> dict:
++    """What `factory config` prints besides `ok`; a launch copy carries the same values."""
++    return {"models": cfg["models"], "max_rounds": cfg["max_rounds"], "state_dir": str(root)}
++
++
++def launch_script(a, root, cfg):
++    """Write `<name>.js` read-only into a new `factory-launch-*` directory under the temporary
++    directory: the workflow script with its one `const LAUNCH = null` line set to the instance's
++    values, the running harness revision and the instance. Writes nothing to the checkout or store."""
++    src = instance.HARNESS / "factory" / "workflows" / f"{a.name}.js"
++    lines = src.read_text(encoding="utf-8").split("\n")
++    if lines.count(LAUNCH_LINE) != 1:
++        raise Refused(f"{src} holds the line `{LAUNCH_LINE}` {lines.count(LAUNCH_LINE)} times, not once; "
++                      "no launch copy written")
++    rev, inst = instance.harness_revision(), str(instance.require())
++    launch = {"written_by": WRITTEN_BY, "source": str(src), "harness_revision": rev, "instance": inst,
++              **config_values(root, cfg)}
++    lines[lines.index(LAUNCH_LINE)] = f"const LAUNCH = {json.dumps(launch, ensure_ascii=False)}"
++    _remove_old_copies()
++    dest = Path(tempfile.mkdtemp(prefix="factory-launch-")) / src.name
++    dest.write_text("\n".join(lines), encoding="utf-8")
++    dest.chmod(0o444)
++    out({"ok": True, "script": str(dest), "source": str(src), "harness_revision": rev, "instance": inst})
++
++
++def _remove_old_copies() -> None:
++    """Remove each `factory-launch-*` directory under the temporary directory that is more than an
++    hour old and holds only a launch copy. The Workflow tool keeps its own copy of a script once
++    launched, so such a copy is no longer read; a newer one may be about to be launched by another
++    session sharing the directory. Any other directory, and any error, is skipped."""
++    cutoff = time.time() - 3600
++    for d in Path(tempfile.gettempdir()).glob("factory-launch-*"):
++        try:
++            files = list(d.iterdir())
++            if (d.stat().st_mtime < cutoff and len(files) == 1 and files[0].name in ("intake.js", "build.js")
++                    and f'"written_by": "{WRITTEN_BY}"' in files[0].read_text(encoding="utf-8")):
++                shutil.rmtree(d)
++        except (OSError, ValueError):
++            continue
+diff --git a/factory/store.py b/factory/store.py
+index 7ef578b..02b14f8 100644
+--- a/factory/store.py
++++ b/factory/store.py
+@@ -4,6 +4,7 @@ from __future__ import annotations
+ import datetime as dt
+ import hashlib
+ import json
++import re
+ import shutil
+ from pathlib import Path
+ 
+@@ -99,6 +100,26 @@ def log_lines(root: Path):
+         yield from p.read_text(encoding="utf-8").splitlines()
+ 
+ 
++def implemented_since_ready(root: Path, tid: str) -> bool:
++    """Whether ticket `tid`'s newest implementer run started after the ticket last entered
++    ready-for-implementer, and finished READY-FOR-REVIEW. Read in the event log's order: its
++    timestamps are whole seconds. A move into the state is any event of the ticket whose `to`, or
++    for `ticket.created` whose `status`, is ready-for-implementer."""
++    entered = started = -1
++    run = status = None
++    for i, ln in enumerate(log_lines(root)):
++        e = json.loads(ln)
++        if e.get("ticket") != tid:
++            continue
++        if e.get("to") == "ready-for-implementer" or (e["event"] == "ticket.created" and e.get("status") == "ready-for-implementer"):
++            entered = i
++        elif e["event"] == "run.started" and e.get("role") == "implementer":
++            started, run, status = i, e.get("run"), None
++        elif e["event"] == "run.finished" and e.get("run") == run:
++            status = e.get("status")
++    return started > entered and status == "READY-FOR-REVIEW"
++
++
+ def ticket_path(root: Path, tid: str) -> Path:
+     return root / "tickets" / f"{tid}.yaml"
+ 
+@@ -163,6 +184,52 @@ def record_transition(root: Path, t: dict, to: str, by: str, history: dict | Non
+     return frm
+ 
+ 
++def _apply_round(t: dict, op: str | None, cfg: dict) -> None:
++    if not op:
++        return
++    m = re.fullmatch(r"(spec|pr):(init|\+1|reset)", op)
++    if not m:
++        raise Refused(f"bad --round {op}; expected spec|pr:init|+1|reset")
++    loop, act = m.groups()
++    cur = t["round"][loop]
++    mx = cfg["max_rounds"][loop]
++    if act == "init":
++        if cur == 0:
++            t["round"][loop] = 1
++    elif act == "+1":
++        if cur + 1 > mx:
++            raise Refused(f"round.{loop} {cur} is at max_rounds {mx}")
++        t["round"][loop] = cur + 1
++    else:
++        t["round"][loop] = 0
++
++
++def set_head(root: Path, cfg: dict, t: dict) -> bool:
++    """Set ticket `t`'s head to the tip of its branch and save it, as `ticket head` does; returns
++    whether the head changed. A merge-refused ticket whose new head contains the integration branch
++    is cleared of the refusal; one whose head does not is a conflict run that did not merge it in."""
++    from factory import gitops  # local: gitops imports this module
++    if not t.get("branch"):
++        raise Refused(f"{t['id']} has no branch yet")
++    repo = gitops.repo_root()
++    head = gitops.rev(repo, t["branch"])
++    changed = head != t.get("head")
++    t["head"] = head
++    if t.get("merge_refused"):
++        if gitops.head_contains(repo, head, gitops.integration_branch(cfg, repo)):
++            t["merge_refused"] = None
++            t["conflict_runs"] = 0
++        else:
++            # A conflict run that did not merge the integration branch in. Counted once per
++            # implementer run (this command may be called more than once), so the loop is bounded.
++            last = [r for r, _ in ticket_runs(root, t["id"], "implementer", finished=True)]
++            if last and last[-1] != t.get("conflict_counted_run"):
++                t["conflict_runs"] = int(t.get("conflict_runs") or 0) + 1
++                t["conflict_counted_run"] = last[-1]
++    save_ticket(root, t)
++    return changed
++
++
+ def park_ticket(root: Path, t: dict, reason: str, outputs: list[str], question: str | None = None,
+                 by: str = "park") -> None:
+     """Park ticket `t` (the caller has checked it is not parked or closed): record where it came
+diff --git a/factory/workflows/build.js b/factory/workflows/build.js
+index 2f7d097..52f908c 100644
+--- a/factory/workflows/build.js
++++ b/factory/workflows/build.js
+@@ -7,14 +7,18 @@ export const meta = {
+     { title: 'Close', detail: 'one verifier run on the integration branch against the parent spec; VERIFIED archives, then closes' },
+   ],
+ }
+-// args: { ticket, repo, instance?, state?, target?, integration?, stubs?, inlineRoles? }  — repo/instance/state/stubs/inlineRoles as in intake.js.
++// args: { ticket, repo, instance?, state?, target?, integration?, stubs?, inlineRoles? }  — repo/instance/state/stubs/inlineRoles as in intake.js;
++//   a launch copy takes its instance from the copy.
+ // Local-commit stand-in (operator, 2026-10-02): no remote, no CI. The gate suite is run by the
+ // verifier and recorded as the ci row; the merge is a local --no-ff merge into the integration
+ // branch. The routing is build spec part H, build.js; the join itself is `factory ticket join`.
+ 
+ const TICKET = args.ticket
+ const REPO = args.repo
+-const INSTANCE = args.instance
++// `factory launch-script build` writes a launch copy of this script with the next line set to the
++// instance's models, round limits and store, the harness revision and the instance: no clerk relays them.
++const LAUNCH = null
++const INSTANCE = LAUNCH ? LAUNCH.instance : args.instance
+ let STATE = args.state || null  // set from `factory config` below when not given
+ // target = the repo the implementer works in (default: the instance's repo, the parent of its `.factory/`);
+ // integration = the branch merged into (default: config integration_branch, else the target's current branch).
+@@ -44,8 +48,11 @@ async function clerk(cmd, phase, label) {
+     `Report its stdout verbatim (do not reformat, summarize or re-encode it), its exit code, and its stderr verbatim.`,
+     { agentType: INLINE ? 'general-purpose' : `${PREFIX}clerk`, model: MODELS.clerk, effort: 'low', phase, label: `clerk: ${label}`, schema: CLERK_SCHEMA })
+   if (res === null) return { ok: false, exit: -1, stderr: 'clerk returned nothing' }
+-  const lines = String(res.stdout || '').trim().split('\n').filter(l => l.trim())
++  // The whole reply first: a clerk has relayed one JSON value spread over several lines.
++  const text = String(res.stdout || '').trim()
+   let parsed = null
++  try { parsed = JSON.parse(text) } catch (e) { parsed = null }
++  const lines = text.split('\n').filter(l => l.trim())
+   for (let i = lines.length - 1; i >= 0 && parsed === null; i--) {
+     try { parsed = JSON.parse(lines[i]) } catch (e) { parsed = null }
+   }
+@@ -222,7 +229,10 @@ async function buildOne(st) {
+ }
+ 
+ // --- start
+-const cfg = await clerk(`${BIN} config`, 'Plan', 'config')
++if (LAUNCH && args.instance && args.instance !== LAUNCH.instance) {
++  return { ticket: TICKET, error: `launch copy written for instance ${LAUNCH.instance}, launched with ${args.instance}` }
++}
++const cfg = LAUNCH ? { ok: true, ...LAUNCH } : await clerk(`${BIN} config`, 'Plan', 'config')
+ if (cfg.ok) { MODELS = cfg.models; MAX_PR = cfg.max_rounds.pr; if (!STATE) STATE = cfg.state_dir }
+ if (!STATE) return { ticket: TICKET, error: `no store: factory config failed: ${cfg.stderr || cfg.error || ''}` }
+ const show = await clerk(`${BIN} ticket show ${TICKET} --json`, 'Plan', 'ticket show')
+diff --git a/factory/workflows/intake.js b/factory/workflows/intake.js
+index 87635f6..3b045ba 100644
+--- a/factory/workflows/intake.js
++++ b/factory/workflows/intake.js
+@@ -10,7 +10,8 @@ export const meta = {
+ //   repo     = absolute path of the harness checkout (bin/factory lives under it); the clerk runs from it
+ //   instance = absolute path of the target repo's `.factory/` (`factory paths` prints it); when given,
+ //              every store command runs with FACTORY_INSTANCE=<instance>. Without it the harness walks
+-//              up from `repo`, which finds only the harness repo's own instance
++//              up from `repo`, which finds only the harness repo's own instance. A launch copy takes its
++//              instance from the copy, and returns an error when given another
+ //   state    = absolute path of the store (FACTORY_STATE); optional: by default the instance's own
+ //              store, as `factory config` reports it
+ //   stubs = directory of <role>-<n>.md fixture outputs; when set, every role is the factory-stub agent
+@@ -21,7 +22,10 @@ export const meta = {
+ 
+ const TICKET = args.ticket
+ const REPO = args.repo
+-const INSTANCE = args.instance
++// `factory launch-script intake` writes a launch copy of this script with the next line set to the
++// instance's models, round limits and store, the harness revision and the instance: no clerk relays them.
++const LAUNCH = null
++const INSTANCE = LAUNCH ? LAUNCH.instance : args.instance
+ let STATE = args.state || null  // set from `factory config` below when not given
+ const ENV = ['FACTORY_DISPATCH=1', INSTANCE ? `FACTORY_INSTANCE=${INSTANCE}` : '', STATE ? `FACTORY_STATE=${STATE}` : ''].filter(Boolean).join(' ')
+ const BIN = `${ENV ? ENV + ' ' : ''}${REPO}/bin/factory`
+@@ -53,8 +57,11 @@ async function clerk(cmd, phase, label) {
+     `Report its stdout verbatim (do not reformat, summarize or re-encode it), its exit code, and its stderr verbatim.`,
+     { agentType: INLINE ? 'general-purpose' : `${PREFIX}clerk`, model: MODELS.clerk, effort: 'low', phase, label: `clerk: ${label}`, schema: CLERK_SCHEMA })
+   if (res === null) return { ok: false, exit: -1, stderr: 'clerk returned nothing' }
+-  const lines = String(res.stdout || '').trim().split('\n').filter(l => l.trim())
++  // The whole reply first: a clerk has relayed one JSON value spread over several lines.
++  const text = String(res.stdout || '').trim()
+   let parsed = null
++  try { parsed = JSON.parse(text) } catch (e) { parsed = null }
++  const lines = text.split('\n').filter(l => l.trim())
+   for (let i = lines.length - 1; i >= 0 && parsed === null; i--) {
+     try { parsed = JSON.parse(lines[i]) } catch (e) { parsed = null }
+   }
+@@ -143,7 +150,10 @@ async function transition(to, roundOp, phase) {
+ }
+ 
+ // --- start: read config and the ticket's stored state (resumption starts from what the store holds)
+-const cfg = await clerk(`${BIN} config`, 'Triage', 'config')
++if (LAUNCH && args.instance && args.instance !== LAUNCH.instance) {
++  return { ticket: TICKET, error: `launch copy written for instance ${LAUNCH.instance}, launched with ${args.instance}` }
++}
++const cfg = LAUNCH ? { ok: true, ...LAUNCH } : await clerk(`${BIN} config`, 'Triage', 'config')
+ if (cfg.ok) { MODELS = cfg.models; MAX = cfg.max_rounds.spec; if (!STATE) STATE = cfg.state_dir }
+ if (!STATE) return { ticket: TICKET, error: `no store: factory config failed: ${cfg.stderr || cfg.error || ''}` }
+ const show = await clerk(`${BIN} ticket show ${TICKET} --json`, 'Triage', 'ticket show')
+diff --git a/tests/factory/test_launch_script.py b/tests/factory/test_launch_script.py
+new file mode 100644
+index 0000000..855bf26
+--- /dev/null
++++ b/tests/factory/test_launch_script.py
+@@ -0,0 +1,115 @@
++"""`factory launch-script intake|build` (T-0054, issue #109): a launch copy of a workflow script.
++
++A launch copy is the script with its line `const LAUNCH = null` replaced by one JSON object: the
++instance's models, round limits and store as `factory config` prints them, the harness revision and
++the instance. The command writes it read-only into a new `factory-launch-*` directory under the
++temporary directory, and nothing to the checkout or the store. It is refused wherever `config` is,
++runs unmarked while a run is in flight, as `config` does, and first removes launch copies more than
++an hour old.
++
++Every test points TMPDIR inside its own tmp_path (the autouse fixture below), and `launch` fails a
++test whose copy lands anywhere else, so no test leaves a copy in the real temporary directory.
++"""
++from __future__ import annotations
++
++import difflib
++import json
++import os
++import stat
++import time
++from pathlib import Path
++
++import pytest
++
++from ._cli import REPO, cli, git_repo, js, run, tree
++from ._fixtures import assert_refused, snapshot, start_triage, target  # noqa: F401  (target is a fixture)
++from ._fixtures import other_request as request
++
++PREFIX = "const LAUNCH = "
++
++
++@pytest.fixture(autouse=True)
++def launch_tmp(tmp_path: Path, monkeypatch) -> Path:
++    d = tmp_path / "tmp"
++    d.mkdir()
++    monkeypatch.setenv("TMPDIR", str(d))
++    return d
++
++
++def launch(cp, launch_tmp: Path) -> Path:
++    assert cp.returncode == 0, cp.stderr
++    script = Path(js(cp)["script"])
++    assert script.is_relative_to(launch_tmp), script
++    return script
++
++
++def copies(launch_tmp: Path) -> list[str]:
++    return sorted(p.name for p in launch_tmp.glob("factory-launch-*"))
++
++
++def store_with_a_ticket(tmp_path: Path) -> Path:
++    store = tmp_path / "store"
++    (tmp_path / "r.md").write_text("# F\n\nDo x.\n")
++    assert run(store, "ticket", "new", "--file", str(tmp_path / "r.md")).returncode == 0
++    return store
++
++
++@pytest.mark.parametrize("name", ["intake", "build"])
++def test_a_launch_copy_is_its_script_with_one_line_set_to_the_instances_values(tmp_path, launch_tmp, name):
++    store = store_with_a_ticket(tmp_path)
++    before, checkout = tree(store), run(store, "paths")
++    cp = run(store, "launch-script", name)
++    script = launch(cp, launch_tmp)
++    src = REPO / "factory" / "workflows" / f"{name}.js"
++    paths, config = js(checkout), js(run(store, "config"))
++    assert script.name == f"{name}.js" and script.parent.parent == launch_tmp and script.parent.name.startswith("factory-launch-")
++    assert os.listdir(script.parent) == [f"{name}.js"]
++    diff = [ln for ln in difflib.unified_diff(src.read_text().splitlines(), script.read_text().splitlines(), lineterm="", n=0)
++            if ln[:1] in "+-" and not ln.startswith(("+++", "---"))]
++    assert diff[0] == "-const LAUNCH = null" and len(diff) == 2 and diff[1].startswith("+" + PREFIX)
++    assert json.loads(diff[1][1 + len(PREFIX):]) == {
++        "written_by": "factory launch-script", "source": str(src), "harness_revision": paths["harness_revision"],
++        "instance": paths["instance"], "models": config["models"], "max_rounds": config["max_rounds"],
++        "state_dir": config["state_dir"]}
++    assert stat.S_IMODE(script.stat().st_mode) == 0o444
++    assert js(cp) == {"ok": True, "script": str(script), "source": str(src),
++                      "harness_revision": paths["harness_revision"], "instance": paths["instance"]}
++    assert tree(store) == before
++
++
++def test_launch_script_is_refused_with_configs_error_where_the_lock_does_not_name_the_running_harness(tmp_path, launch_tmp):
++    t = git_repo(tmp_path / "tgt")
++    assert cli(t, "init", "--repo-name", "demo").returncode == 0
++    (t / ".factory" / "harness.lock").write_text("0" * 40 + "\n")
++    config, cp = cli(t, "config"), cli(t, "launch-script", "build")
++    assert config.returncode == 2 and cp.returncode == 2
++    assert cp.stderr == config.stderr and "is not the revision this instance accepted" in cp.stderr
++    assert copies(launch_tmp) == []
++
++
++def test_launch_script_runs_unmarked_while_a_run_is_in_flight_and_changes_nothing_in_the_target(target, tmp_path, launch_tmp):
++    rid = start_triage(target)
++    before = snapshot(target)
++    launch(cli(target, "launch-script", "build"), launch_tmp)
++    assert_refused(cli(target, "ticket", "new", "--file", request(tmp_path)), f"in flight: {rid}")
++    assert snapshot(target) == before and len(copies(launch_tmp)) == 1
++
++
++def test_launch_script_removes_only_launch_copies_over_an_hour_old(tmp_path, launch_tmp):
++    store = store_with_a_ticket(tmp_path)
++    old = launch(run(store, "launch-script", "build"), launch_tmp).parent
++    fresh = launch(run(store, "launch-script", "intake"), launch_tmp).parent
++    other = launch_tmp / "factory-launch-other"  # an old directory that holds no launch copy
++    other.mkdir()
++    (other / "build.js").write_text("x\n")
++    extra = launch_tmp / "factory-launch-extra"  # an old launch copy with a second file beside it
++    extra.mkdir()
++    (extra / "build.js").write_bytes((old / "build.js").read_bytes())
++    (extra / "notes.txt").write_text("x\n")
++    hour_ago = time.time() - 3700
++    for d in (old, other, extra):
++        os.utime(d, (hour_ago, hour_ago))
++    new = launch(run(store, "launch-script", "build"), launch_tmp).parent
++    assert not old.exists()
++    assert fresh.exists() and other.exists() and extra.exists() and new.exists()
++    assert copies(launch_tmp) == sorted(d.name for d in (fresh, other, extra, new))
+diff --git a/tests/factory/test_resolve_to_checks.py b/tests/factory/test_resolve_to_checks.py
+new file mode 100644
+index 0000000..ac8f82c
+--- /dev/null
++++ b/tests/factory/test_resolve_to_checks.py
+@@ -0,0 +1,145 @@
++"""`factory resolve <id> --to checks` (T-0054, issue #112): the route back to its checks for a
++sub-ticket parked by a harness-bug after its implementer finished.
++
++On the real run the clerk relayed `run finish`'s one-line JSON over several lines, the build found
++no JSON, and it parked the sub-ticket from ready-for-implementer although its implementer run had
++finished READY-FOR-REVIEW. The route reads the branch tip into the ticket as `ticket head` does,
++applies the build's `pr:init` round step and moves it to checks-in-flight. Every other park, and a
++ticket that is not parked, is refused with nothing written.
++
++Black-box through `bin/factory` on a throwaway store whose sub-ticket T-0001.1 builds in a scratch
++target repository.
++"""
++from __future__ import annotations
++
++import json
++import os
++import subprocess
++from pathlib import Path
++
++import pytest
++import yaml
++
++from ._cli import CliStore, approved_parent, git_repo
++
++PARK = "harness-bug: run finish implementer: exit 0, no JSON on stdout"
++REFUSAL = "--to checks applies to"
++
++
++class SubTicket(CliStore):
++    """T-0001 past the spec gate and planned as one sub-ticket, T-0001.1, ready for its implementer
++    with no branch yet."""
++
++    def __init__(self, tmp_path: Path):
++        self.root = tmp_path / "store"
++        self.target = git_repo(tmp_path / "t")
++        self.env = {**os.environ, "FACTORY_STATE": str(self.root), "FACTORY_REPO": str(self.target),
++                    "FACTORY_INTEGRATION_BRANCH": "main", "PYTHONDONTWRITEBYTECODE": "1"}
++        (tmp_path / "req.md").write_text("# Fixture\n\nThe bot should do the thing.\n")
++        (tmp_path / "spec.md").write_text("## Problem\nx\n")
++        (tmp_path / "plan.md").write_text("ST-1 / Do it\nDepends on: none\nParallel-safe: yes\n")
++        self.ok("ticket", "new", "--file", str(tmp_path / "req.md"))
++        approved_parent(self.ok, "T-0001", tmp_path / "spec.md")
++        self.ok("subticket", "add", "T-0001", "--file", str(tmp_path / "plan.md"))
++        self.ok("ticket", "transition", "T-0001", "--to", "planned", "--by", "t")
++
++    def implement(self, status: str) -> str:
++        """One implementer run on T-0001.1, as the build runs it: one commit on its branch and an
++        output with `status`. Returns the run id."""
++        rid = self.ok("run", "start", "--role", "implementer", "--ticket", "T-0001.1")["run_id"]
++        wt = yaml.safe_load((self.root / "runs" / rid / "meta.yaml").read_text())["worktree"]
++        (Path(wt) / "work.txt").write_text(rid)
++        for argv in (["add", "work.txt"], ["-c", "user.email=f@x", "-c", "user.name=f", "commit", "-qm", "work"]):
++            subprocess.run(["git", "-C", wt, *argv], check=True, capture_output=True)
++        (self.root / "runs" / rid / "output.md").write_text(f"STATUS: {status}\nCONFIDENCE: high, fixture\nESCALATIONS: none\n")
++        self.ok("run", "finish", rid)
++        return rid
++
++    def tip(self) -> str:
++        return subprocess.run(["git", "-C", str(self.target), "rev-parse", "factory/T-0001.1"],
++                              check=True, capture_output=True, text=True).stdout.strip()
++
++    def ticket(self) -> dict:
++        return yaml.safe_load((self.root / "tickets" / "T-0001.1.yaml").read_text())
++
++    def events(self) -> list[dict]:
++        return [json.loads(ln) for p in sorted((self.root / "log").glob("*.jsonl")) for ln in p.read_text().splitlines()]
++
++    def snapshot(self) -> dict[str, bytes]:
++        return {str(p.relative_to(self.root)): p.read_bytes() for p in sorted(self.root.rglob("*"))
++                if p.is_file() and "worktrees" not in p.relative_to(self.root).parts}
++
++
++def test_a_harness_bug_park_after_a_finished_implementer_returns_to_its_checks_at_the_branch_tip(tmp_path):
++    s = SubTicket(tmp_path)
++    s.implement("READY-FOR-REVIEW")
++    s.ok("ticket", "park", "T-0001.1", "--reason", PARK)
++    out = s.ok("resolve", "T-0001.1", "--to", "checks")
++    t = s.ticket()
++    assert out["state"] == "checks-in-flight" and out["kind"] == "to-checks" and out["head"] == s.tip()
++    assert t["status"] == "checks-in-flight" and t["parked"] is None
++    assert t["head"] == s.tip() and t["round"]["pr"] == 1
++    assert t["history"][-1]["from"] == "parked" and t["history"][-1]["resolve"] == "to-checks"
++    rec = yaml.safe_load((s.root / "approvals" / "T-0001.1" / "resolve-1.yaml").read_text())
++    assert (rec["kind"], rec["from"], rec["to"], rec["head"]) == ("to-checks", "parked", "checks-in-flight", s.tip())
++    last = s.events()[-1]
++    assert (last["event"], last["kind"], last["to"]) == ("human.resolved", "to-checks", "checks-in-flight")
++
++
++def test_a_later_round_is_unchanged_by_the_route(tmp_path):
++    s = SubTicket(tmp_path)
++    s.implement("READY-FOR-REVIEW")
++    s.ok("ticket", "transition", "T-0001.1", "--to", "checks-in-flight", "--by", "t", "--round", "pr:init")
++    s.ok("ticket", "transition", "T-0001.1", "--to", "ready-for-implementer", "--by", "t", "--round", "pr:+1")
++    s.implement("READY-FOR-REVIEW")
++    s.ok("ticket", "park", "T-0001.1", "--reason", PARK)
++    s.ok("resolve", "T-0001.1", "--to", "checks")
++    t = s.ticket()
++    assert t["status"] == "checks-in-flight" and t["round"]["pr"] == 2 and t["head"] == s.tip()
++
++
++def _blocked(s: SubTicket) -> None:
++    s.implement("BLOCKED")
++    s.ok("ticket", "park", "T-0001.1", "--reason", PARK)
++
++
++def _revised(s: SubTicket) -> None:
++    # checked and sent back; the next implementer run then failed to start, so the newest
++    # implementer run predates the sub-ticket's return to ready-for-implementer
++    s.implement("READY-FOR-REVIEW")
++    s.ok("ticket", "transition", "T-0001.1", "--to", "checks-in-flight", "--by", "t", "--round", "pr:init")
++    s.ok("ticket", "transition", "T-0001.1", "--to", "ready-for-implementer", "--by", "t", "--round", "pr:+1")
++    s.ok("ticket", "park", "T-0001.1", "--reason", "harness-bug: run start implementer: x")
++
++
++def _from_checks(s: SubTicket) -> None:
++    s.implement("READY-FOR-REVIEW")
++    s.ok("ticket", "transition", "T-0001.1", "--to", "checks-in-flight", "--by", "t", "--round", "pr:init")
++    s.ok("ticket", "park", "T-0001.1", "--reason", "harness-bug: results record reviewer: x")
++
++
++def _tripwire(s: SubTicket) -> None:
++    rid = s.implement("READY-FOR-REVIEW")
++    s.ok("ticket", "park", "T-0001.1", "--reason", f"tripwire: /x changed during {rid}")
++
++
++def _unparked(s: SubTicket) -> None:
++    s.implement("READY-FOR-REVIEW")
++
++
++@pytest.mark.parametrize("setup", [_blocked, _revised, _from_checks, _tripwire, _unparked],
++                         ids=["blocked", "revised", "checks", "tripwire", "unparked"])
++def test_every_other_ticket_is_refused_and_nothing_is_written(tmp_path, setup):
++    s = SubTicket(tmp_path)
++    setup(s)
++    status, before = s.ticket()["status"], s.snapshot()
++    cp = s.cli("resolve", "T-0001.1", "--to", "checks")
++    assert cp.returncode == 2, (cp.stdout, cp.stderr)
++    assert REFUSAL in cp.stderr and f"T-0001.1 is {status}" in cp.stderr
++    assert s.snapshot() == before
++
++
++def test_any_other_to_value_names_both_routes(tmp_path):
++    s = SubTicket(tmp_path)
++    cp = s.cli("resolve", "T-0001.1", "--to", "planner")
++    assert cp.returncode == 2 and "--to accepts only spec-gate or checks" in cp.stderr
+diff --git a/tests/factory/test_workflow_launch_copy.py b/tests/factory/test_workflow_launch_copy.py
+new file mode 100644
+index 0000000..daec3cb
+--- /dev/null
++++ b/tests/factory/test_workflow_launch_copy.py
+@@ -0,0 +1,230 @@
++"""The workflow scripts under node with a stand-in clerk that miscopies, as the clerk did on real
++runs (T-0054, issues #109 and #112).
++
++- #109: the clerk relayed `factory config` with a role's model retyped. A launch copy (written by
++  `factory launch-script`) asks no clerk for the configuration, so every role, and the clerk itself,
++  runs on the instance's model; the script launched as it is still parks at the role's run start.
++- #112: the clerk relayed a one-line JSON reply pretty-printed over several lines. Both scripts
++  read it as that one value.
++- A sub-ticket parked by #112 and returned with `resolve --to checks` is merged by the next build
++  without another implementer run.
++
++Each clerk command runs for real (sh -c, from this checkout) on a throwaway store; each role is a
++stub that writes the STATUS its test gives it. Every test points TMPDIR inside its own tmp_path.
++"""
++from __future__ import annotations
++
++import json
++import os
++import shutil
++import subprocess
++from pathlib import Path
++
++import pytest
++import yaml
++
++from ._cli import REPO, CliStore, approved_parent, git_repo
++
++# node driver.mjs <script> <ticket>: runs that workflow script on <ticket> of $FACTORY_STATE.
++# T_SWAP ({"<role>": "<model>"}) names those models in any clerk reply that lists `models`;
++# T_PRETTY=1 relays every JSON reply pretty-printed; T_INSTANCE is passed as the `instance` argument;
++# T_PLAYS ({"<role>": "<STATUS>"}) is the STATUS each role's run writes. An implementer commits one
++# file in its worktree; a checker's output carries the run's head, the verifier's "Gate suite: PASS".
++# Prints one JSON line: every agent call's label and model, each park, and the script's result.
++DRIVER = r"""
++import { readFileSync, writeFileSync } from 'node:fs'
++import { spawnSync } from 'node:child_process'
++const [script, ticket] = process.argv.slice(2)
++const swap = JSON.parse(process.env.T_SWAP || '{}')
++const plays = JSON.parse(process.env.T_PLAYS || '{}')
++const sh = (cmd, cwd) => spawnSync('sh', ['-c', cmd], { cwd, encoding: 'utf8' })
++const src = readFileSync(script, 'utf8').replace(/^export const meta/m, 'const meta')
++const calls = [], parks = []
++const agent = async (prompt, opts) => {
++  calls.push({ label: opts.label, model: opts.model })
++  const m = prompt.match(/and nothing else:\n\n([\s\S]*?)\n\nReport/)
++  if (m) {
++    const cp = sh(m[1], process.cwd())
++    let stdout = cp.stdout, j = null
++    try { j = JSON.parse(stdout.trim().split('\n').pop()) } catch (e) { j = null }
++    if (j && j.models) { Object.assign(j.models, swap); stdout = JSON.stringify(j) + '\n' }
++    if (j && process.env.T_PRETTY) stdout = JSON.stringify(j, null, 2) + '\n'
++    return { stdout, exit: cp.status, stderr: cp.stderr }
++  }
++  const r = prompt.match(/(\S+\/runs\/run-\d+-([a-z_]+))\/input\.md/)
++  const meta = readFileSync(`${r[1]}/meta.yaml`, 'utf8')
++  const wt = (meta.match(/^worktree: '?([^'\n]+)/m) || [])[1]
++  if (r[2] === 'implementer' && wt) sh('echo work > work.txt && git add work.txt && git -c user.email=f@x -c user.name=f commit -qm work', wt)
++  const head = (meta.match(/^head: '?([0-9a-f]{40})/m) || [])[1]
++  const text = (head && r[2] !== 'implementer' ? `Commit: ${head}\n` : '') + (r[2] === 'verifier' ? 'Gate suite: PASS\n' : '') +
++    `STATUS: ${plays[r[2]] || 'NONE'}\nCONFIDENCE: high, stub\nESCALATIONS: none\n`
++  writeFileSync(`${r[1]}/output.md`, text)
++  return text
++}
++const log = (s) => { const q = String(s).match(/^(\S+) parked: (.*)$/s); if (q) parks.push(`${q[1]}: ${q[2]}`) }
++const fn = new (async () => {}).constructor('args', 'agent', 'log', 'phase', 'parallel', src)
++const result = await fn({ ticket, repo: process.cwd(), state: process.env.FACTORY_STATE, target: process.env.FACTORY_REPO,
++  integration: 'main', inlineRoles: true, ...(process.env.T_INSTANCE ? { instance: process.env.T_INSTANCE } : {}) },
++  agent, log, () => {}, async (fs) => Promise.all(fs.map(f => f())))
++console.log(JSON.stringify({ calls, parks, result }))
++"""
++
++CHECKS = {"reviewer": "APPROVE", "verifier": "VERIFIED"}
++BUILD = {"implementer": "READY-FOR-REVIEW", **CHECKS}
++
++
++@pytest.fixture(autouse=True)
++def launch_tmp(tmp_path: Path, monkeypatch) -> Path:
++    d = tmp_path / "tmp"
++    d.mkdir()
++    monkeypatch.setenv("TMPDIR", str(d))
++    return d
++
++
++class Store(CliStore):
++    """A throwaway store whose tickets build in a scratch target repository."""
++
++    def __init__(self, tmp_path: Path):
++        self.tmp = tmp_path
++        self.root = tmp_path / "store"
++        self.target = git_repo(tmp_path / "t")
++        self.env = {**os.environ, "FACTORY_STATE": str(self.root), "FACTORY_REPO": str(self.target),
++                    "FACTORY_INTEGRATION_BRANCH": "main", "PYTHONDONTWRITEBYTECODE": "1"}
++
++    def new_ticket(self) -> str:
++        req = self.tmp / "req.md"
++        req.write_text("# Fixture\n\nThe bot should do the thing.\n")
++        return self.ok("ticket", "new", "--file", str(req))["id"]
++
++    def planned(self) -> None:
++        """T-0001 past the spec gate and planned as one sub-ticket, T-0001.1, ready for its implementer."""
++        tid = self.new_ticket()
++        (self.tmp / "spec.md").write_text("## Problem\nx\n")
++        (self.tmp / "plan.md").write_text("ST-1 / Do it\nDepends on: none\nParallel-safe: yes\n")
++        approved_parent(self.ok, tid, self.tmp / "spec.md")
++        self.ok("subticket", "add", tid, "--file", str(self.tmp / "plan.md"))
++        self.ok("ticket", "transition", tid, "--to", "planned", "--by", "t")
++
++    def at_checks(self) -> None:
++        """T-0001.1 at checks-in-flight on a branch holding one commit, with no result rows."""
++        self.planned()
++        for argv in (["checkout", "-qb", "factory/T-0001.1"], ["commit", "-q", "--allow-empty", "-m", "work"],
++                     ["checkout", "-q", "main"]):
++            self.git(str(self.target), *argv)
++        head = self.git(str(self.target), "rev-parse", "factory/T-0001.1")
++        self.ok("ticket", "set", "T-0001.1", "status=checks-in-flight", "branch=factory/T-0001.1", f"head={head}")
++
++    def implement(self, status: str) -> None:
++        """One implementer run on T-0001.1, as the build runs it, ending with `status`."""
++        rid = self.ok("run", "start", "--role", "implementer", "--ticket", "T-0001.1")["run_id"]
++        wt = yaml.safe_load((self.root / "runs" / rid / "meta.yaml").read_text())["worktree"]
++        (Path(wt) / "work.txt").write_text(rid)
++        self.git(wt, "add", "work.txt")
++        self.git(wt, "commit", "-qm", "work")
++        (self.root / "runs" / rid / "output.md").write_text(f"STATUS: {status}\nCONFIDENCE: high, fixture\nESCALATIONS: none\n")
++        self.ok("run", "finish", rid)
++
++    def git(self, cwd: str, *argv: str) -> str:
++        return subprocess.run(["git", "-C", cwd, "-c", "user.email=f@x", "-c", "user.name=f", *argv],
++                              check=True, capture_output=True, text=True).stdout.strip()
++
++    def launch_copy(self, name: str) -> str:
++        script = self.ok("launch-script", name)["script"]
++        assert Path(script).is_relative_to(self.tmp), script
++        return script
++
++    def drive(self, script: str, ticket: str, plays: dict, **env: str) -> dict:
++        node = shutil.which("node")
++        assert node, "node must be on PATH: this case runs a workflow script"
++        driver = self.tmp / "driver.mjs"
++        driver.write_text(DRIVER)
++        cp = subprocess.run([node, str(driver), script, ticket], capture_output=True, text=True, cwd=REPO,
++                            env={**self.env, "T_PLAYS": json.dumps(plays), **env})
++        assert cp.returncode == 0, cp.stderr
++        return json.loads(cp.stdout.strip().splitlines()[-1])
++
++    def status(self, tid: str) -> str:
++        return yaml.safe_load((self.root / "tickets" / f"{tid}.yaml").read_text())["status"]
++
++    def run_models(self, tid: str) -> list[tuple[str, str]]:
++        """(role, model) of each run of ticket `tid`, in run order."""
++        runs = self.root / "runs"
++        metas = [yaml.safe_load((d / "meta.yaml").read_text()) for d in sorted(runs.iterdir())] if runs.exists() else []
++        return [(m["role"], m["model"]) for m in metas if m["ticket"] == tid]
++
++
++def sub_parks(res: dict) -> list[str]:
++    """The parks of T-0001.1. After it merges the build goes on to close T-0001 and parks it at
++    `archive`: this throwaway store has no spec store."""
++    return [p for p in res["parks"] if p.startswith("T-0001.1:")]
++
++
++def role_of(label: str) -> str:
++    return "clerk" if label.startswith("clerk:") else label.split()[0]
++
++
++def test_a_build_from_its_launch_copy_runs_every_role_and_the_clerk_on_the_instances_model(tmp_path):
++    s = Store(tmp_path)
++    s.planned()
++    models = s.ok("config")["models"]
++    swap = {role: "sonnet" for role in ("implementer", "reviewer", "verifier", "clerk")}
++    res = s.drive(s.launch_copy("build"), "T-0001", BUILD, T_SWAP=json.dumps(swap))
++    assert sub_parks(res) == []
++    assert {c["label"] for c in res["calls"] if not c["label"].startswith("clerk:") and c["label"].endswith(" T-0001.1")} == {
++        "implementer T-0001.1", "reviewer T-0001.1", "verifier T-0001.1"}
++    assert [c for c in res["calls"] if c["model"] != models[role_of(c["label"])]] == []
++    assert s.status("T-0001.1") == "merged"
++    assert s.run_models("T-0001.1") == [("implementer", "opus"), ("reviewer", "fable"), ("verifier", "opus")]
++
++
++def test_the_build_script_launched_as_it_is_still_parks_on_a_retyped_model(tmp_path):
++    s = Store(tmp_path)
++    s.at_checks()
++    res = s.drive(str(REPO / "factory" / "workflows" / "build.js"), "T-0001", CHECKS, T_SWAP='{"verifier": "fable"}')
++    assert [p.rstrip("\n") for p in res["parks"]] == ["T-0001.1: harness-bug: run start verifier: model fable refused for verifier: the instance names opus"]
++    assert s.status("T-0001.1") == "parked" and s.run_models("T-0001.1") == [("reviewer", "fable")]
++
++
++def test_an_intake_from_its_launch_copy_runs_triage_on_the_instances_model(tmp_path):
++    s = Store(tmp_path)
++    tid = s.new_ticket()
++    res = s.drive(s.launch_copy("intake"), tid, {"triage": "REJECT"}, T_SWAP='{"triage": "fable"}')
++    assert [c for c in res["calls"] if not c["label"].startswith("clerk:")] == [{"label": f"triage {tid}", "model": "opus"}]
++    assert s.status(tid) == "closed" and s.run_models(tid) == [("triage", "opus")]
++
++
++@pytest.mark.parametrize("name", ["intake", "build"])
++def test_a_launch_copy_launched_for_another_instance_runs_nothing(tmp_path, name):
++    s = Store(tmp_path)
++    s.at_checks()
++    instance = s.ok("paths")["instance"]
++    res = s.drive(s.launch_copy(name), "T-0001", CHECKS, T_INSTANCE=str(tmp_path / "other"))
++    assert res["result"]["error"] == f"launch copy written for instance {instance}, launched with {tmp_path / 'other'}"
++    assert res["calls"] == [] and s.status("T-0001.1") == "checks-in-flight" and s.run_models("T-0001.1") == []
++
++
++def test_a_build_whose_every_reply_is_pretty_printed_merges(tmp_path):
++    s = Store(tmp_path)
++    s.planned()
++    res = s.drive(str(REPO / "factory" / "workflows" / "build.js"), "T-0001", BUILD, T_PRETTY="1")
++    assert sub_parks(res) == [] and s.status("T-0001.1") == "merged"
++    assert s.run_models("T-0001.1") == [("implementer", "opus"), ("reviewer", "fable"), ("verifier", "opus")]
++
++
++def test_an_intake_whose_every_reply_is_pretty_printed_closes(tmp_path):
++    s = Store(tmp_path)
++    tid = s.new_ticket()
++    res = s.drive(str(REPO / "factory" / "workflows" / "intake.js"), tid, {"triage": "REJECT"}, T_PRETTY="1")
++    assert res["result"]["state"] == "closed" and s.status(tid) == "closed"
++    assert s.run_models(tid) == [("triage", "opus")]
++
++
++def test_a_sub_ticket_returned_to_its_checks_is_merged_without_another_implementer_run(tmp_path):
++    s = Store(tmp_path)
++    s.planned()
++    s.implement("READY-FOR-REVIEW")
++    s.ok("ticket", "park", "T-0001.1", "--reason", "harness-bug: run finish implementer: exit 0, no JSON on stdout")
++    s.ok("resolve", "T-0001.1", "--to", "checks")
++    res = s.drive(str(REPO / "factory" / "workflows" / "build.js"), "T-0001", CHECKS)
++    assert sub_parks(res) == [] and s.status("T-0001.1") == "merged"
++    assert s.run_models("T-0001.1") == [("implementer", "opus"), ("reviewer", "fable"), ("verifier", "opus")]
