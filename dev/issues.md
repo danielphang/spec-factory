@@ -116,6 +116,9 @@ A fix closes its issue through a reviewed change on `main`; the merge column is 
 | [113](https://github.com/danielphang/spec-factory/issues/113) | A T-0054 current-truth scenario fails under macOS `/bin/sh` (bash 3.2): an unparenthesised `case` inside `$( )` | not in intake (p2; T-0054 verifier's escalation) | — | — |
 | [114](https://github.com/danielphang/spec-factory/issues/114) | `factory init` exits 1 on an unreadable agent copy since #108; list it as a stale copy instead | not in intake (p2; T-0052 verifier's escalation) | — | — |
 | [115](https://github.com/danielphang/spec-factory/issues/115) | `--accept-harness` with `init`, `paths` or `stats` silently accepts nothing; refuse it there | not in intake (p2; found by the Driver on the Nanobot target, 2026-10-19) | — | — |
+| [116](https://github.com/danielphang/spec-factory/issues/116) | North star: a primary metric, a review cadence and a rule for factory work, shown on the repo's front page (STATUS.md, CONTRIBUTING.md, `docs/reviews/`) | not in intake (p1; #96 row 1 since the 2026-10-19 re-order) | — | — |
+| [117](https://github.com/danielphang/spec-factory/issues/117) | Scorecard: `factory stats` reports the north star's measures per window; escapes as a store record; a cost record for every run | not in intake (p1; #96 row 2) | — | — |
+| [118](https://github.com/danielphang/spec-factory/issues/118) | Benchmark: about 10 upstream fix PRs with tests, the factory against one plain session, scored on the hidden tests | not in intake (p1; #96 row 4) | — | — |
 
 Issues 1–10 are applied and can be closed against their merge; 11 applied (`9168ce1`); 13 and 14 fold into #21 (checklists until it archives); 15 closed as superseded. #12 was a duplicate of #11.
 New findings go straight to GitHub issues; this file is the index.
