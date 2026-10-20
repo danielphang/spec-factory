@@ -14,7 +14,21 @@ plan: null
 in_flight: []
 parked: null
 created: '2026-10-20T06:38:50+00:00'
-history: []
+history:
+- ts: '2026-10-20T06:57:04+00:00'
+  from: ready-for-triage
+  to: parked
+  by: park
+  reason: NEEDS-HUMAN from triage
+- ts: '2026-10-20T07:23:01+00:00'
+  from: parked
+  to: ready-for-triage
+  by: dphang
+  resolve: answer
+  answer: 1
+  decision: '2026-10-20 T-0057 T-0057 (#105): a form error the harness can detect goes back to the role
+    that produced it as a new round, and does not park (Green for the operator, 2026-10-20; the operator
+    may strike it at the gate)'
 parent: null
 depends_on: []
 parallel_safe: true

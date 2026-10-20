@@ -1,0 +1,8 @@
+by: dphang
+at: '2026-10-20T07:23:01+00:00'
+kind: answer
+from: parked
+to: ready-for-triage
+answer: 1
+decision: '2026-10-20 T-0056 T-0056 (#117): a target change is decided by instance; an instance whose
+  target is the factory itself counts its merges as factory work, on a line of their own (operator, 2026-10-19)'

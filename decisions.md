@@ -314,3 +314,6 @@
 2026-10-19 T-0049 The "How a ticket moves" row of "Regenerating this page from scratch" names the modules the new diagram is drawn from, so a rebuild of the page can redraw it.
 2026-10-19 T-0049 No changelog entry. `docs/changelog.md` records changes to `docs/design.md`, which this change leaves alone.
 2026-10-19 T-0049 One "parked ticket" node stands for both a parked sub-ticket and a parked parent. Each edge label names the command that applies.
+2026-10-20 T-0056 T-0056 (#117): a target change is decided by instance; an instance whose target is the factory itself counts its merges as factory work, on a line of their own (operator, 2026-10-19)
+2026-10-20 T-0057 T-0057 (#105): a form error the harness can detect goes back to the role that produced it as a new round, and does not park (Green for the operator, 2026-10-20; the operator may strike it at the gate)
+2026-10-20 T-0055 T-0055 (#116): until the store records operator time, the scorecard counts operator decisions and interventions per change in place of hours (operator, 2026-10-19)

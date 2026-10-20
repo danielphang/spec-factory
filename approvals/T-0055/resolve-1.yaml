@@ -1,0 +1,8 @@
+by: dphang
+at: '2026-10-20T07:23:02+00:00'
+kind: answer
+from: parked
+to: ready-for-spec-writer
+answer: 1
+decision: '2026-10-20 T-0055 T-0055 (#116): until the store records operator time, the scorecard counts
+  operator decisions and interventions per change in place of hours (operator, 2026-10-19)'

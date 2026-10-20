@@ -1,0 +1,52 @@
+run_id: run-0553-critic
+role: critic
+ticket: T-0058
+model: fable
+round: 1
+spec_version: 1
+started: '2026-10-20T07:12:33+00:00'
+finished: '2026-10-20T07:16:22+00:00'
+wall_s: 229
+status: REVISE
+input_sources:
+- specs/T-0058/v1.md
+- openspec/specs/build-dispatch/spec.md
+- openspec/specs/harness-docs/spec.md
+- openspec/specs/harness-suite/spec.md
+- openspec/specs/live-store-guard/spec.md
+- openspec/specs/store-setup/spec.md
+- decisions.md
+confidence: high, every cited path, line and pinned test was checked and two acceptance commands printed
+  what the spec says; the one blocking item is a glossing gap with a one-phrase fix
+escalations: []
+escalations_note: null
+claude:
+  session_id: d30697c7-7b50-4f01-9384-39b5523b1414
+  total_cost_usd: 5.5361635
+  num_turns: 13
+  usage:
+    input_tokens: 386
+    cache_creation_input_tokens: 208093
+    cache_read_input_tokens: 2065774
+    output_tokens: 17080
+    output_tokens_details:
+      thinking_tokens: 8974
+    server_tool_use:
+      web_search_requests: 0
+      web_fetch_requests: 0
+    service_tier: standard
+    cache_creation:
+      ephemeral_1h_input_tokens: 208093
+      ephemeral_5m_input_tokens: 0
+    inference_geo: global
+    iterations:
+    - input_tokens: 32
+      output_tokens: 1734
+      cache_read_input_tokens: 203653
+      cache_creation_input_tokens: 4440
+      cache_creation:
+        ephemeral_5m_input_tokens: 0
+        ephemeral_1h_input_tokens: 4440
+      type: message
+    speed: standard
+    fallback_credit: null

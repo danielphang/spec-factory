@@ -1,0 +1,51 @@
+run_id: run-0550-triage
+role: triage
+ticket: T-0057
+model: opus
+round: 0
+spec_version: 0
+started: '2026-10-20T06:55:25+00:00'
+finished: '2026-10-20T06:57:04+00:00'
+wall_s: 99
+status: NEEDS-HUMAN
+input_sources:
+- requests/T-0057.md
+confidence: high. I checked every code and store claim on `main`, and the request's own premise about
+  the current refusal route is contradicted by `drive.py` and `intake.js`.
+escalations:
+- The request rests on a premise the code contradicts. It says a refused `spec add` sends the spec writer
+  back to fix the error in its own round. Today such a refusal parks the ticket for the operator (`factory/drive.py:294-297`,
+  `factory/workflows/intake.js:188-189`). Which route a format refusal should take is a design decision,
+  put to the operator above. Every option changes protected harness paths (`factory/**`). The spec's Risk
+  section must declare them.
+escalations_note: null
+claude:
+  session_id: 40c2d207-ef35-424e-bd99-f9df9f90a83e
+  total_cost_usd: 1.9750987999999998
+  num_turns: 13
+  usage:
+    input_tokens: 26
+    cache_creation_input_tokens: 174065
+    cache_read_input_tokens: 1938674
+    output_tokens: 9737
+    output_tokens_details:
+      thinking_tokens: 2680
+    server_tool_use:
+      web_search_requests: 0
+      web_fetch_requests: 0
+    service_tier: standard
+    cache_creation:
+      ephemeral_1h_input_tokens: 174065
+      ephemeral_5m_input_tokens: 0
+    inference_geo: global
+    iterations:
+    - input_tokens: 2
+      output_tokens: 2118
+      cache_read_input_tokens: 171686
+      cache_creation_input_tokens: 2379
+      cache_creation:
+        ephemeral_5m_input_tokens: 0
+        ephemeral_1h_input_tokens: 2379
+      type: message
+    speed: standard
+    fallback_credit: null

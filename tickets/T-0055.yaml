@@ -1,21 +1,41 @@
 id: T-0055
-type: null
-title: 'North star: a primary metric, a review cadence and a rule for factory work, shown on the repo''s
-  front page'
+type: chore
+title: 'North star: a primary metric, a two-weekly review and a rule for choosing factory work, shown
+  on the repo''s front page'
 request: requests/T-0055.md
 source: /private/tmp/claude-501/-Users-dphang-dev-nanobot/c69bfd1d-97a6-43e3-9d5a-a517c28d382c/scratchpad/requests/req-116.md
-status: ready-for-triage
+status: ready-for-spec-writer
 round:
   spec: 0
   pr: 0
 spec:
-  version: 0
+  version: 1
   approved_version: null
 plan: null
 in_flight: []
 parked: null
 created: '2026-10-20T06:38:49+00:00'
-history: []
+history:
+- ts: '2026-10-20T06:41:16+00:00'
+  from: ready-for-triage
+  to: ready-for-spec-writer
+  by: workflow
+  round:
+    spec: 0
+    pr: 0
+- ts: '2026-10-20T06:53:11+00:00'
+  from: ready-for-spec-writer
+  to: parked
+  by: park
+  reason: NEEDS-HUMAN from spec writer
+- ts: '2026-10-20T07:23:02+00:00'
+  from: parked
+  to: ready-for-spec-writer
+  by: dphang
+  resolve: answer
+  answer: 1
+  decision: '2026-10-20 T-0055 T-0055 (#116): until the store records operator time, the scorecard counts
+    operator decisions and interventions per change in place of hours (operator, 2026-10-19)'
 parent: null
 depends_on: []
 parallel_safe: true

@@ -15,7 +15,21 @@ plan: null
 in_flight: []
 parked: null
 created: '2026-10-20T06:38:50+00:00'
-history: []
+history:
+- ts: '2026-10-20T06:55:24+00:00'
+  from: ready-for-triage
+  to: parked
+  by: park
+  reason: NEEDS-HUMAN from triage
+- ts: '2026-10-20T07:23:01+00:00'
+  from: parked
+  to: ready-for-triage
+  by: dphang
+  resolve: answer
+  answer: 1
+  decision: '2026-10-20 T-0056 T-0056 (#117): a target change is decided by instance; an instance whose
+    target is the factory itself counts its merges as factory work, on a line of their own (operator,
+    2026-10-19)'
 parent: null
 depends_on: []
 parallel_safe: true

@@ -2919,3 +2919,43 @@
 {"ts": "2026-10-20T06:38:50+00:00", "event": "ticket.created", "ticket": "T-0059", "status": "ready-for-triage"}
 {"ts": "2026-10-20T06:38:51+00:00", "event": "request.created", "ticket": "T-0060", "source": "/private/tmp/claude-501/-Users-dphang-dev-nanobot/c69bfd1d-97a6-43e3-9d5a-a517c28d382c/scratchpad/requests/req-118.md"}
 {"ts": "2026-10-20T06:38:51+00:00", "event": "ticket.created", "ticket": "T-0060", "status": "ready-for-triage"}
+{"ts": "2026-10-20T06:40:01+00:00", "event": "run.started", "ticket": "T-0055", "run": "run-0547-triage", "role": "triage", "model": "opus"}
+{"ts": "2026-10-20T06:41:16+00:00", "event": "run.finished", "ticket": "T-0055", "run": "run-0547-triage", "role": "triage", "status": "ACCEPT", "wall_s": 75}
+{"ts": "2026-10-20T06:41:16+00:00", "event": "ticket.transition", "ticket": "T-0055", "from": "ready-for-triage", "to": "ready-for-spec-writer", "by": "workflow", "round": {"spec": 0, "pr": 0}}
+{"ts": "2026-10-20T06:41:16+00:00", "event": "run.started", "ticket": "T-0055", "run": "run-0548-spec_writer", "role": "spec_writer", "model": "opus"}
+{"ts": "2026-10-20T06:53:11+00:00", "event": "run.finished", "ticket": "T-0055", "run": "run-0548-spec_writer", "role": "spec_writer", "status": "NEEDS-HUMAN", "wall_s": 715}
+{"ts": "2026-10-20T06:53:11+00:00", "event": "spec.added", "ticket": "T-0055", "version": 1, "source": "run-0548-spec_writer"}
+{"ts": "2026-10-20T06:53:11+00:00", "event": "ticket.parked", "ticket": "T-0055", "from": "ready-for-spec-writer", "reason": "NEEDS-HUMAN from spec writer"}
+{"ts": "2026-10-20T06:53:11+00:00", "event": "escalation.queued", "ticket": "T-0055", "items": ["NEEDS-HUMAN from spec writer"]}
+{"ts": "2026-10-20T06:53:11+00:00", "event": "run.started", "ticket": "T-0056", "run": "run-0549-triage", "role": "triage", "model": "opus"}
+{"ts": "2026-10-20T06:55:24+00:00", "event": "run.finished", "ticket": "T-0056", "run": "run-0549-triage", "role": "triage", "status": "NEEDS-HUMAN", "wall_s": 133}
+{"ts": "2026-10-20T06:55:24+00:00", "event": "ticket.parked", "ticket": "T-0056", "from": "ready-for-triage", "reason": "NEEDS-HUMAN from triage"}
+{"ts": "2026-10-20T06:55:24+00:00", "event": "escalation.queued", "ticket": "T-0056", "items": ["NEEDS-HUMAN from triage"]}
+{"ts": "2026-10-20T06:55:25+00:00", "event": "run.started", "ticket": "T-0057", "run": "run-0550-triage", "role": "triage", "model": "opus"}
+{"ts": "2026-10-20T06:57:04+00:00", "event": "run.finished", "ticket": "T-0057", "run": "run-0550-triage", "role": "triage", "status": "NEEDS-HUMAN", "wall_s": 99}
+{"ts": "2026-10-20T06:57:04+00:00", "event": "escalation.queued", "ticket": "T-0057", "run": "run-0550-triage", "items": ["The request rests on a premise the code contradicts. It says a refused `spec add` sends the spec writer back to fix the error in its own round. Today such a refusal parks the ticket for the operator (`factory/drive.py:294-297`, `factory/workflows/intake.js:188-189`). Which route a format refusal should take is a design decision, put to the operator above. Every option changes protected harness paths (`factory/**`). The spec's Risk section must declare them."]}
+{"ts": "2026-10-20T06:57:04+00:00", "event": "ticket.parked", "ticket": "T-0057", "from": "ready-for-triage", "reason": "NEEDS-HUMAN from triage"}
+{"ts": "2026-10-20T06:57:04+00:00", "event": "escalation.queued", "ticket": "T-0057", "items": ["NEEDS-HUMAN from triage"]}
+{"ts": "2026-10-20T06:57:04+00:00", "event": "run.started", "ticket": "T-0058", "run": "run-0551-triage", "role": "triage", "model": "opus"}
+{"ts": "2026-10-20T06:59:10+00:00", "event": "run.finished", "ticket": "T-0058", "run": "run-0551-triage", "role": "triage", "status": "ACCEPT", "wall_s": 126}
+{"ts": "2026-10-20T06:59:10+00:00", "event": "ticket.transition", "ticket": "T-0058", "from": "ready-for-triage", "to": "ready-for-spec-writer", "by": "workflow", "round": {"spec": 0, "pr": 0}}
+{"ts": "2026-10-20T06:59:10+00:00", "event": "run.started", "ticket": "T-0058", "run": "run-0552-spec_writer", "role": "spec_writer", "model": "opus"}
+{"ts": "2026-10-20T07:12:32+00:00", "event": "run.finished", "ticket": "T-0058", "run": "run-0552-spec_writer", "role": "spec_writer", "status": "READY-FOR-CRITIC", "wall_s": 802}
+{"ts": "2026-10-20T07:12:32+00:00", "event": "spec.added", "ticket": "T-0058", "version": 1, "source": "run-0552-spec_writer"}
+{"ts": "2026-10-20T07:12:33+00:00", "event": "ticket.transition", "ticket": "T-0058", "from": "ready-for-spec-writer", "to": "ready-for-critic", "by": "workflow", "round": {"spec": 1, "pr": 0}}
+{"ts": "2026-10-20T07:12:33+00:00", "event": "run.started", "ticket": "T-0058", "run": "run-0553-critic", "role": "critic", "model": "fable"}
+{"ts": "2026-10-20T07:16:22+00:00", "event": "run.finished", "ticket": "T-0058", "run": "run-0553-critic", "role": "critic", "status": "REVISE", "wall_s": 229}
+{"ts": "2026-10-20T07:16:22+00:00", "event": "ticket.transition", "ticket": "T-0058", "from": "ready-for-critic", "to": "ready-for-spec-writer", "by": "workflow", "round": {"spec": 2, "pr": 0}}
+{"ts": "2026-10-20T07:16:22+00:00", "event": "run.started", "ticket": "T-0058", "run": "run-0554-spec_writer", "role": "spec_writer", "model": "opus"}
+{"ts": "2026-10-20T07:21:29+00:00", "event": "run.finished", "ticket": "T-0058", "run": "run-0554-spec_writer", "role": "spec_writer", "status": "READY-FOR-CRITIC", "wall_s": 307}
+{"ts": "2026-10-20T07:21:29+00:00", "event": "spec.added", "ticket": "T-0058", "version": 2, "source": "run-0554-spec_writer"}
+{"ts": "2026-10-20T07:21:29+00:00", "event": "ticket.transition", "ticket": "T-0058", "from": "ready-for-spec-writer", "to": "ready-for-critic", "by": "workflow", "round": {"spec": 2, "pr": 0}}
+{"ts": "2026-10-20T07:21:29+00:00", "event": "run.started", "ticket": "T-0058", "run": "run-0555-critic", "role": "critic", "model": "fable"}
+{"ts": "2026-10-20T07:22:43+00:00", "event": "run.finished", "ticket": "T-0058", "run": "run-0555-critic", "role": "critic", "status": "APPROVE", "wall_s": 74}
+{"ts": "2026-10-20T07:22:43+00:00", "event": "ticket.transition", "ticket": "T-0058", "from": "ready-for-critic", "to": "awaiting-spec-gate", "by": "workflow", "round": {"spec": 2, "pr": 0}}
+{"ts": "2026-10-20T07:23:01+00:00", "event": "decision.recorded", "ticket": "T-0056", "by": "dphang", "line": "2026-10-20 T-0056 T-0056 (#117): a target change is decided by instance; an instance whose target is the factory itself counts its merges as factory work, on a line of their own (operator, 2026-10-19)", "via": "resolve --answer"}
+{"ts": "2026-10-20T07:23:01+00:00", "event": "human.resolved", "ticket": "T-0056", "kind": "answer", "by": "dphang", "from": "parked", "to": "ready-for-triage"}
+{"ts": "2026-10-20T07:23:01+00:00", "event": "decision.recorded", "ticket": "T-0057", "by": "dphang", "line": "2026-10-20 T-0057 T-0057 (#105): a form error the harness can detect goes back to the role that produced it as a new round, and does not park (Green for the operator, 2026-10-20; the operator may strike it at the gate)", "via": "resolve --answer"}
+{"ts": "2026-10-20T07:23:01+00:00", "event": "human.resolved", "ticket": "T-0057", "kind": "answer", "by": "dphang", "from": "parked", "to": "ready-for-triage"}
+{"ts": "2026-10-20T07:23:02+00:00", "event": "decision.recorded", "ticket": "T-0055", "by": "dphang", "line": "2026-10-20 T-0055 T-0055 (#116): until the store records operator time, the scorecard counts operator decisions and interventions per change in place of hours (operator, 2026-10-19)", "via": "resolve --answer"}
+{"ts": "2026-10-20T07:23:02+00:00", "event": "human.resolved", "ticket": "T-0055", "kind": "answer", "by": "dphang", "from": "parked", "to": "ready-for-spec-writer"}

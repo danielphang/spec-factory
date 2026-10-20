@@ -1,22 +1,58 @@
 id: T-0058
-type: null
-title: 'Four small harness defects: drive counts Claude Code''s footer as escalations, one scenario fails
-  under macOS sh, init exits 1 on an unreadable agent copy, and --accept-harness is silently ignored by
-  init, paths and stats'
+type: bug
+title: 'Four small harness defects: the escalation parser counts Claude Code''s attribution footer as
+  escalations, a build-dispatch scenario fails under macOS /bin/sh, `factory init` exits 1 on an unreadable
+  agent copy, and `--accept-harness` is silently ignored by `init`, `paths` and `stats` (#88, #113, #114,
+  #115)'
 request: requests/T-0058.md
 source: /private/tmp/claude-501/-Users-dphang-dev-nanobot/c69bfd1d-97a6-43e3-9d5a-a517c28d382c/scratchpad/requests/req-bugs.md
-status: ready-for-triage
+status: awaiting-spec-gate
 round:
-  spec: 0
+  spec: 2
   pr: 0
 spec:
-  version: 0
+  version: 2
   approved_version: null
 plan: null
 in_flight: []
 parked: null
 created: '2026-10-20T06:38:50+00:00'
-history: []
+history:
+- ts: '2026-10-20T06:59:10+00:00'
+  from: ready-for-triage
+  to: ready-for-spec-writer
+  by: workflow
+  round:
+    spec: 0
+    pr: 0
+- ts: '2026-10-20T07:12:32+00:00'
+  from: ready-for-spec-writer
+  to: ready-for-critic
+  by: workflow
+  round:
+    spec: 1
+    pr: 0
+- ts: '2026-10-20T07:16:22+00:00'
+  from: ready-for-critic
+  to: ready-for-spec-writer
+  by: workflow
+  round:
+    spec: 2
+    pr: 0
+- ts: '2026-10-20T07:21:29+00:00'
+  from: ready-for-spec-writer
+  to: ready-for-critic
+  by: workflow
+  round:
+    spec: 2
+    pr: 0
+- ts: '2026-10-20T07:22:43+00:00'
+  from: ready-for-critic
+  to: awaiting-spec-gate
+  by: workflow
+  round:
+    spec: 2
+    pr: 0
 parent: null
 depends_on: []
 parallel_safe: true

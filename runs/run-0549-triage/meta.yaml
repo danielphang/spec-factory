@@ -1,0 +1,46 @@
+run_id: run-0549-triage
+role: triage
+ticket: T-0056
+model: opus
+round: 0
+spec_version: 0
+started: '2026-10-20T06:53:11+00:00'
+finished: '2026-10-20T06:55:24+00:00'
+wall_s: 133
+status: NEEDS-HUMAN
+input_sources:
+- requests/T-0056.md
+confidence: high. I reproduced the request's cost figures exactly from the stores, and the target-change
+  conflict appears verbatim in T-0055's draft spec.
+escalations: []
+escalations_note: null
+claude:
+  session_id: 586e7e70-5e6e-4bbb-9607-a42fd9190a63
+  total_cost_usd: 1.6637143999999995
+  num_turns: 16
+  usage:
+    input_tokens: 32
+    cache_creation_input_tokens: 111661
+    cache_read_input_tokens: 2524792
+    output_tokens: 13267
+    output_tokens_details:
+      thinking_tokens: 4902
+    server_tool_use:
+      web_search_requests: 0
+      web_fetch_requests: 0
+    service_tier: standard
+    cache_creation:
+      ephemeral_1h_input_tokens: 111661
+      ephemeral_5m_input_tokens: 0
+    inference_geo: global
+    iterations:
+    - input_tokens: 2
+      output_tokens: 2295
+      cache_read_input_tokens: 181564
+      cache_creation_input_tokens: 2757
+      cache_creation:
+        ephemeral_5m_input_tokens: 0
+        ephemeral_1h_input_tokens: 2757
+      type: message
+    speed: standard
+    fallback_credit: null
