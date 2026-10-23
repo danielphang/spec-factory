@@ -4,9 +4,13 @@ An AI software pipeline: eight agent roles, a harness that enforces the wiring r
 table, and human gates. This page is the system as it runs today; install and use are in
 "Where it runs" and "Starting a run".
 
+**North star.** Turn a written request into merged, verified code with as little of the operator's
+attention as the work allows. Metric: correct changes to the product it builds, per hour of operator
+attention, with no rise in escaped defects. See `docs/north-star.md`, `STATUS.md` and `docs/reviews/`.
+
 | | |
 |---|---|
-| **Status** | Current state as of 2026-10-22. Intake works end to end. Build works, in local-only mode. |
+| **Status** | Current state as of 2026-10-23. Intake works end to end. Build works, in local-only mode. |
 | **Reader** | Technical, seeing this project for the first time. Terms specific to this system are defined in "Terms used on this page" or at first use. |
 | **Scope** | What runs now. The intended design and its reasoning are in `docs/design.md`; where the two disagree, this page is right about what runs and the design is amended. |
 | **Internal references** | Ticket ids, issue numbers and who did what are in "Related work and history" near the end. |
@@ -835,7 +839,9 @@ to measure which starts a role with less context.
 ### Filing a request from an issue tracker
 
 The harness has no tracker integration. A request is a Markdown file, and the link to an issue is
-kept by hand in both directions.
+kept by hand in both directions. A request to change the factory itself goes ahead only if it fixes
+a defect that hit a ticket of the product the factory builds, or names the scorecard number it moves
+and re-measures it after it ships. The request says which; the operator applies it at the spec gate.
 
 1. Write the request to a file. Put the title in front matter, and quote it if it contains `: `.
    The harness reads only `title:`; any other front matter is kept as text. End the body with the
@@ -1091,6 +1097,8 @@ has not been tried, is in `docs/design.md`, "Running on another agent host".
 | `docs/changelog.md` | The design document's changelog |
 | `docs/prompts/` | Each role's prompt block, copied verbatim from the design doc by hand; `00-preamble.md` goes at the top of every role |
 | `docs/north-star.md` | What the factory is for, what it will not trade away, and where it is heading; changes to it are the operator's decision |
+| `STATUS.md`, `docs/reviews/` | The latest scorecard, focus and queue, rewritten only at a review; each review, written from `docs/reviews/TEMPLATE.md`, the first being the hand-counted baseline of 2026-10-19 |
+| `CONTRIBUTING.md` | How work is proposed and chosen: issue, factory ticket, spec gate, under the north star's rule for factory work |
 | `docs/principles.md` | The fourteen learned principles, each with its incident, citation and implementing mechanism |
 | `docs/decided-against.md` | Approaches tried or offered and dropped, with the evidence and what would reopen each |
 | `docs/golden.md` | The fixed golden set every prompt-change replay runs, with each entry's base and known catch, the baseline table, and the rule for changing the set |
