@@ -1128,9 +1128,9 @@ has not been tried, is in `docs/design.md`, "Running on another agent host".
 
 The two targets are this repo (instance B) and the nanobot fork at `~/dev/nanobot-upstream`
 (instance A); both run on the shared runtime. How this page and the design came to be is in
-`docs/changelog.md`; the issue index is `dev/issues.md`. The store holds 54 tickets and 68
+`docs/changelog.md`; the issue index is `dev/issues.md`. The store holds 60 tickets and 70
 sub-tickets at `.factory/store/`; the runtime is at `~/dev/spec-factory-harness`, commit
-`1058db5`, and its harness revision `e12ca71` equals this repo's `harness.lock`.
+`c42d167`, and its harness revision `6f4d865` equals this repo's `harness.lock`.
 
 ## Maintaining this page
 
