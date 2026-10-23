@@ -5,7 +5,10 @@ ESCALATIONS: the next labelled line after that (models wrap and interleave comme
 between are continuation). A `none` head (`none` in any case, then end of line or punctuation) with
 nothing below it is no escalation; prose after it on that line is returned as `escalations_note`
 and kept with the run. A `none` head with further lines is a real list, every line from the head
-on an item verbatim; so is anything else (operator decision 2026-10-01, option (b)).
+on an item verbatim; so is anything else (operator decision 2026-10-01, option (b)). Claude Code's
+attribution footer, a line below the ESCALATIONS line that is exactly `🤖 Generated with [Claude
+Code](<link>)`, is dropped first: Claude Code appends it after the trailer, and the role never
+raised it (T-0058, #88).
 """
 from __future__ import annotations
 
@@ -13,6 +16,7 @@ import re
 
 STATUS_RE = re.compile(r"^STATUS:\s*(\S+)\s*$")
 NONE_HEAD_RE = re.compile(r"^none\s*($|[.,;:—–-])", re.I)
+ATTRIBUTION_RE = re.compile(r"^🤖 Generated with \[Claude Code\]\(\S+\)$")
 
 
 def parse(text: str) -> dict:
@@ -36,10 +40,13 @@ def parse(text: str) -> dict:
     confidence = " ".join([nonblank[conf_i].split(":", 1)[1].strip()] + nonblank[conf_i + 1:esc_i]).strip()
     esc_head = nonblank[esc_i].split(":", 1)[1].strip()
     tail = [ln.lstrip("-* ").strip() for ln in nonblank[esc_i + 1:]]
+    tail = [ln for ln in tail if not ATTRIBUTION_RE.fullmatch(ln)]
     # Operator decision 2026-10-01, option (b): a `none` head is `none` in any case followed by end
     # of line or punctuation (never a space and a word). A none head with prose and nothing below
     # routes as no escalation and the prose is kept with the run (escalations_note). A none head
     # with further lines is a real list; anything else is an item. Unsure text goes to the queue.
+    # Claude Code's attribution footer was dropped from the tail first: Claude Code appends it after
+    # the trailer and the role never raised it, so it never turns a none head into a list (#88).
     note = None
     if not tail and (not esc_head or NONE_HEAD_RE.match(esc_head)):
         items = []

@@ -184,11 +184,19 @@ def init_cmd(a):
                 (dest / src.name).parent.mkdir(parents=True, exist_ok=True)
                 shutil.copyfile(src, dest / src.name)
                 agents.append(str(dest / src.name))
-            elif not (dest / src.name).is_file() or (dest / src.name).read_bytes() != src.read_bytes():
-                # reported, never overwritten
-                stale.append(str(dest / src.name))
-                print(f"factory init: {dest / src.name} differs from its template {src}; left as it is",
-                      file=sys.stderr)
+            else:
+                # reported, never overwritten; a copy that cannot be read is listed too (T-0058, #114)
+                try:
+                    differs = not (dest / src.name).is_file() or (dest / src.name).read_bytes() != src.read_bytes()
+                except OSError as e:
+                    stale.append(str(dest / src.name))
+                    print(f"factory init: {dest / src.name} could not be read ({e.strerror or e}); left as it is",
+                          file=sys.stderr)
+                    continue
+                if differs:
+                    stale.append(str(dest / src.name))
+                    print(f"factory init: {dest / src.name} differs from its template {src}; left as it is",
+                          file=sys.stderr)
         checkout = gitops.checkout_of(repo, gitops.STORE_BRANCH)
         if checkout is not None and checkout.resolve() == root:
             store_branch = gitops.STORE_BRANCH

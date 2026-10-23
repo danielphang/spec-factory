@@ -416,11 +416,13 @@ def test_reads_an_own_store_with_a_run_in_flight_from_its_runs_under_another_loc
         assert cp.returncode == 0, cp.stderr
         assert f"Stores: {own}" in cp.stdout.splitlines()
         assert "1 runs in flight left out" in cp.stdout
-        # --accept-harness is ignored, as for `paths`: no lock rewrite, no refusal
+        # --accept-harness is refused, as for `init` and `paths` (T-0058): stats never checks the lock,
+        # so the refusal names `config` as the command that accepts a revision, and rewrites nothing
         env = {k: v for k, v in os.environ.items() if k not in STRIP}
         cp = subprocess.run([str(BIN), "--accept-harness", "0" * 40, "stats"], capture_output=True, text=True,
                             cwd=cwd, env={**env, "PYTHONDONTWRITEBYTECODE": "1"})
-        assert cp.returncode == 0, cp.stderr
+        assert cp.returncode == 2, cp.stderr
+        assert f"factory --accept-harness {'0' * 40} config" in cp.stderr
     assert snapshot(target) == before
     # the lock is in force: an ordinary read is refused
     assert factory_cli(target, "ticket", "show", "T-0001").returncode == 2

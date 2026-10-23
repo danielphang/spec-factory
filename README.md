@@ -6,7 +6,7 @@ table, and human gates. This page is the system as it runs today; install and us
 
 | | |
 |---|---|
-| **Status** | Current state as of 2026-10-19. Intake works end to end. Build works, in local-only mode. |
+| **Status** | Current state as of 2026-10-22. Intake works end to end. Build works, in local-only mode. |
 | **Reader** | Technical, seeing this project for the first time. Terms specific to this system are defined in "Terms used on this page" or at first use. |
 | **Scope** | What runs now. The intended design and its reasoning are in `docs/design.md`; where the two disagree, this page is right about what runs and the design is amended. |
 | **Internal references** | Ticket ids, issue numbers and who did what are in "Related work and history" near the end. |
@@ -526,7 +526,7 @@ The store's path is `state_dir` in `instance.yaml`. `factory init` creates a new
 |---|---|---|---|---|
 | `instance.yaml`, `context.md` | integration | `factory init`, then edited by the operator | the operator | durable |
 | `harness.lock` | integration | `factory init`; `--accept-harness` rewrites it | the operator | durable |
-| `.claude/agents/factory-*.md` | integration | `factory init`, when they are missing; it reports a copy that differs from its template and leaves it as it is | the operator, if the target keeps them | durable |
+| `.claude/agents/factory-*.md` | integration | `factory init`, when they are missing; it reports a copy that differs from its template, or that it cannot read, and leaves it as it is | the operator, if the target keeps them | durable |
 | Store records: requests, tickets, specs, plans, runs, results, approvals, current truth, changes, decisions, log | `factory-store` | the harness, through the workflows' clerk or `factory drive`, and the operator's commands | the operator, with `git -C <store> commit`; the harness commits the store once, the first commit `store migrate` makes | durable |
 | `runs/*/scratch/`, `runs/*/wt/`, `worktrees/` | none; git ignores them | `run start` | never | scratch until the ticket moves on (kept while parked); checker checkouts until `run cleanup`; implementer checkouts until the merge |
 | `drive/<ticket>.yaml` | none; git ignores it | `factory drive` | never | a live view of one driver process, rewritten at each step; read by the next drive of that ticket, which refuses to start while it shows a live driver; kept until that next drive |
@@ -608,7 +608,8 @@ can accept a revision while another stays on the old one.
 The flag cannot clear the other refusal. A runtime with uncommitted edits to the harness code is
 refused outright; commit or discard them first. Both checks apply only when a command uses the
 instance's own store. A throwaway store (`FACTORY_STATE` pointing elsewhere, as every test does)
-skips them. `paths` and `stats` skip both checks on any store, because they write nothing.
+skips them. `paths` and `stats` skip both checks on any store because they write nothing, and
+`init`, `paths` and `stats` refuse `--accept-harness`; every other command accepts it.
 
 ### Upgrading the runtime
 
@@ -616,7 +617,7 @@ Between tickets, never during one:
 
 1. Move the runtime: `git -C ~/dev/spec-factory-harness checkout --detach <sha>`, then
    `uv sync --frozen` there.
-2. In each target that should adopt it, run any store command once with `--accept-harness <sha>`.
+2. In each target that should adopt it, run `factory --accept-harness <sha> config` once.
 
 Targets you do not touch keep running the revision they accepted.
 
@@ -949,7 +950,8 @@ path above is relative to the store.
 `factory stats` counts, from the store's records, how often each role's verdict changed what
 happened next and what each role cost. Use it before deciding which model a role runs, or whether
 a check is worth its cost. It reads one or more stores and writes nothing. It needs no marker and
-no `--accept-harness`, so it runs while a build is in flight and from any checkout.
+never checks the harness lock, so it runs while a build is in flight and from any checkout. It
+refuses `--accept-harness`.
 
 ```
 $RUNTIME/bin/factory stats [--store PATH]... [--since WHEN] [--until WHEN] [--transcripts DIR]...
