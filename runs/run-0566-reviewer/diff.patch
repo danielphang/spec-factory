@@ -1,0 +1,381 @@
+diff --git a/CONTRIBUTING.md b/CONTRIBUTING.md
+new file mode 100644
+index 0000000..1959bef
+--- /dev/null
++++ b/CONTRIBUTING.md
+@@ -0,0 +1,38 @@
++# Contributing
++
++This repository is the spec factory: an AI software pipeline that turns a written request into
++merged, verified code, with a human approving each design before any code is written. What the
++factory is for, and how its work is measured, is in [docs/north-star.md](docs/north-star.md).
++This page says how work on the factory is proposed and chosen.
++
++## The rule for factory work
++
++A change to the factory itself goes ahead only if it does one of two things:
++
++- it fixes a defect that hit a target ticket, a ticket of the product the factory builds (today,
++  a port of the Nanobot chat bot); or
++- it names the scorecard number it moves, and re-measures that number after it ships.
++
++The request says which. The scorecard's numbers are named in
++[docs/north-star.md](docs/north-star.md). The operator applies the rule at the spec gate.
++
++## How work is proposed and chosen
++
++1. **Issue.** Open an issue that says where the problem is, what happened (the evidence), why it
++   matters, and which half of the rule it meets. A proposed fix is welcome, as a suggestion.
++2. **Factory ticket.** The operator files the issue as a request, which makes it a factory ticket:
++   one request, tracked from a file to a closed record. [README.md](README.md)'s "Filing a request
++   from an issue tracker" gives the steps. The work queue, issue #96, sets the order, and each
++   review re-orders it.
++3. **Spec gate.** The factory's agents turn the ticket into a spec: the problem, the decisions,
++   and acceptance checks written as commands with expected results. The operator approves or
++   returns the spec at the spec gate, before any code is written, and applies the rule there.
++   After approval the factory builds, checks and merges the change.
++
++## Where to read more
++
++- [STATUS.md](STATUS.md): the latest scorecard, the current focus and the top of the queue.
++- [docs/reviews/](docs/reviews/): each review, and the template a review is written from.
++- [docs/decided-against.md](docs/decided-against.md): what was tried and dropped. Read it before
++  proposing something that sounds new.
++- [README.md](README.md): the system as it runs today.
+diff --git a/README.md b/README.md
+index cb0ab0b..871b62b 100644
+--- a/README.md
++++ b/README.md
+@@ -4,9 +4,13 @@ An AI software pipeline: eight agent roles, a harness that enforces the wiring r
+ table, and human gates. This page is the system as it runs today; install and use are in
+ "Where it runs" and "Starting a run".
+ 
++**North star.** Turn a written request into merged, verified code with as little of the operator's
++attention as the work allows. Metric: correct changes to the product it builds, per hour of operator
++attention, with no rise in escaped defects. See `docs/north-star.md`, `STATUS.md` and `docs/reviews/`.
++
+ | | |
+ |---|---|
+-| **Status** | Current state as of 2026-10-22. Intake works end to end. Build works, in local-only mode. |
++| **Status** | Current state as of 2026-10-23. Intake works end to end. Build works, in local-only mode. |
+ | **Reader** | Technical, seeing this project for the first time. Terms specific to this system are defined in "Terms used on this page" or at first use. |
+ | **Scope** | What runs now. The intended design and its reasoning are in `docs/design.md`; where the two disagree, this page is right about what runs and the design is amended. |
+ | **Internal references** | Ticket ids, issue numbers and who did what are in "Related work and history" near the end. |
+@@ -835,7 +839,9 @@ to measure which starts a role with less context.
+ ### Filing a request from an issue tracker
+ 
+ The harness has no tracker integration. A request is a Markdown file, and the link to an issue is
+-kept by hand in both directions.
++kept by hand in both directions. A request to change the factory itself goes ahead only if it fixes
++a defect that hit a ticket of the product the factory builds, or names the scorecard number it moves
++and re-measures it after it ships. The request says which; the operator applies it at the spec gate.
+ 
+ 1. Write the request to a file. Put the title in front matter, and quote it if it contains `: `.
+    The harness reads only `title:`; any other front matter is kept as text. End the body with the
+@@ -1091,6 +1097,8 @@ has not been tried, is in `docs/design.md`, "Running on another agent host".
+ | `docs/changelog.md` | The design document's changelog |
+ | `docs/prompts/` | Each role's prompt block, copied verbatim from the design doc by hand; `00-preamble.md` goes at the top of every role |
+ | `docs/north-star.md` | What the factory is for, what it will not trade away, and where it is heading; changes to it are the operator's decision |
++| `STATUS.md`, `docs/reviews/` | The latest scorecard, focus and queue, rewritten only at a review; each review, written from `docs/reviews/TEMPLATE.md`, the first being the hand-counted baseline of 2026-10-19 |
++| `CONTRIBUTING.md` | How work is proposed and chosen: issue, factory ticket, spec gate, under the north star's rule for factory work |
+ | `docs/principles.md` | The fourteen learned principles, each with its incident, citation and implementing mechanism |
+ | `docs/decided-against.md` | Approaches tried or offered and dropped, with the evidence and what would reopen each |
+ | `docs/golden.md` | The fixed golden set every prompt-change replay runs, with each entry's base and known catch, the baseline table, and the rule for changing the set |
+diff --git a/STATUS.md b/STATUS.md
+new file mode 100644
+index 0000000..ef932e8
+--- /dev/null
++++ b/STATUS.md
+@@ -0,0 +1,56 @@
++# Status
++
++This page is rewritten only at a review, and every number on it is as of the review it names.
++Last rewritten: 2026-10-19, at the baseline review.
++
++**North star:** correct target changes per hour of operator attention, while escaped defects do
++not rise. The full position is [docs/north-star.md](docs/north-star.md).
++
++## Scorecard
++
++From the baseline review, [docs/reviews/2026-10-19.md](docs/reviews/2026-10-19.md), for
++2026-10-03 to 2026-10-19. These figures were counted by hand. From #117 on, `factory stats`
++computes them, and later reviews quote its figures. Operator touches, the decisions and
++interventions per change, stand in for hours of operator attention, which the store does not
++record. The Nanobot port's merges are target changes; spec-factory's are factory work.
++
++| Number | Nanobot port | spec-factory |
++|---|---|---|
++| Changes merged | 27 | 42 |
++| Escapes (repaired + open) | 1 + 1 | 5 + 3 |
++| Operator touches per change | 5.0 | 3.1 |
++| Wall time per change, median | 66 min | 67 min |
++| Lead time, median | 21.9 h | 10.6 h |
++| Runs with a cost record / runs started | 15 / 436 | 18 / 500 |
++
++The port's escapes count code only; 5 more of its changes needed a fix to the record alone. Most
++of the port landed by 2026-10-11, and only 1 of its changes merged after that. Cost per change is
++mostly unknown, because few runs carry a cost record.
++
++## Current focus
++
++Measuring the north star: the scorecard in `factory stats`, then the upstream benchmark.
++
++## Top of the queue
++
++The queue is [issue #96](https://github.com/danielphang/spec-factory/issues/96), re-ordered at
++each review. Its top as of 2026-10-19, after this page's own change:
++
++1. The scorecard in `factory stats` ([#117](https://github.com/danielphang/spec-factory/issues/117)).
++2. The spec validator at `spec add` ([#105](https://github.com/danielphang/spec-factory/issues/105)),
++   a defect that parked a target ticket.
++3. The upstream benchmark ([#118](https://github.com/danielphang/spec-factory/issues/118)).
++
++## Open experiments
++
++None yet. Experiments are issues labelled
++[`experiment`](https://github.com/danielphang/spec-factory/issues?q=is%3Aopen+label%3Aexperiment).
++
++## Links
++
++- Latest review: [the baseline of 2026-10-19](docs/reviews/2026-10-19.md). Every review and the
++  template are in [docs/reviews/](docs/reviews/).
++- North star: [docs/north-star.md](docs/north-star.md).
++- Issues: <https://github.com/danielphang/spec-factory/issues>.
++- Store, the factory's record of every ticket and run, on its own branch:
++  <https://github.com/danielphang/spec-factory/tree/factory-store>.
+diff --git a/docs/changelog.md b/docs/changelog.md
+index 61ccec7..e0a6777 100644
+--- a/docs/changelog.md
++++ b/docs/changelog.md
+@@ -84,4 +84,6 @@ Six review rounds ran on this doc, using the reviewer prompt in the appendix. Ro
+ 
+ 76. After four small harness defects, each found in a real run and none of which changed where a ticket went next. Issue #88: Claude Code sometimes appends its attribution footer, `🤖 Generated with [Claude Code](<link>)`, below a role's STATUS/CONFIDENCE/ESCALATIONS trailer, and the trailer parser read an `ESCALATIONS: none` line with the footer below it as a real list of two items, so `run finish` recorded two escalations the role never raised and logged a false `escalation.queued`. The parser now drops a line below the ESCALATIONS line that is exactly that footer, with any link and after its list marker is stripped, before it applies the `none` rule; every other line below the ESCALATIONS line is still an item. Issue #113: one build-dispatch scenario in current truth put a `case` statement inside `$( )` with unparenthesised patterns, which the bash 3.2 that macOS ships as `/bin/sh` cannot parse; the spec delta parenthesises the two patterns, and current truth changes when the ticket is archived. Issue #114: `factory init` exited 1 on an agent copy in `.claude/agents/` it could not read; it now lists that copy under `stale_agents`, says on stderr that it could not be read, leaves it as it is and exits 0. Issue #115: `init`, `paths` and `stats` never check the harness lock, so they silently ignored `--accept-harness`; given the flag, each now refuses with exit 2 before anything runs, writes nothing, and names `factory --accept-harness <sha> config` as the command to run instead. README's upgrade step names that command. Rejected: setting Claude Code's attribution off for the role processes `factory drive` starts, whose effect on a headless reply is unverified and which would not cover the workflow scripts; ignoring every line after a blank line below the trailer, which would drop real items separated by blank lines; and keeping the flag a silent no-op on the three commands.
+ 
++77. After issue #116 (2026-10-19), where the factory's own work had no outside bar: `docs/north-star.md` named four success measures but set no target for any of them, nothing reported them and nobody reviewed them, so factory work was chosen in answer to the factory's own incidents. `docs/north-star.md` gains "How we know it is working": the primary metric, correct target changes per hour of operator attention, where each instance decides whether its merges are target changes and spec-factory's are factory work on a line of their own; its constraint, that escaped defects do not rise; cost as the second measure; operator decisions and interventions per change standing in for hours until the store records operator time; the scorecard's numbers by name, which `factory stats` is to compute so that nobody types them; three outside comparisons, a plain-session baseline, the upstream benchmark and DORA-style lead time and change failure rate; and a review every two weeks. A fourth working rule admits a factory ticket only if it fixes a defect that hit a target ticket, or names the scorecard number it moves and re-measures it after it ships; the operator applies it at the spec gate, and no role prompt or harness check does. New files: `docs/reviews/TEMPLATE.md`, which each review copies; `docs/reviews/2026-10-19.md`, the baseline review, counted by hand by the operator and the one review whose numbers are not computed; `STATUS.md`, which each review rewrites and which now quotes the baseline; and `CONTRIBUTING.md`, which says how work is proposed and chosen. README gains a north-star paragraph on its first screen, the rule in "Filing a request from an issue tracker" and two rows in "Where things live", and stays within its 1,185-line budget. Rejected: a role prompt or harness check that enforces the rule, which the request rules out; and recording operator time by hand, which would mean typing a number.
++
+ Declined: a dedicated merge agent (merging is gate config plus human gates, not a judgment call).
+diff --git a/docs/north-star.md b/docs/north-star.md
+index 0b1d85e..9db2c40 100644
+--- a/docs/north-star.md
++++ b/docs/north-star.md
+@@ -20,6 +20,51 @@ Success is measured as:
+ 
+ The factory serves its own development (spec-factory) and its targets (today, a port of the Nanobot chat bot).
+ 
++## How we know it is working
++
++The measures above are judged against a bar set outside the factory: what it delivers to its
++targets, not how closely it follows its own rules. Each instance decides whether its merges are
++target changes. The Nanobot port's are. Spec-factory's are factory work, changes to the factory
++itself: the scorecard reports them on a line of their own and never counts them as target changes.
++
++- **Primary metric:** correct target changes per hour of operator attention. A change is correct
++  when no escape is recorded against it.
++- **Constraint:** escaped defects do not rise. An escape is a merged change that later needed a fix
++  or a revert.
++- **Second measure:** cost, as tokens and wall time per change.
++
++The store records operator decisions, not operator time. Until it records time, the scorecard
++counts operator decisions and interventions per change in place of hours of operator attention.
++
++The scorecard gives these numbers for a window of time, per instance, beside the same numbers for
++the window before. `factory stats` computes them from the store, and nobody types them. Until it
++computes a number, a review writes "not yet computed" rather than count it by hand. The one
++exception is the baseline review, `docs/reviews/2026-10-19.md`, counted by hand from both stores,
++git, the issues and the session transcripts, with its method written in the review.
++
++| Number | What it counts |
++|---|---|
++| Target changes merged | tickets closed with a merge |
++| Escapes | merged changes that later needed a fix or a revert |
++| Operator decisions and interventions per change | each gate decision, ruling or resolve, and each intervention made outside the CLI |
++| Tokens and wall time per change | the cost of the role runs behind each merged change |
++| Lead time | the time from a request's creation to its merge |
++
++Three comparisons ground these numbers outside the factory:
++- **A plain-session baseline:** the same tickets done in one plain Claude Code session, with the
++  operator reviewing its result the way they review a merge.
++- **The upstream benchmark:** merged fix pull requests from the public upstream Nanobot project,
++  each run by the factory and by a plain session, and scored by that pull request's own tests.
++- **DORA-style delivery measures:** lead time, and change failure rate, which is escapes divided by
++  target changes merged. DORA is the DevOps Research and Assessment programme's set of delivery
++  measures.
++
++**Reviews.** A review runs every two weeks, or monthly when there is too little to discuss. Each is
++`docs/reviews/<date>.md`, written from `docs/reviews/TEMPLATE.md`. A review re-orders the work queue,
++issue #96, and rewrites `STATUS.md` at the repository root, which quotes numbers only as of the
++latest review. The baseline review is dated 2026-10-19. The first review written from the template
++is on 2026-11-02.
++
+ ## What it will not trade away
+ 
+ These hold for every change to the factory. A proposal that weakens one names it and is the operator's
+@@ -56,7 +101,11 @@ The fourteen principles in `docs/principles.md`, each with the incident that tau
+ | Scaffold and prose | Size the scaffold to the change. The human-facing sections are for the gate reader. Round 2 reads only what changed. A role never waits on background work, and an empty run parks. |
+ | Context and sources | Bounded, on-demand context beats complete context. One source per artifact; a copy is generated and checked, or deleted. |
+ 
+-And three working rules that follow from them:
++And four working rules that follow from them:
++- **Factory work serves a target or a number.** A factory ticket goes ahead only if it fixes a defect
++  that hit a target ticket, or names the scorecard number it moves and re-measures that number after
++  it ships. Its request says which. The operator applies this rule at the spec gate; no role prompt
++  or harness check enforces it.
+ - **Measure before and after.** Every efficiency change states the cost it targets, from the store or the
+   transcripts, and is re-measured after it ships.
+ - **Prefer a script to a prompt.** A rule that a script can enforce becomes a lint, a refusal or a check,
+diff --git a/docs/reviews/2026-10-19.md b/docs/reviews/2026-10-19.md
+new file mode 100644
+index 0000000..8cf8a9a
+--- /dev/null
++++ b/docs/reviews/2026-10-19.md
+@@ -0,0 +1,100 @@
++# Review 2026-10-19: baseline scorecard, 2026-10-03 to 2026-10-19
++
++## Method
++
++This scorecard was counted by hand. Later it will be compared with `factory stats`. It covers two instances: the Nanobot port, whose merges are target changes, and spec-factory, whose merges are factory work. Dates are UTC and come from event `ts`. The windows are the whole period, 10-03→10-11 (w1) and 10-12→10-19 (w2). A change is a parent ticket closed in the window with at least one `merge.done`. CLI decisions are `approval.recorded` plus `human.resolved` events. A `ticket.transition` by the operator that matches neither event is counted as a hand transition, under interventions, so that no action is counted twice. Transitions by `merge`, `parent-check` or `ready-implementers` are automatic and are left out. Wall time is the sum of the `run.finished` `wall_s` values for a parent and its sub-tickets. Lead time runs from the earliest of the request's date, the issue's creation and the ticket's `created`, to the parent's last `merge.done`. An escape is a change merged in the window that later needed a fix. "Record only" means only the store's current-truth scenarios needed the fix, not the code.
++
++## The Nanobot port
++
++Most of the port landed in the first window, at about 5 operator touches per change. Only one factory change merged in the second window. One code escape has been repaired and one is still open. Cost records cover 3% of runs, so the cost per change is mostly unknown.
++
++| Measure | Whole period | 10-03→10-11 | 10-12→10-19 |
++|---|---|---|---|
++| 1. Changes merged (parents) | 27 | 26 | 1 |
++| … of which added no commit to the repo | 2 | 2 | 0 |
++| … sub-ticket merges | 47 | 46 | 1 |
++| … merges outside the factory | 2 | 1 | 1 |
++| 2. Escapes, code (repaired + open) | 1 + 1 | 1 + 1 | 0 |
++| … escapes, record only (changes repaired) | 5 | 5 | 0 |
++| 3. CLI decisions (per change) | 69 (2.6) | 67 (2.6) | 2 (2.0) |
++| … interventions outside the CLI (per change) | 67 (2.5) | 60 (2.3) | 7 (7.0) |
++| … all operator touches per change | 5.0 | 4.9 | 9.0 |
++| 4. Wall time per change, median (range) | 66 min (30 min–8.2 h) | 70 min (30 min–8.2 h) | 49 min |
++| … wall time summed over changes | 50.1 h | 49.2 h | 0.8 h |
++| … runs with a cost record / runs started | 15 / 436 | 14 / 426 | 1 / 10 |
++| … USD on those records | $58.89 | $57.24 | $1.65 |
++| … changes fully costed | 1 (T-0035: $37.03, 46.2M tokens) | 1 | 0 |
++| 5. Lead time, median (range) | 21.9 h (1.3–131.8 h) | 21.8 h (1.3–131.8 h) | 48.2 h |
++
++The 47 sub-ticket merges match the 47 `merge.done` events, but the port's integration branch has 45 merge commits. Two sub-tickets, T-0033.1 and T-0036.1, merged with no new commit, because their tickets changed only current truth. The two merges outside the factory are 3c80900b5 (10-10) and cab336bb5 (10-12). T-0036 has 6 of its 7 runs costed ($20.21); the stopped run has no record.
++
++## Spec-factory (factory work)
++
++Factory work moved faster and needed fewer interventions than the port. But 8 of its 42 changes needed a later fix, and 3 of those fixes are still open. Cost records exist only from 10-14 onward.
++
++| Measure | Whole period | 10-03→10-11 | 10-12→10-19 |
++|---|---|---|---|
++| 1. Changes merged (parents) | 42 | 30 | 12 |
++| … sub-ticket merges | 64 | 47 | 17 |
++| … merges outside the factory | 1 | 1 | 0 |
++| 2. Escapes (repaired + open) | 5 + 3 | 5 + 1 | 0 + 2 |
++| 3. CLI decisions (per change) | 98 (2.3) | 81 (2.7) | 17 (1.4) |
++| … interventions outside the CLI (per change) | 32 (0.76) | 24 (0.80) | 8 (0.67) |
++| … all operator touches per change | 3.1 | 3.5 | 2.1 |
++| 4. Wall time per change, median (range) | 67 min (18 min–6.5 h) | 63 min (36 min–6.5 h) | 77 min (18 min–6.2 h) |
++| … wall time summed over changes | 70.1 h | 47.3 h | 22.8 h |
++| … runs with a cost record / runs started | 18 / 500 | 0 / 397 | 18 / 103 |
++| … USD on those records | $79.70 | $0 | $79.70 |
++| … changes fully costed | 2 (T-0049: $23.74, 26.6M tokens; T-0054: $45.40, 75.4M tokens) | 0 | 2 |
++| 5. Lead time, median (range) | 10.6 h (0.7–174.6 h) | 6.2 h (0.7–120.3 h) | 18.3 h (1.2–174.6 h) |
++
++The 64 sub-ticket merges match 64 merge commits. The one merge outside the factory is 4d0de52 (10-03). The other 149 hand commits on the main branch change no code: they are docs, issue-index and store bookkeeping. T-0052 has 4 of its 11 runs costed ($10.56).
++
++## Escapes
++
++Most repaired escapes were found within two days, by the operator or by a later ticket. The two open escapes from the second window were seen by the factory's own verifiers, but the changes merged anyway.
++
++| Repaired change | Repairing change | Class | Found | How found |
++|---|---|---|---|---|
++| Nanobot T-0031 (536bc3316, 10-09) | cab336bb5, outside the factory (10-12) | code (judged) | 10-11 | by the operator |
++| Nanobot T-0035 (ee4849e9a, 10-10) | none yet | code, open (judged) | 10-11 | by the operator |
++| Nanobot T-0004, T-0008, T-0011, T-0022 (10-04) | T-0033, no new commit (10-09) | record only | 10-04 | by the factory's own checks |
++| Nanobot 3c80900b5, outside the factory (10-10) | T-0036, no new commit (10-11) | record only | 10-10 | by the factory's own checks |
++| spec-factory T-0012 (bed7e28, 10-03) | T-0023 (2630f75, 10-04) | code | 10-04 | by a later ticket |
++| spec-factory T-0034 (05cf8f9, 10-08) | T-0035, a revert (6abb60f, 10-08) | code | 10-08 | by the operator |
++| spec-factory T-0036 (deedbb9, 10-09) | T-0037 (76707ed, 10-09) | code | 10-09 | by the operator |
++| spec-factory T-0027 (a922a44, 10-09) | T-0041 (a4f90b6, 10-11) | code | 10-10 | by a later ticket |
++| spec-factory T-0040 (ae19b1a, 10-10) | T-0042 (08bea48, 10-11) | code | 10-10 | by a later ticket |
++| spec-factory T-0040 (ae19b1a, 10-10) | none yet | code, open | 10-10 | by a later ticket |
++| spec-factory T-0052 (75cfd42, 10-14) | none yet | code, open | 10-14 | by the factory's own checks |
++| spec-factory T-0054 (4c61f84, 10-19) | none yet | record only, open | 10-19 | by the factory's own checks |
++
++Not counted as escapes: a fix within one ticket before its parent closed (Nanobot T-0002); defects in code from before 10-03; behaviour that came from the upstream base; and follow-on improvements that fixed no defect.
++
++## Interventions by kind
++
++Hand transitions, spec edits at the gate and logged decisions make up most interventions. Classifier refusals were rare, but each one needed the operator to act.
++
++| Kind | Nanobot: all (w1 / w2) | spec-factory: all (w1 / w2) |
++|---|---|---|
++| Hand transitions (actions) | 12 (9 / 3) | 6 (6 / 0) |
++| Hand commits to the instance or gates | 5 (4 / 1) | 4 (4 / 0) |
++| Spec versions written by the operator (gate edits, amends) | 12 (11 / 1) | 14 (9 / 5) |
++| Operator actions after a classifier refusal | 3 (2 / 1), after 4 refusals | 3 (2 / 1), after 5 refusals |
++| Runs stopped by the operator | 7 (6 / 1) | 1 (1 / 0) |
++| Decisions logged outside a CLI resolve | 28 (28 / 0) | 4 (2 / 2) |
++| **Total** | **67 (60 / 7)** | **32 (24 / 8)** |
++| Memo, already counted under CLI decisions: redispatch after a clerk misrelay | 0 | 4 (0 / 4) |
++
++## What this baseline cannot count
++
++- Operator hours. The store does not record them, so operator touches stand in for time.
++- Decisions made only in chat or on review pages. They are not in the store.
++- Commands that the operator typed outside Claude Code.
++- Cost for about 96% of runs. Only `factory drive` runs carry a cost record, and the Workflow runs' transcripts were not matched.
++- Orchestration cost (the clerk and the Workflow scripts). It is not attached to any run.
++- Planner tokens. `factory stats` reports 0 for every planner run.
++- Escapes in the second window. Its changes have had at most 8 days to show a defect.
++- Fixes with no issue or request naming what they repair.
++- Request dates for 20 of the 27 port changes. Their original requests carry no date, so their lead time starts when the ticket was filed.
++- Hand commits are classed by the files they touch, which is a judgment, not a recorded fact.
+diff --git a/docs/reviews/TEMPLATE.md b/docs/reviews/TEMPLATE.md
+new file mode 100644
+index 0000000..2a7dd35
+--- /dev/null
++++ b/docs/reviews/TEMPLATE.md
+@@ -0,0 +1,44 @@
++# Review YYYY-MM-DD
++
++Copy this file to `docs/reviews/<date>.md`, named by the review's date, and fill in each section.
++A review runs every two weeks, or monthly when there is too little to discuss. The measures and
++the rule for factory work are in [docs/north-star.md](../north-star.md). After the review,
++re-order the work queue, issue #96, and rewrite [STATUS.md](../../STATUS.md) from this review.
++
++This repository is public. Name a change by its ticket id and give counts; do not name a private
++product or link a private issue.
++
++Window: <start date> to <end date>. Previous review: <link>.
++
++## 1. Scorecard against the last review
++
++Paste the scorecard from `factory stats` for this window and the last one, as it prints it. Do not
++type or adjust a number. Write "not yet computed" for a number it does not compute yet. The one
++review counted by hand is the baseline, [2026-10-19](2026-10-19.md).
++
++## 2. What we worked on
++
++| Ticket | Defect it fixed, or scorecard number it moved | Result after it shipped |
++|---|---|---|
++
++## 3. What we chose not to do
++
++One line per item, each linking its row in [docs/decided-against.md](../decided-against.md).
++Add the row there first.
++
++## 4. Successes and failures
++
++| What happened | Success or failure | What it cost |
++|---|---|---|
++
++## 5. Experiments and side work
++
++One row per issue labelled `experiment`.
++
++| Issue | What it tries | Result or status |
++|---|---|---|
++
++## 6. Decisions and the new queue order
++
++The decisions taken, one per line, each with its reason. Then the new order of the queue, as
++written to issue #96.

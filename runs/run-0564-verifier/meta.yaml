@@ -1,0 +1,60 @@
+run_id: run-0564-verifier
+role: verifier
+ticket: T-0058.1
+model: opus
+round: 1
+spec_version: 3
+started: '2026-10-23T06:57:09+00:00'
+finished: '2026-10-23T07:02:53+00:00'
+wall_s: 344
+status: VERIFIED
+input_sources:
+- specs/T-0058.1/subticket.md
+- specs/T-0058/v3.md
+- runs/run-0560-implementer/output.md
+- runs/run-0564-verifier/diff.patch
+gate_skipped: []
+environment_files: []
+branch: factory/T-0058.1
+base: 788a201a34fb3a416b394a14fba65583989c24c9
+head: 6f4d8658252556ed62bd19e130b09634f119f454
+worktree: /Users/dphang/dev/spec-factory/.factory/store/runs/run-0564-verifier/wt
+confidence: high. Each of the 16 commands was run as written from the spec's own text, and each matches
+  its THEN on the PR head. Each NEW command fails on a real base checkout exactly as verification.md predicts.
+  Both gates pass, and the probes show the parser fix is not tied to the tested inputs.
+escalations:
+- 'Outside the criteria, and present on base too: `factory init` still exits 1 with `PermissionError`
+  when the `.claude/agents` directory itself cannot be read (mode `000`), not just one copy in it. #114''s
+  fix covers only an unreadable copy. Whether the directory case should be handled is a separate ticket''s
+  decision.'
+escalations_note: null
+claude:
+  session_id: 9a1820bd-474f-4bad-a4e0-dc4a665f2206
+  total_cost_usd: 1.7168976
+  num_turns: 23
+  usage:
+    input_tokens: 46
+    cache_creation_input_tokens: 64108
+    cache_read_input_tokens: 4154248
+    output_tokens: 18650
+    output_tokens_details:
+      thinking_tokens: 3419
+    server_tool_use:
+      web_search_requests: 0
+      web_fetch_requests: 0
+    service_tier: standard
+    cache_creation:
+      ephemeral_1h_input_tokens: 64108
+      ephemeral_5m_input_tokens: 0
+    inference_geo: global
+    iterations:
+    - input_tokens: 2
+      output_tokens: 3676
+      cache_read_input_tokens: 199895
+      cache_creation_input_tokens: 4164
+      cache_creation:
+        ephemeral_5m_input_tokens: 0
+        ephemeral_1h_input_tokens: 4164
+      type: message
+    speed: standard
+    fallback_credit: null

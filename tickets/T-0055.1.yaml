@@ -1,0 +1,49 @@
+id: T-0055.1
+type: sub-ticket
+title: 'North star: a primary metric, a two-weekly review and a rule for choosing factory work, shown
+  on the repo''s front page'
+request: requests/T-0055.md
+source: plan:whole-spec
+status: merged
+round:
+  spec: 0
+  pr: 1
+spec:
+  version: 3
+  approved_version: 3
+plan: null
+in_flight: []
+parked: null
+created: '2026-10-23T07:02:56+00:00'
+history:
+- ts: '2026-10-23T07:08:38+00:00'
+  from: ready-for-implementer
+  to: checks-in-flight
+  by: workflow
+  round:
+    spec: 0
+    pr: 1
+- ts: '2026-10-23T07:13:38+00:00'
+  from: checks-in-flight
+  to: ready-for-merge
+  by: workflow
+  round:
+    spec: 0
+    pr: 1
+- ts: '2026-10-23T07:13:38+00:00'
+  from: ready-for-merge
+  to: merged
+  by: merge
+  head: 44e52a30cf8a9fa6adbe89015eb5ffe6b7c055bb
+parent: T-0055
+depends_on: []
+parallel_safe: true
+branch: factory/T-0055.1
+head: 44e52a30cf8a9fa6adbe89015eb5ffe6b7c055bb
+merge:
+  base_before: 1321c1710aa703876eac6c66df7e38d1dd92d10a
+  main_after: c42d1670547e6b840e6fbe7fbe7cb5ad55b1d4f9
+parent_base: null
+label: whole-spec
+planned_from: 3
+merge_refused: null

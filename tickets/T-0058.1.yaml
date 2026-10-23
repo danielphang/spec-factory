@@ -1,0 +1,51 @@
+id: T-0058.1
+type: sub-ticket
+title: 'Four small harness defects: the escalation parser counts Claude Code''s attribution footer as
+  escalations, a build-dispatch scenario fails under macOS /bin/sh, `factory init` exits 1 on an unreadable
+  agent copy, and `--accept-harness` is silently ignored by `init`, `paths` and `stats` (#88, #113, #114,
+  #115)'
+request: requests/T-0058.md
+source: plan:whole-spec
+status: merged
+round:
+  spec: 0
+  pr: 1
+spec:
+  version: 3
+  approved_version: 3
+plan: null
+in_flight: []
+parked: null
+created: '2026-10-23T06:49:23+00:00'
+history:
+- ts: '2026-10-23T06:57:09+00:00'
+  from: ready-for-implementer
+  to: checks-in-flight
+  by: workflow
+  round:
+    spec: 0
+    pr: 1
+- ts: '2026-10-23T07:02:53+00:00'
+  from: checks-in-flight
+  to: ready-for-merge
+  by: workflow
+  round:
+    spec: 0
+    pr: 1
+- ts: '2026-10-23T07:02:54+00:00'
+  from: ready-for-merge
+  to: merged
+  by: merge
+  head: 6f4d8658252556ed62bd19e130b09634f119f454
+parent: T-0058
+depends_on: []
+parallel_safe: true
+branch: factory/T-0058.1
+head: 6f4d8658252556ed62bd19e130b09634f119f454
+merge:
+  base_before: 788a201a34fb3a416b394a14fba65583989c24c9
+  main_after: 1321c1710aa703876eac6c66df7e38d1dd92d10a
+parent_base: null
+label: whole-spec
+planned_from: 3
+merge_refused: null

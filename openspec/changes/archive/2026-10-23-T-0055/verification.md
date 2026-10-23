@@ -104,3 +104,7 @@ Noted for the gate, not findings: the baseline review will publish four short co
 - [NIT] 1 Line count ignored blank lines: RESOLVED. "Eight lines added, one of them blank"; 1,174 + 8 = 1,182.
 - [NIT] 1 Operator step 2 read as if the About text were empty: RESOLVED. The step quotes the current text, says it meets the request, and offers the overwrite as an option.
 - [NIT] 5 Changelog decision gave no reason: RESOLVED. The decision cites entry 73 (commit `21f90c4`) as the precedent and says how T-0049 differs. I confirmed both commits' file lists.
+
+## Verifier results
+
+44e52a30cf8a9fa6adbe89015eb5ffe6b7c055bb · T-0055.1 · VERIFIED · run-0567-verifier

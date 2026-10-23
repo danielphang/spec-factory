@@ -1,0 +1,130 @@
+Sub-ticket: T-0058.1 (parent T-0058, spec v3: `/Users/dphang/dev/spec-factory/.factory/store/specs/T-0058/v3.md`). Branch `factory/T-0058.1`, commit `6f4d865` on base `788a201`.
+
+## What changed
+
+This change fixes four small defects in the harness (the code that runs the factory's AI roles and keeps their records). Each defect left a wrong record, or a command that failed or silently did nothing. None of them changed where a ticket goes next.
+
+**A. Claude Code's attribution footer is no longer read as an escalation (#88). File: `factory/status.py`.** Every role ends its output with a STATUS / CONFIDENCE / ESCALATIONS trailer. Sometimes Claude Code adds a line after it: `🤖 Generated with [Claude Code](<link>)`. The trailer parser used to read `ESCALATIONS: none` with that line below it as two real escalations. The fix:
+- New constant `ATTRIBUTION_RE`.
+- `parse()` now drops every line below the ESCALATIONS line that matches that pattern exactly, after any list marker is stripped. It does this before the `none` rule. (That rule, "rule (b)", is the operator's 2026-10-01 decision: a `none` line with anything below it counts as a real list.)
+- Rule (b) itself is unchanged, and so is `strip_trailer()`.
+- I updated the module docstring and the rule (b) comment.
+
+I checked who calls `status.parse` (grep): `cli.py:331` (`run finish`), `cli.py:629` (`status parse`), `gates.py:30` and `specstore.py:271`. They all go through this one function, so the fix sits there once.
+
+**B. `factory init` handles an agent copy it cannot read (#114). File: `factory/setup.py`, the agent-copy loop in `init_cmd`.** Before, if a copy in `.claude/agents/` could not be read, init crashed with exit 1. Now:
+- The comparison runs inside `try … except OSError`.
+- If the copy cannot be read, it is added to `stale_agents` (the JSON list of copies init reports and leaves alone).
+- Init prints one stderr line: `factory init: <copy> could not be read (<strerror>); left as it is`. It then moves on to the next template and exits 0.
+- The copy is never written, chmod-ed or deleted.
+
+The only caller is `cli.py:763`, through `set_defaults(fn=init_cmd)`.
+
+**C. `init`, `paths` and `stats` refuse `--accept-harness` (#115). File: `factory/cli.py` `main()`.** Background: each repository records the harness revision it has agreed to run in a lock file, `harness.lock`. The operator agrees to a new revision by adding `--accept-harness <sha>` to a command. These three commands never check the lock, so before this change they dropped the flag without a word.
+- The new first statement in the `try` refuses the flag for these three commands. It raises `Refused`, which ends with exit 2 and `{"ok": false, …}`.
+- The message is one line. It names the command, says it never checks the harness lock, and ends `run factory --accept-harness <sha> config`, using the sha the operator passed.
+- I rewrote the comment above the `init`/`paths`/`stats` branch.
+
+`main()` is the module's only entry point.
+
+**D. Tests.** The new file `tests/factory/test_small_defects.py` has 12 cases, listed under "Tests added/changed". The one existing test listed under "Tests to change" was updated.
+
+**E. Docs.**
+- `README.md`:
+  - "Accepting a harness revision" now says `init`, `paths` and `stats` refuse `--accept-harness`, and every other command accepts it.
+  - "Upgrading the runtime" step 2 names `factory --accept-harness <sha> config`.
+  - "Counting what each role catches and costs" says `stats` never checks the harness lock and refuses `--accept-harness`.
+  - The `.claude/agents/factory-*.md` row says init also reports a copy it cannot read.
+  - The status date is now 2026-10-22. The README is still 1,174 lines, within its 1,185-line budget.
+- `docs/design.md`:
+  - The ESCALATIONS bullet says the exact footer line is dropped before the `none` rule.
+  - The `harness.lock` clause in the Role-context block paragraph says `init`, `paths` and `stats` refuse `--accept-harness` and name `config`.
+  - No prompt block changed, so nothing under `docs/prompts/` was touched.
+- `docs/changelog.md`: new entry 76 names #88, #113, #114 and #115. It covers the footer, the `stale_agents` listing, the `--accept-harness` refusal and the `/bin/sh` scenario fix.
+
+**F. Current truth (#113).** Current truth is the store's record of each capability's accepted behaviour. #113 is a fix to one scenario's text in it, and the spec delta applies that fix when the ticket is archived. I touched no store file and no code for it.
+
+## Acceptance results
+
+All commands ran from the worktree under the running-code wrapper with `/bin/sh` (bash 3.2.57). Each WHEN was taken from the pinned spec by `sed` into scratch scripts, not retyped. Every run needed `uv sync --frozen` first: before it, `bin/factory` fell back to a system `python3` that has no `yaml`. That was setup, not a result.
+
+NEW, run before the change (base `788a201`) and after (`6f4d865`):
+
+| Scenario | Before | After |
+|---|---|---|
+| A none trailer followed by the attribution footer finishes with no escalation and queues nothing | `finish=["none", "🤖 Generated with [Claude Code](https://claude.com/claude-code)"]`, `queued=1 meta=1` | `finish=[]`, `queued=0 meta=0` |
+| A real item above the attribution footer stays, and the footer is dropped | `["none", "the auth path needs review", "🤖 Generated with [Claude Code](https://claude.ai/code)"]` | `["none", "the auth path needs review"]` |
+| init lists an agent copy it cannot read, says so, exits 0 and leaves it as it is | `exit=1 stale=absent kept=yes named=1 unread=0 others=0` | `exit=0 stale=factory-planner.md kept=yes named=1 unread=1 others=0` |
+| The flag with init, paths or stats is refused, names config, and writes nothing, even where init would create an instance | `init: exit=0 named=0 hint=0 json=0`, `paths: exit=0 named=0 hint=0 json=0`, `stats: exit=0 named=0 hint=0 json=0`, `target=unchanged`, `fresh: exit=0 files=16` | `init: exit=2 named=1 hint=1 json=1`, `paths: exit=2 named=1 hint=1 json=1`, `stats: exit=2 named=1 hint=1 json=1`, `target=unchanged`, `fresh: exit=2 files=0` |
+| README says which commands refuse the flag, how to accept a revision, and that init reports an unreadable copy | `accepting=0 upgrade=0 stats=0 row=0` | `accepting=1 upgrade=1 stats=1 row=1` |
+| The design doc states the footer rule and the refusal in the lock clause | `footer=0 lock=0` | `footer=1 lock=1` |
+| The changelog records the four issues in one entry without a numbering gap | `CONTIGUOUS`, `0`, `0` | `CONTIGUOUS`, `1`, `4` |
+
+Each "before" matches what the spec's verification.md predicted, so the spec matched reality. Each "after" is the scenario's THEN exactly.
+
+REGRESSION, run after the change only:
+- Real item lines, and a line that only mentions Claude Code, are still read by rule (b): `["none. x", "extra line"]`, `["one", "two"]`, `["none", "Generated with Claude Code, says the footer"]`, `[]`. This is the THEN.
+- Each launch copy is a one-line change to its script, in a read-only file in a directory of its own, naming the harness revision and the instance: `intake: where=own-dir changed=2 revision=1 instance=1 writable=no`, `build: where=own-dir changed=2 revision=1 instance=1 writable=no`, `checkout=unchanged store=unchanged dirs=2`. This is the THEN. It ran the restated text, with the parenthesised `case` patterns, under `/bin/sh`, so the #113 text parses under the shell the issue is about.
+- launch-script is refused with config's error where the instance has not accepted the running harness, and writes no copy: `config=2 launch=2 same=yes lock=1 copies=0`. THEN.
+- launch-script removes a launch copy over an hour old and keeps a recent one and a directory that holds no launch copy: `old=gone other=kept fresh=kept new=written dirs=3`. THEN.
+- init reports an edited agent copy and leaves it as it is: `exit=0 stale=factory-planner.md kept=yes named=1 others=0`. THEN.
+- init still creates a missing agent copy and lists no matching copy: `exit=0 created=factory-triage.md stale=0 same=6 differs=0`. THEN.
+- Without the flag paths and stats still run under another lock, and config still accepts a revision: `paths=0 stats=0 config=2 accept=0 lock=accepted`. THEN.
+- The harness suite passes: this is gate 2, run exactly as written. It printed `627 passed in 104.99s (0:01:44)` and exited 0. That is 615 on the base plus 12 new cases.
+- The only existing test file changed is the stats test: it printed `tests/factory/test_stats.py`, which the THEN allows.
+
+Gates, each run exactly as written from the worktree on `6f4d865`:
+- `git diff --check main...HEAD` printed nothing and exited 0.
+- `uv run --frozen pytest -q -p no:cacheprovider tests/factory` printed `627 passed` and exited 0.
+
+I also ran the current-truth harness-docs scenarios that verification.md names, from `.factory/store/openspec/specs/harness-docs/spec.md`, on `6f4d865`. Each printed its THEN:
+- "README is at most 1,185 lines": `readme=within`.
+- "The maintained documents pass git's whitespace check in full": `exit=0`.
+- "The documents record factory stats": `readonly=yes howto=yes built=yes depends=yes lock=yes design-fence=yes design-lock=yes design-model=yes principles=yes principles-old=no`, `CONTIGUOUS`, `1`, `4`.
+- "The design doc states the EMPTY-OUTPUT rule, its rows and its park": `rule=1 rows=2 parks=1 kill=1`.
+
+A grep of current truth for the README phrases I replaced found no scenario that depends on them.
+
+## Tests added/changed
+
+- New file `tests/factory/test_small_defects.py`, 12 cases. 9 of them failed on the base code before the fix. The rest pass on both base and fix, and guard against the fix over-matching:
+  - `test_run_finish_drops_the_footer_below_a_none_trailer_and_queues_nothing`: run-0418's tail (none trailer, blank line, footer). Expects escalations `[]`, no footer in `meta.yaml` and no `escalation.queued`. Failed before.
+  - `test_status_parse_drops_only_the_exact_footer`, 5 cases:
+    - item above the footer: failed before.
+    - footer behind a `- ` marker, dropped: failed before.
+    - a line that only mentions Claude Code: kept.
+    - the footer with text after it: kept.
+    - the footer with an empty link `()`: kept.
+  - `test_init_lists_an_unreadable_copy_exits_0_and_leaves_it`: the copy at mode `000`. Expects exit 0, the copy in `stale_agents`, exactly one stderr line in the new form, and the bytes unchanged. The mode is restored in a `finally` so the temporary directory can be removed. Failed before.
+  - `test_accept_harness_with_a_lock_free_command_is_refused_and_writes_nothing`, for each of `init`, `paths` and `stats`: expects exit 2, `"ok": false`, a one-line message ending in the `config` hint, and the lock and the `.factory`/`.claude` trees unchanged. All 3 failed before.
+  - `test_accept_harness_with_init_creates_no_instance`: a fresh repository gets no files. Failed before.
+  - `test_paths_and_stats_without_the_flag_still_run_under_another_lock`: guards the existing behaviour.
+  - No case uses skip or xfail.
+- Changed `tests/factory/test_stats.py`, `test_reads_an_own_store_with_a_run_in_flight_from_its_runs_under_another_lock`. This test is listed under the spec's "Tests to change". The `--accept-harness … stats` call now asserts `returncode == 2` and the `factory --accept-harness 000…0 config` hint on stderr, and its comment is updated. The surrounding `snapshot(target) == before` assertion is kept, and it still passes because a refusal writes nothing.
+
+## Known gaps and uncertainties
+
+- `factory: markers added: none`.
+- Part B differs slightly from design step B.1. B.1 says to handle "a copy that is not a file … as today" in a separate branch. I put the `is_file()` test and the read in the same `try`, so the "differs" message is not written twice. The behaviour is the same: a directory in place of a copy is still listed with the "differs" message, and `test_init_lists_a_directory_in_place_of_a_copy_and_leaves_it` passes. An `OSError` raised by `is_file()` itself would now get the "could not be read" line. On this Python, `Path.is_file()` returns False on such errors rather than raising.
+- The mode-`000` test assumes the suite does not run as root, because root can read a file at mode `000`. The spec's own scenario states this as its GIVEN. The spec forbids skip, so a root run would fail this test.
+- README's "Where a human decides" table still has the row **Upgrade**: `factory --accept-harness <sha> <command>`. Part E does not list it, so I left it. Taken literally, `<command>` could now be one of the three that refuse. Making it `config` would be a one-word follow-up.
+- In changelog entry 76, I wrote the "Rejected" list from the spec's Decisions. One item, "keeping the flag a silent no-op on the three commands", is my wording for the overturned 2026-10-12 decision. It is not a rejection the spec names in those words.
+- The marked-footer case (`- 🤖 Generated with …`, dropped) follows design step A.2, which says the entries are "already stripped of `-`/`*` markers". The spec's requirement text says "exactly" the footer, and it does not mention markers.
+
+## Out-of-scope observations
+
+- `docs/changelog.md` entry 70 (T-0043) still says `stats` ignores `--accept-harness`. It is a dated history entry, so I left it. Entry 76 records the change.
+- The worktree had no `.venv`, so `bin/factory` fell back to a system `python3` without `yaml`, and every acceptance command failed until `uv sync --frozen` ran. A future implementer run will hit the same thing unless the harness syncs the worktree first or the briefing says to.
+- Running `bin/factory` leaves `factory/__pycache__/` in the worktree, because `bin/factory` does not set `PYTHONDONTWRITEBYTECODE`. It is gitignored, so it does not dirty `git status`.
+
+## Responses to findings
+
+Round 1: none.
+
+Protected paths changed, each declared in the spec's Risk section: `factory/status.py`, `factory/setup.py`, `factory/cli.py`.
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+STATUS: READY-FOR-REVIEW
+CONFIDENCE: high, every NEW command failed as the spec predicted and now prints its THEN, and every REGRESSION command, both gates and the named current-truth doc checks pass on 6f4d865
+ESCALATIONS: none

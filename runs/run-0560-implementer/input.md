@@ -1,0 +1,325 @@
+## Context for this run (composed by the harness, not part of the request)
+
+Repository: `spec-factory`, the design repo at `~/dev/spec-factory` (branch `main`). It holds the
+design and the harness that runs it:
+- `docs/design.md`, the design document and the source of truth, with its changelog in
+  `docs/changelog.md`;
+- `docs/prompts/`, each file a verbatim copy of one prompt block in the design doc; it changes only
+  by re-copying that block;
+- `dev/`: `dev/issues.md`, this repo's issue index, kept live; and the build spec, its plan and the
+  P0 walking skeleton, frozen as history from building the harness, which no change updates;
+- the harness, as code in this repo: `factory/` (the package, its role prompts and its workflow
+  scripts), `bin/factory` (the entry point), `agents/` (the agent definition templates) and
+  `tests/factory/` (its suite). Install with `uv sync --frozen`; test with
+  `uv run --frozen pytest -q -p no:cacheprovider tests/factory`;
+- `.factory/`, this repo's own instance of the factory: `instance.yaml`, this briefing,
+  `harness.lock`, closed records (`answers/`, `green-pilot/`) and the live store, `store/`.
+  The store is a checkout of its own branch, `factory-store`; the operator commits it there, so a
+  store commit never moves `main`.
+
+Two checkouts. Tickets are built and merged in the dev checkout, `~/dev/spec-factory` on `main`.
+The factory runs from the runtime checkout, `~/dev/spec-factory-harness`, a detached worktree of
+this repo at the harness revision `.factory/harness.lock` has accepted. A merge into `main` never
+changes the running code; only the upgrade step moves the runtime, after which the instance
+refuses its store until `--accept-harness`. Your shell may start in another directory: use
+absolute paths, or `cd ~/dev/spec-factory && <cmd>`.
+
+The Nanobot fork at `~/dev/nanobot-upstream` (branch `feat/lionbot-v3.5`) is instance A: a target
+with only `.factory/`, run from the same runtime by its own Driver session. This repo's harness was
+imported from its retired `feat/lionbot-v3` branch. Read it only to observe what a fix does there; never write there, and never copy its test names,
+line numbers or commit SHAs into a spec. Never read or write `~/.nanobot/` (live credentials).
+
+Acceptance commands must be runnable as written from `~/dev/spec-factory` (grep, sed, diff,
+`git diff --check` against the documents, the harness suite). A change to the design doc keeps its
+own conventions: its changelog entry in `docs/changelog.md`, and any `docs/prompts/` file whose
+block changed re-copied from it.
+
+The request is an issue draft, written from a real pipeline run: where in the documents,
+what happened (the evidence), why it matters, a proposed fix, and the Nanobot-side commit
+where a harness fix already exists. The evidence is the requirement; the proposed fix is the
+requester's suggestion, not a requirement. Verify the as-built fix in the reference harness
+before relying on it; a NEW criterion that already passes on this checkout proves nothing.
+
+Output: write your complete output, in your role's required format and ending with the
+STATUS / CONFIDENCE / ESCALATIONS trailer, to the file named under "Output file" below. For
+every role but the implementer that is the only file you may create or modify. The implementer
+also changes files in its own worktree and commits there, and nowhere else. Then return the same
+text as your final message.
+
+This repo's current-state page is the top-level `README.md`. A change to a command, state, stop or
+path updates it in the same ticket; read its "Maintaining this page" section before editing it.
+
+Who reads what the roles write here: the operator at the spec gate, and a technical reader new to this project reading the README or a PR description. Gloss every term specific to the factory at first use (docs/writing.md).
+## Output file
+`/Users/dphang/dev/spec-factory/.factory/store/runs/run-0560-implementer/output.md`
+
+## Running code
+Run every test, script or prototype through this wrapper, which gives it a fresh temporary HOME so it cannot write the operator's real home directory: `([ -z "${VIRTUAL_ENV:-}" ] || PATH=$(printf %s "$PATH" | tr : '\n' | grep -vxF "$VIRTUAL_ENV/bin" | paste -sd: -); unset VIRTUAL_ENV PYTHONHOME; export HOME="$(cd "$(mktemp -d)" && pwd -P)"; <command>)`. Put your command in place of <command>. This includes every test or check command the briefing above gives. A throwaway HOME does not stop a write to an absolute path: never run anything that could write a protected path outside the repository.
+
+## Scratch directory
+Put every file you make for your own use in this run under `/Users/dphang/dev/spec-factory/.factory/store/runs/run-0560-implementer/scratch`: no other run uses it. The harness clears it when the ticket moves on, and keeps it while the ticket is parked.
+
+## Where you work
+Worktree: `/Users/dphang/dev/spec-factory/.factory/store/worktrees/T-0058.1` (branch `factory/T-0058.1`, base `788a201a34fb3a416b394a14fba65583989c24c9`, head `788a201a34fb3a416b394a14fba65583989c24c9`). There is no remote: commit on the branch; the PR is the branch plus the description you return. Gate commands (run each from your worktree, exactly as written; each is already wrapped): `([ -z "${VIRTUAL_ENV:-}" ] || PATH=$(printf %s "$PATH" | tr : '\n' | grep -vxF "$VIRTUAL_ENV/bin" | paste -sd: -); unset VIRTUAL_ENV PYTHONHOME; export HOME="$(cd "$(mktemp -d)" && pwd -P)"; git diff --check main...HEAD)`; `([ -z "${VIRTUAL_ENV:-}" ] || PATH=$(printf %s "$PATH" | tr : '\n' | grep -vxF "$VIRTUAL_ENV/bin" | paste -sd: -); unset VIRTUAL_ENV PYTHONHOME; export HOME="$(cd "$(mktemp -d)" && pwd -P)"; uv run --frozen pytest -q -p no:cacheprovider tests/factory)`
+
+## Sub-ticket T-0058.1
+
+T-0058.1 / Four small harness defects: the escalation parser counts Claude Code's attribution footer as escalations, a build-dispatch scenario fails under macOS /bin/sh, `factory init` exits 1 on an unreadable agent copy, and `--accept-harness` is silently ignored by `init`, `paths` and `stats` (#88, #113, #114, #115)
+Depends on: none
+Parallel-safe: yes
+
+Parent: T-0058, approved spec v3. This sub-ticket is the whole of it; read it in full. The planner was skipped: one sub-ticket: no NEEDS-SPLIT, no seam heading, no earlier planner run.
+
+Scope: every lettered part of the parent's Proposed change.
+Acceptance: every scenario of the parent spec, with the label its verification.md gives it:
+- A none trailer followed by the attribution footer finishes with no escalation and queues nothing
+- A real item above the attribution footer stays, and the footer is dropped
+- Real item lines, and a line that only mentions Claude Code, are still read by rule (b)
+- Each launch copy is a one-line change to its script, in a read-only file in a directory of its own, naming the harness revision and the instance
+- launch-script is refused with config's error where the instance has not accepted the running harness, and writes no copy
+- launch-script removes a launch copy over an hour old and keeps a recent one and a directory that holds no launch copy
+- init reports an edited agent copy and leaves it as it is
+- init still creates a missing agent copy and lists no matching copy
+- init lists an agent copy it cannot read, says so, exits 0 and leaves it as it is
+- The flag with init, paths or stats is refused, names config, and writes nothing, even where init would create an instance
+- Without the flag paths and stats still run under another lock, and config still accepts a revision
+- README says which commands refuse the flag, how to accept a revision, and that init reports an unreadable copy
+- The design doc states the footer rule and the refusal in the lock clause
+- The changelog records the four issues in one entry without a numbering gap
+- The harness suite passes
+- The only existing test file changed is the stats test
+Tests to change: the parent's list.
+Protected paths: the parent's Risk list.
+
+## Parent spec (v3, pinned). Its Evidence and Responses sections are left out; the full spec is `/Users/dphang/dev/spec-factory/.factory/store/specs/T-0058/v3.md`
+
+=== proposal.md
+## Problem
+
+This ticket fixes four small defects in the harness. The harness is the code that runs the factory's AI roles and keeps their records. None of the defects changes where a ticket goes next. Each one leaves a record that is wrong, or a command that fails or silently does nothing, and a person has to notice it and work around it.
+
+1. **A false escalation in the run record.** Every role ends its output with a three-line trailer: STATUS (its verdict), CONFIDENCE and ESCALATIONS (the items it wants a human to see). The harness reads that trailer when the run finishes. If the ESCALATIONS line says `none` and further lines follow it, the harness treats the whole block as a real list of items. The operator chose that rule on 2026-10-01 (the code calls it rule (b)). Claude Code sometimes appends its own attribution line, `🤖 Generated with [Claude Code](…)`, after the trailer. When it does, the harness records two escalations the role never raised, `none` and the footer, and logs a false "escalation queued" event. This has happened once on each of the two repositories the factory runs on.
+2. **A scenario that fails under macOS's `/bin/sh`.** Current truth is the store's record of each capability's accepted behaviour. Each requirement in it carries scenarios, which are shell commands with the output they must print. One scenario puts a `case` statement inside `$( )` without a leading parenthesis on its patterns. The bash 3.2 that macOS ships as `/bin/sh` cannot parse that, so the scenario fails whatever the code does. A check that runs current truth under that shell would report a regression the code did not cause. Such a check is queued as the next ticket (#120).
+3. **`factory init` fails on an agent copy it cannot read.** `factory init` sets a repository up for the factory. Since the fix for #108, it also compares each copy of an agent definition in the repository (`.claude/agents/factory-*.md`) with the harness's template. It lists a copy that differs under `stale_agents` in its JSON output, and leaves it alone. If a copy exists but cannot be read, init crashes with exit 1 instead. Before #108 it exited 0.
+4. **`--accept-harness` is silently ignored by three commands.** Each repository records which harness revision it has agreed to run, in a lock file, and the harness refuses to touch that repository's store under any other revision. The operator agrees to a new revision by adding `--accept-harness <sha>` to a command. Three commands, `init`, `paths` and `stats`, never check the lock, so they drop the flag without a word. On 2026-10-19 the operator ran `--accept-harness … paths` on the Nanobot target. The command looked as if it had worked, and the lock was left unchanged.
+
+## Root cause
+
+- **#88.** `factory/status.py` `parse()`, lines 37-49. Every non-blank line below the ESCALATIONS line goes into `tail`. A non-empty `tail` makes `[esc_head, *tail]` the item list, as the 2026-10-01 rule (b) says. Nothing tells the attribution footer apart from an item line. `run finish` uses this parser for both the drive and the Workflow-script path (`factory/workflows/intake.js:143` logs `fin.escalations` from `run finish`).
+- **#113.** The scenario text in current truth. Bash before 4.0 ends a command substitution at the first `)`, and an unparenthesised case pattern has one. This is not a code defect.
+- **#114.** `factory/setup.py:187`: `(dest / src.name).read_bytes()` raises `PermissionError`. The generic handler in `factory/cli.py` `main()` turns that into exit 1.
+- **#115.** `factory/cli.py:851-855`: `main()` runs `init`, `paths` and `stats` and returns before `instance.guard(…, a.accept_harness)` at line 863, so nothing reads the flag for those three. The comment at line 852 says "ignore --accept-harness".
+
+## Out of scope
+
+- Setting `attribution.pr` (or any `--settings`) on the role processes `factory drive` starts. See Decisions.
+- Any other footer or trailer form, such as `Co-Authored-By:` lines. None appears in either store's escalation records.
+- A check that no current-truth scenario has an unparenthesised `case` inside `$( )`, which #113 suggests as optional.
+- Every other scenario in current truth, and any code change for #113.
+- What the harness lock and the live-store fence do for every command other than `init`, `paths` and `stats`. The live-store fence is the guard that keeps writes out of a store while a role run is in flight.
+- The shape of `stale_agents` (a list of paths), and creating missing copies. Init never overwrites, repairs or changes the permissions of an existing copy.
+- Rule (b) for real item lines below a `none` head.
+- Past run records. The false items in run-0418 and run-0538 stay as they are.
+
+## Open questions
+
+none
+
+## Decisions
+
+- #88 is fixed in the parser. Before rule (b) is applied, the trailer parser, `parse()` in `factory/status.py`, drops each line below the ESCALATIONS line that, after its list marker is stripped, is exactly `🤖 Generated with [Claude Code](<link>)`, with any link and nothing else on the line. Rule (b) applies unchanged to the lines that are left.
+- Rejected for #88: passing `attribution.pr` through `--settings` to the role processes that `factory drive` (the command that runs each role as a headless `claude -p` process) starts. The key exists, but its effect on a `claude -p` reply is unverified. The footer appeared in 2 of 990 runs, so no acceptance check could show the setting works. It would also not cover the Workflow-script path (the older way of running the roles, beside the drive), which goes through the same parser.
+- Rejected for #88: ignoring everything after a blank line below the trailer. That would break rule (b) for real items separated by blank lines.
+- Standing decision for later tickets: the trailer parser drops only the exact Claude Code attribution footer. Any other text below the ESCALATIONS line stays an item under rule (b). Recognising a new footer form needs its own ticket.
+- #113 changes only the two patterns of that one `case`, to `($T/tmp/factory-launch-*/$s.js)` and `(*)`. The rest of the requirement is restated word for word. This is a spec delta, so current truth changes when the ticket is archived.
+- #114: an existing copy whose read raises any `OSError` is listed under `stale_agents` by its path, as a differing copy is. Stderr gets one line that names the copy and says it `could not be read`, with the error. Init exits 0 and leaves the copy as it is. The JSON shape does not change, which keeps T-0052's decision that `stale_agents` is a list of paths.
+- #115: `factory --accept-harness <sha>` with `init`, `paths` or `stats` is refused with exit 2 before anything else runs, on any store, whether or not a run is in flight, and writes nothing. The message names the command and gives `factory --accept-harness <sha> config`, with the sha the operator passed, as the command to run instead. `config` reads nothing it could break and reaches the lock.
+- That overturns the 2026-10-12 T-0043 decision that `stats` ignores `--accept-harness`, and the same behaviour in `init` and `paths`. Standing decision for later tickets: a command that skips the harness lock refuses `--accept-harness` and never ignores it.
+- README's "Upgrading the runtime" step 2 names `factory --accept-harness <sha> config` as the command to run. It no longer says "any store command", which would now include three that refuse the flag.
+
+## Risk
+
+Blast radius:
+- The parser change touches every `run finish`, for every role, on both instances, once the runtime moves to the merge. The match is one exact line form, so the only result that changes is a trailer followed by that footer.
+- The `init` change affects only a copy that cannot be read, which today crashes.
+- The `--accept-harness` refusal turns a silent no-op into exit 2 for three commands. A script that passes the flag to them would now stop. None does in the harness, in either workflow script or in the tests, apart from the one test listed under "Tests to change".
+- The #113 edit reaches current truth only at archive. Until then current truth keeps the scenario that breaks under `/bin/sh`.
+
+Protected paths: `factory/status.py`, `factory/setup.py`, `factory/cli.py`
+
+=== design.md
+## Proposed change
+
+**A. Drop the attribution footer before rule (b)** (`factory/status.py`).
+1. Add a module constant `ATTRIBUTION_RE = re.compile(r"^🤖 Generated with \[Claude Code\]\(\S+\)$")`.
+2. In `parse()`, after `tail` is built (line 38), remove each entry that `ATTRIBUTION_RE.fullmatch`es. The entries are already stripped of `-`/`*` markers.
+3. Lines 43-49 then run unchanged on the filtered `tail`. A `none` head with only the footer below it therefore becomes "no escalation", and a `none` head with a real line and the footer gives `["none", "<real line>"]`.
+4. Add one sentence to the module docstring and to the comment above line 43, saying that the footer is dropped first and why.
+5. Change nothing else in the parser. `strip_trailer()` is not touched.
+
+**B. List an unreadable agent copy** (`factory/setup.py`, the loop at lines 182-191).
+1. Split the comparison in the `elif`. A copy that is not a file is handled as today.
+2. For a file, read it in `try: … except OSError as e:`. On error, append its path to `stale` and print `factory init: <copy> could not be read (<e.strerror or e>); left as it is` to stderr.
+3. Otherwise compare the bytes as today.
+4. Never write, chmod or delete the copy. The loop goes on to the remaining templates, and `out(...)` reports `ok: true` with exit 0.
+
+**C. Refuse `--accept-harness` with the lock-free commands** (`factory/cli.py` `main()`).
+1. As the first statement inside the `try`, before the `init`/`paths`/`stats` branch, add: `if a.cmd in ("init", "paths", "stats") and a.accept_harness: raise Refused(...)`.
+2. Give the error one line that names `a.cmd`, says the command never checks the harness lock, and ends `factory --accept-harness <a.accept_harness> config`. The existing `except Refused` prints it, emits `{"ok": false, ...}` and returns 2.
+3. Rewrite the comment at lines 851-852 to say these three commands skip the fence and the lock and refuse the flag. The comment above `READ_ONLY` (line 837) stays true.
+
+**D. Suite cases** (new test file(s) under `tests/factory/`, using the existing helper modules):
+- `run finish` on an output ending with run-0418's tail (`ESCALATIONS: none`, blank line, footer). Expect escalations `[]`, no `escalation.queued` event, and no footer in `meta.yaml`.
+- `status parse` with a real item line above the footer. Expect the footer dropped and the real items kept per rule (b).
+- `status parse` with a line that only mentions Claude Code. Expect it kept as an item.
+- `init` with one copy at mode `000`. Expect exit 0, the copy in `stale_agents`, a stderr line saying it `could not be read`, and the copy unchanged once readable again. Restore the mode in the test's teardown so the temporary directory can be removed.
+- `--accept-harness` with each of `init`, `paths` and `stats`. Expect exit 2, the `config` hint on stderr, the lock unchanged and nothing written.
+- No case uses skip or xfail.
+
+**E. Docs.**
+- `README.md`:
+  - In "Accepting a harness revision", replace the last sentence (line 611) with: `paths` and `stats` skip both checks on any store because they write nothing, and `init`, `paths` and `stats` refuse `--accept-harness`; every other command accepts it.
+  - In "Upgrading the runtime", step 2 (line 619) names `factory --accept-harness <sha> config`.
+  - In "Counting what each role catches and costs" (line 952), "needs … no `--accept-harness`" becomes "refuses `--accept-harness`".
+  - The `.claude/agents/factory-*.md` row (line 529) adds that init also reports a copy it cannot read.
+  - Bump the status date. README stays within its 1,185-line budget.
+- `docs/design.md`:
+  - The ESCALATIONS bullet (line 105) gains one sentence saying that a line below the ESCALATIONS line that is Claude Code's attribution footer, `🤖 Generated with [Claude Code](<link>)`, is dropped before the `none` rule is applied.
+  - The `harness.lock` clause in the Role-context block paragraph (line 68) says that `init`, `paths` and `stats` refuse `--accept-harness`.
+  - No prompt block changes, so `docs/prompts/` is not touched.
+- `docs/changelog.md`: one new entry with the next free number, naming #88, #113, #114 and #115 and covering the footer (`Generated with`), the `stale_agents` listing of an unreadable copy, the `--accept-harness` refusal and the `/bin/sh` scenario fix.
+
+**F. Current truth.** The build-dispatch delta below restates the launch-script requirement with the two patterns parenthesised. It is applied at archive, and the implementer touches no store file.
+
+## Tests to change
+
+- `tests/factory/test_stats.py`, in `test_reads_an_own_store_with_a_run_in_flight_from_its_runs_under_another_lock`, lines 419-423. The test runs `--accept-harness 0…0 stats` and asserts `returncode == 0`, with the comment "--accept-harness is ignored, as for `paths`". The Decision on #115 makes that exit 2.
+  - Change the assertion to `returncode == 2`, add a check that stderr holds the `config` hint, and update the comment.
+  - Keep the surrounding `snapshot(target) == before` assertion. A refusal writes nothing, so it still holds.
+
+=== specs/build-dispatch/spec.md
+## ADDED Requirements
+
+### Requirement: Claude Code's attribution footer below the trailer is not an escalation
+When a role's output has, below its ESCALATIONS line, a line that is exactly Claude Code's attribution footer `🤖 Generated with [Claude Code](<link>)`, `run finish` and `status parse` SHALL drop that line before applying the escalation rule, and MUST apply the rule unchanged to every other line below the ESCALATIONS line.
+
+#### Scenario: A none trailer followed by the attribution footer finishes with no escalation and queues nothing
+- WHEN `(T=$(cd "$(mktemp -d)" && pwd -P); export FACTORY_STATE=$T/store; printf '# F\n\nDo x.\n' > $T/req.md && bin/factory ticket new --file $T/req.md >/dev/null && R=$(bin/factory run start --role triage --ticket T-0001 | tail -1 | sed -n 's/.*"run_id": "\([^"]*\)".*/\1/p') && bin/factory run compose $R >/dev/null && printf 'Type: bug\nTitle: T\nSummary: s\nEvidence: e\nAssumptions: a\nSTATUS: ACCEPT\nCONFIDENCE: high, x\nESCALATIONS: none\n\n\360\237\244\226 Generated with [Claude Code](https://claude.com/claude-code)\n' > $FACTORY_STATE/runs/$R/output.md && bin/factory run finish $R | tail -1 | python3 -c 'import json, sys; print("finish=" + json.dumps(json.load(sys.stdin)["escalations"], ensure_ascii=False))'; echo "queued=$(cat $FACTORY_STATE/log/*.jsonl | grep -c '"escalation.queued"') meta=$(grep -c 'Generated with' $FACTORY_STATE/runs/$R/meta.yaml)")`
+- THEN it prints exactly `finish=[]`, then `queued=0 meta=0`
+
+#### Scenario: A real item above the attribution footer stays, and the footer is dropped
+- WHEN `(T=$(cd "$(mktemp -d)" && pwd -P); export FACTORY_STATE=$T/store; printf 'body\nSTATUS: APPROVE\nCONFIDENCE: high, ok\nESCALATIONS: none\n- the auth path needs review\n\n\360\237\244\226 Generated with [Claude Code](https://claude.ai/code)\n' > $T/o.md && bin/factory status parse $T/o.md | tail -1 | python3 -c 'import json, sys; print(json.dumps(json.load(sys.stdin)["escalations"], ensure_ascii=False))')`
+- THEN it prints exactly `["none", "the auth path needs review"]`
+
+#### Scenario: Real item lines, and a line that only mentions Claude Code, are still read by rule (b)
+- WHEN `(T=$(cd "$(mktemp -d)" && pwd -P); export FACTORY_STATE=$T/store; for t in 'ESCALATIONS: none. x\n- extra line\n' 'ESCALATIONS:\n- one\n- two\n' 'ESCALATIONS: none\n- Generated with Claude Code, says the footer\n' 'ESCALATIONS: none\n'; do printf "body\nSTATUS: APPROVE\nCONFIDENCE: high, ok\n$t" > $T/o.md && bin/factory status parse $T/o.md | tail -1 | python3 -c 'import json, sys; print(json.dumps(json.load(sys.stdin)["escalations"]))'; done)`
+- THEN it prints exactly `["none. x", "extra line"]`, `["one", "two"]`, `["none", "Generated with Claude Code, says the footer"]`, `[]`, one per line
+
+## MODIFIED Requirements
+
+### Requirement: factory launch-script writes a launch copy that differs from its script in one line, wherever factory config would run
+`factory launch-script intake|build` MUST write, in a new directory named `factory-launch-*` under the temporary directory, a read-only copy of that workflow script. The copy SHALL differ from the script in one line, which holds the instance's models, round limits and store as `factory config` reports them, the running harness revision and the instance. The command SHALL write nothing to the checkout or the store. Before writing, it SHALL remove each earlier `factory-launch-*` directory under the temporary directory that is more than one hour old and holds only a launch copy, and SHALL remove no other directory. Wherever `factory config` refuses, it MUST refuse with exit 2 and the same error, writing no copy.
+
+#### Scenario: Each launch copy is a one-line change to its script, in a read-only file in a directory of its own, naming the harness revision and the instance
+- WHEN `(T=$(cd "$(mktemp -d)" && pwd -P); export FACTORY_STATE=$T/store; mkdir $T/tmp; printf '# F\n\nDo x.\n' > $T/req.md && bin/factory ticket new --file $T/req.md >/dev/null; G0=$(git status --porcelain | cksum); S0=$(find $FACTORY_STATE -type f -exec cksum {} + | sort | cksum); P=$(bin/factory paths); R=$(echo "$P" | sed -n 's/.*"harness_revision": "\([0-9a-f]*\)".*/\1/p'); I=$(echo "$P" | sed -n 's/.*"instance": "\([^"]*\)".*/\1/p'); for s in intake build; do C=$(TMPDIR=$T/tmp bin/factory launch-script $s 2>/dev/null | tail -1 | sed -n 's/.*"script": "\([^"]*\)".*/\1/p'); L=$(diff factory/workflows/$s.js "${C:-/dev/null}" | grep '^>'); echo "$s: where=$(case "$C" in ($T/tmp/factory-launch-*/$s.js) echo own-dir;; (*) echo none;; esac) changed=$(diff factory/workflows/$s.js "${C:-/dev/null}" | grep -c '^[<>]') revision=$(echo "$L" | grep -cF "\"harness_revision\": \"$R\"") instance=$(echo "$L" | grep -cF "\"instance\": \"$I\"") writable=$([ -n "$C" ] && [ -w "$C" ] && echo yes || echo no)"; done; echo "checkout=$([ "$(git status --porcelain | cksum)" = "$G0" ] && echo unchanged || echo changed) store=$([ "$(find $FACTORY_STATE -type f -exec cksum {} + | sort | cksum)" = "$S0" ] && echo unchanged || echo changed) dirs=$(ls $T/tmp | grep -c '^factory-launch-')")`
+- THEN it prints exactly `intake: where=own-dir changed=2 revision=1 instance=1 writable=no`, `build: where=own-dir changed=2 revision=1 instance=1 writable=no`, `checkout=unchanged store=unchanged dirs=2`, one per line
+
+#### Scenario: launch-script is refused with config's error where the instance has not accepted the running harness, and writes no copy
+The target's own store is used, so the harness lock applies. Its lock names a revision that is not running.
+- WHEN `(T=$(cd "$(mktemp -d)" && pwd -P); B=$PWD/bin/factory; git init -q -b main $T/tgt && git -C $T/tgt -c user.email=f@x -c user.name=f commit -q --allow-empty -m init && mkdir $T/tmp && cd $T/tgt && $B init --repo-name demo >/dev/null 2>&1 && echo 0000000000000000000000000000000000000000 > .factory/harness.lock; $B config >/dev/null 2>$T/c; c=$?; TMPDIR=$T/tmp $B launch-script build >/dev/null 2>$T/l; l=$?; echo "config=$c launch=$l same=$(cmp -s $T/c $T/l && echo yes || echo no) lock=$(grep -c 'is not the revision this instance accepted' $T/l) copies=$(ls $T/tmp | grep -c .)")`
+- THEN it prints exactly `config=2 launch=2 same=yes lock=1 copies=0`
+
+#### Scenario: launch-script removes a launch copy over an hour old and keeps a recent one and a directory that holds no launch copy
+- WHEN `(T=$(cd "$(mktemp -d)" && pwd -P); export FACTORY_STATE=$T/store; mkdir $T/tmp; printf '# F\n\nDo x.\n' > $T/req.md && bin/factory ticket new --file $T/req.md >/dev/null; c() { TMPDIR=$T/tmp bin/factory launch-script build 2>/dev/null | tail -1 | sed -n 's/.*"script": "\([^"]*\)".*/\1/p'; }; O=$(c); O=${O%/*}; F=$(c); F=${F%/*}; X=$T/tmp/factory-launch-other; mkdir $X && echo x > $X/build.js; touch -t 202001010000 $X; [ -n "$O" ] && touch -t 202001010000 "$O"; N=$(c); N=${N%/*}; k() { [ -n "$1" ] && [ -e "$1" ] && echo kept || echo gone; }; echo "old=$(k "$O") other=$(k $X) fresh=$(k "$F") new=$([ -n "$N" ] && [ -e "$N" ] && echo written || echo none) dirs=$(ls $T/tmp | grep -c '^factory-launch-')")`
+- THEN it prints exactly `old=gone other=kept fresh=kept new=written dirs=3`
+
+=== specs/store-setup/spec.md
+## MODIFIED Requirements
+
+### Requirement: init reports an agent copy that differs from its template and never overwrites it
+When `factory init` runs for an instance's own store, it SHALL list each existing `.claude/agents/factory-*.md` copy whose bytes differ from its template, or that it cannot read, under `stale_agents` in its JSON output and name it on stderr, saying of a copy it cannot read that it could not be read. It MUST leave that copy unchanged and exit 0, and SHALL still create a missing copy without listing any matching copy.
+
+#### Scenario: init reports an edited agent copy and leaves it as it is
+- WHEN `(T=$(mktemp -d); B=$PWD/bin/factory; git init -q -b main $T/tgt && git -C $T/tgt -c user.email=f@x -c user.name=f commit -q --allow-empty -m init && cd $T/tgt && $B init --repo-name demo >/dev/null 2>&1 && printf 'local edit\n' >> .claude/agents/factory-planner.md && cp .claude/agents/factory-planner.md $T/kept && $B init >$T/out 2>$T/err; rc=$?; echo "exit=$rc stale=$(python3 -c 'import json, sys; o = json.load(sys.stdin); print(",".join(p.rsplit("/", 1)[-1] for p in o["stale_agents"]) if "stale_agents" in o else "absent")' < $T/out) kept=$(cmp -s $T/kept .claude/agents/factory-planner.md && echo yes || echo no) named=$(grep -c 'factory-planner\.md' $T/err) others=$(grep -v 'factory-planner\.md' $T/err | grep -c .)")`
+- THEN it prints exactly `exit=0 stale=factory-planner.md kept=yes named=1 others=0`
+
+#### Scenario: init still creates a missing agent copy and lists no matching copy
+- WHEN `(T=$(mktemp -d); B=$PWD/bin/factory; A=$PWD/agents; git init -q -b main $T/tgt && git -C $T/tgt -c user.email=f@x -c user.name=f commit -q --allow-empty -m init && cd $T/tgt && $B init --repo-name demo >/dev/null 2>&1 && rm .claude/agents/factory-triage.md && $B init >$T/out 2>$T/err; rc=$?; echo "exit=$rc $(python3 -c 'import json, sys; o = json.load(sys.stdin); print("created=" + ",".join(p.rsplit("/", 1)[-1] for p in o["agents"]) + " stale=" + str(len(o.get("stale_agents", []))))' < $T/out) same=$(for f in $A/factory-*.md; do cmp -s $f .claude/agents/$(basename $f) && echo x; done | grep -c .) differs=$(grep -c 'differs' $T/err)")`
+- THEN it prints exactly `exit=0 created=factory-triage.md stale=0 same=6 differs=0`
+
+#### Scenario: init lists an agent copy it cannot read, says so, exits 0 and leaves it as it is
+- GIVEN the shell runs as a user other than root, since root reads a file at mode `000`
+- WHEN `(T=$(mktemp -d); B=$PWD/bin/factory; git init -q -b main $T/tgt && git -C $T/tgt -c user.email=f@x -c user.name=f commit -q --allow-empty -m init && cd $T/tgt && $B init --repo-name demo >/dev/null 2>&1 && cp .claude/agents/factory-planner.md $T/kept && chmod 000 .claude/agents/factory-planner.md && $B init >$T/out 2>$T/err; rc=$?; chmod 644 .claude/agents/factory-planner.md; echo "exit=$rc stale=$(python3 -c 'import json, sys; o = json.load(sys.stdin); print(",".join(p.rsplit("/", 1)[-1] for p in o["stale_agents"]) if "stale_agents" in o else "absent")' < $T/out) kept=$(cmp -s $T/kept .claude/agents/factory-planner.md && echo yes || echo no) named=$(grep -c 'factory-planner\.md' $T/err) unread=$(grep 'factory-planner\.md' $T/err | grep -c 'could not be read') others=$(grep -v 'factory-planner\.md' $T/err | grep -c .)")`
+- THEN it prints exactly `exit=0 stale=factory-planner.md kept=yes named=1 unread=1 others=0`
+
+=== specs/live-store-guard/spec.md
+## ADDED Requirements
+
+### Requirement: init, paths and stats refuse --accept-harness and name a command that accepts it
+`factory --accept-harness <sha>` given with `init`, `paths` or `stats` MUST be refused with exit 2 and `{"ok": false, …}` on stdout, writing nothing. The refusal SHALL name the command and give `factory --accept-harness <sha> config` with the same sha. Without the flag, `paths` and `stats` SHALL still run under a lock that names another revision, and every other command SHALL keep its lock behaviour.
+
+#### Scenario: The flag with init, paths or stats is refused, names config, and writes nothing, even where init would create an instance
+- WHEN `(T=$(cd "$(mktemp -d)" && pwd -P); B=$PWD/bin/factory; Z=0123456789abcdef0123456789abcdef01234567; snap() { find . -path ./.git -prune -o -type f -exec cksum {} + | sort | cksum; }; git init -q -b main $T/tgt && git -C $T/tgt -c user.email=f@x -c user.name=f commit -q --allow-empty -m init && git init -q -b main $T/fresh && git -C $T/fresh -c user.email=f@x -c user.name=f commit -q --allow-empty -m init && cd $T/tgt && $B init --repo-name demo >/dev/null 2>&1 && S0=$(snap) && for c in init paths stats; do $B --accept-harness $Z $c >$T/o 2>$T/e; echo "$c: exit=$? named=$(grep -cw "$c" $T/e) hint=$(grep -cF -- "factory --accept-harness $Z config" $T/e) json=$(grep -c '"ok": false' $T/o)"; done; echo "target=$([ "$(snap)" = "$S0" ] && echo unchanged || echo changed)"; cd $T/fresh && $B --accept-harness $Z init --repo-name demo >/dev/null 2>&1; echo "fresh: exit=$? files=$(find . -path ./.git -prune -o -type f -print | grep -c .)")`
+- THEN it prints exactly `init: exit=2 named=1 hint=1 json=1`, `paths: exit=2 named=1 hint=1 json=1`, `stats: exit=2 named=1 hint=1 json=1`, `target=unchanged`, `fresh: exit=2 files=0`, one per line
+
+#### Scenario: Without the flag paths and stats still run under another lock, and config still accepts a revision
+- WHEN `(T=$(cd "$(mktemp -d)" && pwd -P); B=$PWD/bin/factory; git init -q -b main $T/tgt && git -C $T/tgt -c user.email=f@x -c user.name=f commit -q --allow-empty -m init && cd $T/tgt && $B init --repo-name demo >/dev/null 2>&1 && R=$($B paths | sed -n 's/.*"harness_revision": "\([0-9a-f]*\)".*/\1/p') && echo 0000000000000000000000000000000000000000 > .factory/harness.lock && $B paths >/dev/null 2>&1; p=$?; $B stats >/dev/null 2>&1; s=$?; $B config >/dev/null 2>&1; c=$?; $B --accept-harness $R config >/dev/null 2>&1; a=$?; echo "paths=$p stats=$s config=$c accept=$a lock=$([ "$(cat .factory/harness.lock)" = "$R" ] && echo accepted || echo other)")`
+- THEN it prints exactly `paths=0 stats=0 config=2 accept=0 lock=accepted`
+
+=== specs/harness-docs/spec.md
+## ADDED Requirements
+
+### Requirement: The documents record the footer rule, the unreadable agent copy and the --accept-harness refusal
+README's "Accepting a harness revision" SHALL say, in one sentence, that `init`, `paths` and `stats` refuse `--accept-harness`. Step 2 of "Upgrading the runtime" SHALL name `--accept-harness <sha> config`. "Counting what each role catches and costs" SHALL say that `stats` refuses `--accept-harness`. The `.claude/agents/factory-*.md` row SHALL say that init reports a copy it cannot read. `docs/design.md`'s ESCALATIONS bullet SHALL name the dropped `Generated with [Claude Code]` footer, and its `harness.lock` clause SHALL say, in one sentence, that `init`, `paths` and `stats` refuse `--accept-harness`. `docs/changelog.md` SHALL hold one entry naming #88, #113, #114 and #115, numbered without a gap.
+
+#### Scenario: README says which commands refuse the flag, how to accept a revision, and that init reports an unreadable copy
+- WHEN `(S=$(sed -n '/^### Accepting a harness revision/,/^### Upgrading the runtime/p' README.md); U=$(sed -n '/^### Upgrading the runtime/,/^### Installing the harness/p' README.md | grep '^2\. '); C=$(sed -n '/^### Counting what each role catches and costs/,/^```/p' README.md); echo "accepting=$(printf '%s' "$S" | python3 -c 'import re, sys; print(sum(1 for s in re.split(r"\.\s", sys.stdin.read()) if all(w in s for w in ("init", "paths", "stats", "--accept-harness")) and "refuse" in s))') upgrade=$(printf '%s' "$U" | grep -c -- '--accept-harness <sha> config') stats=$(printf '%s' "$C" | tr '\n' ' ' | grep -c 'refuses .--accept-harness.') row=$(grep '^| .\.claude/agents/factory-\*\.md. |' README.md | grep -c 'cannot read')")`
+- THEN it prints exactly `accepting=1 upgrade=1 stats=1 row=1`
+
+#### Scenario: The design doc states the footer rule and the refusal in the lock clause
+- WHEN `(echo "footer=$(grep '^- A non-empty ESCALATIONS line' docs/design.md | grep -cF 'Generated with [Claude Code]') lock=$(grep '^\*\*Role-context block\.\*\*' docs/design.md | python3 -c 'import re, sys; print(sum(1 for s in re.split(r"\.\s", sys.stdin.read()) if all(w in s for w in ("init", "paths", "stats", "--accept-harness")) and "refuse" in s))')")`
+- THEN it prints exactly `footer=1 lock=1`
+
+#### Scenario: The changelog records the four issues in one entry without a numbering gap
+- WHEN `(awk '/^[0-9]+\. /{n++; if (index($0, n ". ") != 1) bad=1} END{print (bad ? "GAPPED" : "CONTIGUOUS")}' docs/changelog.md; E=$(grep -E '^[0-9]+\. ' docs/changelog.md | grep -F '#88' | grep -F '#113' | grep -F '#114' | grep -F '#115'); printf '%s\n' "$E" | grep -c .; printf '%s' "$E" | grep -oF -e 'Generated with' -e stale_agents -e '--accept-harness' -e '/bin/sh' | sort -u | grep -c .)`
+- THEN it prints `CONTIGUOUS`, then `1`, then `4`
+
+=== specs/harness-suite/spec.md
+## ADDED Requirements
+
+### Requirement: The suite passes with this change, which changes only the stats test the --accept-harness refusal overturns
+The harness suite SHALL pass with this change, and among existing test files this change MUST modify or delete only `tests/factory/test_stats.py`.
+
+#### Scenario: The harness suite passes
+- WHEN `(uv run --frozen pytest -q -p no:cacheprovider tests/factory 2>&1 | tail -1)`
+- THEN its last line reports tests passed and no `failed` or `error`
+
+#### Scenario: The only existing test file changed is the stats test
+- WHEN `(git diff --name-only --diff-filter=MD $(git merge-base main HEAD) HEAD -- tests/factory)`
+- THEN it prints nothing, or only `tests/factory/test_stats.py`
+
+=== verification.md
+## Acceptance
+
+Every command was run on `main` at `788a201` from `~/dev/spec-factory`, under the running-code wrapper, with both `/bin/sh` (bash 3.2.57) and zsh. Both shells gave the same output.
+
+- A none trailer followed by the attribution footer finishes with no escalation and queues nothing → NEW. Today it prints `finish=["none", "🤖 Generated with [Claude Code](https://claude.com/claude-code)"]` and `queued=1 meta=1`.
+- A real item above the attribution footer stays, and the footer is dropped → NEW. Today it prints `["none", "the auth path needs review", "🤖 Generated with [Claude Code](https://claude.ai/code)"]`.
+- Real item lines, and a line that only mentions Claude Code, are still read by rule (b) → REGRESSION. Today it prints the THEN exactly.
+- Each launch copy is a one-line change to its script, in a read-only file in a directory of its own, naming the harness revision and the instance → REGRESSION.
+  - Under zsh and bash 5, the old text and the restated text both print the THEN. Under `/bin/sh` only the restated text does.
+  - #113 is an edit to scenario text, applied at archive, so no item can fail on the base code and pass on the PR. To check the restated text under the shell #113 concerns, run `(F=.factory/store/openspec/changes/T-0058/specs/build-dispatch/spec.md; T=$(mktemp -d); B=$(printf '\140'); sed -n '/^#### Scenario: Each launch copy is a one-line change/,/^- WHEN/p' $F | sed -n "s/^- WHEN $B\(.*\)$B\$/\1/p" > $T/w.sh; /bin/sh $T/w.sh)`. It must print the THEN.
+  - With `F` set to current truth, `.factory/store/openspec/specs/build-dispatch/spec.md`, the same command prints `syntax error near unexpected token 'newline'` and `intake: where= echo own-dir;; *) echo none;; esac) …`. I ran both forms, with my restated text standing in for the change file.
+- launch-script is refused with config's error where the instance has not accepted the running harness, and writes no copy → REGRESSION. It is restated word for word.
+- launch-script removes a launch copy over an hour old and keeps a recent one and a directory that holds no launch copy → REGRESSION. It is restated word for word.
+- init reports an edited agent copy and leaves it as it is → REGRESSION. It is restated word for word.
+- init still creates a missing agent copy and lists no matching copy → REGRESSION. It is restated word for word.
+- init lists an agent copy it cannot read, says so, exits 0 and leaves it as it is → NEW. Today it prints `exit=1 stale=absent kept=yes named=1 unread=0 others=0`. The `named=1` comes from the PermissionError line, which names the copy.
+- The flag with init, paths or stats is refused, names config, and writes nothing, even where init would create an instance → NEW. Today it prints `init: exit=0 named=0 hint=0 json=0`, `paths: exit=0 named=0 hint=0 json=0`, `stats: exit=0 named=0 hint=0 json=0`, `target=unchanged`, `fresh: exit=0 files=16`.
+- Without the flag paths and stats still run under another lock, and config still accepts a revision → REGRESSION. Today it prints `paths=0 stats=0 config=2 accept=0 lock=accepted`.
+- README says which commands refuse the flag, how to accept a revision, and that init reports an unreadable copy → NEW. Today it prints `accepting=0 upgrade=0 stats=0 row=0`.
+- The design doc states the footer rule and the refusal in the lock clause → NEW. Today it prints `footer=0 lock=0`.
+- The changelog records the four issues in one entry without a numbering gap → NEW. Today it prints `CONTIGUOUS`, `0`, `0`.
+- The harness suite passes → REGRESSION. On `main` at `788a201`, under the wrapper, it printed `615 passed in 79.30s`.
+- The only existing test file changed is the stats test → REGRESSION. On the base it prints nothing.
+- Current truth also checked, not part of this delta: the harness-docs scenarios "README is at most 1,185 lines" and "The maintained documents pass git's whitespace check in full". "The documents record factory stats" also still passes, because the README "Accepting" section and design line 68 still name `stats`; I ran it today and it printed its THEN. So does "The design doc states the EMPTY-OUTPUT rule, its rows and its park".

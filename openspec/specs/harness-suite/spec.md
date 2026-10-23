@@ -153,3 +153,14 @@ The harness suite SHALL pass with no existing test file changed or deleted. The 
 Per the standing T-0023 decision, the command gives pytest its own temporary directory under `/tmp` and removes it when it ends. The base is `git merge-base HEAD main`; its tree is unpacked into that directory, and the added files are copied in beside its tests.
 - WHEN `(P=$(mktemp -d /tmp/t0054-suite.XXXXXX) && TMPDIR=$P uv run --frozen pytest -q -p no:cacheprovider tests/factory 2>&1 | tail -1; B=$(git merge-base HEAD main); echo "changed=$(git diff --name-only --diff-filter=DMR $B HEAD -- tests | grep -c .) added=$(git diff --name-only --diff-filter=A $B HEAD -- tests | grep -c '/test_[^/]*\.py$')"; mkdir $P/base && git archive $B | tar -x -C $P/base && for f in $(git diff --name-only --diff-filter=A $B HEAD -- tests); do mkdir -p $P/base/${f%/*} && cp $f $P/base/$f; done; for f in $(git diff --name-only --diff-filter=A $B HEAD -- tests | grep '/test_[^/]*\.py$'); do echo "$f on the base: $(cd $P/base && TMPDIR=$P uv run --frozen pytest -q -p no:cacheprovider $f 2>&1 | tail -1 | sed 's/ in [0-9.]*s.*//')"; done; rm -rf "$P")`
 - THEN the first line reports a number of passed tests and no `failed` or `error`; the second is `changed=0 added=<n>` with n at least 1; then n lines follow, each `<added test file> on the base: <pytest summary>`, where every summary includes `failed`
+
+### Requirement: The suite passes with this change, which changes only the stats test the --accept-harness refusal overturns
+The harness suite SHALL pass with this change, and among existing test files this change MUST modify or delete only `tests/factory/test_stats.py`.
+
+#### Scenario: The harness suite passes
+- WHEN `(uv run --frozen pytest -q -p no:cacheprovider tests/factory 2>&1 | tail -1)`
+- THEN its last line reports tests passed and no `failed` or `error`
+
+#### Scenario: The only existing test file changed is the stats test
+- WHEN `(git diff --name-only --diff-filter=MD $(git merge-base main HEAD) HEAD -- tests/factory)`
+- THEN it prints nothing, or only `tests/factory/test_stats.py`

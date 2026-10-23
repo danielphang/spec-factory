@@ -1,0 +1,59 @@
+run_id: run-0567-verifier
+role: verifier
+ticket: T-0055.1
+model: opus
+round: 1
+spec_version: 3
+started: '2026-10-23T07:08:38+00:00'
+finished: '2026-10-23T07:13:38+00:00'
+wall_s: 300
+status: VERIFIED
+input_sources:
+- specs/T-0055.1/subticket.md
+- specs/T-0055/v3.md
+- runs/run-0565-implementer/output.md
+- runs/run-0567-verifier/diff.patch
+gate_skipped: []
+environment_files: []
+branch: factory/T-0055.1
+base: 1321c1710aa703876eac6c66df7e38d1dd92d10a
+head: 44e52a30cf8a9fa6adbe89015eb5ffe6b7c055bb
+worktree: /Users/dphang/dev/spec-factory/.factory/store/runs/run-0567-verifier/wt
+confidence: high. All 11 commands match their THEN lines exactly, under three shells, and each fails on
+  base as the spec states. Both gates pass, and the new files are byte-identical to the spec's prototype
+  text.
+escalations:
+- README is now 1,184 of its 1,185-line budget. The spec's room-for-T-0058 reasoning assumed 1,182, so
+  the next ticket that adds 2 or more lines to README will have to raise the budget or trim. This is outside
+  this sub-ticket's criteria, and nothing fails today.
+escalations_note: null
+claude:
+  session_id: fa4fa3e0-0ea0-4481-ac65-333b7be94218
+  total_cost_usd: 1.3598968
+  num_turns: 19
+  usage:
+    input_tokens: 38
+    cache_creation_input_tokens: 51979
+    cache_read_input_tokens: 3335364
+    output_tokens: 13842
+    output_tokens_details:
+      thinking_tokens: 2425
+    server_tool_use:
+      web_search_requests: 0
+      web_fetch_requests: 0
+    service_tier: standard
+    cache_creation:
+      ephemeral_1h_input_tokens: 51979
+      ephemeral_5m_input_tokens: 0
+    inference_geo: global
+    iterations:
+    - input_tokens: 2
+      output_tokens: 2660
+      cache_read_input_tokens: 193575
+      cache_creation_input_tokens: 2855
+      cache_creation:
+        ephemeral_5m_input_tokens: 0
+        ephemeral_1h_input_tokens: 2855
+      type: message
+    speed: standard
+    fallback_credit: null

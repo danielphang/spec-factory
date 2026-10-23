@@ -90,3 +90,7 @@ Not checked: the suite scenario (the writer reports `615 passed in 79.30s` on th
 ## Findings
 
 No new findings. The changed text introduces no new term of art without a gloss, no new decision, and no change to any scenario's WHEN or THEN. The round-1 assessment stands: scope fits one PR, each lettered part serves one of the four issues, "Tests to change" names the one test the #115 decision breaks, the three protected paths are declared under Risk, and the overturned T-0043 decision is named with a standing replacement.
+
+## Verifier results
+
+6f4d8658252556ed62bd19e130b09634f119f454 · T-0058.1 · VERIFIED · run-0564-verifier

@@ -1,0 +1,57 @@
+run_id: run-0563-reviewer
+role: reviewer
+ticket: T-0058.1
+model: fable
+round: 1
+spec_version: 3
+started: '2026-10-23T06:57:09+00:00'
+finished: '2026-10-23T07:00:19+00:00'
+wall_s: 190
+status: APPROVE
+input_sources:
+- specs/T-0058.1/subticket.md
+- specs/T-0058/v3.md
+- runs/run-0560-implementer/output.md
+- runs/run-0563-reviewer/diff.patch
+gate_skipped: []
+environment_files: []
+branch: factory/T-0058.1
+base: 788a201a34fb3a416b394a14fba65583989c24c9
+head: 6f4d8658252556ed62bd19e130b09634f119f454
+worktree: /Users/dphang/dev/spec-factory/.factory/store/runs/run-0563-reviewer/wt
+confidence: high, the diff does what each lettered part asks, the only existing test changed is the one
+  the spec lists, and the new test file passes on this head
+escalations:
+- 'protected paths changed and declared in the spec''s Risk section: `factory/status.py`, `factory/setup.py`,
+  `factory/cli.py`'
+escalations_note: null
+claude:
+  session_id: cb62e582-4b77-40fa-919a-12aab3a56ec2
+  total_cost_usd: 5.07609075
+  num_turns: 12
+  usage:
+    input_tokens: 354
+    cache_creation_input_tokens: 207945
+    cache_read_input_tokens: 1925603
+    output_tokens: 8645
+    output_tokens_details:
+      thinking_tokens: 3045
+    server_tool_use:
+      web_search_requests: 0
+      web_fetch_requests: 0
+    service_tier: standard
+    cache_creation:
+      ephemeral_1h_input_tokens: 207945
+      ephemeral_5m_input_tokens: 0
+    inference_geo: global
+    iterations:
+    - input_tokens: 32
+      output_tokens: 1775
+      cache_read_input_tokens: 203631
+      cache_creation_input_tokens: 4314
+      cache_creation:
+        ephemeral_5m_input_tokens: 0
+        ephemeral_1h_input_tokens: 4314
+      type: message
+    speed: standard
+    fallback_credit: null

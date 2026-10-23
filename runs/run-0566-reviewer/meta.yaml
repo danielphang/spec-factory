@@ -1,0 +1,55 @@
+run_id: run-0566-reviewer
+role: reviewer
+ticket: T-0055.1
+model: fable
+round: 1
+spec_version: 3
+started: '2026-10-23T07:08:38+00:00'
+finished: '2026-10-23T07:10:19+00:00'
+wall_s: 101
+status: APPROVE
+input_sources:
+- specs/T-0055.1/subticket.md
+- specs/T-0055/v3.md
+- runs/run-0565-implementer/output.md
+- runs/run-0566-reviewer/diff.patch
+gate_skipped: []
+environment_files: []
+branch: factory/T-0055.1
+base: 1321c1710aa703876eac6c66df7e38d1dd92d10a
+head: 44e52a30cf8a9fa6adbe89015eb5ffe6b7c055bb
+worktree: /Users/dphang/dev/spec-factory/.factory/store/runs/run-0566-reviewer/wt
+confidence: high. Every lettered part matches the spec text, the baseline review hashes verbatim, README
+  is at 1,184 of 1,185, and no test, harness or protected path is in the diff.
+escalations: []
+escalations_note: null
+claude:
+  session_id: 6d29c5f0-3023-4f61-8e04-78cbba07b17b
+  total_cost_usd: 4.9818039999999995
+  num_turns: 12
+  usage:
+    input_tokens: 354
+    cache_creation_input_tokens: 206945
+    cache_read_input_tokens: 1863856
+    output_tokens: 7468
+    output_tokens_details:
+      thinking_tokens: 1486
+    server_tool_use:
+      web_search_requests: 0
+      web_fetch_requests: 0
+    service_tier: standard
+    cache_creation:
+      ephemeral_1h_input_tokens: 206945
+      ephemeral_5m_input_tokens: 0
+    inference_geo: global
+    iterations:
+    - input_tokens: 32
+      output_tokens: 1867
+      cache_read_input_tokens: 196907
+      cache_creation_input_tokens: 4239
+      cache_creation:
+        ephemeral_5m_input_tokens: 0
+        ephemeral_1h_input_tokens: 4239
+      type: message
+    speed: standard
+    fallback_credit: null

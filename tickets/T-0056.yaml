@@ -1,19 +1,25 @@
 id: T-0056
-type: null
-title: 'Scorecard: factory stats reports the north star''s measures per window, with escapes as a store
+type: feature
+title: 'Scorecard: `factory stats` reports the north star''s measures per window, with escapes as a store
   record and a cost record for every run'
 request: requests/T-0056.md
 source: /private/tmp/claude-501/-Users-dphang-dev-nanobot/c69bfd1d-97a6-43e3-9d5a-a517c28d382c/scratchpad/requests/req-117.md
-status: ready-for-triage
+status: parked
 round:
   spec: 0
   pr: 0
 spec:
-  version: 0
+  version: 1
   approved_version: null
 plan: null
 in_flight: []
-parked: null
+parked:
+  reason: NEEDS-HUMAN from spec writer
+  since: '2026-10-23T07:18:13+00:00'
+  from: ready-for-spec-writer
+  outputs:
+  - run-0562-spec_writer
+  question: null
 created: '2026-10-20T06:38:50+00:00'
 history:
 - ts: '2026-10-20T06:55:24+00:00'
@@ -30,6 +36,18 @@ history:
   decision: '2026-10-20 T-0056 T-0056 (#117): a target change is decided by instance; an instance whose
     target is the factory itself counts its merges as factory work, on a line of their own (operator,
     2026-10-19)'
+- ts: '2026-10-23T06:51:01+00:00'
+  from: ready-for-triage
+  to: ready-for-spec-writer
+  by: workflow
+  round:
+    spec: 0
+    pr: 0
+- ts: '2026-10-23T07:18:13+00:00'
+  from: ready-for-spec-writer
+  to: parked
+  by: park
+  reason: NEEDS-HUMAN from spec writer
 parent: null
 depends_on: []
 parallel_safe: true

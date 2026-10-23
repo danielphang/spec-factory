@@ -4,14 +4,14 @@ title: 'North star: a primary metric, a two-weekly review and a rule for choosin
   on the repo''s front page'
 request: requests/T-0055.md
 source: /private/tmp/claude-501/-Users-dphang-dev-nanobot/c69bfd1d-97a6-43e3-9d5a-a517c28d382c/scratchpad/requests/req-116.md
-status: ready-for-planner
+status: closed
 round:
   spec: 2
   pr: 0
 spec:
   version: 3
   approved_version: 3
-plan: null
+plan: plans/T-0055.md
 in_flight: []
 parked: null
 created: '2026-10-20T06:38:49+00:00'
@@ -69,6 +69,25 @@ history:
   to: ready-for-planner
   by: dphang
   approved_version: 3
+- ts: '2026-10-23T07:02:56+00:00'
+  from: ready-for-planner
+  to: planned
+  by: workflow
+  round:
+    spec: 2
+    pr: 0
+- ts: '2026-10-23T07:13:39+00:00'
+  from: planned
+  to: ready-for-parent-verify
+  by: parent-check
+- ts: '2026-10-23T07:13:40+00:00'
+  from: ready-for-parent-verify
+  to: closed
+  by: workflow
+  round:
+    spec: 2
+    pr: 0
+  verified_by: run-0567-verifier
 parent: null
 depends_on: []
 parallel_safe: true
@@ -77,4 +96,4 @@ head: null
 merge:
   base_before: null
   main_after: null
-parent_base: null
+parent_base: 1321c1710aa703876eac6c66df7e38d1dd92d10a

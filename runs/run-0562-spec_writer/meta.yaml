@@ -1,0 +1,54 @@
+run_id: run-0562-spec_writer
+role: spec_writer
+ticket: T-0056
+model: opus
+round: 0
+spec_version: 0
+started: '2026-10-23T06:51:02+00:00'
+finished: '2026-10-23T07:18:13+00:00'
+wall_s: 1631
+status: NEEDS-HUMAN
+input_sources:
+- runs/run-0561-triage/output.md
+- requests/T-0056.md
+- openspec/specs/build-dispatch/spec.md
+- openspec/specs/factory-stats/spec.md
+- openspec/specs/harness-docs/spec.md
+- openspec/specs/live-store-guard/spec.md
+- decisions.md
+confidence: medium. The root cause, the fix's inputs and the scorecard's figures are checked against the
+  live stores, a prototype and the base checkout, but two gate questions are open (how interventions outside
+  the CLI are recorded, and whether an escape's link may sit in a public store), and the Workflow path's
+  real transcript location is confirmed only by past runs, not by a run of the changed scripts.
+escalations: []
+escalations_note: null
+claude:
+  session_id: 17de4747-2f76-41ef-b47c-d626dc8b25a5
+  total_cost_usd: 12.428351799999998
+  num_turns: 84
+  usage:
+    input_tokens: 168
+    cache_creation_input_tokens: 471292
+    cache_read_input_tokens: 25926064
+    output_tokens: 173019
+    output_tokens_details:
+      thinking_tokens: 87252
+    server_tool_use:
+      web_search_requests: 0
+      web_fetch_requests: 0
+    service_tier: standard
+    cache_creation:
+      ephemeral_1h_input_tokens: 471292
+      ephemeral_5m_input_tokens: 0
+    inference_geo: global
+    iterations:
+    - input_tokens: 2
+      output_tokens: 30014
+      cache_read_input_tokens: 470508
+      cache_creation_input_tokens: 784
+      cache_creation:
+        ephemeral_5m_input_tokens: 0
+        ephemeral_1h_input_tokens: 784
+      type: message
+    speed: standard
+    fallback_credit: null
