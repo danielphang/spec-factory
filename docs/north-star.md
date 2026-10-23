@@ -20,6 +20,51 @@ Success is measured as:
 
 The factory serves its own development (spec-factory) and its targets (today, a port of the Nanobot chat bot).
 
+## How we know it is working
+
+The measures above are judged against a bar set outside the factory: what it delivers to its
+targets, not how closely it follows its own rules. Each instance decides whether its merges are
+target changes. The Nanobot port's are. Spec-factory's are factory work, changes to the factory
+itself: the scorecard reports them on a line of their own and never counts them as target changes.
+
+- **Primary metric:** correct target changes per hour of operator attention. A change is correct
+  when no escape is recorded against it.
+- **Constraint:** escaped defects do not rise. An escape is a merged change that later needed a fix
+  or a revert.
+- **Second measure:** cost, as tokens and wall time per change.
+
+The store records operator decisions, not operator time. Until it records time, the scorecard
+counts operator decisions and interventions per change in place of hours of operator attention.
+
+The scorecard gives these numbers for a window of time, per instance, beside the same numbers for
+the window before. `factory stats` computes them from the store, and nobody types them. Until it
+computes a number, a review writes "not yet computed" rather than count it by hand. The one
+exception is the baseline review, `docs/reviews/2026-10-19.md`, counted by hand from both stores,
+git, the issues and the session transcripts, with its method written in the review.
+
+| Number | What it counts |
+|---|---|
+| Target changes merged | tickets closed with a merge |
+| Escapes | merged changes that later needed a fix or a revert |
+| Operator decisions and interventions per change | each gate decision, ruling or resolve, and each intervention made outside the CLI |
+| Tokens and wall time per change | the cost of the role runs behind each merged change |
+| Lead time | the time from a request's creation to its merge |
+
+Three comparisons ground these numbers outside the factory:
+- **A plain-session baseline:** the same tickets done in one plain Claude Code session, with the
+  operator reviewing its result the way they review a merge.
+- **The upstream benchmark:** merged fix pull requests from the public upstream Nanobot project,
+  each run by the factory and by a plain session, and scored by that pull request's own tests.
+- **DORA-style delivery measures:** lead time, and change failure rate, which is escapes divided by
+  target changes merged. DORA is the DevOps Research and Assessment programme's set of delivery
+  measures.
+
+**Reviews.** A review runs every two weeks, or monthly when there is too little to discuss. Each is
+`docs/reviews/<date>.md`, written from `docs/reviews/TEMPLATE.md`. A review re-orders the work queue,
+issue #96, and rewrites `STATUS.md` at the repository root, which quotes numbers only as of the
+latest review. The baseline review is dated 2026-10-19. The first review written from the template
+is on 2026-11-02.
+
 ## What it will not trade away
 
 These hold for every change to the factory. A proposal that weakens one names it and is the operator's
@@ -56,7 +101,11 @@ The fourteen principles in `docs/principles.md`, each with the incident that tau
 | Scaffold and prose | Size the scaffold to the change. The human-facing sections are for the gate reader. Round 2 reads only what changed. A role never waits on background work, and an empty run parks. |
 | Context and sources | Bounded, on-demand context beats complete context. One source per artifact; a copy is generated and checked, or deleted. |
 
-And three working rules that follow from them:
+And four working rules that follow from them:
+- **Factory work serves a target or a number.** A factory ticket goes ahead only if it fixes a defect
+  that hit a target ticket, or names the scorecard number it moves and re-measures that number after
+  it ships. Its request says which. The operator applies this rule at the spec gate; no role prompt
+  or harness check enforces it.
 - **Measure before and after.** Every efficiency change states the cost it targets, from the store or the
   transcripts, and is re-measured after it ships.
 - **Prefer a script to a prompt.** A rule that a script can enforce becomes a lint, a refusal or a check,
