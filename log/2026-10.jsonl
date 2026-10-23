@@ -3031,3 +3031,5 @@
 {"ts": "2026-10-23T07:18:13+00:00", "event": "ticket.parked", "ticket": "T-0056", "from": "ready-for-spec-writer", "reason": "NEEDS-HUMAN from spec writer"}
 {"ts": "2026-10-23T07:18:13+00:00", "event": "escalation.queued", "ticket": "T-0056", "items": ["NEEDS-HUMAN from spec writer"]}
 {"ts": "2026-10-23T07:18:49+00:00", "event": "harness.accepted", "instance": "/Users/dphang/dev/spec-factory/.factory", "old": "e12ca713eb3b8594445773d44e87790fd480faa1", "new": "6f4d8658252556ed62bd19e130b09634f119f454"}
+{"ts": "2026-10-23T07:20:17+00:00", "event": "decision.recorded", "ticket": "T-0056", "by": "dphang", "line": "2026-10-23 T-0056 T-0056 (#117): interventions outside the CLI are recorded with factory intervention add; a store record that carries a link keeps only a hash of it, never the link (Green for the operator, 2026-10-23, from the public-repo rule)", "via": "resolve --answer"}
+{"ts": "2026-10-23T07:20:18+00:00", "event": "human.resolved", "ticket": "T-0056", "kind": "answer", "by": "dphang", "from": "parked", "to": "ready-for-spec-writer"}

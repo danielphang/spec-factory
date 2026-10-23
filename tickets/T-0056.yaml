@@ -4,7 +4,7 @@ title: 'Scorecard: `factory stats` reports the north star''s measures per window
   record and a cost record for every run'
 request: requests/T-0056.md
 source: /private/tmp/claude-501/-Users-dphang-dev-nanobot/c69bfd1d-97a6-43e3-9d5a-a517c28d382c/scratchpad/requests/req-117.md
-status: parked
+status: ready-for-spec-writer
 round:
   spec: 0
   pr: 0
@@ -13,13 +13,7 @@ spec:
   approved_version: null
 plan: null
 in_flight: []
-parked:
-  reason: NEEDS-HUMAN from spec writer
-  since: '2026-10-23T07:18:13+00:00'
-  from: ready-for-spec-writer
-  outputs:
-  - run-0562-spec_writer
-  question: null
+parked: null
 created: '2026-10-20T06:38:50+00:00'
 history:
 - ts: '2026-10-20T06:55:24+00:00'
@@ -48,6 +42,15 @@ history:
   to: parked
   by: park
   reason: NEEDS-HUMAN from spec writer
+- ts: '2026-10-23T07:20:17+00:00'
+  from: parked
+  to: ready-for-spec-writer
+  by: dphang
+  resolve: answer
+  answer: 2
+  decision: '2026-10-23 T-0056 T-0056 (#117): interventions outside the CLI are recorded with factory
+    intervention add; a store record that carries a link keeps only a hash of it, never the link (Green
+    for the operator, 2026-10-23, from the public-repo rule)'
 parent: null
 depends_on: []
 parallel_safe: true
