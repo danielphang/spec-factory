@@ -1,0 +1,13 @@
+## ADDED Requirements
+
+### Requirement: init, paths and stats refuse --accept-harness and name a command that accepts it
+`factory --accept-harness <sha>` given with `init`, `paths` or `stats` MUST be refused with exit 2 and `{"ok": false, …}` on stdout, writing nothing. The refusal SHALL name the command and give `factory --accept-harness <sha> config` with the same sha. Without the flag, `paths` and `stats` SHALL still run under a lock that names another revision, and every other command SHALL keep its lock behaviour.
+
+#### Scenario: The flag with init, paths or stats is refused, names config, and writes nothing, even where init would create an instance
+- WHEN `(T=$(cd "$(mktemp -d)" && pwd -P); B=$PWD/bin/factory; Z=0123456789abcdef0123456789abcdef01234567; snap() { find . -path ./.git -prune -o -type f -exec cksum {} + | sort | cksum; }; git init -q -b main $T/tgt && git -C $T/tgt -c user.email=f@x -c user.name=f commit -q --allow-empty -m init && git init -q -b main $T/fresh && git -C $T/fresh -c user.email=f@x -c user.name=f commit -q --allow-empty -m init && cd $T/tgt && $B init --repo-name demo >/dev/null 2>&1 && S0=$(snap) && for c in init paths stats; do $B --accept-harness $Z $c >$T/o 2>$T/e; echo "$c: exit=$? named=$(grep -cw "$c" $T/e) hint=$(grep -cF -- "factory --accept-harness $Z config" $T/e) json=$(grep -c '"ok": false' $T/o)"; done; echo "target=$([ "$(snap)" = "$S0" ] && echo unchanged || echo changed)"; cd $T/fresh && $B --accept-harness $Z init --repo-name demo >/dev/null 2>&1; echo "fresh: exit=$? files=$(find . -path ./.git -prune -o -type f -print | grep -c .)")`
+- THEN it prints exactly `init: exit=2 named=1 hint=1 json=1`, `paths: exit=2 named=1 hint=1 json=1`, `stats: exit=2 named=1 hint=1 json=1`, `target=unchanged`, `fresh: exit=2 files=0`, one per line
+
+#### Scenario: Without the flag paths and stats still run under another lock, and config still accepts a revision
+- WHEN `(T=$(cd "$(mktemp -d)" && pwd -P); B=$PWD/bin/factory; git init -q -b main $T/tgt && git -C $T/tgt -c user.email=f@x -c user.name=f commit -q --allow-empty -m init && cd $T/tgt && $B init --repo-name demo >/dev/null 2>&1 && R=$($B paths | sed -n 's/.*"harness_revision": "\([0-9a-f]*\)".*/\1/p') && echo 0000000000000000000000000000000000000000 > .factory/harness.lock && $B paths >/dev/null 2>&1; p=$?; $B stats >/dev/null 2>&1; s=$?; $B config >/dev/null 2>&1; c=$?; $B --accept-harness $R config >/dev/null 2>&1; a=$?; echo "paths=$p stats=$s config=$c accept=$a lock=$([ "$(cat .factory/harness.lock)" = "$R" ] && echo accepted || echo other)")`
+- THEN it prints exactly `paths=0 stats=0 config=2 accept=0 lock=accepted`
+

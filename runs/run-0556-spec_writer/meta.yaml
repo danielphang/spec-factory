@@ -1,0 +1,50 @@
+run_id: run-0556-spec_writer
+role: spec_writer
+ticket: T-0055
+model: opus
+round: 0
+spec_version: 1
+started: '2026-10-20T07:23:23+00:00'
+finished: '2026-10-20T07:32:35+00:00'
+wall_s: 552
+status: READY-FOR-CRITIC
+input_sources:
+- runs/run-0547-triage/output.md
+- requests/T-0055.md
+- openspec/specs/harness-docs/spec.md
+- decisions.md
+- runs/run-0548-spec_writer/output.md
+confidence: high. Every NEW scenario fails on `788a201` and passes on a prototype that fits README's budget,
+  the two figure checks fail when a figure is mistyped, and no current-truth document check changed.
+escalations: []
+escalations_note: null
+claude:
+  session_id: 2261d2ed-316e-40df-8e13-f9eb9b2400b6
+  total_cost_usd: 3.3586492
+  num_turns: 30
+  usage:
+    input_tokens: 58
+    cache_creation_input_tokens: 113367
+    cache_read_input_tokens: 5834906
+    output_tokens: 64225
+    output_tokens_details:
+      thinking_tokens: 18534
+    server_tool_use:
+      web_search_requests: 0
+      web_fetch_requests: 0
+    service_tier: standard
+    cache_creation:
+      ephemeral_1h_input_tokens: 113367
+      ephemeral_5m_input_tokens: 0
+    inference_geo: global
+    iterations:
+    - input_tokens: 2
+      output_tokens: 17681
+      cache_read_input_tokens: 239678
+      cache_creation_input_tokens: 18745
+      cache_creation:
+        ephemeral_5m_input_tokens: 0
+        ephemeral_1h_input_tokens: 18745
+      type: message
+    speed: standard
+    fallback_credit: null

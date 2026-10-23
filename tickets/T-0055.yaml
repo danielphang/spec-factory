@@ -4,13 +4,13 @@ title: 'North star: a primary metric, a two-weekly review and a rule for choosin
   on the repo''s front page'
 request: requests/T-0055.md
 source: /private/tmp/claude-501/-Users-dphang-dev-nanobot/c69bfd1d-97a6-43e3-9d5a-a517c28d382c/scratchpad/requests/req-116.md
-status: ready-for-spec-writer
+status: ready-for-planner
 round:
-  spec: 0
+  spec: 2
   pr: 0
 spec:
-  version: 1
-  approved_version: null
+  version: 3
+  approved_version: 3
 plan: null
 in_flight: []
 parked: null
@@ -36,6 +36,39 @@ history:
   answer: 1
   decision: '2026-10-20 T-0055 T-0055 (#116): until the store records operator time, the scorecard counts
     operator decisions and interventions per change in place of hours (operator, 2026-10-19)'
+- ts: '2026-10-20T07:32:35+00:00'
+  from: ready-for-spec-writer
+  to: ready-for-critic
+  by: workflow
+  round:
+    spec: 1
+    pr: 0
+- ts: '2026-10-20T07:38:33+00:00'
+  from: ready-for-critic
+  to: ready-for-spec-writer
+  by: workflow
+  round:
+    spec: 2
+    pr: 0
+- ts: '2026-10-20T07:45:53+00:00'
+  from: ready-for-spec-writer
+  to: ready-for-critic
+  by: workflow
+  round:
+    spec: 2
+    pr: 0
+- ts: '2026-10-20T07:48:40+00:00'
+  from: ready-for-critic
+  to: awaiting-spec-gate
+  by: workflow
+  round:
+    spec: 2
+    pr: 0
+- ts: '2026-10-23T06:49:15+00:00'
+  from: awaiting-spec-gate
+  to: ready-for-planner
+  by: dphang
+  approved_version: 3
 parent: null
 depends_on: []
 parallel_safe: true

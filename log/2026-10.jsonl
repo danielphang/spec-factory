@@ -2959,3 +2959,24 @@
 {"ts": "2026-10-20T07:23:01+00:00", "event": "human.resolved", "ticket": "T-0057", "kind": "answer", "by": "dphang", "from": "parked", "to": "ready-for-triage"}
 {"ts": "2026-10-20T07:23:02+00:00", "event": "decision.recorded", "ticket": "T-0055", "by": "dphang", "line": "2026-10-20 T-0055 T-0055 (#116): until the store records operator time, the scorecard counts operator decisions and interventions per change in place of hours (operator, 2026-10-19)", "via": "resolve --answer"}
 {"ts": "2026-10-20T07:23:02+00:00", "event": "human.resolved", "ticket": "T-0055", "kind": "answer", "by": "dphang", "from": "parked", "to": "ready-for-spec-writer"}
+{"ts": "2026-10-20T07:23:23+00:00", "event": "run.started", "ticket": "T-0055", "run": "run-0556-spec_writer", "role": "spec_writer", "model": "opus"}
+{"ts": "2026-10-20T07:32:35+00:00", "event": "run.finished", "ticket": "T-0055", "run": "run-0556-spec_writer", "role": "spec_writer", "status": "READY-FOR-CRITIC", "wall_s": 552}
+{"ts": "2026-10-20T07:32:35+00:00", "event": "spec.added", "ticket": "T-0055", "version": 2, "source": "run-0556-spec_writer"}
+{"ts": "2026-10-20T07:32:36+00:00", "event": "ticket.transition", "ticket": "T-0055", "from": "ready-for-spec-writer", "to": "ready-for-critic", "by": "workflow", "round": {"spec": 1, "pr": 0}}
+{"ts": "2026-10-20T07:32:36+00:00", "event": "run.started", "ticket": "T-0055", "run": "run-0557-critic", "role": "critic", "model": "fable"}
+{"ts": "2026-10-20T07:38:33+00:00", "event": "run.finished", "ticket": "T-0055", "run": "run-0557-critic", "role": "critic", "status": "REVISE", "wall_s": 357}
+{"ts": "2026-10-20T07:38:33+00:00", "event": "ticket.transition", "ticket": "T-0055", "from": "ready-for-critic", "to": "ready-for-spec-writer", "by": "workflow", "round": {"spec": 2, "pr": 0}}
+{"ts": "2026-10-20T07:38:33+00:00", "event": "run.started", "ticket": "T-0055", "run": "run-0558-spec_writer", "role": "spec_writer", "model": "opus"}
+{"ts": "2026-10-20T07:45:53+00:00", "event": "run.finished", "ticket": "T-0055", "run": "run-0558-spec_writer", "role": "spec_writer", "status": "READY-FOR-CRITIC", "wall_s": 440}
+{"ts": "2026-10-20T07:45:53+00:00", "event": "spec.added", "ticket": "T-0055", "version": 3, "source": "run-0558-spec_writer"}
+{"ts": "2026-10-20T07:45:53+00:00", "event": "ticket.transition", "ticket": "T-0055", "from": "ready-for-spec-writer", "to": "ready-for-critic", "by": "workflow", "round": {"spec": 2, "pr": 0}}
+{"ts": "2026-10-20T07:45:53+00:00", "event": "run.started", "ticket": "T-0055", "run": "run-0559-critic", "role": "critic", "model": "fable"}
+{"ts": "2026-10-20T07:48:40+00:00", "event": "run.finished", "ticket": "T-0055", "run": "run-0559-critic", "role": "critic", "status": "APPROVE", "wall_s": 167}
+{"ts": "2026-10-20T07:48:41+00:00", "event": "ticket.transition", "ticket": "T-0055", "from": "ready-for-critic", "to": "awaiting-spec-gate", "by": "workflow", "round": {"spec": 2, "pr": 0}}
+{"ts": "2026-10-22T19:54:48+00:00", "event": "spec.added", "ticket": "T-0058", "version": 3, "source": "gate edit /private/tmp/claude-501/-Users-dphang-dev-nanobot/c69bfd1d-97a6-43e3-9d5a-a517c28d382c/scratchpad/T-0058-v3.md"}
+{"ts": "2026-10-22T19:54:49+00:00", "event": "approval.recorded", "ticket": "T-0058", "kind": "spec", "version": 3, "by": "dphang"}
+{"ts": "2026-10-22T19:54:49+00:00", "event": "change.pinned", "ticket": "T-0058", "version": 3, "files": ["openspec/changes/T-0058/proposal.md", "openspec/changes/T-0058/design.md", "openspec/changes/T-0058/specs/build-dispatch/spec.md", "openspec/changes/T-0058/specs/store-setup/spec.md", "openspec/changes/T-0058/specs/live-store-guard/spec.md", "openspec/changes/T-0058/specs/harness-docs/spec.md", "openspec/changes/T-0058/specs/harness-suite/spec.md", "openspec/changes/T-0058/verification.md"]}
+{"ts": "2026-10-22T19:54:49+00:00", "event": "ticket.transition", "ticket": "T-0058", "from": "awaiting-spec-gate", "to": "ready-for-planner", "by": "dphang"}
+{"ts": "2026-10-23T06:49:15+00:00", "event": "approval.recorded", "ticket": "T-0055", "kind": "spec", "version": 3, "by": "dphang"}
+{"ts": "2026-10-23T06:49:15+00:00", "event": "change.pinned", "ticket": "T-0055", "version": 3, "files": ["openspec/changes/T-0055/proposal.md", "openspec/changes/T-0055/design.md", "openspec/changes/T-0055/specs/harness-docs/spec.md", "openspec/changes/T-0055/verification.md"]}
+{"ts": "2026-10-23T06:49:15+00:00", "event": "ticket.transition", "ticket": "T-0055", "from": "awaiting-spec-gate", "to": "ready-for-planner", "by": "dphang"}

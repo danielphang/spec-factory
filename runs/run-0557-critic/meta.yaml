@@ -1,0 +1,48 @@
+run_id: run-0557-critic
+role: critic
+ticket: T-0055
+model: fable
+round: 1
+spec_version: 2
+started: '2026-10-20T07:32:36+00:00'
+finished: '2026-10-20T07:38:33+00:00'
+wall_s: 357
+status: REVISE
+input_sources:
+- specs/T-0055/v2.md
+- openspec/specs/harness-docs/spec.md
+- decisions.md
+confidence: high, every cited path and five acceptance commands checked on 788a201, and the T-0058 overlap
+  read from its spec at the gate
+escalations: []
+escalations_note: null
+claude:
+  session_id: 620f3576-7f6b-416b-85af-c4638b23ef1c
+  total_cost_usd: 4.95610325
+  num_turns: 14
+  usage:
+    input_tokens: 418
+    cache_creation_input_tokens: 150580
+    cache_read_input_tokens: 2403293
+    output_tokens: 26790
+    output_tokens_details:
+      thinking_tokens: 15953
+    server_tool_use:
+      web_search_requests: 0
+      web_fetch_requests: 0
+    service_tier: standard
+    cache_creation:
+      ephemeral_1h_input_tokens: 150580
+      ephemeral_5m_input_tokens: 0
+    inference_geo: global
+    iterations:
+    - input_tokens: 32
+      output_tokens: 2580
+      cache_read_input_tokens: 217819
+      cache_creation_input_tokens: 8181
+      cache_creation:
+        ephemeral_5m_input_tokens: 0
+        ephemeral_1h_input_tokens: 8181
+      type: message
+    speed: standard
+    fallback_credit: null
