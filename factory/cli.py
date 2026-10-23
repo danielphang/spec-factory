@@ -848,8 +848,11 @@ READ_ONLY = {("ticket", "show"), ("ticket", "join"), ("results", "show"), ("conf
 def main(argv: list[str] | None = None) -> int:
     a = build_parser().parse_args(argv)
     try:
+        if a.cmd in ("init", "paths", "stats") and a.accept_harness:
+            raise Refused(f"factory {a.cmd} never checks the harness lock, so it cannot accept a revision; "
+                          f"run factory --accept-harness {a.accept_harness} config")
         # exempt from the instance refusal (design B.1); `paths` and `stats` only read, so they also
-        # skip the fence and the harness lock and ignore --accept-harness
+        # skip the fence and the harness lock; all three refuse --accept-harness (above, T-0058)
         if a.cmd in ("init", "paths", "stats"):
             a.fn(a)
             return 0
