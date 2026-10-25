@@ -55,6 +55,9 @@ models:
 # Effort level per role for `factory drive`'s role processes (`claude -p --effort`); a role not listed
 # gets Claude Code's default. The Workflow scripts ignore it.
 # effort: {critic: high}
+# Whether this instance's target is the factory itself. `factory stats --scorecard` counts such an
+# instance's merges as factory work, in a table of their own; every other instance's are target changes.
+# target_is_factory: false
 ready_state:
   triage: ready-for-triage
   spec_writer: ready-for-spec-writer

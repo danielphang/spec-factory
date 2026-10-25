@@ -6,6 +6,8 @@ Claude Code transcripts only from the `--transcripts` directories (placed on run
 A. runs and verdicts by role and model; B. parks by normalised reason, with the gate and merge
 decisions; C. each spec defect caught downstream, against the runs that wrote and critiqued that spec;
 D. each role's wall time and tokens, from the run's cost record, else its transcript.
+`scorecard()` returns instead the north star's measures (docs/north-star.md) per store, for a window
+and the window of the same length before it (design part C of T-0056).
 
 Runs are windowed by `started` and events by `ts`: `since` inclusive, `until` exclusive. Looking up
 who wrote and who critiqued a spec ignores the window. A `park.corrected` event applies when it is
@@ -17,9 +19,11 @@ import glob
 import os
 import re
 from collections import Counter, defaultdict
-from datetime import datetime
+from datetime import datetime, time, timezone
 from pathlib import Path
+from statistics import median
 
+from factory import instance
 from factory.cli import ROLES
 from factory.cost import _log_records, _when, gate_failures, match_transcripts, transcript_usage
 from factory.store import Refused, read_yaml
@@ -37,6 +41,9 @@ PARK_RULES = (
 )
 IN_FLIGHT = (None, "running")
 RUN_ID = re.compile(r"run-\d+-\w+")
+# Who moves a ticket on its own: a `ticket.transition` by anyone else is a person's.
+NOT_A_PERSON = frozenset({"workflow", "merge", "parent-check", "ready-implementers"})
+DECISIONS = ("approval.recorded", "human.resolved")
 
 
 def parse_when(text: str, flag: str) -> datetime:
@@ -232,3 +239,129 @@ def report(stores: list[str], since: datetime | None, until: datetime | None,
             *_table(["role", "model", "runs", "wall s", "context tokens", "output tokens", "USD from records",
                      "cost from"], d_rows)]
     return "\n".join(out) + "\n"
+
+
+def _instance(store: str) -> tuple[str, bool]:
+    """(table heading, whether its merges are factory work) for a store: named after the nearest
+    directory above it whose `.factory/instance.yaml` has a state_dir resolving to the store."""
+    here = Path(store).resolve()
+    for d in here.parents:
+        f = d / instance.DIRNAME / instance.CONFIG_NAME
+        cfg = (read_yaml(f) or {}) if f.is_file() else {}
+        if not cfg.get("state_dir") or (d / str(cfg["state_dir"])).resolve() != here:
+            continue
+        factory = cfg.get("target_is_factory", False)
+        if not isinstance(factory, bool):
+            raise Refused(f"factory stats: target_is_factory in {f} must be true or false")
+        return f"{d.name}: {'factory work' if factory else 'target changes'}", factory
+    return f"{store}: target changes (no instance found)", False
+
+
+def _bound(t: datetime) -> str:
+    t = t.astimezone(timezone.utc)
+    return t.strftime("%Y-%m-%d" if t.time() == time(0) else "%Y-%m-%d %H:%M")
+
+
+def _hours(seconds: list[float]) -> str:
+    """`<median> h (<min> to <max> h)`, or `-` with no values."""
+    if not seconds:
+        return "-"
+    return "{:.1f} h ({:.1f} to {:.1f} h)".format(*(v / 3600 for v in (median(seconds), min(seconds), max(seconds))))
+
+
+def _run_tokens(r: dict, placed: dict) -> tuple[str, int | None]:
+    """(where a run's tokens come from, its context plus output tokens): its cost record, else its
+    transcript, else none."""
+    claude = r.get("claude") if isinstance(r.get("claude"), dict) else {}
+    u = claude.get("usage")
+    if isinstance(u, dict):
+        return "record", sum(u.get(k) or 0 for k in ("input_tokens", "cache_read_input_tokens",
+                                                     "cache_creation_input_tokens", "output_tokens"))
+    tx = placed.get((r["_store"], r["_id"]))
+    if tx:
+        _, ctx, out = transcript_usage(tx)
+        return "transcript", ctx + out
+    return "none", None
+
+
+def _measures(runs: list[dict], events: list[dict], placed: dict, lo: datetime, hi: datetime,
+              end: datetime) -> list[str]:
+    """The scorecard's ten cells of one store for the window [lo, hi), in row order."""
+    closed: dict[str, datetime] = {}
+    merges: dict[str, list[datetime]] = defaultdict(list)
+    created: dict[str, datetime] = {}
+    for e in events:  # in ts order, so a later close replaces an earlier one
+        ev, tid = e.get("event"), str(e.get("ticket"))
+        if ev == "ticket.transition" and e.get("to") == "closed":
+            closed[tid] = e["_ts"]
+        elif ev == "merge.done":
+            merges[_parent(tid)].append(e["_ts"])
+        elif ev == "ticket.created":
+            created.setdefault(tid, e["_ts"])
+    changes = sorted(t for t, ts in closed.items() if _parent(t) == t and lo <= ts < hi and merges[t])
+    n = len(changes)
+    escaped = sorted({str(e.get("ticket")) for e in events if e.get("event") == "escape.recorded"
+                      and e["_ts"] < end} & set(changes))
+    inside = [e for e in events if lo <= e["_ts"] < hi]
+    decided = [e for e in events if e.get("event") in DECISIONS]
+
+    def intervention(e: dict) -> bool:
+        ev = e.get("event")
+        if ev == "ticket.transition":
+            return e.get("by") not in NOT_A_PERSON and not any(
+                d.get("ticket") == e.get("ticket") and abs((d["_ts"] - e["_ts"]).total_seconds()) <= 2 for d in decided)
+        if ev == "spec.added":
+            return not RUN_ID.fullmatch(str(e.get("source")))
+        if ev == "decision.recorded":
+            return e.get("via") == "decision add"
+        return ev == "intervention.recorded"
+
+    d_count = sum(1 for e in inside if e.get("event") in DECISIONS)
+    i_count = sum(1 for e in inside if intervention(e))
+    walls, full, sources, usd = [], [], Counter(), []
+    for c in changes:
+        mine = [r for r in runs if _parent(str(r.get("ticket"))) == c and r.get("status") not in IN_FLIGHT]
+        walls.append(sum(r.get("wall_s") or 0 for r in mine))
+        toks = [_run_tokens(r, placed) for r in mine]
+        sources.update(src for src, _ in toks)
+        if all(t is not None for _, t in toks):
+            full.append(sum(t for _, t in toks))
+        for r in mine:
+            cost = r["claude"].get("total_cost_usd") if isinstance(r.get("claude"), dict) else None
+            if isinstance(cost, (int, float)) and not isinstance(cost, bool):
+                usd.append(cost)
+    leads = [(max(merges[c]) - created[c]).total_seconds() for c in changes if c in created]
+    return [str(n), f"{len(escaped)} ({', '.join(escaped)})" if escaped else "0",
+            f"{(d_count + i_count) / n:.1f}" if n else "-", str(d_count), str(i_count), _hours(walls),
+            f"{int(median(full))} ({len(full)} of {n})" if full else f"- (0 of {n})",
+            f"record {sources['record']}, transcript {sources['transcript']}, none {sources['none']}",
+            f"{sum(usd):.2f} ({len(usd)} runs)", _hours(leads)]
+
+
+def scorecard(stores: list[str], since: datetime | None, until: datetime | None,
+              transcripts: list[str]) -> str:
+    """The north star's scorecard: one table per store, for [since, until) and the window of the same
+    length before it. Refused without `since`, or when an instance's target_is_factory is not a boolean."""
+    if since is None:
+        raise Refused("factory stats: --scorecard needs --since")
+    end = until or datetime.now(timezone.utc)
+    windows = [(since - (end - since), since), (since, end)]
+    named = [_instance(s) for s in stores]  # every refusal before any output
+    placed = match_transcripts(transcripts, stores) if transcripts else {}
+    blocks = ["# factory stats: scorecard",
+              f"Windows: {_bound(windows[0][0])} to {_bound(since)}, and {_bound(since)} to {_bound(end)}; "
+              "each from its first bound (inclusive) to its second (exclusive), in UTC. "
+              f"Escapes count when recorded before {_bound(end)}."]
+    names = ["Escapes", "Operator decisions and interventions per change", "… CLI decisions", "… interventions",
+             "Tokens and wall time per change: wall time, median (range)",
+             "… tokens, median (changes whose every run has tokens)",
+             "… runs with tokens from a record, a transcript or neither",
+             "… USD on the records that carry dollars", "Lead time, median (range)"]
+    for s, (heading, factory) in zip(stores, named):
+        runs, events = _load(s)
+        cols = [_measures(runs, events, placed, lo, hi, end) for lo, hi in windows]
+        first = "Factory work merged" if factory else "Target changes merged"
+        rows = [[name, *(col[i] for col in cols)] for i, name in enumerate([first, *names])]
+        blocks += [f"## {heading}", "\n".join(_table(["measure", *(f"{_bound(lo)} to {_bound(hi)}" for lo, hi in windows)],
+                                                    rows))]
+    return "\n\n".join(blocks) + "\n"

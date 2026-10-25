@@ -932,6 +932,8 @@ FACTORY_DISPATCH=1 $RUNTIME/bin/factory run finish <run> --status-override KILLE
 | **Amend** | `factory spec amend T-n --file F --reason "<line>" --intent unchanged`, on an approved spec before archive, while no run is in flight on the ticket or its sub-tickets | that the approved spec must change after the gate, because another ticket merged first, a checker found a scenario that cannot pass as written, or you changed your mind. Amend only when the Problem, the Decisions and every requirement's statement stay as approved; otherwise restart, by re-spec and re-plan or by close and re-file. `--intent changed` prints what a restart keeps and discards. Later runs receive the amended version, but the amendment moves no ticket: resume it as usual, for example with `--ruling F` |
 | **Unstick** | `factory resolve T-n --answer F` (a role asked a question) · `--ruling F` (a role escalated, an implementer reported itself blocked, the harness blocked an implementer whose sub-ticket lists a test no merged sibling added, the harness parked a sub-ticket for spec drift, or the harness failed to start an implementer run, a `harness-bug: run start implementer:` park; a ruling on the code reviewer's escalation re-runs the checks, with the ruling in their input) · `--accept-paths F` (the merge gate refused a protected path the approved spec does not declare: accept it under the approved design, and the sub-ticket returns to its checks; `--ruling F` sends the sub-ticket back to its implementer instead) · `--redispatch` (re-run the checks on the same commit after an outside fix, or after a checker ended without output twice) · `--replan F` (the final check failed after every sub-ticket merged: back to the planner with a note; new sub-tickets take the next free ids) · `--to spec-gate` · `--to checks` (a store command failed after the implementer finished, a `harness-bug:` park from ready-for-implementer after an implementer run that finished READY-FOR-REVIEW: the sub-ticket returns to its checks at its branch tip; not yet run on a real ticket) · `--close`; with `--answer` or `--close`, add `--decision "<line>"` to also record the answer as a standing decision | an answer, a ruling, an accepted protected path, a re-check, a re-plan, a re-scope, or closing |
 | **Record** | `factory decision add T-n "<line>"`, at any ticket state, closed included: one dated line in the decision log | that a decision binds later tickets |
+| **Escape** | `factory escape add T-n --issue <link> [--note "<line>"]`, on a ticket with at least one merged sub-ticket | that a merged change later needed a fix or a revert; the scorecard counts it by ticket id. The store keeps only the link's SHA-256 hash, so you can match a record to its issue (hash the link with no trailing newline, for example with `shasum -a 256`) and a reader of the public store cannot read it; anyone who guesses the exact link can confirm it. A note may not contain a link |
+| **Intervene** | `factory intervention add --kind <word> [--ticket T-n] [--note "<line>"]` | that you acted outside the CLI, for example a hand commit to the gate config or a run you stopped; the scorecard counts it |
 | **Upgrade** | `factory --accept-harness <sha> <command>` | that this target adopts a new harness revision |
 
 A ticket the tripwire parked returns with a plain `ticket transition` to the state its record
@@ -1000,6 +1002,24 @@ The gate column has one known limit. It finds a gate command by its exact text a
 implementer's shell calls, so a gate command the implementer ran in another form is missed, and
 the column can undercount.
 
+**The scorecard.** `factory stats --scorecard --since WHEN [--until WHEN]` prints only the
+scorecard of the north star (`docs/north-star.md`): the numbers that say whether the factory is
+working, for the window and for the window of the same length just before it. It prints one table
+per store, named after the instance's repository directory, and no path or issue link, so a review
+pastes it as printed. An instance whose `instance.yaml` sets `target_is_factory: true` is the
+factory building itself: its table counts factory work. Every other instance's merges are target
+changes. A change is a ticket closed in the window after at least one of its sub-tickets merged.
+
+| Row | What it counts |
+|---|---|
+| Target changes merged, or Factory work merged | the changes closed in the window |
+| Escapes | those changes with an escape recorded (`factory escape add`) before the report's end, with their ticket ids |
+| Operator decisions and interventions per change | the next two rows' sum, divided by the changes; the store records decisions, not time, so this stands in for hours of operator attention |
+| … CLI decisions | spec approvals and `resolve` decisions in the window |
+| … interventions | in the window: `ticket transition`s by a person that no approval or `resolve` made, spec versions the operator wrote (gate edits and amendments), `decision add` lines, and `factory intervention add` records |
+| Tokens and wall time per change | the median of each change's summed run time, in hours; then the median tokens of the changes whose every run has tokens, how many runs took tokens from a record, a transcript (with `--transcripts`) or neither, and the dollars on the records that carry them |
+| Lead time | from the ticket's creation to its last merge, in hours: median and range |
+
 ## What is built and what is not
 
 **Built**
@@ -1058,6 +1078,9 @@ the column can undercount.
 - **Counting catch and cost, `factory stats`.** A read-only command that counts, per role and
   model, how often each role's verdicts changed what happened next and what its runs cost
   ("Counting what each role catches and costs"). It has run over both targets' stores.
+- **The scorecard, escapes and workflow token records.** `factory stats --scorecard`,
+  `factory escape add`, `factory intervention add` and `run finish --transcripts` ("Counting what
+  each role catches and costs"). Not yet run on a real store.
 
 **Not built**
 
