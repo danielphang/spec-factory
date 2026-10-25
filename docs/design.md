@@ -122,6 +122,7 @@ Rules the table relies on:
 | Triage | CLARIFY | Requester, via piece 9; ticket parks until answered | The missing-info list |
 | Triage | REJECT | Closed | — |
 | Spec writer | READY-FOR-CRITIC / NEEDS-SPLIT | Critic | Spec, repo, current truth and the decision log, as the Spec store paragraph describes, read-only; every other approved change not yet archived, with its decisions; round 2+: prior findings, the writer's responses, previous spec version |
+| Spec writer | READY-FOR-CRITIC / NEEDS-SPLIT, and `spec add` refuses the spec: malformed, or its changes do not apply to current truth | Spec writer (round +1) if round < {2}, else Human queue | The refusal and the refused output |
 | Spec writer | NEEDS-HUMAN | Human queue | Open questions |
 | Critic | APPROVE | Human spec gate | Spec + critic output |
 | Critic | REVISE | Spec writer (round +1) if round < {2}, else Human queue | Findings, the spec version they apply to |

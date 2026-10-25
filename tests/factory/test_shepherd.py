@@ -160,11 +160,11 @@ def test_the_gate_refuses_a_delta_that_does_not_fit_current_truth(tmp_path):
     f.human_approves(first)
     f.human_runs("archive", first)
     second = f.request("# SPEC-93: Second\n\nThe thing again.\n")
-    for role in ("triage", "spec_writer", "critic"):
-        f.dispatch(role, second, stub=f"accept-approve/{role}-1.md")
-    cp = f.cli("approve-spec", second)
+    f.dispatch("triage", second, stub="accept-approve/triage-1.md")
+    w = f.dispatch("spec_writer", second, stub="accept-approve/spec_writer-1.md", route=False)
+    cp = f.cli("spec", "add", second, "--from-run", w.run_id)
     assert cp.returncode == 2 and "ADDED 'the-thing' is already in current truth" in cp.stderr
-    assert f.state(second) == "awaiting-spec-gate"  # nothing moved; the human amends or closes
+    assert f.state(second) == "ready-for-spec-writer"  # nothing stored; the writer gets the refusal next round
 
 
 def test_the_planned_ticket_is_built_checked_merged_and_archived(tmp_path):

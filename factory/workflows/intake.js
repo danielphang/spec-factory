@@ -188,7 +188,23 @@ if (state === 'ready-for-spec-writer' || state === 'ready-for-critic') {
       }
       if (w.status !== 'READY-FOR-CRITIC' && w.status !== 'NEEDS-SPLIT') { await park(`harness-bug: unknown STATUS ${w.status} from spec writer`, [w.runId], 'Spec'); return { ticket: TICKET, state: 'parked' } }
       const added = await clerk(`${BIN} spec add ${TICKET} --from-run ${w.runId}`, 'Spec', 'spec add')
-      if (!added.ok) { await park(`harness-bug: spec add: ${added.stderr || ''}`, [w.runId], 'Spec'); return { ticket: TICKET, state: 'parked' } }
+      if (!added.ok) {
+        const why = String(added.stderr || '').trim().split('\n')[0]
+        if (!why.startsWith('spec not added: ')) { await park(`harness-bug: spec add: ${added.stderr || ''}`, [w.runId], 'Spec'); return { ticket: TICKET, state: 'parked' } }
+        // A form error the harness detects goes back to the writer as a new round (doc §Routing table).
+        // The stored round is still 0 before the first move to the critic.
+        const cur = Math.max(round, 1)
+        if (cur >= MAX) {
+          // no backtick, $ or \ reaches the park reason, which the clerk runs in a shell
+          await park(`max rounds: ${why.replace(/[`$\\]/g, "'")}`, [w.runId], 'Spec')
+          return { ticket: TICKET, state: 'parked', rounds: cur, reason: 'max rounds' }
+        }
+        const st = await clerk(`${BIN} ticket set ${TICKET} round.spec=${cur + 1}`, 'Spec', 'round increment')
+        if (!st.ok) { await park(`harness-bug: round increment refused: ${st.stderr || ''}`, [w.runId], 'Spec'); return { ticket: TICKET, state: 'parked' } }
+        round = cur + 1
+        log(`${TICKET}: spec not stored; back to the spec writer in round ${round}: ${why}`)
+        continue
+      }
       const tr = await transition('ready-for-critic', 'spec:init', 'Spec')
       if (!tr.ok) { await park(`harness-bug: transition to critic: ${tr.stderr || ''}`, [w.runId], 'Spec'); return { ticket: TICKET, state: 'parked' } }
       round = (tr.round && typeof tr.round.spec === 'number') ? tr.round.spec : round

@@ -300,8 +300,24 @@ class Driver:
                     return parked
                 added = call("spec", "add", T, "--from-run", w["runId"])
                 if not added["ok"]:
-                    self.park(T, _harness_bug("spec add", added), [w["runId"]])
-                    return parked
+                    why = (added.get("stderr") or "").strip().split("\n")[0]
+                    if not why.startswith("spec not added: "):
+                        self.park(T, _harness_bug("spec add", added), [w["runId"]])
+                        return parked
+                    # A form error the harness detects goes back to the writer as a new round (doc §Routing
+                    # table). The stored round is still 0 before the first move to the critic.
+                    cur = max(rnd, 1)
+                    if cur >= self.max_spec:
+                        # no backtick, $ or \ reaches the park reason, which the script's clerk runs in a shell
+                        self.park(T, "max rounds: " + re.sub(r"[`$\\]", "'", why), [w["runId"]])
+                        return {**parked, "rounds": cur, "reason": "max rounds"}
+                    st = call("ticket", "set", T, f"round.spec={cur + 1}")
+                    if not st["ok"]:
+                        self.park(T, _harness_bug("round increment refused", st), [w["runId"]])
+                        return parked
+                    rnd = cur + 1
+                    self.step(f"spec not stored; back to the spec writer in round {rnd}: {why}")
+                    continue
                 tr = self.transition("ready-for-critic", "spec:init")
                 if not tr["ok"]:
                     self.park(T, _harness_bug("transition to critic", tr), [w["runId"]])

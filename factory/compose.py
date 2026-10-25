@@ -5,12 +5,14 @@ Per (role, round, resolution). No other code path assembles role input.
 from __future__ import annotations
 
 import difflib
+import json
 import math
 import re
 import shlex
 from pathlib import Path
 
-from factory import instance, specstore, store, subtickets
+from factory import instance, specstore, status, store, subtickets
+from factory.human import _refuse_unless_applies
 
 
 def _approvals(root: Path, ticket: str, kind: str) -> list[Path]:
@@ -58,6 +60,21 @@ def capability_index(paths: list[Path]) -> str:
 def _last_run_meta(root: Path, ticket: str, role: str, exclude: str) -> dict | None:
     runs = [m for r, m in store.ticket_runs(root, ticket, role, finished=True) if r != exclude]
     return runs[-1] if runs else None
+
+
+def _refusal(root: Path, run_id: str) -> str | None:
+    """Why `spec add` refuses spec writer run `run_id`'s output now, or None when a spec version came
+    from that run or the check passes. Derived from the store when an input is built: a refusal writes
+    nothing, so there is no record of it to read."""
+    p = root / "runs" / run_id / "output.md"
+    added = {e.get("source") for e in map(json.loads, filter(str.strip, store.log_lines(root))) if e.get("event") == "spec.added"}
+    if not p.exists() or run_id in added:
+        return None
+    try:
+        _refuse_unless_applies(root, status.strip_trailer(p.read_text(encoding="utf-8")), "spec not added")
+    except store.Refused as e:
+        return str(e)
+    return None
 
 
 def gate_entries(cfg: dict) -> list[tuple[str, list[str] | None]]:
@@ -290,6 +307,11 @@ def compose(root: Path, cfg: dict, meta: dict, t: dict) -> tuple[str, list[str]]
         prev = _last_run_meta(root, tid, "spec_writer", run_id)
         if prev and prev.get("status") == "NEEDS-HUMAN":
             add(f"runs/{prev['run_id']}/output.md", "Your previous output (the question you asked is answered in the request above)")
+        elif prev and prev.get("status") in ("READY-FOR-CRITIC", "NEEDS-SPLIT") and specstore.is_active(root):
+            why = _refusal(root, prev["run_id"])
+            if why:
+                add(f"runs/{prev['run_id']}/output.md", "Your previous output, which the harness refused to store as a spec version",
+                    lambda text: f"The harness refused it with: {why}\n\n{text}")
         for p in _approvals(root, tid, "changes"):
             add(str(p.relative_to(root)), "Human gate: changes requested")
         for p in _approvals(root, tid, "ruling"):
