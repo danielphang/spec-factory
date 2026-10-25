@@ -1,0 +1,52 @@
+run_id: run-0569-critic
+role: critic
+ticket: T-0056
+model: fable
+round: 1
+spec_version: 2
+started: '2026-10-23T07:26:57+00:00'
+finished: '2026-10-23T07:34:04+00:00'
+wall_s: 427
+status: REVISE
+input_sources:
+- specs/T-0056/v2.md
+- openspec/specs/build-dispatch/spec.md
+- openspec/specs/factory-stats/spec.md
+- openspec/specs/harness-code/spec.md
+- openspec/specs/harness-docs/spec.md
+- openspec/specs/live-store-guard/spec.md
+- decisions.md
+confidence: high, both findings rest on code and store files I read and on commands I ran; the first-scenario
+  figures I re-derived by hand
+escalations: []
+escalations_note: null
+claude:
+  session_id: d21ca95b-4d7f-4b0e-bac0-6dece95a22ae
+  total_cost_usd: 4.27483275
+  num_turns: 17
+  usage:
+    input_tokens: 514
+    cache_creation_input_tokens: 106224
+    cache_read_input_tokens: 3275451
+    output_tokens: 26527
+    output_tokens_details:
+      thinking_tokens: 17209
+    server_tool_use:
+      web_search_requests: 0
+      web_fetch_requests: 0
+    service_tier: standard
+    cache_creation:
+      ephemeral_1h_input_tokens: 106224
+      ephemeral_5m_input_tokens: 0
+    inference_geo: global
+    iterations:
+    - input_tokens: 32
+      output_tokens: 2127
+      cache_read_input_tokens: 240988
+      cache_creation_input_tokens: 5187
+      cache_creation:
+        ephemeral_5m_input_tokens: 0
+        ephemeral_1h_input_tokens: 5187
+      type: message
+    speed: standard
+    fallback_credit: null

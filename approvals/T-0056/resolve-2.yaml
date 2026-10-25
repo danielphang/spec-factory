@@ -1,0 +1,9 @@
+by: dphang
+at: '2026-10-23T07:20:18+00:00'
+kind: answer
+from: parked
+to: ready-for-spec-writer
+answer: 2
+decision: '2026-10-23 T-0056 T-0056 (#117): interventions outside the CLI are recorded with factory intervention
+  add; a store record that carries a link keeps only a hash of it, never the link (Green for the operator,
+  2026-10-23, from the public-repo rule)'

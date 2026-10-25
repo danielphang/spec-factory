@@ -1,0 +1,52 @@
+run_id: run-0574-critic
+role: critic
+ticket: T-0057
+model: fable
+round: 1
+spec_version: 1
+started: '2026-10-23T08:11:40+00:00'
+finished: '2026-10-23T08:21:27+00:00'
+wall_s: 587
+status: REVISE
+input_sources:
+- specs/T-0057/v1.md
+- openspec/specs/build-dispatch/spec.md
+- openspec/specs/harness-code/spec.md
+- openspec/specs/harness-docs/spec.md
+- openspec/specs/harness-suite/spec.md
+- openspec/specs/role-inputs/spec.md
+- decisions.md
+confidence: high, every cited path and seven of nine acceptance commands checked by hand on `3e4705a`
+  and matched; the one BLOCKING item is a gloss gap in the human-facing sections, fixable in a few sentences
+escalations: []
+escalations_note: null
+claude:
+  session_id: 6a7ea107-9de6-4ac1-909f-ad0679828806
+  total_cost_usd: 7.8666385000000005
+  num_turns: 21
+  usage:
+    input_tokens: 642
+    cache_creation_input_tokens: 259503
+    cache_read_input_tokens: 3971034
+    output_tokens: 33548
+    output_tokens_details:
+      thinking_tokens: 19204
+    server_tool_use:
+      web_search_requests: 0
+      web_fetch_requests: 0
+    service_tier: standard
+    cache_creation:
+      ephemeral_1h_input_tokens: 259503
+      ephemeral_5m_input_tokens: 0
+    inference_geo: global
+    iterations:
+    - input_tokens: 32
+      output_tokens: 3013
+      cache_read_input_tokens: 247912
+      cache_creation_input_tokens: 6236
+      cache_creation:
+        ephemeral_5m_input_tokens: 0
+        ephemeral_1h_input_tokens: 6236
+      type: message
+    speed: standard
+    fallback_credit: null

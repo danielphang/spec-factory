@@ -1,0 +1,52 @@
+run_id: run-0573-spec_writer
+role: spec_writer
+ticket: T-0057
+model: opus
+round: 0
+spec_version: 0
+started: '2026-10-23T07:44:32+00:00'
+finished: '2026-10-23T08:11:39+00:00'
+wall_s: 1627
+status: READY-FOR-CRITIC
+input_sources:
+- runs/run-0572-triage/output.md
+- requests/T-0057.md
+- openspec/specs/build-dispatch/spec.md
+- openspec/specs/harness-docs/spec.md
+- openspec/specs/harness-suite/spec.md
+- openspec/specs/role-inputs/spec.md
+- decisions.md
+confidence: high. I built the change in a scratch clone, ran every scenario on `3e4705a` and on the prototype,
+  and ran the suite green with the five listed tests rewritten.
+escalations: []
+escalations_note: null
+claude:
+  session_id: 6139a420-fc52-4a29-a236-08802bdf5a2a
+  total_cost_usd: 10.457491400000006
+  num_turns: 99
+  usage:
+    input_tokens: 198
+    cache_creation_input_tokens: 321528
+    cache_read_input_tokens: 27494177
+    output_tokens: 119282
+    output_tokens_details:
+      thinking_tokens: 46747
+    server_tool_use:
+      web_search_requests: 0
+      web_fetch_requests: 0
+    service_tier: standard
+    cache_creation:
+      ephemeral_1h_input_tokens: 321528
+      ephemeral_5m_input_tokens: 0
+    inference_geo: global
+    iterations:
+    - input_tokens: 2
+      output_tokens: 16863
+      cache_read_input_tokens: 387255
+      cache_creation_input_tokens: 931
+      cache_creation:
+        ephemeral_5m_input_tokens: 0
+        ephemeral_1h_input_tokens: 931
+      type: message
+    speed: standard
+    fallback_credit: null

@@ -1,15 +1,16 @@
 id: T-0057
-type: null
-title: Run the spec validator at spec add, not first at the human gate
+type: bug
+title: Check a spec's format when the spec is added, and send a format error back to the spec writer instead
+  of to the human gate
 request: requests/T-0057.md
 source: /private/tmp/claude-501/-Users-dphang-dev-nanobot/c69bfd1d-97a6-43e3-9d5a-a517c28d382c/scratchpad/requests/req-105.md
-status: ready-for-triage
+status: ready-for-planner
 round:
-  spec: 0
+  spec: 2
   pr: 0
 spec:
-  version: 0
-  approved_version: null
+  version: 2
+  approved_version: 2
 plan: null
 in_flight: []
 parked: null
@@ -29,6 +30,46 @@ history:
   decision: '2026-10-20 T-0057 T-0057 (#105): a form error the harness can detect goes back to the role
     that produced it as a new round, and does not park (Green for the operator, 2026-10-20; the operator
     may strike it at the gate)'
+- ts: '2026-10-23T07:44:32+00:00'
+  from: ready-for-triage
+  to: ready-for-spec-writer
+  by: workflow
+  round:
+    spec: 0
+    pr: 0
+- ts: '2026-10-23T08:11:39+00:00'
+  from: ready-for-spec-writer
+  to: ready-for-critic
+  by: workflow
+  round:
+    spec: 1
+    pr: 0
+- ts: '2026-10-23T08:21:27+00:00'
+  from: ready-for-critic
+  to: ready-for-spec-writer
+  by: workflow
+  round:
+    spec: 2
+    pr: 0
+- ts: '2026-10-23T08:25:24+00:00'
+  from: ready-for-spec-writer
+  to: ready-for-critic
+  by: workflow
+  round:
+    spec: 2
+    pr: 0
+- ts: '2026-10-23T08:27:31+00:00'
+  from: ready-for-critic
+  to: awaiting-spec-gate
+  by: workflow
+  round:
+    spec: 2
+    pr: 0
+- ts: '2026-10-25T17:16:18+00:00'
+  from: awaiting-spec-gate
+  to: ready-for-planner
+  by: dphang
+  approved_version: 2
 parent: null
 depends_on: []
 parallel_safe: true

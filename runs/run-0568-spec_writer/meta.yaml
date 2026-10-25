@@ -1,0 +1,56 @@
+run_id: run-0568-spec_writer
+role: spec_writer
+ticket: T-0056
+model: opus
+round: 0
+spec_version: 1
+started: '2026-10-23T07:20:24+00:00'
+finished: '2026-10-23T07:26:57+00:00'
+wall_s: 393
+status: READY-FOR-CRITIC
+input_sources:
+- runs/run-0561-triage/output.md
+- requests/T-0056.md
+- openspec/specs/build-dispatch/spec.md
+- openspec/specs/factory-stats/spec.md
+- openspec/specs/harness-code/spec.md
+- openspec/specs/harness-docs/spec.md
+- openspec/specs/live-store-guard/spec.md
+- decisions.md
+- runs/run-0562-spec_writer/output.md
+confidence: medium. The root cause, the fix's inputs and the scorecard figures are checked against the
+  live stores, the base checkout and a hand count, but the Workflow path's real transcript location is
+  confirmed only by past runs, not by a run of the changed scripts, and the README draft was not re-applied
+  on the new base.
+escalations: []
+escalations_note: null
+claude:
+  session_id: 7c133b19-6643-4c75-9ac3-f0257fab6154
+  total_cost_usd: 3.6628696
+  num_turns: 37
+  usage:
+    input_tokens: 74
+    cache_creation_input_tokens: 158937
+    cache_read_input_tokens: 8186688
+    output_tokens: 37687
+    output_tokens_details:
+      thinking_tokens: 20387
+    server_tool_use:
+      web_search_requests: 0
+      web_fetch_requests: 0
+    service_tier: standard
+    cache_creation:
+      ephemeral_1h_input_tokens: 158937
+      ephemeral_5m_input_tokens: 0
+    inference_geo: global
+    iterations:
+    - input_tokens: 2
+      output_tokens: 1039
+      cache_read_input_tokens: 303960
+      cache_creation_input_tokens: 532
+      cache_creation:
+        ephemeral_5m_input_tokens: 0
+        ephemeral_1h_input_tokens: 532
+      type: message
+    speed: standard
+    fallback_credit: null
