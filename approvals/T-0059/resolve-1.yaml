@@ -1,0 +1,8 @@
+by: dphang
+at: '2026-10-25T18:41:08+00:00'
+kind: answer
+from: parked
+to: ready-for-spec-writer
+answer: 1
+decision: '2026-10-25 T-0059 T-0059 (#120): the gate''s current-truth replay skips the scenarios that
+  wrap the whole harness suite, which the same gate already runs (Green for the operator, 2026-10-25)'

@@ -1,21 +1,40 @@
 id: T-0059
-type: null
-title: The gate replays every current-truth scenario, so a change that breaks another capability's scenario
-  cannot merge
+type: feature
+title: '`factory truth check` replays every current-truth scenario, and the gate runs it'
 request: requests/T-0059.md
 source: /private/tmp/claude-501/-Users-dphang-dev-nanobot/c69bfd1d-97a6-43e3-9d5a-a517c28d382c/scratchpad/requests/req-120.md
-status: ready-for-triage
+status: ready-for-spec-writer
 round:
   spec: 0
   pr: 0
 spec:
-  version: 0
+  version: 1
   approved_version: null
 plan: null
 in_flight: []
 parked: null
 created: '2026-10-20T06:38:50+00:00'
-history: []
+history:
+- ts: '2026-10-25T17:18:24+00:00'
+  from: ready-for-triage
+  to: ready-for-spec-writer
+  by: workflow
+  round:
+    spec: 0
+    pr: 0
+- ts: '2026-10-25T18:40:35+00:00'
+  from: ready-for-spec-writer
+  to: parked
+  by: park
+  reason: NEEDS-HUMAN from spec writer
+- ts: '2026-10-25T18:41:07+00:00'
+  from: parked
+  to: ready-for-spec-writer
+  by: dphang
+  resolve: answer
+  answer: 1
+  decision: '2026-10-25 T-0059 T-0059 (#120): the gate''s current-truth replay skips the scenarios that
+    wrap the whole harness suite, which the same gate already runs (Green for the operator, 2026-10-25)'
 parent: null
 depends_on: []
 parallel_safe: true

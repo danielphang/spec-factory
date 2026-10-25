@@ -85,3 +85,8 @@ Suggested fix: Write "(a protected path: one the harness refuses to let a role c
 ## Prior findings
 - [BLOCKING] 3, 5 seam marker: RESOLVED. The marker is a `###` heading outside a fence that the harness's seam check finds, and the writer's run ended NEEDS-SPLIT; either alone sends the approved spec to the planner.
 - [BLOCKING] 6 unglossed terms in Evidence and Decisions: RESOLVED. Every term I named is glossed at its first use, in the section where it first appears, and the glosses are accurate against the code and store I read in round 1.
+
+## Verifier results
+
+6991572ee604bbf88e7b71af43e9233279029fdb · T-0056.1 · VERIFIED · run-0582-verifier
+fa0d3b5e26a0c591316cfa2d56b46156f742d293 · T-0056.2 · VERIFIED · run-0585-verifier

@@ -1,0 +1,66 @@
+run_id: run-0582-verifier
+role: verifier
+ticket: T-0056.1
+model: opus
+round: 1
+spec_version: 3
+started: '2026-10-25T17:32:20+00:00'
+finished: '2026-10-25T17:48:12+00:00'
+wall_s: 952
+status: VERIFIED
+input_sources:
+- specs/T-0056.1/subticket.md
+- specs/T-0056/v3.md
+- runs/run-0580-implementer/output.md
+- runs/run-0582-verifier/diff.patch
+gate_skipped: []
+environment_files: []
+branch: factory/T-0056.1
+base: 3e4705ae6af33c83e680a479beef42d58721511b
+head: 6991572ee604bbf88e7b71af43e9233279029fdb
+worktree: /Users/dphang/dev/spec-factory/.factory/store/runs/run-0582-verifier/wt
+confidence: high. The three NEW criteria fail on base for the reason the spec gives and pass on the PR
+  exactly; every REGRESSION criterion and both gates pass; and the probes found no special-casing. The
+  one soft spot is suite timing, which depends on machine load.
+escalations:
+- The cost of each `run finish` on a real machine is unmeasured (the PR lists this as a known gap). With
+  `--transcripts`, every `run finish` lists all 8,828 transcript files on this machine and opens each
+  file modified since the run started. On this machine 54 files (123 MB) changed in the last hour, many
+  of them from other Claude Code sessions. `_opening` reads such a file until a user message names a run,
+  so for a session that never names one it reads the whole file. A role run of an hour could make its
+  `run finish` read on the order of 100 MB. This breaks no criterion of this sub-ticket. Operator step
+  3, the first real Workflow run and drive run after the upgrade, is the place to time it.
+- Suite time margin is thin under load. The gate's suite run took 185.97 s (exit 0); the timed scenario
+  run took 126.75 s on the PR and 111.33 s on base, with load averages between 26 and 57 on 10 cores.
+  T-0056.2 adds more tests to the same suite.
+escalations_note: null
+claude:
+  session_id: b3d462a9-bd50-40bc-ab44-c206ccde38d8
+  total_cost_usd: 3.3064922000000005
+  num_turns: 29
+  usage:
+    input_tokens: 58
+    cache_creation_input_tokens: 222187
+    cache_read_input_tokens: 5369421
+    output_tokens: 22744
+    output_tokens_details:
+      thinking_tokens: 6473
+    server_tool_use:
+      web_search_requests: 0
+      web_fetch_requests: 0
+    service_tier: standard
+    cache_creation:
+      ephemeral_1h_input_tokens: 222187
+      ephemeral_5m_input_tokens: 0
+    inference_geo: global
+    iterations:
+    - input_tokens: 2
+      output_tokens: 3393
+      cache_read_input_tokens: 218599
+      cache_creation_input_tokens: 3588
+      cache_creation:
+        ephemeral_5m_input_tokens: 0
+        ephemeral_1h_input_tokens: 3588
+      type: message
+    speed: standard
+    fallback_credit: null

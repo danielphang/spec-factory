@@ -1,0 +1,43 @@
+id: T-0057.1
+type: sub-ticket
+title: Check a spec's format when the spec is added, and send a format error back to the spec writer instead
+  of to the human gate
+request: requests/T-0057.md
+source: plan:whole-spec
+status: ready-for-implementer
+round:
+  spec: 0
+  pr: 0
+spec:
+  version: 2
+  approved_version: 2
+plan: null
+in_flight: []
+parked: null
+created: '2026-10-25T18:18:15+00:00'
+history:
+- ts: '2026-10-25T18:18:16+00:00'
+  from: ready-for-implementer
+  to: parked
+  by: park
+  reason: 'BLOCKED from harness: spec drift: tests/factory/test_transcript_record.py changed by b863e4ec2
+    since spec v2 was written at 3e4705ae6; tests/factory/test_scorecard.py changed by 11080b100 since
+    spec v2 was written at 3e4705ae6. Amend the spec (`spec amend T-0057`) or rule (`resolve T-0057.1
+    --ruling F`)'
+- ts: '2026-10-25T18:40:55+00:00'
+  from: parked
+  to: ready-for-implementer
+  by: dphang
+  resolve: ruling
+  ruling: approvals/T-0057.1/ruling-1.md
+parent: T-0057
+depends_on: []
+parallel_safe: true
+branch: null
+head: null
+merge:
+  base_before: null
+  main_after: null
+parent_base: null
+label: whole-spec
+planned_from: 2

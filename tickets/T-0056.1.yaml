@@ -1,0 +1,49 @@
+id: T-0056.1
+type: sub-ticket
+title: 'Record every run''s tokens: `run finish --transcripts`, passed by both Workflow scripts and the
+  driver'
+request: requests/T-0056.md
+source: plan:run-0578-planner
+status: merged
+round:
+  spec: 0
+  pr: 1
+spec:
+  version: 3
+  approved_version: 3
+plan: null
+in_flight: []
+parked: null
+created: '2026-10-25T17:21:26+00:00'
+history:
+- ts: '2026-10-25T17:32:18+00:00'
+  from: ready-for-implementer
+  to: checks-in-flight
+  by: workflow
+  round:
+    spec: 0
+    pr: 1
+- ts: '2026-10-25T17:48:13+00:00'
+  from: checks-in-flight
+  to: ready-for-merge
+  by: workflow
+  round:
+    spec: 0
+    pr: 1
+- ts: '2026-10-25T17:48:13+00:00'
+  from: ready-for-merge
+  to: merged
+  by: merge
+  head: 6991572ee604bbf88e7b71af43e9233279029fdb
+parent: T-0056
+depends_on: []
+parallel_safe: false
+branch: factory/T-0056.1
+head: 6991572ee604bbf88e7b71af43e9233279029fdb
+merge:
+  base_before: 3e4705ae6af33c83e680a479beef42d58721511b
+  main_after: b863e4ec2b2c147e6133e73fc9ba5d50f2b6f494
+parent_base: null
+label: T-0056.1
+planned_from: 3
+merge_refused: null

@@ -1,0 +1,54 @@
+id: T-0056.2
+type: sub-ticket
+title: 'The scorecard and its records: `factory stats --scorecard`, `factory escape add`, `factory intervention
+  add`'
+request: requests/T-0056.md
+source: plan:run-0578-planner
+status: merged
+round:
+  spec: 0
+  pr: 1
+spec:
+  version: 3
+  approved_version: 3
+plan: null
+in_flight: []
+parked: null
+created: '2026-10-25T17:21:26+00:00'
+history:
+- ts: '2026-10-25T17:48:14+00:00'
+  from: waiting-dependencies
+  to: ready-for-implementer
+  by: merge
+- ts: '2026-10-25T18:06:29+00:00'
+  from: ready-for-implementer
+  to: checks-in-flight
+  by: workflow
+  round:
+    spec: 0
+    pr: 1
+- ts: '2026-10-25T18:12:25+00:00'
+  from: checks-in-flight
+  to: ready-for-merge
+  by: workflow
+  round:
+    spec: 0
+    pr: 1
+- ts: '2026-10-25T18:12:26+00:00'
+  from: ready-for-merge
+  to: merged
+  by: merge
+  head: fa0d3b5e26a0c591316cfa2d56b46156f742d293
+parent: T-0056
+depends_on:
+- T-0056.1
+parallel_safe: false
+branch: factory/T-0056.2
+head: fa0d3b5e26a0c591316cfa2d56b46156f742d293
+merge:
+  base_before: b863e4ec2b2c147e6133e73fc9ba5d50f2b6f494
+  main_after: 11080b100b31c70c69cc1867960819270d134a23
+parent_base: null
+label: T-0056.2
+planned_from: 3
+merge_refused: null

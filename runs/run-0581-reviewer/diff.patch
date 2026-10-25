@@ -1,0 +1,454 @@
+diff --git a/README.md b/README.md
+index 3dc9223..49aa685 100644
+--- a/README.md
++++ b/README.md
+@@ -10,7 +10,7 @@ attention, with no rise in escaped defects. See `docs/north-star.md`, `STATUS.md
+ 
+ | | |
+ |---|---|
+-| **Status** | Current state as of 2026-10-23. Intake works end to end. Build works, in local-only mode. |
++| **Status** | Current state as of 2026-10-25. Intake works end to end. Build works, in local-only mode. |
+ | **Reader** | Technical, seeing this project for the first time. Terms specific to this system are defined in "Terms used on this page" or at first use. |
+ | **Scope** | What runs now. The intended design and its reasoning are in `docs/design.md`; where the two disagree, this page is right about what runs and the design is amended. |
+ | **Internal references** | Ticket ids, issue numbers and who did what are in "Related work and history" near the end. |
+@@ -100,7 +100,7 @@ is built and what is not"). The retro has a model entry but no prompt and no way
+ 
+ ### What depends on Claude Code
+ 
+-Most of the factory is plain files and a Python program. Five pieces assume Claude Code.
++Most of the factory is plain files and a Python program. Six pieces assume Claude Code.
+ 
+ | Piece | Claude Code only? | Why |
+ |---|---|---|
+@@ -112,6 +112,7 @@ Most of the factory is plain files and a Python program. Five pieces assume Clau
+ | Model names (`models` in `instance.yaml`) | yes | Claude model aliases |
+ | Token cost per role (`factory/cost.py`) | yes | reads the Workflow tool's transcript files |
+ | Catch and cost per role (`factory stats`, `factory/stats.py`) | no | reads the store's files with no Claude Code; reads Claude Code's transcript files only when given `--transcripts` |
++| A workflow run's token record (`run finish --transcripts`) | yes | reads the token usage in the transcript Claude Code keeps for the run's agent, under `~/.claude/projects` |
+ 
+ `inlineRoles: true` in the workflow's arguments skips the registered agents: every role runs as a
+ general-purpose agent that reads its prompt from the run's `system-prompt.txt`, with no per-role
+@@ -980,13 +981,17 @@ the critic or the code reviewer says must be fixed.
+ | C. Where spec defects were caught and where they came from | verifier SPEC-DEFECT or implementer BLOCKED run | the spec version the run worked from, the run that wrote it, the critic run that last checked it, and the ticket's REVISE count; then how many approved specs, with and without a REVISE, were caught later |
+ | D. What each role costs | role and model | runs including killed ones, wall time, context and output tokens, dollars, and how many runs took their cost from a cost record, a transcript or neither |
+ 
+-A run started by `factory drive` carries a cost record: its tokens and dollars, kept in its
+-`meta.yaml`. Any other run has its tokens only in the transcript Claude Code kept for its agent.
+-Add `--transcripts ~/.claude/projects` to count those runs; reading that directory takes about
+-12 seconds on this machine. Each model call is counted once. Context tokens are the input,
+-cache-read and cache-creation tokens together. Dollars come only from cost records, because
+-transcripts carry none. Without `--transcripts`, such a run counts under `none` in section D, and
+-section A lists it as "not recorded" in the gate column.
++Each run keeps a cost record in its `meta.yaml` when it ends. A run started by `factory drive`
++records the tokens and dollars its process reported. A run a workflow script started records the
++tokens in its agent's transcript, which `run finish --transcripts DIR` finds; the scripts pass the
++directory where Claude Code keeps transcripts, `~/.claude/projects` unless `CLAUDE_CONFIG_DIR` moves
++it. Transcripts carry no dollars, so that record has none, and "USD from records" covers only the
++records that have them. A driver run whose process gave no usable reply records its transcript's
++tokens the same way. Runs that ended before this record existed have none: add
++`--transcripts ~/.claude/projects` to count them; reading that directory takes about 12 seconds on
++this machine. Each model call is counted once. Context tokens are the input, cache-read and
++cache-creation tokens together. Without `--transcripts`, a run with no record counts under `none`
++in section D, and section A lists it as "not recorded" in the gate column.
+ 
+ Give `--until` to make a figure repeatable, because the store keeps growing. A park reason that a
+ human corrected later changes the figure only if the correction is dated before `--until`.
+diff --git a/factory/cli.py b/factory/cli.py
+index 964ba97..2b72469 100644
+--- a/factory/cli.py
++++ b/factory/cli.py
+@@ -15,7 +15,7 @@ from pathlib import Path
+ 
+ import yaml
+ 
+-from factory import compose, gitops, instance, launch, specstore, status, store, subtickets, tripwire
++from factory import compose, cost, gitops, instance, launch, specstore, status, store, subtickets, tripwire
+ from factory.common import _add_spec_version, _rel, fence, out
+ from factory.drift import _check_drift, _check_sibling_tests
+ from factory.gates import (_parent_close_verified, archive_cmd, merge_cmd, results_record, results_show,
+@@ -339,6 +339,9 @@ def run_finish(a, root, cfg):
+                  "escalations_note": parsed.get("escalations_note")})
+     if a.reply:
+         meta["claude"] = _claude_record(a.reply)
++    if a.transcripts and not isinstance((meta.get("claude") or {}).get("usage"), dict) and (
++            rec := cost.transcript_record(a.transcripts, str(root), a.run, meta["started"])):
++        meta["claude"] = rec
+     store.write_yaml(d / "meta.yaml", meta)
+     if a.run in t["in_flight"]:
+         t["in_flight"].remove(a.run)
+@@ -699,6 +702,8 @@ def build_parser() -> argparse.ArgumentParser:
+     p.add_argument("--status-override")
+     p.add_argument("--reply", help="the role process's reply (claude -p --output-format json): its session "
+                                    "id, cost, turns and usage are recorded under claude: in meta.yaml")
++    p.add_argument("--transcripts", action="append", default=[], metavar="DIR",
++                   help="Claude Code transcripts: with no reply usage, the run's transcript's tokens are recorded")
+     p.set_defaults(fn=run_finish)
+     p = rn.add_parser("last-message")
+     p.add_argument("run")
+diff --git a/factory/cost.py b/factory/cost.py
+index 6037e08..c2b2201 100644
+--- a/factory/cost.py
++++ b/factory/cost.py
+@@ -10,7 +10,8 @@ those ids. Role comes from the computed-task prompt the dispatcher gave the agen
+ the model; this adds the cost.
+ 
+ For reading one store run's transcript: `transcript_usage()` gives its tokens, `match_transcripts()`
+-places transcripts on store runs, and `gate_failures()` counts the gate commands an implementer saw
++places transcripts on store runs, `transcript_record()` gives the cost record `run finish
++--transcripts` keeps for a run, and `gate_failures()` counts the gate commands an implementer saw
+ fail and then fixed before hand-off.
+ """
+ from __future__ import annotations
+@@ -67,16 +68,22 @@ def _role(transcript: str) -> str:
+     return "?"
+ 
+ 
+-def transcript_usage(path: str) -> tuple[int, int, int]:
+-    """(calls, context tokens, output tokens) of one transcript, each message id counted once."""
++def _usages(path: str) -> list[dict]:
++    """The usage of each model call of one transcript, each message id counted once."""
+     last: dict = {}
+     for i, o in enumerate(_records(path)):
+         m = o.get("message")
+         if isinstance(m, dict) and m.get("usage"):
+             last[m.get("id") or ("no id", i)] = m["usage"]
++    return list(last.values())
++
++
++def transcript_usage(path: str) -> tuple[int, int, int]:
++    """(calls, context tokens, output tokens) of one transcript, each message id counted once."""
++    usages = _usages(path)
+     ctx = sum(u.get("input_tokens", 0) + u.get("cache_read_input_tokens", 0)
+-              + u.get("cache_creation_input_tokens", 0) for u in last.values())
+-    return len(last), ctx, sum(u.get("output_tokens", 0) for u in last.values())
++              + u.get("cache_creation_input_tokens", 0) for u in usages)
++    return len(usages), ctx, sum(u.get("output_tokens", 0) for u in usages)
+ 
+ 
+ def _model(path: str) -> str | None:
+@@ -156,18 +163,22 @@ def _window(store: str, run_id: str, cache: dict) -> tuple | None:
+     return cache[key]
+ 
+ 
+-def match_transcripts(dirs: list[str], stores: list[str]) -> dict[tuple[str, str], str]:
++def match_transcripts(dirs: list[str], stores: list[str],
++                      modified_since: datetime | None = None) -> dict[tuple[str, str], str]:
+     """{(store, run_id): transcript path} for the `*.jsonl` files at any depth under `dirs`.
+ 
+     A transcript's first user message naming `<P>/runs/<R>/` (relayed user requests skipped) makes
+     it a candidate for run R of a store S when its first timestamp lies between R's started and
+     finished, unless P is another given store's path. A candidate whose P is S's own path (or S's
+-    path before a `store.migrated`) wins; otherwise a single remaining candidate is taken."""
++    path before a `store.migrated`) wins; otherwise a single remaining candidate is taken. With
++    `modified_since`, a file modified before it is not opened."""
+     own = {s: _store_paths(s) for s in stores}
+     windows: dict = {}
+     cands: dict[tuple[str, str], list[tuple[bool, datetime, str]]] = defaultdict(list)
+     for d in dirs:
+         for tf in sorted(glob.glob(os.path.join(d, "**", "*.jsonl"), recursive=True)):
++            if modified_since is not None and os.path.getmtime(tf) < modified_since.timestamp():
++                continue
+             opened = _opening(tf)
+             if opened is None or opened[2] is None:
+                 continue
+@@ -191,6 +202,19 @@ def match_transcripts(dirs: list[str], stores: list[str]) -> dict[tuple[str, str
+     return out
+ 
+ 
++def transcript_record(dirs: list[str], store: str, run_id: str, started) -> dict | None:
++    """The cost record of a store run that is finishing, from the transcript `match_transcripts()` places
++    on it among the files under `dirs` modified since the run started; None when it places none.
++    Transcripts carry no dollars."""
++    tf = match_transcripts(dirs, [store], modified_since=_when(started)).get((store, run_id))
++    if tf is None:
++        return None
++    usages = _usages(tf)
++    keys = ("input_tokens", "cache_read_input_tokens", "cache_creation_input_tokens", "output_tokens")
++    return {"source": "transcript", "transcript": tf, "usage": {k: sum(u.get(k, 0) for u in usages) for k in keys},
++            "total_cost_usd": None}
++
++
+ def gate_failures(transcript: str, input_md: str) -> int | None:
+     """Gate commands of a run's input that a Bash call failed and a later call passed, once each.
+ 
+diff --git a/factory/drive.py b/factory/drive.py
+index 9d020f5..3a57b95 100644
+--- a/factory/drive.py
++++ b/factory/drive.py
+@@ -82,6 +82,13 @@ def call(*argv: str) -> dict:
+     return res
+ 
+ 
++def _transcripts() -> str:
++    """Where Claude Code keeps transcripts, for `run finish --transcripts`: from this process's
++    environment, which its role processes inherit."""
++    d = os.environ.get("CLAUDE_CONFIG_DIR")
++    return d + "/projects" if d else os.path.expanduser("~/.claude/projects")
++
++
+ def _json_object(text: str) -> dict | None:
+     try:
+         v = json.loads(text)
+@@ -225,14 +232,14 @@ class Driver:
+         if code != 0 or reply is None:
+             # A failed call is treated as a thrown agent() call: the run is recorded KILLED and the
+             # ticket parked with the error, so no run is left in flight. No retry.
+-            call("run", "finish", rid, "--status-override", "KILLED", "--reply", reply_path)
++            call("run", "finish", rid, "--status-override", "KILLED", "--reply", reply_path, "--transcripts", _transcripts())
+             _cleanup_checker(role, rid)
+             self.running.pop(rid, None)
+             self.step(f"{role} {rid}: KILLED", ticket)
+             self.park(ticket, f"agent call failed: {role}: {_failure_message(reply, err, code)}", [rid])
+             return None
+         # run finish reads the output file for every run: a missing or blank one is EMPTY-OUTPUT.
+-        fin = call("run", "finish", rid, "--reply", reply_path)
++        fin = call("run", "finish", rid, "--reply", reply_path, "--transcripts", _transcripts())
+         _cleanup_checker(role, rid)
+         self.running.pop(rid, None)
+         if not fin["ok"]:
+@@ -574,7 +581,7 @@ class Driver:
+                         p.kill()
+             await asyncio.gather(*waits)
+         for rid, r in list(self.running.items()):
+-            call("run", "finish", rid, "--status-override", "KILLED")
++            call("run", "finish", rid, "--status-override", "KILLED", "--transcripts", _transcripts())
+             _cleanup_checker(r["role"], rid)
+             self.running.pop(rid)
+             self.procs.pop(rid, None)
+diff --git a/factory/workflows/build.js b/factory/workflows/build.js
+index 52f908c..2c9c6b9 100644
+--- a/factory/workflows/build.js
++++ b/factory/workflows/build.js
+@@ -25,6 +25,8 @@ let STATE = args.state || null  // set from `factory config` below when not give
+ const ENV = ['FACTORY_DISPATCH=1', INSTANCE ? `FACTORY_INSTANCE=${INSTANCE}` : '', STATE ? `FACTORY_STATE=${STATE}` : '',
+   args.target ? `FACTORY_REPO=${args.target}` : '', args.integration ? `FACTORY_INTEGRATION_BRANCH=${args.integration}` : ''].filter(Boolean).join(' ')
+ const BIN = `${ENV ? ENV + ' ' : ''}${REPO}/bin/factory`
++// Where Claude Code keeps transcripts, for `run finish --transcripts`: a plain string, so the clerk's shell expands it.
++const TRANSCRIPTS = '"${CLAUDE_CONFIG_DIR:-$HOME/.claude}/projects"'
+ const PREFIX = args.agentPrefix || 'factory-'
+ const INLINE = !!args.inlineRoles
+ const CLERK_RULES = 'You are the store clerk of the spec factory: run the one command you are given, once, unchanged, from the repository root; run nothing else, edit nothing, interpret nothing. '
+@@ -119,7 +121,7 @@ async function runOnce(role, ticket, phase) {
+   } catch (e) {
+     // A thrown call (e.g. an agent type that is not installed) gives no result: record the run as
+     // killed and park with the error, so no run is left in flight. parallel() would otherwise absorb it.
+-    await clerk(`${BIN} run finish ${runId} --status-override KILLED`, phase, `run finish ${role} (agent call failed)`)
++    await clerk(`${BIN} run finish ${runId} --status-override KILLED --transcripts ${TRANSCRIPTS}`, phase, `run finish ${role} (agent call failed)`)
+     if (role === 'reviewer' || role === 'verifier') await clerk(`${BIN} run cleanup ${runId}`, phase, `run cleanup ${role}`)
+     await park(ticket, `agent call failed: ${role}: ${e && e.message ? e.message : e}`, [runId], phase)
+     return null
+@@ -131,7 +133,7 @@ async function runOnce(role, ticket, phase) {
+     await clerk(`if [ -f ${sh} ]; then (cd ${start.worktree} && sh ${sh}) >/dev/null 2>&1; fi; echo '{"ok": true}'`, phase, `stub script ${role}-${stubCount[role]}`)
+   }
+   // run finish reads the output file for every run: a missing or blank one is EMPTY-OUTPUT.
+-  const fin = await clerk(`${BIN} run finish ${runId}`, phase, `run finish ${role}`)
++  const fin = await clerk(`${BIN} run finish ${runId} --transcripts ${TRANSCRIPTS}`, phase, `run finish ${role}`)
+   if (role === 'reviewer' || role === 'verifier') await clerk(`${BIN} run cleanup ${runId}`, phase, `run cleanup ${role}`)
+   if (!fin.ok) { await park(ticket, `harness-bug: run finish ${role}: ${fin.stderr || ''}`, [runId], phase); return null }
+   // run finish parked the ticket (the tripwire saw a listed live file change): stop, do not route on STATUS
+diff --git a/factory/workflows/intake.js b/factory/workflows/intake.js
+index 3b045ba..fc4120d 100644
+--- a/factory/workflows/intake.js
++++ b/factory/workflows/intake.js
+@@ -29,6 +29,8 @@ const INSTANCE = LAUNCH ? LAUNCH.instance : args.instance
+ let STATE = args.state || null  // set from `factory config` below when not given
+ const ENV = ['FACTORY_DISPATCH=1', INSTANCE ? `FACTORY_INSTANCE=${INSTANCE}` : '', STATE ? `FACTORY_STATE=${STATE}` : ''].filter(Boolean).join(' ')
+ const BIN = `${ENV ? ENV + ' ' : ''}${REPO}/bin/factory`
++// Where Claude Code keeps transcripts, for `run finish --transcripts`: a plain string, so the clerk's shell expands it.
++const TRANSCRIPTS = '"${CLAUDE_CONFIG_DIR:-$HOME/.claude}/projects"'
+ const PREFIX = args.agentPrefix || 'factory-'
+ // inlineRoles: the .claude/agents/factory-* definitions are not registered in this session (the
+ // directory did not exist at session start), so every role runs as general-purpose and reads its
+@@ -123,12 +125,12 @@ async function runOnce(role, phase) {
+   } catch (e) {
+     // A thrown call (e.g. an agent type that is not installed) gives no result: record the run as
+     // killed and park with the error, so no run is left in flight.
+-    await clerk(`${BIN} run finish ${runId} --status-override KILLED`, phase, `run finish ${role} (agent call failed)`)
++    await clerk(`${BIN} run finish ${runId} --status-override KILLED --transcripts ${TRANSCRIPTS}`, phase, `run finish ${role} (agent call failed)`)
+     await park(`agent call failed: ${role}: ${e && e.message ? e.message : e}`, [runId], phase)
+     return null
+   }
+   // run finish reads the output file for every run: a missing or blank one is EMPTY-OUTPUT.
+-  const fin = await clerk(`${BIN} run finish ${runId}`, phase, `run finish ${role}`)
++  const fin = await clerk(`${BIN} run finish ${runId} --transcripts ${TRANSCRIPTS}`, phase, `run finish ${role}`)
+   if (!fin.ok) { await park(`harness-bug: run finish ${role}: ${fin.stderr || ''}`, [runId], phase); return null }
+   // run finish parked the ticket (the tripwire saw a listed live file change): stop, do not route on STATUS
+   if (fin.parked) { log(`${TICKET} parked: ${fin.parked}`); return null }
+diff --git a/tests/factory/test_transcript_record.py b/tests/factory/test_transcript_record.py
+new file mode 100644
+index 0000000..86c1e11
+--- /dev/null
++++ b/tests/factory/test_transcript_record.py
+@@ -0,0 +1,172 @@
++"""A run's token record from its transcript (T-0056 part A).
++
++- `run finish --transcripts DIR` keeps, under the run's `claude:` key, the tokens of the one
++  transcript under DIR whose first user message names the run's directory and whose first timestamp
++  is at or after the run started, each message id counted once, with no dollars. It opens only
++  files modified at or after the run started.
++- A reply with usage is kept as before; an unusable reply takes the transcript, and keeps
++  `claude: null` when there is none.
++- build.js passes `--transcripts` on both of its `run finish` commands, the normal one and the
++  KILLED one after a thrown agent call, so the run records its agent's transcript.
++"""
++from __future__ import annotations
++
++import json
++import os
++import shutil
++import subprocess
++from datetime import datetime, timezone
++from pathlib import Path
++
++import yaml
++
++from ._cli import REPO, run
++from ._cli import js_ok as js
++from ._fixtures import f  # noqa: F401  (f is the t0027-amend.sh store fixture)
++
++TASK = "[Workflow harness — computed task]"
++OUTPUT = "Type: bug\nTitle: T\nSummary: s\nEvidence: e\nAssumptions: a\nSTATUS: ACCEPT\nCONFIDENCE: high, x\nESCALATIONS: none\n"
++
++
++def _now() -> str:
++    return datetime.now(timezone.utc).isoformat()
++
++
++def _transcript(path: Path, ts: str, named: str, *calls: tuple[str, int, int, int, int]) -> Path:
++    path.parent.mkdir(parents=True, exist_ok=True)
++    lines = [{"type": "user", "timestamp": ts,
++              "message": {"role": "user", "content": f"{TASK} Your entire input is the file {named}/input.md"}}]
++    lines += [{"type": "assistant", "timestamp": ts,
++               "message": {"id": mid, "usage": {"input_tokens": i, "cache_read_input_tokens": r,
++                                                "cache_creation_input_tokens": c, "output_tokens": o}}}
++              for mid, i, r, c, o in calls]
++    path.write_text("".join(json.dumps(x) + "\n" for x in lines))
++    return path
++
++
++def _triage(tmp_path: Path) -> tuple[Path, str]:
++    store = tmp_path / "store"
++    if not (store / "tickets").is_dir():
++        (tmp_path / "req.md").write_text("# F\n\nDo x.\n")
++        js(run(store, "ticket", "new", "--file", str(tmp_path / "req.md")))
++    rid = js(run(store, "run", "start", "--role", "triage", "--ticket", "T-0001"))["run_id"]
++    (store / "runs" / rid / "output.md").write_text(OUTPUT)
++    return store, rid
++
++
++def _claude(store: Path, rid: str):
++    return yaml.safe_load((store / "runs" / rid / "meta.yaml").read_text())["claude"]
++
++
++def test_run_finish_records_the_runs_transcript_and_passes_over_its_two_decoys(tmp_path):
++    store, rid = _triage(tmp_path)
++    x = tmp_path / "cc" / "projects"
++    mine = _transcript(x / "p" / "s" / "subagents" / "workflows" / "wf" / "agent-1.jsonl", _now(),
++                       f"{store}/runs/{rid}", ("m1", 5, 100, 0, 3), ("m1", 5, 100, 0, 3), ("m2", 1, 200, 4, 10))
++    _transcript(x / "p" / "s" / "agent-2.jsonl", _now(), f"{store}/runs/run-9999-triage", ("m3", 1000, 0, 0, 1000))
++    _transcript(x / "p" / "old.jsonl", "2026-01-01T00:00:00Z", f"{store}/runs/{rid}", ("m4", 1000, 0, 0, 1000))
++    js(run(store, "run", "finish", rid, "--transcripts", str(x)))
++    assert _claude(store, rid) == {"source": "transcript", "transcript": str(mine), "total_cost_usd": None,
++                                   "usage": {"input_tokens": 6, "cache_read_input_tokens": 300,
++                                             "cache_creation_input_tokens": 4, "output_tokens": 13}}
++
++
++def test_run_finish_opens_no_transcript_modified_before_the_run_started(tmp_path):
++    store, rid = _triage(tmp_path)
++    x = tmp_path / "cc" / "projects"
++    tf = _transcript(x / "p" / "agent-1.jsonl", _now(), f"{store}/runs/{rid}", ("m1", 1, 2, 3, 4))
++    os.utime(tf, (0, 0))
++    js(run(store, "run", "finish", rid, "--transcripts", str(x)))
++    assert "claude" not in yaml.safe_load((store / "runs" / rid / "meta.yaml").read_text())
++
++
++def test_a_reply_with_usage_wins_over_the_transcript(tmp_path):
++    store, rid = _triage(tmp_path)
++    x = tmp_path / "cc" / "projects"
++    _transcript(x / "p" / "agent-1.jsonl", _now(), f"{store}/runs/{rid}", ("m1", 1000, 0, 0, 1000))
++    reply = {"session_id": "s2", "total_cost_usd": 0.5, "num_turns": 2, "usage": {"input_tokens": 1, "output_tokens": 2}}
++    (tmp_path / "reply.json").write_text(json.dumps(reply))
++    js(run(store, "run", "finish", rid, "--reply", str(tmp_path / "reply.json"), "--transcripts", str(x)))
++    assert _claude(store, rid) == reply
++
++
++def test_an_unusable_reply_takes_the_transcript_and_keeps_null_without_one(tmp_path):
++    (tmp_path / "reply.json").write_text("not json\n")
++    x = tmp_path / "cc" / "projects"
++    store, r1 = _triage(tmp_path)
++    js(run(store, "run", "finish", r1, "--reply", str(tmp_path / "reply.json"), "--transcripts", str(x)))
++    assert _claude(store, r1) is None
++    _, r2 = _triage(tmp_path)
++    _transcript(x / "p" / "agent-1.jsonl", _now(), f"{store}/runs/{r2}", ("m1", 2, 20, 0, 1))
++    js(run(store, "run", "finish", r2, "--reply", str(tmp_path / "reply.json"), "--transcripts", str(x)))
++    assert _claude(store, r2)["usage"] == {"input_tokens": 2, "cache_read_input_tokens": 20,
++                                           "cache_creation_input_tokens": 0, "output_tokens": 1}
++
++
++# build.js under node, as _fixtures.BUILD_DRIVER drives it, with a role call that writes its transcript
++# under $CLAUDE_CONFIG_DIR/projects (as Claude Code does) and then returns nothing, or throws when
++# T0056_THROW is set. Each `run finish` clerk command is printed as it runs.
++DRIVER = r"""
++import { readFileSync, writeFileSync, mkdirSync } from 'node:fs'
++import { spawnSync } from 'node:child_process'
++const src = readFileSync('factory/workflows/build.js', 'utf8').replace(/^export const meta/m, 'const meta')
++let n = 0
++const agent = async (prompt) => {
++  const m = prompt.match(/and nothing else:\n\n([\s\S]*?)\n\nReport/)
++  if (m) {
++    if (/ run finish /.test(m[1])) console.log(`finish: ${m[1]}`)
++    const cp = spawnSync('sh', ['-c', m[1]], { cwd: process.cwd(), encoding: 'utf8' })
++    return { stdout: cp.stdout, exit: cp.status, stderr: cp.stderr }
++  }
++  n += 1
++  const dir = `${process.env.CLAUDE_CONFIG_DIR}/projects/p/s/subagents/workflows/wf`
++  mkdirSync(dir, { recursive: true })
++  const ts = new Date().toISOString()
++  writeFileSync(`${dir}/agent-${n}.jsonl`,
++    JSON.stringify({ type: 'user', timestamp: ts, message: { role: 'user', content: `[Workflow harness — computed task] ${prompt}` } }) + '\n' +
++    JSON.stringify({ type: 'assistant', timestamp: ts, message: { id: `m${n}`, usage: { input_tokens: 7, cache_read_input_tokens: 70, cache_creation_input_tokens: 0, output_tokens: 3 } } }) + '\n')
++  if (process.env.T0056_THROW) throw new Error('stand-in failure')
++  return ''
++}
++const fn = new (async () => {}).constructor('args', 'agent', 'log', 'phase', 'parallel', src)
++await fn({ ticket: 'T-0001', repo: process.cwd(), state: process.env.FACTORY_STATE, target: process.env.FACTORY_REPO,
++  integration: 'main', inlineRoles: true }, agent, () => {}, () => {}, async (fs) => Promise.all(fs.map(f => f())))
++"""
++
++
++def _build(f, **env: str) -> list[str]:  # noqa: F811
++    node = shutil.which("node")
++    assert node, "node must be on PATH: this case runs factory/workflows/build.js"
++    f.plan("ST-1 / Only\nDepends on: none\nParallel-safe: yes\n")
++    driver = f.tmp / "t0056-build.mjs"
++    driver.write_text(DRIVER)
++    cp = subprocess.run([node, str(driver)], capture_output=True, text=True, cwd=REPO, timeout=120,
++                        env={**f.env, "CLAUDE_CONFIG_DIR": str(f.tmp / "cc"), **env})
++    finishes = [ln for ln in cp.stdout.splitlines() if ln.startswith("finish: ")]
++    assert finishes, cp.stdout + cp.stderr
++    return finishes
++
++
++def _implementer_records(f) -> list[dict]:  # noqa: F811
++    return [yaml.safe_load(p.read_text()) for p in sorted((f.store / "runs").glob("run-*-implementer/meta.yaml"))]
++
++
++def test_build_js_passes_transcripts_on_the_normal_run_finish(f):  # noqa: F811
++    finishes = _build(f)
++    assert all(ln.endswith(' --transcripts "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/projects"') for ln in finishes), finishes
++    metas = _implementer_records(f)
++    # The empty output is re-dispatched once; each run records its own agent's transcript.
++    assert [m["status"] for m in metas] == ["EMPTY-OUTPUT", "EMPTY-OUTPUT"] and len(finishes) == 2
++    assert {m["claude"]["transcript"] for m in metas} == {str(f.tmp / "cc" / "projects" / "p" / "s" / "subagents" /
++                                                              "workflows" / "wf" / f"agent-{n}.jsonl") for n in (1, 2)}
++    assert all(m["claude"]["source"] == "transcript" and m["claude"]["usage"] == {
++        "input_tokens": 7, "cache_read_input_tokens": 70, "cache_creation_input_tokens": 0, "output_tokens": 3}
++        for m in metas)
++
++
++def test_build_js_passes_transcripts_on_the_killed_run_finish(f):  # noqa: F811
++    finishes = _build(f, T0056_THROW="1")
++    assert len(finishes) == 1 and "--status-override KILLED --transcripts " in finishes[0], finishes
++    [meta] = _implementer_records(f)
++    assert meta["status"] == "KILLED"
++    assert meta["claude"]["source"] == "transcript" and meta["claude"]["usage"]["output_tokens"] == 3

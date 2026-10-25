@@ -4,14 +4,14 @@ title: 'Scorecard: `factory stats` reports the north star''s measures per window
   record and a cost record for every run'
 request: requests/T-0056.md
 source: /private/tmp/claude-501/-Users-dphang-dev-nanobot/c69bfd1d-97a6-43e3-9d5a-a517c28d382c/scratchpad/requests/req-117.md
-status: ready-for-planner
+status: closed
 round:
   spec: 2
   pr: 0
 spec:
   version: 3
   approved_version: 3
-plan: null
+plan: plans/T-0056.md
 in_flight: []
 parked: null
 created: '2026-10-20T06:38:50+00:00'
@@ -84,6 +84,25 @@ history:
   to: ready-for-planner
   by: dphang
   approved_version: 3
+- ts: '2026-10-25T17:21:26+00:00'
+  from: ready-for-planner
+  to: planned
+  by: workflow
+  round:
+    spec: 2
+    pr: 0
+- ts: '2026-10-25T18:12:27+00:00'
+  from: planned
+  to: ready-for-parent-verify
+  by: parent-check
+- ts: '2026-10-25T18:18:14+00:00'
+  from: ready-for-parent-verify
+  to: closed
+  by: workflow
+  round:
+    spec: 2
+    pr: 0
+  verified_by: run-0586-verifier
 parent: null
 depends_on: []
 parallel_safe: true
@@ -92,4 +111,4 @@ head: null
 merge:
   base_before: null
   main_after: null
-parent_base: null
+parent_base: 3e4705ae6af33c83e680a479beef42d58721511b

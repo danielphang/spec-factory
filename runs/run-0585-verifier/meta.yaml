@@ -1,0 +1,64 @@
+run_id: run-0585-verifier
+role: verifier
+ticket: T-0056.2
+model: opus
+round: 1
+spec_version: 3
+started: '2026-10-25T18:06:32+00:00'
+finished: '2026-10-25T18:12:25+00:00'
+wall_s: 353
+status: VERIFIED
+input_sources:
+- specs/T-0056.2/subticket.md
+- specs/T-0056/v3.md
+- runs/run-0583-implementer/output.md
+- runs/run-0585-verifier/diff.patch
+gate_skipped: []
+environment_files: []
+branch: factory/T-0056.2
+base: b863e4ec2b2c147e6133e73fc9ba5d50f2b6f494
+head: fa0d3b5e26a0c591316cfa2d56b46156f742d293
+worktree: /Users/dphang/dev/spec-factory/.factory/store/runs/run-0585-verifier/wt
+confidence: high. All 17 criteria were run as written on the PR, and the 7 NEW ones also on base. Each
+  NEW one fails on base for the stated reason and matches its THEN text exactly on the PR. Both gates
+  pass, and a wider-window probe matched values I computed independently.
+escalations:
+- 'A scorecard refusal prints `{"ok": false, "error": …}` on stdout, and design C1 says a refusal prints
+  nothing on stdout. The acceptance scenario sends stdout to /dev/null, so no criterion checks this. The
+  implementer disclosed it: the refusal goes through the CLI''s common refusal path, and `cli.py` has
+  no lines left in its budget, at 899 against "under 900". The operator should accept this deviation or
+  ask for a follow-up.'
+- Two minor scorecard behaviours that no criterion covers. A closed change with no run records counts
+  as 0 tokens and 0 h in the medians. A reversed window (`--since` later than `--until`) prints instead
+  of being refused. Whether either needs a follow-up ticket is the operator's call.
+escalations_note: null
+claude:
+  session_id: 03bc7b82-decf-4c56-b5be-de918669d095
+  total_cost_usd: 1.9969663999999996
+  num_turns: 24
+  usage:
+    input_tokens: 46
+    cache_creation_input_tokens: 80557
+    cache_read_input_tokens: 4455832
+    output_tokens: 23058
+    output_tokens_details:
+      thinking_tokens: 7235
+    server_tool_use:
+      web_search_requests: 0
+      web_fetch_requests: 0
+    service_tier: standard
+    cache_creation:
+      ephemeral_1h_input_tokens: 80557
+      ephemeral_5m_input_tokens: 0
+    inference_geo: global
+    iterations:
+    - input_tokens: 2
+      output_tokens: 3501
+      cache_read_input_tokens: 223456
+      cache_creation_input_tokens: 3696
+      cache_creation:
+        ephemeral_5m_input_tokens: 0
+        ephemeral_1h_input_tokens: 3696
+      type: message
+    speed: standard
+    fallback_credit: null

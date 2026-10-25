@@ -1,0 +1,62 @@
+run_id: run-0584-reviewer
+role: reviewer
+ticket: T-0056.2
+model: fable
+round: 1
+spec_version: 3
+started: '2026-10-25T18:06:30+00:00'
+finished: '2026-10-25T18:09:24+00:00'
+wall_s: 174
+status: APPROVE
+input_sources:
+- specs/T-0056.2/subticket.md
+- specs/T-0056/v3.md
+- runs/run-0583-implementer/output.md
+- runs/run-0584-reviewer/diff.patch
+gate_skipped: []
+environment_files: []
+branch: factory/T-0056.2
+base: b863e4ec2b2c147e6133e73fc9ba5d50f2b6f494
+head: fa0d3b5e26a0c591316cfa2d56b46156f742d293
+worktree: /Users/dphang/dev/spec-factory/.factory/store/runs/run-0584-reviewer/wt
+confidence: high. Every definition in design C3 and B1/B2 maps to a line I read, the helpers the code
+  calls exist with the shapes it assumes, no existing test changed, and the new tests pin the acceptance
+  figures.
+escalations:
+- 'Protected paths touched, all declared by the sub-ticket and the parent spec''s Risk section (`factory/**`):
+  `factory/cli.py`, `factory/human.py`, `factory/stats.py`, `factory/instance.template.yaml`. For the
+  record; the merge gate needs no further approval.'
+- The implementer reports the harness suite passing but over its three-minute bound on both base and branch,
+  under a load average of 44 to 50. The verifier times it on this head; if it is still over on an idle
+  machine, that is an environment question for the operator, not a defect in this change.
+escalations_note: null
+claude:
+  session_id: 29ff7b20-a5aa-4991-af68-4abbd0756c32
+  total_cost_usd: 2.8818590000000004
+  num_turns: 13
+  usage:
+    input_tokens: 386
+    cache_creation_input_tokens: 84532
+    cache_read_input_tokens: 2437236
+    output_tokens: 11561
+    output_tokens_details:
+      thinking_tokens: 4169
+    server_tool_use:
+      web_search_requests: 0
+      web_fetch_requests: 0
+    service_tier: standard
+    cache_creation:
+      ephemeral_1h_input_tokens: 84532
+      ephemeral_5m_input_tokens: 0
+    inference_geo: global
+    iterations:
+    - input_tokens: 32
+      output_tokens: 2334
+      cache_read_input_tokens: 227853
+      cache_creation_input_tokens: 5393
+      cache_creation:
+        ephemeral_5m_input_tokens: 0
+        ephemeral_1h_input_tokens: 5393
+      type: message
+    speed: standard
+    fallback_credit: null

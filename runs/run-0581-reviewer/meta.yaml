@@ -1,0 +1,59 @@
+run_id: run-0581-reviewer
+role: reviewer
+ticket: T-0056.1
+model: fable
+round: 1
+spec_version: 3
+started: '2026-10-25T17:32:19+00:00'
+finished: '2026-10-25T17:36:55+00:00'
+wall_s: 276
+status: APPROVE
+input_sources:
+- specs/T-0056.1/subticket.md
+- specs/T-0056/v3.md
+- runs/run-0580-implementer/output.md
+- runs/run-0581-reviewer/diff.patch
+gate_skipped: []
+environment_files: []
+branch: factory/T-0056.1
+base: 3e4705ae6af33c83e680a479beef42d58721511b
+head: 6991572ee604bbf88e7b71af43e9233279029fdb
+worktree: /Users/dphang/dev/spec-factory/.factory/store/runs/run-0581-reviewer/wt
+confidence: high, the diff implements A1 to A4, E1 and E3 as the spec words them, no existing test changed,
+  and the two risks the spec names (template-string interpolation and the throwaway-HOME rule) are covered
+  by the new node-driven tests and by explicit passing of the directory
+escalations:
+- protected path `factory/**` touched (cost.py, cli.py, drive.py, workflows/intake.js, workflows/build.js);
+  declared by the sub-ticket and the approved spec's Risk section, so the merge gate may proceed without
+  further approval
+escalations_note: null
+claude:
+  session_id: e0b4f195-267d-44ac-ad8c-0a8c6e760c50
+  total_cost_usd: 5.7785969999999995
+  num_turns: 13
+  usage:
+    input_tokens: 386
+    cache_creation_input_tokens: 222316
+    cache_read_input_tokens: 2160268
+    output_tokens: 15767
+    output_tokens_details:
+      thinking_tokens: 6948
+    server_tool_use:
+      web_search_requests: 0
+      web_fetch_requests: 0
+    service_tier: standard
+    cache_creation:
+      ephemeral_1h_input_tokens: 222316
+      ephemeral_5m_input_tokens: 0
+    inference_geo: global
+    iterations:
+    - input_tokens: 32
+      output_tokens: 2440
+      cache_read_input_tokens: 216836
+      cache_creation_input_tokens: 5480
+      cache_creation:
+        ephemeral_5m_input_tokens: 0
+        ephemeral_1h_input_tokens: 5480
+      type: message
+    speed: standard
+    fallback_credit: null

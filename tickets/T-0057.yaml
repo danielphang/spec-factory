@@ -4,14 +4,14 @@ title: Check a spec's format when the spec is added, and send a format error bac
   of to the human gate
 request: requests/T-0057.md
 source: /private/tmp/claude-501/-Users-dphang-dev-nanobot/c69bfd1d-97a6-43e3-9d5a-a517c28d382c/scratchpad/requests/req-105.md
-status: ready-for-planner
+status: planned
 round:
   spec: 2
   pr: 0
 spec:
   version: 2
   approved_version: 2
-plan: null
+plan: plans/T-0057.md
 in_flight: []
 parked: null
 created: '2026-10-20T06:38:50+00:00'
@@ -70,6 +70,13 @@ history:
   to: ready-for-planner
   by: dphang
   approved_version: 2
+- ts: '2026-10-25T18:18:15+00:00'
+  from: ready-for-planner
+  to: planned
+  by: workflow
+  round:
+    spec: 2
+    pr: 0
 parent: null
 depends_on: []
 parallel_safe: true
