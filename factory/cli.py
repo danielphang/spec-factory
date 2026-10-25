@@ -20,7 +20,7 @@ from factory.common import _add_spec_version, _rel, fence, out
 from factory.drift import _check_drift, _check_sibling_tests
 from factory.gates import (_parent_close_verified, archive_cmd, merge_cmd, results_record, results_show,
                            ticket_head, ticket_join, ticket_parent_check)
-from factory.human import approve_spec, decision_add, request_changes, resolve, spec_amend
+from factory.human import approve_spec, decision_add, escape_add, intervention_add, request_changes, resolve, spec_amend
 from factory.setup import init_cmd, paths_cmd, store_migrate
 from factory.store import Refused
 
@@ -603,8 +603,9 @@ def stats_cmd(a):
     for r in roots:
         if not (r / "runs").is_dir() and not (r / "log").is_dir():
             raise Refused(f"factory stats: {r} is not a store: it has neither runs/ nor log/")
-    print(stats.report([str(r) for r in roots], since, until,
-                       [str((cwd / Path(d).expanduser()).resolve()) for d in a.transcripts]), end="")
+    fn = stats.scorecard if a.scorecard else stats.report
+    print(fn([str(r) for r in roots], since, until,
+             [str((cwd / Path(d).expanduser()).resolve()) for d in a.transcripts]), end="")
 
 
 def spec_tasks(a, root, cfg):
@@ -782,6 +783,7 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--transcripts", action="append", default=[], metavar="DIR",
                    help="a directory of Claude Code transcripts (*.jsonl at any depth) for runs with no "
                         "cost record, and for implementer gate failures (repeatable)")
+    p.add_argument("--scorecard", action="store_true", help="print only the north star's scorecard; needs --since")
     p.set_defaults(fn=stats_cmd)
     p = sp.add_parser("archive")
     p.add_argument("id")
@@ -814,6 +816,18 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("id")
     p.add_argument("text")
     p.set_defaults(fn=decision_add)
+    p = sp.add_parser("escape").add_subparsers(dest="sub", required=True).add_parser(
+        "add", help="record that a merged change later needed a fix; keeps --issue only as its SHA-256")
+    p.add_argument("id")
+    p.add_argument("--issue", required=True, metavar="TEXT")
+    p.add_argument("--note", metavar="LINE")
+    p.set_defaults(fn=escape_add)
+    p = sp.add_parser("intervention").add_subparsers(dest="sub", required=True).add_parser(
+        "add", help="record an action you took outside the CLI, for the scorecard")
+    p.add_argument("--kind", required=True, metavar="WORD")
+    p.add_argument("--ticket", metavar="ID")
+    p.add_argument("--note", metavar="LINE")
+    p.set_defaults(fn=intervention_add)
 
     p = sp.add_parser("drive", help="route TICKET's roles as the Workflow scripts do, each role one "
                                     "`claude -p` process; stops at the spec gate")

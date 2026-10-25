@@ -1,8 +1,11 @@
-"""Human decisions: approve-spec, request-changes, resolve, decision add and spec amend."""
+"""Human decisions: approve-spec, request-changes, resolve, decision add, spec amend, and the escape and
+intervention records the scorecard counts."""
 from __future__ import annotations
 
 import difflib
 import getpass
+import hashlib
+import json
 import shutil
 from pathlib import Path
 
@@ -332,3 +335,39 @@ def decision_add(a, root, cfg):
     line = specstore.record_decision(root, t["id"], a.text)
     store.log_event(root, "decision.recorded", ticket=t["id"], by=_by(), line=line, via="decision add")
     out({"ok": True, "id": t["id"], "decision": line})
+
+
+def escape_add(a, root, cfg):
+    """`escape add T --issue TEXT [--note LINE]`: a merged change later needed a fix or a revert. The store
+    is public and the issue may sit in a private tracker, so it keeps only the SHA-256 of the --issue text
+    (UTF-8, exactly as given), never the text. Every refusal comes before the write."""
+    parent, dot, _ = a.id.rpartition(".")
+    if dot:
+        raise Refused(f"escape add: {a.id} is a sub-ticket; record the escape on its parent {parent}")
+    tid = store.load_ticket(root, a.id)["id"]
+    events = (json.loads(ln) for ln in store.log_lines(root) if ln.strip())
+    if not any(e.get("event") == "merge.done" and tid in (e.get("ticket"), str(e.get("ticket")).rpartition(".")[0])
+               for e in events):  # a merge of the ticket itself or of one of its sub-tickets
+        raise Refused(f"escape add: {tid} has no merge")
+    if not a.issue.strip():
+        raise Refused("escape add: --issue is empty")
+    if a.note and "://" in a.note:
+        raise Refused("escape add: keep links out of the note; the store keeps no link")
+    digest = hashlib.sha256(a.issue.encode("utf-8")).hexdigest()
+    store.log_event(root, "escape.recorded", ticket=tid, issue_sha256=digest, by=_by(),
+                    **({"note": a.note} if a.note else {}))
+    out({"ok": True, "id": tid, "issue_sha256": digest})
+
+
+def intervention_add(a, root, cfg):
+    """`intervention add --kind WORD [--ticket T] [--note LINE]`: the operator acted outside the CLI
+    (a hand commit, a stopped run); the scorecard counts it as an intervention."""
+    kind = a.kind.strip()
+    if not kind:
+        raise Refused("intervention add: --kind is empty")
+    tid = store.load_ticket(root, a.ticket)["id"] if a.ticket else None
+    if a.note and "://" in a.note:
+        raise Refused("intervention add: keep links out of the note; the store keeps no link")
+    extra = {k: v for k, v in (("ticket", tid), ("note", a.note)) if v}
+    store.log_event(root, "intervention.recorded", kind=kind, by=_by(), **extra)
+    out({"ok": True, "kind": kind, **({"id": tid} if tid else {})})
