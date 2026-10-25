@@ -82,6 +82,13 @@ def call(*argv: str) -> dict:
     return res
 
 
+def _transcripts() -> str:
+    """Where Claude Code keeps transcripts, for `run finish --transcripts`: from this process's
+    environment, which its role processes inherit."""
+    d = os.environ.get("CLAUDE_CONFIG_DIR")
+    return d + "/projects" if d else os.path.expanduser("~/.claude/projects")
+
+
 def _json_object(text: str) -> dict | None:
     try:
         v = json.loads(text)
@@ -225,14 +232,14 @@ class Driver:
         if code != 0 or reply is None:
             # A failed call is treated as a thrown agent() call: the run is recorded KILLED and the
             # ticket parked with the error, so no run is left in flight. No retry.
-            call("run", "finish", rid, "--status-override", "KILLED", "--reply", reply_path)
+            call("run", "finish", rid, "--status-override", "KILLED", "--reply", reply_path, "--transcripts", _transcripts())
             _cleanup_checker(role, rid)
             self.running.pop(rid, None)
             self.step(f"{role} {rid}: KILLED", ticket)
             self.park(ticket, f"agent call failed: {role}: {_failure_message(reply, err, code)}", [rid])
             return None
         # run finish reads the output file for every run: a missing or blank one is EMPTY-OUTPUT.
-        fin = call("run", "finish", rid, "--reply", reply_path)
+        fin = call("run", "finish", rid, "--reply", reply_path, "--transcripts", _transcripts())
         _cleanup_checker(role, rid)
         self.running.pop(rid, None)
         if not fin["ok"]:
@@ -574,7 +581,7 @@ class Driver:
                         p.kill()
             await asyncio.gather(*waits)
         for rid, r in list(self.running.items()):
-            call("run", "finish", rid, "--status-override", "KILLED")
+            call("run", "finish", rid, "--status-override", "KILLED", "--transcripts", _transcripts())
             _cleanup_checker(r["role"], rid)
             self.running.pop(rid)
             self.procs.pop(rid, None)

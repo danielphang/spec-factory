@@ -10,7 +10,8 @@ those ids. Role comes from the computed-task prompt the dispatcher gave the agen
 the model; this adds the cost.
 
 For reading one store run's transcript: `transcript_usage()` gives its tokens, `match_transcripts()`
-places transcripts on store runs, and `gate_failures()` counts the gate commands an implementer saw
+places transcripts on store runs, `transcript_record()` gives the cost record `run finish
+--transcripts` keeps for a run, and `gate_failures()` counts the gate commands an implementer saw
 fail and then fixed before hand-off.
 """
 from __future__ import annotations
@@ -67,16 +68,22 @@ def _role(transcript: str) -> str:
     return "?"
 
 
-def transcript_usage(path: str) -> tuple[int, int, int]:
-    """(calls, context tokens, output tokens) of one transcript, each message id counted once."""
+def _usages(path: str) -> list[dict]:
+    """The usage of each model call of one transcript, each message id counted once."""
     last: dict = {}
     for i, o in enumerate(_records(path)):
         m = o.get("message")
         if isinstance(m, dict) and m.get("usage"):
             last[m.get("id") or ("no id", i)] = m["usage"]
+    return list(last.values())
+
+
+def transcript_usage(path: str) -> tuple[int, int, int]:
+    """(calls, context tokens, output tokens) of one transcript, each message id counted once."""
+    usages = _usages(path)
     ctx = sum(u.get("input_tokens", 0) + u.get("cache_read_input_tokens", 0)
-              + u.get("cache_creation_input_tokens", 0) for u in last.values())
-    return len(last), ctx, sum(u.get("output_tokens", 0) for u in last.values())
+              + u.get("cache_creation_input_tokens", 0) for u in usages)
+    return len(usages), ctx, sum(u.get("output_tokens", 0) for u in usages)
 
 
 def _model(path: str) -> str | None:
@@ -156,18 +163,22 @@ def _window(store: str, run_id: str, cache: dict) -> tuple | None:
     return cache[key]
 
 
-def match_transcripts(dirs: list[str], stores: list[str]) -> dict[tuple[str, str], str]:
+def match_transcripts(dirs: list[str], stores: list[str],
+                      modified_since: datetime | None = None) -> dict[tuple[str, str], str]:
     """{(store, run_id): transcript path} for the `*.jsonl` files at any depth under `dirs`.
 
     A transcript's first user message naming `<P>/runs/<R>/` (relayed user requests skipped) makes
     it a candidate for run R of a store S when its first timestamp lies between R's started and
     finished, unless P is another given store's path. A candidate whose P is S's own path (or S's
-    path before a `store.migrated`) wins; otherwise a single remaining candidate is taken."""
+    path before a `store.migrated`) wins; otherwise a single remaining candidate is taken. With
+    `modified_since`, a file modified before it is not opened."""
     own = {s: _store_paths(s) for s in stores}
     windows: dict = {}
     cands: dict[tuple[str, str], list[tuple[bool, datetime, str]]] = defaultdict(list)
     for d in dirs:
         for tf in sorted(glob.glob(os.path.join(d, "**", "*.jsonl"), recursive=True)):
+            if modified_since is not None and os.path.getmtime(tf) < modified_since.timestamp():
+                continue
             opened = _opening(tf)
             if opened is None or opened[2] is None:
                 continue
@@ -189,6 +200,19 @@ def match_transcripts(dirs: list[str], stores: list[str]) -> dict[tuple[str, str
         elif len(cs) == 1:
             out[key] = cs[0][2]
     return out
+
+
+def transcript_record(dirs: list[str], store: str, run_id: str, started) -> dict | None:
+    """The cost record of a store run that is finishing, from the transcript `match_transcripts()` places
+    on it among the files under `dirs` modified since the run started; None when it places none.
+    Transcripts carry no dollars."""
+    tf = match_transcripts(dirs, [store], modified_since=_when(started)).get((store, run_id))
+    if tf is None:
+        return None
+    usages = _usages(tf)
+    keys = ("input_tokens", "cache_read_input_tokens", "cache_creation_input_tokens", "output_tokens")
+    return {"source": "transcript", "transcript": tf, "usage": {k: sum(u.get(k, 0) for u in usages) for k in keys},
+            "total_cost_usd": None}
 
 
 def gate_failures(transcript: str, input_md: str) -> int | None:

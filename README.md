@@ -10,7 +10,7 @@ attention, with no rise in escaped defects. See `docs/north-star.md`, `STATUS.md
 
 | | |
 |---|---|
-| **Status** | Current state as of 2026-10-23. Intake works end to end. Build works, in local-only mode. |
+| **Status** | Current state as of 2026-10-25. Intake works end to end. Build works, in local-only mode. |
 | **Reader** | Technical, seeing this project for the first time. Terms specific to this system are defined in "Terms used on this page" or at first use. |
 | **Scope** | What runs now. The intended design and its reasoning are in `docs/design.md`; where the two disagree, this page is right about what runs and the design is amended. |
 | **Internal references** | Ticket ids, issue numbers and who did what are in "Related work and history" near the end. |
@@ -100,7 +100,7 @@ is built and what is not"). The retro has a model entry but no prompt and no way
 
 ### What depends on Claude Code
 
-Most of the factory is plain files and a Python program. Five pieces assume Claude Code.
+Most of the factory is plain files and a Python program. Six pieces assume Claude Code.
 
 | Piece | Claude Code only? | Why |
 |---|---|---|
@@ -112,6 +112,7 @@ Most of the factory is plain files and a Python program. Five pieces assume Clau
 | Model names (`models` in `instance.yaml`) | yes | Claude model aliases |
 | Token cost per role (`factory/cost.py`) | yes | reads the Workflow tool's transcript files |
 | Catch and cost per role (`factory stats`, `factory/stats.py`) | no | reads the store's files with no Claude Code; reads Claude Code's transcript files only when given `--transcripts` |
+| A workflow run's token record (`run finish --transcripts`) | yes | reads the token usage in the transcript Claude Code keeps for the run's agent, under `~/.claude/projects` |
 
 `inlineRoles: true` in the workflow's arguments skips the registered agents: every role runs as a
 general-purpose agent that reads its prompt from the run's `system-prompt.txt`, with no per-role
@@ -980,13 +981,17 @@ the critic or the code reviewer says must be fixed.
 | C. Where spec defects were caught and where they came from | verifier SPEC-DEFECT or implementer BLOCKED run | the spec version the run worked from, the run that wrote it, the critic run that last checked it, and the ticket's REVISE count; then how many approved specs, with and without a REVISE, were caught later |
 | D. What each role costs | role and model | runs including killed ones, wall time, context and output tokens, dollars, and how many runs took their cost from a cost record, a transcript or neither |
 
-A run started by `factory drive` carries a cost record: its tokens and dollars, kept in its
-`meta.yaml`. Any other run has its tokens only in the transcript Claude Code kept for its agent.
-Add `--transcripts ~/.claude/projects` to count those runs; reading that directory takes about
-12 seconds on this machine. Each model call is counted once. Context tokens are the input,
-cache-read and cache-creation tokens together. Dollars come only from cost records, because
-transcripts carry none. Without `--transcripts`, such a run counts under `none` in section D, and
-section A lists it as "not recorded" in the gate column.
+Each run keeps a cost record in its `meta.yaml` when it ends. A run started by `factory drive`
+records the tokens and dollars its process reported. A run a workflow script started records the
+tokens in its agent's transcript, which `run finish --transcripts DIR` finds; the scripts pass the
+directory where Claude Code keeps transcripts, `~/.claude/projects` unless `CLAUDE_CONFIG_DIR` moves
+it. Transcripts carry no dollars, so that record has none, and "USD from records" covers only the
+records that have them. A driver run whose process gave no usable reply records its transcript's
+tokens the same way. Runs that ended before this record existed have none: add
+`--transcripts ~/.claude/projects` to count them; reading that directory takes about 12 seconds on
+this machine. Each model call is counted once. Context tokens are the input, cache-read and
+cache-creation tokens together. Without `--transcripts`, a run with no record counts under `none`
+in section D, and section A lists it as "not recorded" in the gate column.
 
 Give `--until` to make a figure repeatable, because the store keeps growing. A park reason that a
 human corrected later changes the figure only if the correction is dated before `--until`.
