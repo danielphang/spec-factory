@@ -206,4 +206,3 @@ def test_a_refusal_after_a_revise_in_the_last_round_parks_without_another_writer
         assert t["status"] == "parked" and t["parked"]["reason"] == f"max rounds: spec not added: {LABEL}", side
         assert t["round"]["spec"] == 2 and t["spec"]["version"] == 1, side
         assert roles(s) == [("spec_writer", "READY-FOR-CRITIC"), ("critic", "REVISE"), ("spec_writer", "NEEDS-SPLIT")]
-
