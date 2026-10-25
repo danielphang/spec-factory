@@ -96,3 +96,7 @@ Suggested fix: In paragraph 2 write "The harness, that code, stores specs and mo
 ## Out-of-scope observations
 
 - As in round 1: a refusal followed by a good draft leaves no store event of its own, so `factory stats` cannot count bounced specs. The spec rejects a refusal record on purpose. A later ticket if the scorecard wants that figure.
+
+## Verifier results
+
+3fdcda3e76e891e79e7949c78b78cef051f1dfd2 · T-0057.1 · VERIFIED · run-0591-verifier

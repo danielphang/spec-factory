@@ -1,0 +1,57 @@
+run_id: run-0588-spec_writer
+role: spec_writer
+ticket: T-0059
+model: opus
+round: 0
+spec_version: 1
+started: '2026-10-25T18:41:29+00:00'
+finished: '2026-10-25T18:57:42+00:00'
+wall_s: 973
+status: READY-FOR-CRITIC
+input_sources:
+- runs/run-0577-triage/output.md
+- requests/T-0059.md
+- openspec/specs/gate-commands/spec.md
+- openspec/specs/harness-code/spec.md
+- openspec/specs/harness-docs/spec.md
+- openspec/specs/harness-suite/spec.md
+- openspec/specs/live-store-guard/spec.md
+- openspec/specs/role-escalations/spec.md
+- openspec/specs/spec-amendment/spec.md
+- decisions.md
+- runs/run-0579-spec_writer/output.md
+confidence: medium. The rule, the fold and the gate figures were measured on today's `main` with a prototype,
+  and every NEW command was checked to fail today; the command itself is unbuilt, and timings vary with
+  machine load.
+escalations: []
+escalations_note: null
+claude:
+  session_id: 2ea16165-64f4-41f6-8c82-c7a2a8ccb5d8
+  total_cost_usd: 4.4182992
+  num_turns: 37
+  usage:
+    input_tokens: 72
+    cache_creation_input_tokens: 166618
+    cache_read_input_tokens: 8007836
+    output_tokens: 74175
+    output_tokens_details:
+      thinking_tokens: 19655
+    server_tool_use:
+      web_search_requests: 0
+      web_fetch_requests: 0
+    service_tier: standard
+    cache_creation:
+      ephemeral_1h_input_tokens: 166618
+      ephemeral_5m_input_tokens: 0
+    inference_geo: global
+    iterations:
+    - input_tokens: 2
+      output_tokens: 34845
+      cache_read_input_tokens: 293695
+      cache_creation_input_tokens: 15019
+      cache_creation:
+        ephemeral_5m_input_tokens: 0
+        ephemeral_1h_input_tokens: 15019
+      type: message
+    speed: standard
+    fallback_credit: null

@@ -4,10 +4,10 @@ title: Check a spec's format when the spec is added, and send a format error bac
   of to the human gate
 request: requests/T-0057.md
 source: plan:whole-spec
-status: ready-for-implementer
+status: merged
 round:
   spec: 0
-  pr: 0
+  pr: 1
 spec:
   version: 2
   approved_version: 2
@@ -30,14 +30,34 @@ history:
   by: dphang
   resolve: ruling
   ruling: approvals/T-0057.1/ruling-1.md
+- ts: '2026-10-25T19:04:59+00:00'
+  from: ready-for-implementer
+  to: checks-in-flight
+  by: workflow
+  round:
+    spec: 0
+    pr: 1
+- ts: '2026-10-25T19:13:58+00:00'
+  from: checks-in-flight
+  to: ready-for-merge
+  by: workflow
+  round:
+    spec: 0
+    pr: 1
+- ts: '2026-10-25T19:13:59+00:00'
+  from: ready-for-merge
+  to: merged
+  by: merge
+  head: 3fdcda3e76e891e79e7949c78b78cef051f1dfd2
 parent: T-0057
 depends_on: []
 parallel_safe: true
-branch: null
-head: null
+branch: factory/T-0057.1
+head: 3fdcda3e76e891e79e7949c78b78cef051f1dfd2
 merge:
-  base_before: null
-  main_after: null
+  base_before: 11080b100b31c70c69cc1867960819270d134a23
+  main_after: 7bfbe8fe2e084032eb839d5d342308e641526be3
 parent_base: null
 label: whole-spec
 planned_from: 2
+merge_refused: null

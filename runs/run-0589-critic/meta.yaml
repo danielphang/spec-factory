@@ -1,0 +1,55 @@
+run_id: run-0589-critic
+role: critic
+ticket: T-0059
+model: fable
+round: 1
+spec_version: 2
+started: '2026-10-25T18:57:43+00:00'
+finished: '2026-10-25T19:09:31+00:00'
+wall_s: 708
+status: REVISE
+input_sources:
+- specs/T-0059/v2.md
+- openspec/specs/gate-commands/spec.md
+- openspec/specs/harness-code/spec.md
+- openspec/specs/harness-docs/spec.md
+- openspec/specs/harness-suite/spec.md
+- openspec/specs/live-store-guard/spec.md
+- openspec/specs/role-escalations/spec.md
+- openspec/specs/spec-amendment/spec.md
+- decisions.md
+- openspec/changes/T-0057/proposal.md
+confidence: high; every cited path, anchor and restated requirement was checked against the repo and current
+  truth, and the one BLOCKING item is text the writer can fix in one pass.
+escalations: []
+escalations_note: null
+claude:
+  session_id: afb1a78b-88f1-46b6-9e46-70c6933cc1ea
+  total_cost_usd: 6.78531925
+  num_turns: 25
+  usage:
+    input_tokens: 770
+    cache_creation_input_tokens: 145611
+    cache_read_input_tokens: 4979597
+    output_tokens: 52410
+    output_tokens_details:
+      thinking_tokens: 38416
+    server_tool_use:
+      web_search_requests: 0
+      web_fetch_requests: 0
+    service_tier: standard
+    cache_creation:
+      ephemeral_1h_input_tokens: 145611
+      ephemeral_5m_input_tokens: 0
+    inference_geo: global
+    iterations:
+    - input_tokens: 32
+      output_tokens: 3177
+      cache_read_input_tokens: 279086
+      cache_creation_input_tokens: 8620
+      cache_creation:
+        ephemeral_5m_input_tokens: 0
+        ephemeral_1h_input_tokens: 8620
+      type: message
+    speed: standard
+    fallback_credit: null

@@ -3,16 +3,22 @@ type: feature
 title: '`factory truth check` replays every current-truth scenario, and the gate runs it'
 request: requests/T-0059.md
 source: /private/tmp/claude-501/-Users-dphang-dev-nanobot/c69bfd1d-97a6-43e3-9d5a-a517c28d382c/scratchpad/requests/req-120.md
-status: ready-for-spec-writer
+status: parked
 round:
-  spec: 0
+  spec: 2
   pr: 0
 spec:
-  version: 1
+  version: 3
   approved_version: null
 plan: null
 in_flight: []
-parked: null
+parked:
+  reason: max rounds
+  since: '2026-10-25T19:30:18+00:00'
+  from: ready-for-critic
+  outputs:
+  - run-0593-critic
+  question: null
 created: '2026-10-20T06:38:50+00:00'
 history:
 - ts: '2026-10-25T17:18:24+00:00'
@@ -35,6 +41,32 @@ history:
   answer: 1
   decision: '2026-10-25 T-0059 T-0059 (#120): the gate''s current-truth replay skips the scenarios that
     wrap the whole harness suite, which the same gate already runs (Green for the operator, 2026-10-25)'
+- ts: '2026-10-25T18:57:42+00:00'
+  from: ready-for-spec-writer
+  to: ready-for-critic
+  by: workflow
+  round:
+    spec: 1
+    pr: 0
+- ts: '2026-10-25T19:09:31+00:00'
+  from: ready-for-critic
+  to: ready-for-spec-writer
+  by: workflow
+  round:
+    spec: 2
+    pr: 0
+- ts: '2026-10-25T19:24:45+00:00'
+  from: ready-for-spec-writer
+  to: ready-for-critic
+  by: workflow
+  round:
+    spec: 2
+    pr: 0
+- ts: '2026-10-25T19:30:18+00:00'
+  from: ready-for-critic
+  to: parked
+  by: park
+  reason: max rounds
 parent: null
 depends_on: []
 parallel_safe: true

@@ -1,0 +1,497 @@
+diff --git a/README.md b/README.md
+index f4d2255..0887824 100644
+--- a/README.md
++++ b/README.md
+@@ -87,7 +87,7 @@ directories and `models` entries use.
+ | Role | Reads | Ends with `STATUS:` | What the harness keeps |
+ |---|---|---|---|
+ | Triage (`triage`) | the request; the capability index, one line per current-truth capability with its spec's path and requirement names; after a human answer, its own earlier output | ACCEPT · CLARIFY · NEEDS-HUMAN · REJECT | the title and type, copied onto the ticket |
+-| Spec writer (`spec_writer`) | triage's output, the request; current truth in full for the capabilities triage named, and the capability index for the rest; the whole decision log; after a revision request, the critic's findings and its own previous spec; the human's change requests from the gate; any human answer or ruling | READY-FOR-CRITIC · NEEDS-SPLIT · NEEDS-HUMAN | the spec, saved as its next version, `specs/<ticket>/v<n>.md` |
++| Spec writer (`spec_writer`) | triage's output, the request; current truth in full for the capabilities triage named, and the capability index for the rest; the whole decision log; after a revision request, the critic's findings and its own previous spec; after a spec that `spec add` refused, the refusal and that output; the human's change requests from the gate; any human answer or ruling | READY-FOR-CRITIC · NEEDS-SPLIT · NEEDS-HUMAN | the spec, saved as its next version, `specs/<ticket>/v<n>.md` |
+ | Spec critic (`critic`) | the spec version; current truth in full for the capabilities triage named or the spec cites, and the capability index for the rest; the whole decision log; every other approved spec not yet archived, with its decisions; from round 2, its own earlier findings and the previous version; any ruling | APPROVE · REVISE · ESCALATE | the verdict; its findings are attached to the spec when it is pinned |
+ | Planner (`planner`) | the approved spec; the whole decision log; rulings; any sub-tickets that already exist | PLANNED · ESCALATE | the plan, `plans/<ticket>.md`, and one sub-ticket per piece, with its dependencies |
+ | Implementer (`implementer`) | where it works (its worktree, branch, base commit and the wrapped gate commands), the sub-ticket, the pinned spec; on a revision, both checkers' findings and the gate result | READY-FOR-REVIEW · BLOCKED | its commits on branch `factory/<sub-ticket>` and the head commit; the message itself is the PR description |
+@@ -349,12 +349,12 @@ sequenceDiagram
+ *The script never touches the store itself; every record goes through the clerk to the harness.*
+ 
+ Intake runs triage once, then alternates the spec writer and the critic. Triage's ACCEPT starts the
+-spec writer; REJECT closes the ticket; CLARIFY waits for the requester; NEEDS-HUMAN parks. The spec
+-writer's spec is saved as a new version, and the critic judges it. The critic's REVISE sends it back
+-once; a REVISE on the critic's second pass parks the ticket. NEEDS-SPLIT, a spec that names how to
+-split an oversized request, goes to the critic like READY-FOR-CRITIC. APPROVE moves the ticket to the
+-spec gate, where intake stops. From the gate, the human approves or sends the spec back to the
+-writer; a requester's answer sends a waiting ticket back to triage.
++spec writer; REJECT closes the ticket; CLARIFY waits for the requester; NEEDS-HUMAN parks. The
++harness saves the spec as a new version only if it is well-formed and fits current truth; if not, it
++goes back to the writer, using up a round. The critic's REVISE sends it back once; a second REVISE,
++or a refused spec in the last round, parks. NEEDS-SPLIT, a spec that names how to split an oversized
++request, goes to the critic like READY-FOR-CRITIC. APPROVE moves the ticket to the spec gate, where
++intake stops. The human approves or sends it back; a requester's answer returns a ticket to triage.
+ 
+ ```mermaid
+ flowchart TD
+@@ -368,6 +368,7 @@ flowchart TD
+   T -- NEEDS-HUMAN --> P["parked"]:::human
+   W -- NEEDS-HUMAN --> P
+   W -- "READY-FOR-CRITIC or NEEDS-SPLIT" --> K["Spec critic"]:::role
++  W -- "spec refused, a round left" --> W
+   K -- "REVISE, first pass" --> W
+   K -- "REVISE, second pass" --> P
+   K -- ESCALATE --> P
+diff --git a/docs/changelog.md b/docs/changelog.md
+index e0a6777..0b18178 100644
+--- a/docs/changelog.md
++++ b/docs/changelog.md
+@@ -86,4 +86,6 @@ Six review rounds ran on this doc, using the reviewer prompt in the appendix. Ro
+ 
+ 77. After issue #116 (2026-10-19), where the factory's own work had no outside bar: `docs/north-star.md` named four success measures but set no target for any of them, nothing reported them and nobody reviewed them, so factory work was chosen in answer to the factory's own incidents. `docs/north-star.md` gains "How we know it is working": the primary metric, correct target changes per hour of operator attention, where each instance decides whether its merges are target changes and spec-factory's are factory work on a line of their own; its constraint, that escaped defects do not rise; cost as the second measure; operator decisions and interventions per change standing in for hours until the store records operator time; the scorecard's numbers by name, which `factory stats` is to compute so that nobody types them; three outside comparisons, a plain-session baseline, the upstream benchmark and DORA-style lead time and change failure rate; and a review every two weeks. A fourth working rule admits a factory ticket only if it fixes a defect that hit a target ticket, or names the scorecard number it moves and re-measures it after it ships; the operator applies it at the spec gate, and no role prompt or harness check does. New files: `docs/reviews/TEMPLATE.md`, which each review copies; `docs/reviews/2026-10-19.md`, the baseline review, counted by hand by the operator and the one review whose numbers are not computed; `STATUS.md`, which each review rewrites and which now quotes the baseline; and `CONTRIBUTING.md`, which says how work is proposed and chosen. README gains a north-star paragraph on its first screen, the rule in "Filing a request from an issue tracker" and two rows in "Where things live", and stays within its 1,185-line budget. Rejected: a role prompt or harness check that enforces the rule, which the request rules out; and recording operator time by hand, which would mean typing a number.
+ 
++78. After issue #105 (2026-10-12), where `approve-spec` refused a spec the critic had approved, over three acceptance labels in `verification.md` that had wrapped onto the next line, and the operator had to fix the spec by hand and approve it again. The format check ran only at the spec gate, so neither the spec writer nor the critic saw its verdict. `spec add` now runs the same check as `approve-spec` on a store with current truth: a spec that is malformed, or whose changes do not apply to current truth, is refused with exit 2 and `spec not added: ` followed by the errors, and nothing is written. A spec writer's NEEDS-HUMAN draft is still stored unchecked, so the operator can read it. Both the driver and the intake workflow script send a refused spec back to the spec writer as a new round, counted against the round limit; the writer's next input holds the refusal and the refused output. When no round is left, the ticket parks as `max rounds: ` followed by the refusal, with each backtick, `$` and `\` replaced by `'`. This overturns, for a refused spec, the 2026-10-07 decision that a format refusal re-dispatches the role once and then parks. Rejected: a routing edge from the spec writer's ready state to itself, which every instance's `instance.yaml` would need; a new round command; and a record of the refusal, which would break the rule that a refusal writes nothing.
++
+ Declined: a dedicated merge agent (merging is gate config plus human gates, not a judgment call).
+diff --git a/docs/design.md b/docs/design.md
+index 4e66f97..879121a 100644
+--- a/docs/design.md
++++ b/docs/design.md
+@@ -122,6 +122,7 @@ Rules the table relies on:
+ | Triage | CLARIFY | Requester, via piece 9; ticket parks until answered | The missing-info list |
+ | Triage | REJECT | Closed | — |
+ | Spec writer | READY-FOR-CRITIC / NEEDS-SPLIT | Critic | Spec, repo, current truth and the decision log, as the Spec store paragraph describes, read-only; every other approved change not yet archived, with its decisions; round 2+: prior findings, the writer's responses, previous spec version |
++| Spec writer | READY-FOR-CRITIC / NEEDS-SPLIT, and `spec add` refuses the spec: malformed, or its changes do not apply to current truth | Spec writer (round +1) if round < {2}, else Human queue | The refusal and the refused output |
+ | Spec writer | NEEDS-HUMAN | Human queue | Open questions |
+ | Critic | APPROVE | Human spec gate | Spec + critic output |
+ | Critic | REVISE | Spec writer (round +1) if round < {2}, else Human queue | Findings, the spec version they apply to |
+diff --git a/factory/cli.py b/factory/cli.py
+index 8c2da1d..7724f8c 100644
+--- a/factory/cli.py
++++ b/factory/cli.py
+@@ -20,7 +20,7 @@ from factory.common import _add_spec_version, _rel, fence, out
+ from factory.drift import _check_drift, _check_sibling_tests
+ from factory.gates import (_parent_close_verified, archive_cmd, merge_cmd, results_record, results_show,
+                            ticket_head, ticket_join, ticket_parent_check)
+-from factory.human import approve_spec, decision_add, escape_add, intervention_add, request_changes, resolve, spec_amend
++from factory.human import _refuse_unless_applies, approve_spec, decision_add, escape_add, intervention_add, request_changes, resolve, spec_amend
+ from factory.setup import init_cmd, paths_cmd, store_migrate
+ from factory.store import Refused
+ 
+@@ -397,8 +397,7 @@ def _at_least_one(v: str) -> int:
+ 
+ def _text_from(a, root) -> str:
+     if a.from_run:
+-        d = _run_dir(root, a.from_run)
+-        p = d / "output.md"
++        p = _run_dir(root, a.from_run) / "output.md"
+         if not p.exists():
+             raise Refused(f"{a.from_run} has no output.md")
+         return status.strip_trailer(p.read_text(encoding="utf-8"))
+@@ -408,9 +407,10 @@ def _text_from(a, root) -> str:
+ 
+ 
+ def spec_add(a, root, cfg):
+-    t = store.load_ticket(root, a.id)
+-    n = _add_spec_version(root, t, _text_from(a, root), a.from_run or a.file, cfg)
+-    out({"ok": True, "id": t["id"], "version": n, "path": f"specs/{t['id']}/v{n}.md"})
++    t, text = store.load_ticket(root, a.id), _text_from(a, root)
++    if specstore.is_active(root) and not (a.from_run and store.read_yaml(root / "runs" / a.from_run / "meta.yaml").get("status") == "NEEDS-HUMAN"):
++        _refuse_unless_applies(root, text, "spec not added")  # a NEEDS-HUMAN draft is stored unchecked, for the operator to read
++    out({"ok": True, "id": t["id"], "version": (n := _add_spec_version(root, t, text, a.from_run or a.file, cfg)), "path": f"specs/{t['id']}/v{n}.md"})
+ 
+ 
+ def plan_add(a, root, cfg):
+diff --git a/factory/compose.py b/factory/compose.py
+index e5bd846..2fc63d0 100644
+--- a/factory/compose.py
++++ b/factory/compose.py
+@@ -5,12 +5,14 @@ Per (role, round, resolution). No other code path assembles role input.
+ from __future__ import annotations
+ 
+ import difflib
++import json
+ import math
+ import re
+ import shlex
+ from pathlib import Path
+ 
+-from factory import instance, specstore, store, subtickets
++from factory import instance, specstore, status, store, subtickets
++from factory.human import _refuse_unless_applies
+ 
+ 
+ def _approvals(root: Path, ticket: str, kind: str) -> list[Path]:
+@@ -60,6 +62,21 @@ def _last_run_meta(root: Path, ticket: str, role: str, exclude: str) -> dict | N
+     return runs[-1] if runs else None
+ 
+ 
++def _refusal(root: Path, run_id: str) -> str | None:
++    """Why `spec add` refuses spec writer run `run_id`'s output now, or None when a spec version came
++    from that run or the check passes. Derived from the store when an input is built: a refusal writes
++    nothing, so there is no record of it to read."""
++    p = root / "runs" / run_id / "output.md"
++    added = {e.get("source") for e in map(json.loads, filter(str.strip, store.log_lines(root))) if e.get("event") == "spec.added"}
++    if not p.exists() or run_id in added:
++        return None
++    try:
++        _refuse_unless_applies(root, status.strip_trailer(p.read_text(encoding="utf-8")), "spec not added")
++    except store.Refused as e:
++        return str(e)
++    return None
++
++
+ def gate_entries(cfg: dict) -> list[tuple[str, list[str] | None]]:
+     """Each `gate_commands` entry as (command as written, paths or None). An entry is a command
+     string, or a mapping of a non-empty string `command` and an optional non-empty list of git
+@@ -290,6 +307,11 @@ def compose(root: Path, cfg: dict, meta: dict, t: dict) -> tuple[str, list[str]]
+         prev = _last_run_meta(root, tid, "spec_writer", run_id)
+         if prev and prev.get("status") == "NEEDS-HUMAN":
+             add(f"runs/{prev['run_id']}/output.md", "Your previous output (the question you asked is answered in the request above)")
++        elif prev and prev.get("status") in ("READY-FOR-CRITIC", "NEEDS-SPLIT") and specstore.is_active(root):
++            why = _refusal(root, prev["run_id"])
++            if why:
++                add(f"runs/{prev['run_id']}/output.md", "Your previous output, which the harness refused to store as a spec version",
++                    lambda text: f"The harness refused it with: {why}\n\n{text}")
+         for p in _approvals(root, tid, "changes"):
+             add(str(p.relative_to(root)), "Human gate: changes requested")
+         for p in _approvals(root, tid, "ruling"):
+diff --git a/factory/drive.py b/factory/drive.py
+index 3a57b95..bc74b87 100644
+--- a/factory/drive.py
++++ b/factory/drive.py
+@@ -300,8 +300,24 @@ class Driver:
+                     return parked
+                 added = call("spec", "add", T, "--from-run", w["runId"])
+                 if not added["ok"]:
+-                    self.park(T, _harness_bug("spec add", added), [w["runId"]])
+-                    return parked
++                    why = (added.get("stderr") or "").strip().split("\n")[0]
++                    if not why.startswith("spec not added: "):
++                        self.park(T, _harness_bug("spec add", added), [w["runId"]])
++                        return parked
++                    # A form error the harness detects goes back to the writer as a new round (doc §Routing
++                    # table). The stored round is still 0 before the first move to the critic.
++                    cur = max(rnd, 1)
++                    if cur >= self.max_spec:
++                        # no backtick, $ or \ reaches the park reason, which the script's clerk runs in a shell
++                        self.park(T, "max rounds: " + re.sub(r"[`$\\]", "'", why), [w["runId"]])
++                        return {**parked, "rounds": cur, "reason": "max rounds"}
++                    st = call("ticket", "set", T, f"round.spec={cur + 1}")
++                    if not st["ok"]:
++                        self.park(T, _harness_bug("round increment refused", st), [w["runId"]])
++                        return parked
++                    rnd = cur + 1
++                    self.step(f"spec not stored; back to the spec writer in round {rnd}: {why}")
++                    continue
+                 tr = self.transition("ready-for-critic", "spec:init")
+                 if not tr["ok"]:
+                     self.park(T, _harness_bug("transition to critic", tr), [w["runId"]])
+diff --git a/factory/workflows/intake.js b/factory/workflows/intake.js
+index fc4120d..6800d79 100644
+--- a/factory/workflows/intake.js
++++ b/factory/workflows/intake.js
+@@ -188,7 +188,23 @@ if (state === 'ready-for-spec-writer' || state === 'ready-for-critic') {
+       }
+       if (w.status !== 'READY-FOR-CRITIC' && w.status !== 'NEEDS-SPLIT') { await park(`harness-bug: unknown STATUS ${w.status} from spec writer`, [w.runId], 'Spec'); return { ticket: TICKET, state: 'parked' } }
+       const added = await clerk(`${BIN} spec add ${TICKET} --from-run ${w.runId}`, 'Spec', 'spec add')
+-      if (!added.ok) { await park(`harness-bug: spec add: ${added.stderr || ''}`, [w.runId], 'Spec'); return { ticket: TICKET, state: 'parked' } }
++      if (!added.ok) {
++        const why = String(added.stderr || '').trim().split('\n')[0]
++        if (!why.startsWith('spec not added: ')) { await park(`harness-bug: spec add: ${added.stderr || ''}`, [w.runId], 'Spec'); return { ticket: TICKET, state: 'parked' } }
++        // A form error the harness detects goes back to the writer as a new round (doc §Routing table).
++        // The stored round is still 0 before the first move to the critic.
++        const cur = Math.max(round, 1)
++        if (cur >= MAX) {
++          // no backtick, $ or \ reaches the park reason, which the clerk runs in a shell
++          await park(`max rounds: ${why.replace(/[`$\\]/g, "'")}`, [w.runId], 'Spec')
++          return { ticket: TICKET, state: 'parked', rounds: cur, reason: 'max rounds' }
++        }
++        const st = await clerk(`${BIN} ticket set ${TICKET} round.spec=${cur + 1}`, 'Spec', 'round increment')
++        if (!st.ok) { await park(`harness-bug: round increment refused: ${st.stderr || ''}`, [w.runId], 'Spec'); return { ticket: TICKET, state: 'parked' } }
++        round = cur + 1
++        log(`${TICKET}: spec not stored; back to the spec writer in round ${round}: ${why}`)
++        continue
++      }
+       const tr = await transition('ready-for-critic', 'spec:init', 'Spec')
+       if (!tr.ok) { await park(`harness-bug: transition to critic: ${tr.stderr || ''}`, [w.runId], 'Spec'); return { ticket: TICKET, state: 'parked' } }
+       round = (tr.round && typeof tr.round.spec === 'number') ? tr.round.spec : round
+diff --git a/tests/factory/test_shepherd.py b/tests/factory/test_shepherd.py
+index acc97e6..5c56c8d 100644
+--- a/tests/factory/test_shepherd.py
++++ b/tests/factory/test_shepherd.py
+@@ -160,11 +160,11 @@ def test_the_gate_refuses_a_delta_that_does_not_fit_current_truth(tmp_path):
+     f.human_approves(first)
+     f.human_runs("archive", first)
+     second = f.request("# SPEC-93: Second\n\nThe thing again.\n")
+-    for role in ("triage", "spec_writer", "critic"):
+-        f.dispatch(role, second, stub=f"accept-approve/{role}-1.md")
+-    cp = f.cli("approve-spec", second)
++    f.dispatch("triage", second, stub="accept-approve/triage-1.md")
++    w = f.dispatch("spec_writer", second, stub="accept-approve/spec_writer-1.md", route=False)
++    cp = f.cli("spec", "add", second, "--from-run", w.run_id)
+     assert cp.returncode == 2 and "ADDED 'the-thing' is already in current truth" in cp.stderr
+-    assert f.state(second) == "awaiting-spec-gate"  # nothing moved; the human amends or closes
++    assert f.state(second) == "ready-for-spec-writer"  # nothing stored; the writer gets the refusal next round
+ 
+ 
+ def test_the_planned_ticket_is_built_checked_merged_and_archived(tmp_path):
+diff --git a/tests/factory/test_spec_add_refusal.py b/tests/factory/test_spec_add_refusal.py
+new file mode 100644
+index 0000000..5ae931f
+--- /dev/null
++++ b/tests/factory/test_spec_add_refusal.py
+@@ -0,0 +1,208 @@
++"""T-0057 (issue #105): `spec add` runs the format check `approve-spec` runs, where the store has
++current truth (an `openspec/` tree), and a refused draft goes back to the spec writer as a new round.
++
++Black-box through `bin/factory` on throwaway stores. The driver and the intake Workflow script are
++each run on one ticket, with a stand-in `claude` that writes a spec body from a file, then the
++trailer: the driver as `factory drive`, the script under node with every clerk command run for real.
++"""
++from __future__ import annotations
++
++import json
++import shutil
++import subprocess
++import sys
++from pathlib import Path
++
++import yaml
++
++from ._cli import REPO, js, run
++from ._fixtures import FIXTURE_INSTANCE, Store
++
++LABEL = "scenario 'the thing works' has no NEW/REGRESSION label in verification.md"
++REFUSED = "## Your previous output, which the harness refused to store as a spec version"
++
++
++def spec(label_lines: str, name: str = "the thing works") -> str:
++    return ("=== proposal.md\n## Problem\nA thing is missing.\n=== specs/thing/spec.md\n## ADDED Requirements\n"
++            f"### Requirement: The thing works\nThe thing SHALL work.\n#### Scenario: {name}\n- WHEN `true`\n"
++            f"- THEN it exits 0\n=== verification.md\n## Acceptance\n{label_lines}")
++
++
++GOOD = spec("- the thing works → NEW; fails today\n")
++WRAPPED = spec("- the thing works\n  → NEW; fails today\n")
++WORDED = spec("- the thing works → REGRESSION in its new form.\n")
++TICKED = spec("- the `echo hi` thing works\n  → NEW; fails today\n", "the `echo hi` thing works")
++
++# Plays the next entry of its role's list in $STANDIN_PLAYS (the last one repeats): {"body": file,
++# "write": STATUS} writes output.md as the file's text, if given, then the trailer.
++STANDIN = '''#!{python}
++import json, os, pathlib, sys
++cwd = pathlib.Path.cwd(); log = pathlib.Path(os.environ["STANDIN_LOG"])
++role = cwd.name.split("-", 2)[2]
++plays = json.loads(os.environ.get("STANDIN_PLAYS") or "{{}}").get(role) or [{{"write": "UNKNOWN"}}]
++nf = log.with_name(log.name + ".n-" + role)
++n = int(nf.read_text()) + 1 if nf.exists() else 1
++nf.write_text(str(n))
++p = plays[min(n, len(plays)) - 1]
++text = (pathlib.Path(p["body"]).read_text() if "body" in p else "") + \\
++    "\\nSTATUS: %s\\nCONFIDENCE: high, stand-in\\nESCALATIONS: none\\n" % p["write"]
++(cwd / "output.md").write_text(text)
++print(json.dumps({{"type": "result", "is_error": False, "result": text, "session_id": "s-" + cwd.name,
++                  "total_cost_usd": 0, "num_turns": 1, "usage": {{"output_tokens": 1}}}}))
++'''
++
++# The intake Workflow script under node: a clerk prompt runs its command with sh; a role prompt runs
++# the stand-in from the run's directory and returns its reply's result.
++WORKFLOW = r"""
++import { readFileSync } from 'node:fs'
++import { spawnSync } from 'node:child_process'
++const [script, ticket, instance, claude] = process.argv.slice(2)
++const src = readFileSync(script, 'utf8').replace(/^export const meta/m, 'const meta')
++const agent = async (prompt) => {
++  const m = prompt.match(/and nothing else:\n\n([\s\S]*?)\n\nReport/)
++  if (m) {
++    const cp = spawnSync('sh', ['-c', m[1]], { encoding: 'utf8' })
++    return { stdout: cp.stdout, exit: cp.status, stderr: cp.stderr }
++  }
++  const dir = prompt.match(/(\S+\/runs\/run-\d+-[a-z_]+)\/input\.md/)[1]
++  return JSON.parse(spawnSync(claude, [], { cwd: dir, encoding: 'utf8' }).stdout).result
++}
++const fn = new (async () => {}).constructor('args', 'agent', 'log', 'phase', 'parallel', src)
++const res = await fn({ ticket, repo: process.cwd(), instance, state: process.env.FACTORY_STATE, inlineRoles: true },
++  agent, () => {}, () => {}, async (fs) => Promise.all(fs.map(f => f())))
++console.log(JSON.stringify(res))
++"""
++
++
++def bodies(tmp_path: Path) -> dict[str, str]:
++    paths = {}
++    tmp_path.mkdir(parents=True, exist_ok=True)
++    for name, text in (("good", GOOD), ("wrapped", WRAPPED), ("worded", WORDED), ("ticked", TICKED)):
++        (tmp_path / f"{name}.md").write_text(text)
++        paths[name] = str(tmp_path / f"{name}.md")
++    return paths
++
++
++def writer_store(tmp_path: Path) -> Store:
++    """The driver's store with current truth enabled and T-0001 ready for its spec writer."""
++    s = Store(tmp_path)
++    (s.root / "openspec" / "specs").mkdir(parents=True)
++    (tmp_path / "bin" / "claude").write_text(STANDIN.format(python=sys.executable))
++    s.ok("ticket", "transition", "T-0001", "--to", "ready-for-spec-writer", "--by", "t")
++    return s
++
++
++def plays(paths: dict[str, str], writer: list[str], critic: list[str] = ()) -> dict:
++    """Plays from "<body>:<STATUS>" entries."""
++    def entry(e: str) -> dict:
++        body, st = e.split(":")
++        return {"body": paths[body], "write": st}
++    return {"spec_writer": [entry(e) for e in writer], "critic": [{"write": c} for c in critic]}
++
++
++def intake(s: Store, side: str, p: dict) -> dict:
++    if side == "drive":
++        cp, res = s.drive(p, "--phase", "intake")
++        assert cp.returncode == 0, cp.stderr
++        return res
++    node = shutil.which("node")
++    assert node, "node must be on PATH: this case runs factory/workflows/intake.js"
++    (s.tmp / "wf.mjs").write_text(WORKFLOW)
++    cp = subprocess.run([node, str(s.tmp / "wf.mjs"), str(REPO / "factory" / "workflows" / "intake.js"), "T-0001",
++                         str(FIXTURE_INSTANCE), str(s.tmp / "bin" / "claude")],
++                        capture_output=True, text=True, cwd=REPO, timeout=300,
++                        env={**s.env, "STANDIN_PLAYS": json.dumps(p)})
++    assert cp.returncode == 0, cp.stderr
++    return json.loads(cp.stdout.strip().splitlines()[-1])
++
++
++def versions(store: Path) -> int:
++    d = store / "specs" / "T-0001"
++    return len(list(d.glob("v*.md"))) if d.exists() else 0
++
++
++def spec_added(store: Path) -> int:
++    return sum(ln.count('"spec.added"') for p in (store / "log").glob("*.jsonl") for ln in p.read_text().splitlines())
++
++
++def roles(s: Store) -> list[tuple[str, str]]:
++    return [(m["role"], m["status"]) for m in s.runs()]
++
++
++def test_spec_add_refuses_a_malformed_spec_and_writes_nothing_where_current_truth_is_enabled(tmp_path):
++    paths, s = bodies(tmp_path), tmp_path / "state"
++    req = tmp_path / "req.md"
++    req.write_text("# F\n\nx\n")
++    assert run(s, "ticket", "new", "--file", str(req)).returncode == 0
++    (s / "openspec" / "specs").mkdir(parents=True)
++    for name in ("wrapped", "worded"):
++        cp = run(s, "spec", "add", "T-0001", "--file", paths[name])
++        assert cp.returncode == 2 and cp.stderr.splitlines()[0] == f"spec not added: {LABEL}", name
++        assert versions(s) == 0 and spec_added(s) == 0 and not (s / "specs" / "T-0001.md").exists(), name
++    cp = run(s, "spec", "add", "T-0001", "--file", paths["good"])
++    assert cp.returncode == 0, cp.stderr
++    assert js(cp)["version"] == 1 and versions(s) == 1 and spec_added(s) == 1
++
++
++def test_a_needs_human_draft_and_a_store_without_current_truth_keep_a_malformed_spec(tmp_path):
++    paths = bodies(tmp_path)
++    req = tmp_path / "req.md"
++    req.write_text("# F\n\nx\n")
++    bare = tmp_path / "bare"
++    assert run(bare, "ticket", "new", "--file", str(req)).returncode == 0
++    assert run(bare, "spec", "add", "T-0001", "--file", paths["wrapped"]).returncode == 0 and versions(bare) == 1
++    s = tmp_path / "state"
++    assert run(s, "ticket", "new", "--file", str(req)).returncode == 0
++    (s / "openspec" / "specs").mkdir(parents=True)
++    assert run(s, "ticket", "transition", "T-0001", "--to", "ready-for-spec-writer", "--by", "t").returncode == 0
++    for st, code in (("READY-FOR-CRITIC", 2), ("NEEDS-HUMAN", 0)):
++        rid = js(run(s, "run", "start", "--role", "spec_writer", "--ticket", "T-0001"))["run_id"]
++        (s / "runs" / rid / "output.md").write_text(WRAPPED + f"STATUS: {st}\nCONFIDENCE: low, t\nESCALATIONS: none\n")
++        assert run(s, "run", "finish", rid).returncode == 0
++        cp = run(s, "spec", "add", "T-0001", "--from-run", rid)
++        assert cp.returncode == code, (st, cp.stderr)
++    assert versions(s) == 1
++
++
++def test_a_refused_draft_goes_back_to_the_writer_with_the_refusal_and_the_next_reaches_the_critic(tmp_path):
++    for side in ("drive", "script"):
++        paths = bodies(tmp_path / side)
++        s = writer_store(tmp_path / side)
++        res = intake(s, side, plays(paths, ["wrapped:READY-FOR-CRITIC", "good:READY-FOR-CRITIC"], ["APPROVE"]))
++        assert res["state"] == "awaiting-spec-gate" and res["rounds"] == 2, (side, res)
++        t = s.ticket()
++        assert t["status"] == "awaiting-spec-gate" and t["round"]["spec"] == 2 and t["spec"]["version"] == 1, side
++        assert roles(s) == [("spec_writer", "READY-FOR-CRITIC"), ("spec_writer", "READY-FOR-CRITIC"),
++                            ("critic", "APPROVE")], side
++        first, second = (s.root / "runs" / m["run_id"] for m in s.runs()[:2])
++        assert REFUSED not in (first / "input.md").read_text(), side
++        text = (second / "input.md").read_text()
++        assert f"{REFUSED}\n\nThe harness refused it with: spec not added: {LABEL}\n\n" in text, side
++        assert "- the thing works\n  → NEW; fails today\n" in text, side
++        sources = yaml.safe_load((second / "meta.yaml").read_text())["input_sources"]
++        assert f"runs/{first.name}/output.md" in sources, side
++
++
++def test_a_refusal_in_the_last_round_parks_with_the_refusal_quoted_safely(tmp_path):
++    ticked = "max rounds: spec not added: scenario 'the 'echo hi' thing works' has no NEW/REGRESSION label in verification.md"
++    for side in ("drive", "script"):
++        paths = bodies(tmp_path / side)
++        s = writer_store(tmp_path / side)
++        res = intake(s, side, plays(paths, ["ticked:READY-FOR-CRITIC"]))
++        assert res == {"ticket": "T-0001", "state": "parked", "rounds": 2, "reason": "max rounds",
++                       **({"ok": True} if side == "drive" else {})}, side
++        t = s.ticket()
++        assert t["parked"]["reason"] == ticked and t["round"]["spec"] == 2 and t["spec"]["version"] == 0, side
++        assert roles(s) == [("spec_writer", "READY-FOR-CRITIC")] * 2, side
++        assert t["parked"]["outputs"] == [s.runs()[1]["run_id"]], side
++
++
++def test_a_refusal_after_a_revise_in_the_last_round_parks_without_another_writer_run(tmp_path):
++    for side in ("drive", "script"):
++        paths = bodies(tmp_path / side)
++        s = writer_store(tmp_path / side)
++        intake(s, side, plays(paths, ["good:READY-FOR-CRITIC", "worded:NEEDS-SPLIT"], ["REVISE"]))
++        t = s.ticket()
++        assert t["status"] == "parked" and t["parked"]["reason"] == f"max rounds: spec not added: {LABEL}", side
++        assert t["round"]["spec"] == 2 and t["spec"]["version"] == 1, side
++        assert roles(s) == [("spec_writer", "READY-FOR-CRITIC"), ("critic", "REVISE"), ("spec_writer", "NEEDS-SPLIT")]
+diff --git a/tests/factory/test_spec_store.py b/tests/factory/test_spec_store.py
+index 060a7ee..0484fcf 100644
+--- a/tests/factory/test_spec_store.py
++++ b/tests/factory/test_spec_store.py
+@@ -46,7 +46,7 @@ def test_writer_and_critic_receive_current_truth_as_input_sources(store):
+     rid = writer_run(store)
+     assert "### Requirement: trailer-read" in (store / "runs" / rid / "input.md").read_text()
+     assert meta(store, rid)["input_sources"] == ["requests/T-0001.md", "openspec/specs/status-parser/spec.md"]
+-    finish(store, rid, "=== proposal.md\n## Problem\nx\n", "READY-FOR-CRITIC")
++    finish(store, rid, FOUR_PART.replace("## ADDED Requirements", "## MODIFIED Requirements"), "READY-FOR-CRITIC")
+     run(store, "spec", "add", "T-0001", "--from-run", rid)
+     run(store, "ticket", "transition", "T-0001", "--to", "ready-for-critic", "--by", "t", "--round", "spec:init")
+     cid = js(run(store, "run", "start", "--role", "critic", "--ticket", "T-0001"))["run_id"]
+@@ -167,8 +167,9 @@ def test_item_88_gate_refuses_a_delta_that_does_not_apply_and_a_malformed_versio
+     bad = FOUR_PART.replace("## ADDED Requirements", "## MODIFIED Requirements").replace("trailer-read", "no-such-req")
+     f = tmp_path / "v2.md"
+     f.write_text(bad)
+-    assert run(store, "spec", "add", "T-0001", "--file", str(f)).returncode == 0
+-    cp = run(store, "approve-spec", "T-0001", "--version", "2")
++    cp = run(store, "spec", "add", "T-0001", "--file", str(f))
++    assert cp.returncode == 2 and "spec not added" in cp.stderr and "no-such-req" in cp.stderr
++    cp = run(store, "approve-spec", "T-0001", "--edit", str(f))
+     assert cp.returncode == 2 and "no-such-req" in cp.stderr
+     t = yaml.safe_load((store / "tickets" / "T-0001.yaml").read_text())
+     assert t["spec"]["approved_version"] == 1
+@@ -335,12 +336,10 @@ def test_an_empty_op_heading_counts_as_a_heading_and_a_slash_label_is_no_label(s
+     assert run(store, "approve-spec", "T-0001").returncode == 0
+     f = tmp_path / "v2.md"
+     f.write_text(FOUR_PART.replace("→ NEW; today it parks", "→ NEW / REGRESSION"))
+-    run(store, "spec", "add", "T-0001", "--file", str(f))
+-    cp = run(store, "approve-spec", "T-0001", "--version", "2")
++    cp = run(store, "approve-spec", "T-0001", "--edit", str(f))
+     assert cp.returncode == 2 and "no NEW/REGRESSION label" in cp.stderr
+     f.write_text(FOUR_PART.replace("- THEN status is NEEDS-HUMAN\n", "- THEN status is NEEDS-HUMAN\n#### Scenario: wrapped confidence\n- WHEN `y`\n- THEN z\n"))
+-    run(store, "spec", "add", "T-0001", "--file", str(f))
+-    cp = run(store, "approve-spec", "T-0001", "--version", "3")
++    cp = run(store, "approve-spec", "T-0001", "--edit", str(f))
+     assert cp.returncode == 2 and "named more than once" in cp.stderr
+ 
+ 
+@@ -363,7 +362,5 @@ def test_acceptance_labels_allow_ordinary_punctuation_but_not_a_choice(store, tm
+     f = tmp_path / "v2.md"
+     for bad in ("→ NEW / REGRESSION", "→ NEWS", "→ NEW today it parks"):
+         f.write_text(FOUR_PART.replace("→ NEW; today it parks", bad))
+-        run(store, "spec", "add", "T-0001", "--file", str(f))
+-        v = yaml.safe_load((store / "tickets" / "T-0001.yaml").read_text())["spec"]["version"]
+-        cp = run(store, "approve-spec", "T-0001", "--version", str(v))
++        cp = run(store, "approve-spec", "T-0001", "--edit", str(f))
+         assert cp.returncode == 2 and "no NEW/REGRESSION label" in cp.stderr, bad

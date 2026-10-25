@@ -1,0 +1,355 @@
+## Context for this run (composed by the harness, not part of the request)
+
+Repository: `spec-factory`, the design repo at `~/dev/spec-factory` (branch `main`). It holds the
+design and the harness that runs it:
+- `docs/design.md`, the design document and the source of truth, with its changelog in
+  `docs/changelog.md`;
+- `docs/prompts/`, each file a verbatim copy of one prompt block in the design doc; it changes only
+  by re-copying that block;
+- `dev/`: `dev/issues.md`, this repo's issue index, kept live; and the build spec, its plan and the
+  P0 walking skeleton, frozen as history from building the harness, which no change updates;
+- the harness, as code in this repo: `factory/` (the package, its role prompts and its workflow
+  scripts), `bin/factory` (the entry point), `agents/` (the agent definition templates) and
+  `tests/factory/` (its suite). Install with `uv sync --frozen`; test with
+  `uv run --frozen pytest -q -p no:cacheprovider tests/factory`;
+- `.factory/`, this repo's own instance of the factory: `instance.yaml`, this briefing,
+  `harness.lock`, closed records (`answers/`, `green-pilot/`) and the live store, `store/`.
+  The store is a checkout of its own branch, `factory-store`; the operator commits it there, so a
+  store commit never moves `main`.
+
+Two checkouts. Tickets are built and merged in the dev checkout, `~/dev/spec-factory` on `main`.
+The factory runs from the runtime checkout, `~/dev/spec-factory-harness`, a detached worktree of
+this repo at the harness revision `.factory/harness.lock` has accepted. A merge into `main` never
+changes the running code; only the upgrade step moves the runtime, after which the instance
+refuses its store until `--accept-harness`. Your shell may start in another directory: use
+absolute paths, or `cd ~/dev/spec-factory && <cmd>`.
+
+The Nanobot fork at `~/dev/nanobot-upstream` (branch `feat/lionbot-v3.5`) is instance A: a target
+with only `.factory/`, run from the same runtime by its own Driver session. This repo's harness was
+imported from its retired `feat/lionbot-v3` branch. Read it only to observe what a fix does there; never write there, and never copy its test names,
+line numbers or commit SHAs into a spec. Never read or write `~/.nanobot/` (live credentials).
+
+Acceptance commands must be runnable as written from `~/dev/spec-factory` (grep, sed, diff,
+`git diff --check` against the documents, the harness suite). A change to the design doc keeps its
+own conventions: its changelog entry in `docs/changelog.md`, and any `docs/prompts/` file whose
+block changed re-copied from it.
+
+The request is an issue draft, written from a real pipeline run: where in the documents,
+what happened (the evidence), why it matters, a proposed fix, and the Nanobot-side commit
+where a harness fix already exists. The evidence is the requirement; the proposed fix is the
+requester's suggestion, not a requirement. Verify the as-built fix in the reference harness
+before relying on it; a NEW criterion that already passes on this checkout proves nothing.
+
+Output: write your complete output, in your role's required format and ending with the
+STATUS / CONFIDENCE / ESCALATIONS trailer, to the file named under "Output file" below. For
+every role but the implementer that is the only file you may create or modify. The implementer
+also changes files in its own worktree and commits there, and nowhere else. Then return the same
+text as your final message.
+
+This repo's current-state page is the top-level `README.md`. A change to a command, state, stop or
+path updates it in the same ticket; read its "Maintaining this page" section before editing it.
+
+Who reads what the roles write here: the operator at the spec gate, and a technical reader new to this project reading the README or a PR description. Gloss every term specific to the factory at first use (docs/writing.md).
+## Output file
+`/Users/dphang/dev/spec-factory/.factory/store/runs/run-0587-implementer/output.md`
+
+## Running code
+Run every test, script or prototype through this wrapper, which gives it a fresh temporary HOME so it cannot write the operator's real home directory: `([ -z "${VIRTUAL_ENV:-}" ] || PATH=$(printf %s "$PATH" | tr : '\n' | grep -vxF "$VIRTUAL_ENV/bin" | paste -sd: -); unset VIRTUAL_ENV PYTHONHOME; export HOME="$(cd "$(mktemp -d)" && pwd -P)"; <command>)`. Put your command in place of <command>. This includes every test or check command the briefing above gives. A throwaway HOME does not stop a write to an absolute path: never run anything that could write a protected path outside the repository.
+
+## Scratch directory
+Put every file you make for your own use in this run under `/Users/dphang/dev/spec-factory/.factory/store/runs/run-0587-implementer/scratch`: no other run uses it. The harness clears it when the ticket moves on, and keeps it while the ticket is parked.
+
+## Where you work
+Worktree: `/Users/dphang/dev/spec-factory/.factory/store/worktrees/T-0057.1` (branch `factory/T-0057.1`, base `11080b100b31c70c69cc1867960819270d134a23`, head `11080b100b31c70c69cc1867960819270d134a23`). There is no remote: commit on the branch; the PR is the branch plus the description you return. Gate commands (run each from your worktree, exactly as written; each is already wrapped): `([ -z "${VIRTUAL_ENV:-}" ] || PATH=$(printf %s "$PATH" | tr : '\n' | grep -vxF "$VIRTUAL_ENV/bin" | paste -sd: -); unset VIRTUAL_ENV PYTHONHOME; export HOME="$(cd "$(mktemp -d)" && pwd -P)"; git diff --check main...HEAD)`; `([ -z "${VIRTUAL_ENV:-}" ] || PATH=$(printf %s "$PATH" | tr : '\n' | grep -vxF "$VIRTUAL_ENV/bin" | paste -sd: -); unset VIRTUAL_ENV PYTHONHOME; export HOME="$(cd "$(mktemp -d)" && pwd -P)"; uv run --frozen pytest -q -p no:cacheprovider tests/factory)`
+
+## Sub-ticket T-0057.1
+
+T-0057.1 / Check a spec's format when the spec is added, and send a format error back to the spec writer instead of to the human gate
+Depends on: none
+Parallel-safe: yes
+
+Parent: T-0057, approved spec v2. This sub-ticket is the whole of it; read it in full. The planner was skipped: one sub-ticket: no NEEDS-SPLIT, no seam heading, no earlier planner run.
+
+Scope: every lettered part of the parent's Proposed change.
+Acceptance: every scenario of the parent spec, with the label its verification.md gives it:
+- spec add refuses a spec whose label wraps or is followed by a word, and stores a well-formed one
+- approve-spec still refuses a malformed spec
+- A store without current truth stores a malformed spec as before
+- A spec writer's NEEDS-HUMAN draft is stored even when malformed
+- A refused draft goes back to the spec writer and the next well-formed one reaches the critic, in the driver and the script
+- A refusal in the last round parks with the refusal, quoted safely, in the driver and the script
+- The spec writer's next run receives the refusal and its refused output
+- README, the design doc and the changelog describe the refusal route
+- The suite passes, only the two listed test files change, and every added test file fails on the base
+Tests to change: the parent's list.
+Protected paths: the parent's Risk list.
+
+## Parent spec (v2, pinned). Its Evidence and Responses sections are left out; the full spec is `/Users/dphang/dev/spec-factory/.factory/store/specs/T-0057/v2.md`
+
+=== proposal.md
+## Problem
+
+The operator can approve a spec and still have the factory's own code refuse it, over a formatting mistake that code could have caught before any agent reviewed the spec. Then the operator has to fix the formatting by hand and approve the spec again.
+
+Some background. In this factory, the spec writer agent writes each spec. The critic agent reviews it. Then the operator approves it at the spec gate, the one point where a human signs off a design before any code is written. The harness is the code that stores specs and moves tickets between agents. It keeps them in the store, a directory of tickets, spec versions and run records. The harness stores a spec writer's draft as a new spec version with the command `spec add`. The operator approves a version at the gate with the command `approve-spec`.
+
+The harness also runs a format check on a spec. The check confirms that each part of the spec is present. One part, `verification.md`, lists the acceptance scenarios. The check confirms that each scenario there has a NEW or REGRESSION label on the line that names it. The check also confirms that the spec's changes fit current truth, the stored description of what the system does today. Current truth lives in the store's `openspec/` directory. A store without that directory has no current truth, and the harness runs no format check there.
+
+Today the format check runs only when the operator approves. The spec writer and the critic never see its verdict. So a spec with a wrapped label line passes both agents, reaches the operator, and is refused only then. On 12 October that happened with three labels on one spec.
+
+This change runs the same check when the spec writer's draft is stored. A draft that fails is not stored. It goes back to the spec writer with the harness's message, as a new round. A round is one write-then-review pass, and a spec gets two. The ticket parks only when no round is left. To park is to stop the ticket and wait for a human. This follows the operator's standing answer: a form error the harness can detect goes back to the role that produced it, and does not park.
+
+## Root cause
+
+`spec add` (`factory/cli.py:407-410`) stores any text. The format check, `_refuse_unless_applies` (`factory/human.py:115-120`), runs first at `approve-spec`. Neither runner has a route that sends a refused draft back to the spec writer, and the writer's input has no place for a refusal (`factory/compose.py:275-296`).
+
+## Out of scope
+
+- `approve-spec`, `spec amend` and `archive` keep their checks and messages unchanged.
+- A store with no `openspec/` tree stores any spec, as today.
+- `LABEL_RE` stays as it is. The request offered relaxing it. Cut: once the writer gets the refusal, it can fix the label in its own round.
+- No role prompt changes. The request offered naming the label form in the spec writer's prompt. Cut for the same reason. Prompts are also under the replay rule (#80).
+- The routing table in `instance.yaml` does not change.
+- A `spec add` refusal that does not start `spec not added: ` still parks as `harness-bug: spec add: …`.
+- No new `resolve` route. A park with no stored spec version cannot go to the gate with `resolve --to spec-gate`, which needs a version. See Risk.
+
+## Open questions
+
+none
+
+## Decisions
+
+- When the store has an `openspec/` tree, `spec add` runs the same check as `approve-spec`: well formed, and its changes apply to current truth. On failure it refuses with exit 2 and the error `spec not added: <the errors, joined by "; ">`, and writes nothing. The errors are exactly the ones `approve-spec` prints after `spec not pinned: `.
+- The check covers `--file` sources and every `--from-run` source except a run that finished NEEDS-HUMAN. That draft carries open questions, and it is stored as today so the operator can read it. Rejected: refusing it. Its question would then reach the operator with no stored draft.
+- Both runners, the driver and the intake Workflow script, read a `spec add` refusal whose first line starts `spec not added: ` as a form error. Any other refusal keeps the `harness-bug: spec add: …` park.
+- A form error uses up a round. The writer's draft counts as round `max(stored round, 1)`, because the stored round is still 0 before the first move to the critic. If that is below `max_rounds.spec`, the runner sets the round one higher with `ticket set <id> round.spec=<n>` and runs the spec writer again. The ticket stays at `ready-for-spec-writer`. Rejected: a `ready-for-spec-writer → ready-for-spec-writer` routing edge, which would mean editing every instance's `instance.yaml`, a protected path, and the Nanobot instance's by hand. An instance left unedited would then park on the route. Rejected: a new round command, a new write that the live-store fence and README would also have to list.
+- When no round is left, the ticket parks as `max rounds: <the refusal's first line>`. In that line each backtick, `$` and `\` becomes `'`, in both runners, so the driver and the script record the same reason and the clerk's shell runs nothing. Today's `park()` already turns each `"` into `'`.
+- The writer's next input is built from what the store already holds, and nothing new is recorded. It gets one extra section when its previous finished spec-writer run ended READY-FOR-CRITIC or NEEDS-SPLIT, no `spec.added` event names that run as its source, and the check refuses that run's output now. The section is that run's `output.md`, titled "Your previous output, which the harness refused to store as a spec version", and it opens with the refusal. Rejected: `spec add` writing a refusal record, which breaks the rule that a refusal writes nothing. So the section is derived when the input is built; it is not a record of the refusal. Two edges follow. A draft the operator later stores by hand with `spec add --file` still shows as refused, if the run's own output fails the check. A draft refused only because current truth has changed since then does not show.
+- This overturns, for a refused spec only, the 2026-10-07 T-0032 standing decision that later refusal kinds, "#68 format" among them, use the empty-output retry: one re-dispatch, then a park. The operator's Answer 1 (2026-10-19, recorded in `decisions.md` on 2026-10-20) chose a new round counted against the round limit. The operator approves the overturn at this gate.
+- Standing, from Answer 1: a form error the harness can detect goes back to the role that produced it as a new round, and does not park until the rounds run out.
+- README grows by at most one line net, measured against the change's base, so it fits under the current 1,185 cap and under T-0056's 1,225 in either merge order. Rejected: raising the cap here, which would collide with T-0056's edit of the same four requirements.
+- `docs/design.md` gets one routing-table row for the new route, and `docs/changelog.md` gets one entry. The entry takes the next free number and opens `<n>. After issue #105 `. No `docs/prompts/` file changes, because no prompt block changes.
+
+## Risk
+
+Every spec writer run on a store with an `openspec/` tree is affected, on both instances. An instance is one target repository's `.factory/` directory and its store. There are two: this repository's and the Nanobot fork's. A spec that `approve-spec` would have refused now costs a round instead of a gate decision. A spec that only needs a fix the writer cannot make now parks one round earlier than it would have reached the gate. Its park reason starts `max rounds: spec not added:`. If that happens on the writer's first draft, no spec version exists, so `resolve --to spec-gate` refuses it. The operator then closes the ticket with `resolve --close`, or moves it back by hand with `factory ticket transition <id> --to ready-for-spec-writer --by <name> --round spec:reset`. Five existing tests change (Tests to change). The driver and the script change in the same way, and the scenarios check both.
+
+Protected paths: `factory/cli.py`, `factory/compose.py`, `factory/drive.py`, `factory/workflows/intake.js`
+
+## Operator steps
+
+1. After merge, upgrade the runtime, the pinned harness checkout the factory runs from, as usual (README "Upgrading the runtime"). Then accept the new revision in both instances.
+2. Before the next Workflow-script intake, write a fresh launch copy with `factory launch-script intake`. The launch copy is the file the Workflow tool runs, written from `intake.js`. A launch copy written earlier holds the old `intake.js` and parks a refused draft as `harness-bug: spec add: …`.
+
+=== design.md
+## Proposed change
+
+One PR. The prototype's diff is about 75 lines of harness and documents, plus the test edits and new tests.
+
+**A. `spec add` runs the format check** (`factory/cli.py`). In `spec_add`, read the text as today. If `specstore.is_active(root)`, and the source is not a `--from-run` run whose `meta.yaml` records `status: NEEDS-HUMAN`, call `_refuse_unless_applies(root, text, "spec not added")` before `_add_spec_version`. Import `_refuse_unless_applies` from `factory.human`, alongside the names `cli.py` already imports from there. Keep the function in `factory/human.py`, where `openspec/specs/harness-code/spec.md` pins it. `cli.py` must stay under 900 lines.
+
+**B. The driver's route** (`factory/drive.py`, `intake`). Where `spec add` returns not ok:
+- Let `why` be the first line of the stripped `stderr`. If it does not start `spec not added: `, park with `_harness_bug("spec add", added)` as today.
+- Let `cur = max(rnd, 1)`. If `cur >= self.max_spec`, park with `"max rounds: " + <why with each backtick, $ and \ replaced by '>`, with outputs the writer's run id. Return `{"ticket", "state": "parked", "rounds": cur, "reason": "max rounds"}`.
+- Otherwise call `ticket set <T> round.spec=<cur + 1>`. If that is not ok, park with `_harness_bug("round increment refused", st)`. Then set `rnd = cur + 1`, write one step line saying the spec went back to the writer in round `rnd`, with `why`, and `continue` the loop in state `ready-for-spec-writer`.
+
+No other line in `drive.py` formats a `harness-bug: … stderr` reason. Current truth pins that count at 1.
+
+**C. The intake script's route** (`factory/workflows/intake.js`). The same steps at the `spec add` call (line 188). `why` is the first line of the trimmed `added.stderr`. The round step is a clerk call of `${BIN} ticket set ${TICKET} round.spec=${cur + 1}`, labelled `round increment`. The park reason replaces `` ` ``, `$` and `\` with `'` (`/[`$\\]/g`) before `park()`. `log()` the same message the driver steps. The return values match B.
+
+**D. The writer's next input** (`factory/compose.py`, the `spec_writer` branch). After the NEEDS-HUMAN case on `prev`, add a branch for a `prev` that ended `READY-FOR-CRITIC` or `NEEDS-SPLIT` when `specstore.is_active(root)`. Compute the refusal: `None` if any `spec.added` event in `store.log_lines(root)` has `source` equal to `prev`'s run id, or if its `output.md` is missing. Otherwise run `_refuse_unless_applies` on `status.strip_trailer(<output>)` with `"spec not added"`, and catch `store.Refused` for its text. When there is a refusal, `add()` the run's `output.md` under the heading `Your previous output, which the harness refused to store as a spec version`. Its body opens with `The harness refused it with: <refusal>`, then the output. That records the path in `input_sources`. `compose.py` may import `_refuse_unless_applies` from `factory.human`; nothing `human.py` imports reaches `compose.py`.
+
+**E. Documents.**
+- E1. `README.md`, "The intake workflow, step by step". Replace the paragraph's lines 2-7 (from `spec writer; REJECT closes` to `back to triage.`) with these six lines:
+  ```
+  spec writer; REJECT closes the ticket; CLARIFY waits for the requester; NEEDS-HUMAN parks. The
+  harness saves the spec as a new version only if it is well-formed and fits current truth; if not, it
+  goes back to the writer, using up a round. The critic's REVISE sends it back once; a second REVISE,
+  or a refused spec in the last round, parks. NEEDS-SPLIT, a spec that names how to split an oversized
+  request, goes to the critic like READY-FOR-CRITIC. APPROVE moves the ticket to the spec gate, where
+  intake stops. The human approves or sends it back; a requester's answer returns a ticket to triage.
+  ```
+  In the flowchart below it, after the `W -- "READY-FOR-CRITIC or NEEDS-SPLIT" --> K…` line, add `  W -- "spec refused, a round left" --> W`.
+- E2. `README.md`, "What each role reads and writes", Spec writer row. After the words "after a revision request, the critic's findings and its own previous spec;", add "after a spec that `spec add` refused, the refusal and that output;". The row stays one line.
+- E3. `docs/design.md`, routing table. Before the `| Spec writer | NEEDS-HUMAN |` row, add `| Spec writer | READY-FOR-CRITIC / NEEDS-SPLIT, and `spec add` refuses the spec: malformed, or its changes do not apply to current truth | Spec writer (round +1) if round < {2}, else Human queue | The refusal and the refused output |`.
+- E4. `docs/changelog.md`: one entry, the next free number, opening `<n>. After issue #105 (2026-10-12), where`. It says that `approve-spec` refused a spec the critic had approved, over three labels. It says that `spec add` now runs the same check. It says that a refused spec goes back to the spec writer as a new round, and parks with the refusal when no round is left. It names `spec add`, `approve-spec` and the round.
+
+E1 adds one line net (the flowchart edge). E2 to E4 add none to README.
+
+**F. Tests.** At least one new test file, for example `tests/factory/test_spec_add_refusal.py`, that fails on the base. Cover `spec add`'s refusal and its empty write, the NEEDS-HUMAN exemption, and the driver's route on a refused draft. Change the five tests below and no other existing test file.
+
+## Tests to change
+
+- `tests/factory/test_spec_store.py::test_item_88_gate_refuses_a_delta_that_does_not_apply_and_a_malformed_version`. It asserts that `spec add` stores a delta that does not apply (exit 0), then that `approve-spec --version 2` refuses it. It follows the first Decision: `spec add` now refuses that delta. Change: assert that `spec add` refuses with `spec not added` and `no-such-req`, then that `approve-spec --edit` of the same file refuses with `no-such-req`. Keep its later assertions: no approved v2, no `spec-v2.yaml`, v1's change folder intact.
+- `tests/factory/test_spec_store.py::test_an_empty_op_heading_counts_as_a_heading_and_a_slash_label_is_no_label`. It stores two malformed versions with `spec add` and checks `approve-spec --version 2|3`. Same Decision. Change: check `approve-spec --edit <file>`, with the same refusal texts.
+- `tests/factory/test_spec_store.py::test_acceptance_labels_allow_ordinary_punctuation_but_not_a_choice`. It stores each bad label through `spec add` and checks `approve-spec --version`. Same Decision. Change: check `approve-spec --edit <file>` for each bad label, with the same `no NEW/REGRESSION label` assertion.
+- `tests/factory/test_spec_store.py::test_writer_and_critic_receive_current_truth_as_input_sources`. Its writer output, `=== proposal.md\n## Problem\nx\n`, is malformed, so `spec add` now stores no v1 and the critic's `input_sources` lose `specs/T-0001/v1.md`. Same Decision. Change: the writer's output becomes a well-formed spec whose change applies to the test's `status-parser` truth, for example the file's `FOUR_PART` with `ADDED` replaced by `MODIFIED`. The two `input_sources` assertions stay as they are.
+- `tests/factory/test_shepherd.py::test_the_gate_refuses_a_delta_that_does_not_fit_current_truth`. It expects the second ticket's misfit delta to be stored, to reach the gate and to be refused by `approve-spec`. It follows the first and third Decisions: the delta is now refused at `spec add`, and the ticket stays with the spec writer. Change: dispatch the second ticket's spec writer with `route=False`, then assert that `spec add --from-run` refuses with `ADDED 'the-thing' is already in current truth`, and that the ticket stays `ready-for-spec-writer`. `tests/factory/_fixtures.py` does not change.
+
+=== specs/spec-format-check/spec.md
+## ADDED Requirements
+
+### Requirement: spec add refuses a malformed spec where current truth is enabled
+When the store has an `openspec/` tree, `spec add` SHALL refuse, with exit 2 and nothing written, a spec that `approve-spec` would refuse as malformed or as not applying to current truth, with the error `spec not added: ` followed by the same errors; a well-formed spec MUST still be stored.
+
+#### Scenario: spec add refuses a spec whose label wraps or is followed by a word, and stores a well-formed one
+Run every command in this change from the repository root of the checkout under test, after `uv sync --frozen`, with `node` on `PATH`. Each WHEN runs in a subshell.
+- GIVEN the fixture files written by the block below, run once at column 0 as shown (every later scenario of this change that names it reuses it)
+
+```sh
+cat > ${TMPDIR:-/tmp}/t0057-claude <<'EOF'
+#!/usr/bin/env node
+// Stands in for `claude`. Run from a role run's directory (runs/run-NNNN-<role>). Plays the next entry
+// of its role's list in $T57_PLAYS (the last one repeats), counted in $T57_LOG.n-<role>, and appends
+// "<role> <entry>" to $T57_LOG. An entry is a STATUS, or "<file>:<STATUS>": it writes output.md as the
+// text of ${TMPDIR:-/tmp}/t0057-<file>.md, if given, then the trailer, and replies with the same text,
+// shaped like `claude -p --output-format json`.
+const fs = require('fs'), path = require('path')
+const role = (path.basename(process.cwd()).match(/^run-\d+-([a-z_]+)$/) || [])[1]
+const log = process.env.T57_LOG, list = JSON.parse(process.env.T57_PLAYS || '{}')[role] || ['']
+const nf = `${log}.n-${role}`, n = (fs.existsSync(nf) ? +fs.readFileSync(nf, 'utf8') : 0) + 1
+fs.writeFileSync(nf, String(n))
+const p = list[Math.min(n, list.length) - 1], [file, st] = p.includes(':') ? p.split(':') : ['', p]
+fs.appendFileSync(log, `${role} ${p}\n`)
+const text = (file ? fs.readFileSync(`${process.env.TMPDIR || '/tmp'}/t0057-${file}.md`, 'utf8') : '') +
+  `\nSTATUS: ${st}\nCONFIDENCE: high, stub\nESCALATIONS: none\n`
+fs.writeFileSync('output.md', text)
+process.stdout.write(JSON.stringify({ type: 'result', subtype: 'success', is_error: false, result: text,
+  session_id: 'stub', total_cost_usd: 0, num_turns: 1, usage: {} }) + '\n')
+EOF
+chmod +x ${TMPDIR:-/tmp}/t0057-claude && mkdir -p ${TMPDIR:-/tmp}/t0057-bin && ln -sf ${TMPDIR:-/tmp}/t0057-claude ${TMPDIR:-/tmp}/t0057-bin/claude
+cat > ${TMPDIR:-/tmp}/t0057-wf.mjs <<'EOF'
+// node t0057-wf.mjs <workflow script> <ticket>, from the checkout under test: runs that Workflow-tool
+// script on <ticket> of the store $FACTORY_STATE. Each clerk command runs for real (sh -c, from this
+// checkout); each role call runs t0057-claude from the run's directory and returns its reply's result.
+import { readFileSync } from 'node:fs'
+import { spawnSync } from 'node:child_process'
+const [script, ticket] = process.argv.slice(2)
+const src = readFileSync(script, 'utf8').replace(/^export const meta/m, 'const meta')
+const agent = async (prompt) => {
+  const m = prompt.match(/and nothing else:\n\n([\s\S]*?)\n\nReport/)
+  if (m) {
+    const cp = spawnSync('sh', ['-c', m[1]], { cwd: process.cwd(), encoding: 'utf8' })
+    return { stdout: cp.stdout, exit: cp.status, stderr: cp.stderr }
+  }
+  const run = prompt.match(/(\S+\/runs\/run-\d+-[a-z_]+)\/input\.md/)[1]
+  const cp = spawnSync(`${process.env.TMPDIR || '/tmp'}/t0057-claude`, ['-p', prompt], { cwd: run, encoding: 'utf8' })
+  return JSON.parse(cp.stdout).result
+}
+const fn = new (async () => {}).constructor('args', 'agent', 'log', 'phase', 'parallel', src)
+await fn({ ticket, repo: process.cwd(), state: process.env.FACTORY_STATE, inlineRoles: true }, agent,
+  (m) => console.log(m), () => {}, async (fs) => Promise.all(fs.map(f => f())))
+EOF
+t57() { n=$1; shift; printf '%s\n' '=== proposal.md' '## Problem' 'A thing is missing.' '=== specs/thing/spec.md' \
+  '## ADDED Requirements' '### Requirement: The thing works' 'The thing SHALL work.' "#### Scenario: $n" '- WHEN `true`' \
+  '- THEN it exits 0' '=== verification.md' '## Acceptance' "$@"; }
+t57 'the thing works' '- the thing works → NEW; fails today' > ${TMPDIR:-/tmp}/t0057-good.md
+t57 'the thing works' '- the thing works' '  → NEW; fails today' > ${TMPDIR:-/tmp}/t0057-wrapped.md
+t57 'the thing works' '- the thing works → REGRESSION in its new form.' > ${TMPDIR:-/tmp}/t0057-worded.md
+t57 'the `echo hi` thing works' '- the `echo hi` thing works' '  → NEW; fails today' > ${TMPDIR:-/tmp}/t0057-ticked.md
+cat > ${TMPDIR:-/tmp}/t0057-intake.sh <<'EOF'
+# Sourced from the repo root with SIDE (script or drive) and P (plays, as for t0057-claude) set. Builds
+# a throwaway store with current truth enabled (an `openspec/` tree, no capabilities yet) whose T-0001
+# is ready for its spec writer, and takes it through intake: the intake Workflow script under node, or
+# `factory drive T-0001 --phase intake`, each role played by t0057-claude. Leaves $S (the store) and
+# prints `<state> spec=<round> versions=<n> writer=<runs> critic=<runs> reason=<park reason>`.
+S=$(cd "$(mktemp -d)" && pwd -P)/store; export FACTORY_STATE=$S T57_LOG=$S.plays T57_PLAYS="$P"; : > $T57_LOG
+mkdir -p $S/openspec/specs && printf '# Fixture\n\nThe bot should do the thing.\n' > $S.req.md
+bin/factory ticket new --file $S.req.md >/dev/null && bin/factory ticket transition T-0001 --to ready-for-spec-writer --by t >/dev/null
+if [ $SIDE = script ]; then node ${TMPDIR:-/tmp}/t0057-wf.mjs factory/workflows/intake.js T-0001 > $S.out 2> $S.err
+else PATH=${TMPDIR:-/tmp}/t0057-bin:$PATH bin/factory drive T-0001 --phase intake > $S.out 2> $S.err; fi
+.venv/bin/python -c 'import sys,yaml; t=yaml.safe_load(open(sys.argv[1])); print(t["status"], "spec=%s" % t["round"]["spec"], "versions=%s" % t["spec"]["version"], end=" ")' $S/tickets/T-0001.yaml
+echo "writer=$(ls $S/runs | grep -c spec_writer) critic=$(ls $S/runs | grep -c critic) reason=$(.venv/bin/python -c 'import sys,yaml; print(((yaml.safe_load(open(sys.argv[1])).get("parked") or {}).get("reason") or "").strip())' $S/tickets/T-0001.yaml)"
+EOF
+```
+
+- WHEN `(S=$(cd "$(mktemp -d)" && pwd -P)/store; export FACTORY_STATE=$S; mkdir -p $S/openspec/specs; printf '# F\n\nx\n' > $S.req.md; bin/factory ticket new --file $S.req.md >/dev/null; for f in wrapped worded good; do bin/factory spec add T-0001 --file ${TMPDIR:-/tmp}/t0057-$f.md >/dev/null 2>$S.err; echo "$f exit=$? versions=$(ls $S/specs/T-0001 2>/dev/null | grep -c '^v[0-9]*\.md$') added=$(cat $S/log/*.jsonl | grep -c '"spec.added"') err=$(head -1 $S.err)"; done)`
+- THEN it prints exactly `wrapped exit=2 versions=0 added=0 err=spec not added: scenario 'the thing works' has no NEW/REGRESSION label in verification.md`, then `worded exit=2 versions=0 added=0 err=spec not added: scenario 'the thing works' has no NEW/REGRESSION label in verification.md`, then `good exit=0 versions=1 added=1 err=`, one per line
+
+### Requirement: approve-spec keeps its own check
+`approve-spec` SHALL still refuse a malformed spec, including one given with `--edit`, with its `spec not pinned: ` error.
+
+#### Scenario: approve-spec still refuses a malformed spec
+Needs the GIVEN block of "spec add refuses a spec whose label wraps or is followed by a word, and stores a well-formed one" run once.
+- WHEN `(S=$(cd "$(mktemp -d)" && pwd -P)/store; export FACTORY_STATE=$S; mkdir -p $S/openspec/specs; printf '# F\n\nx\n' > $S.req.md; bin/factory ticket new --file $S.req.md >/dev/null; bin/factory approve-spec T-0001 --edit ${TMPDIR:-/tmp}/t0057-wrapped.md >/dev/null 2>$S.err; echo "exit=$? $(head -1 $S.err)")`
+- THEN it prints exactly `exit=2 spec not pinned: scenario 'the thing works' has no NEW/REGRESSION label in verification.md`
+
+### Requirement: spec add is unchanged where current truth is not enabled, and for a NEEDS-HUMAN draft
+On a store with no `openspec/` tree, `spec add` SHALL store any spec as before, and `spec add --from-run` of a spec writer run that finished NEEDS-HUMAN MUST store its draft even when it is malformed.
+
+#### Scenario: A store without current truth stores a malformed spec as before
+Needs the GIVEN block of "spec add refuses a spec whose label wraps or is followed by a word, and stores a well-formed one" run once.
+- WHEN `(S=$(cd "$(mktemp -d)" && pwd -P)/store; export FACTORY_STATE=$S; printf '# F\n\nx\n' > $S.req.md; bin/factory ticket new --file $S.req.md >/dev/null; bin/factory spec add T-0001 --file ${TMPDIR:-/tmp}/t0057-wrapped.md >/dev/null; echo "exit=$? versions=$(ls $S/specs/T-0001 | grep -c '^v[0-9]*\.md$')")`
+- THEN it prints exactly `exit=0 versions=1`
+
+#### Scenario: A spec writer's NEEDS-HUMAN draft is stored even when malformed
+Needs the GIVEN block of "spec add refuses a spec whose label wraps or is followed by a word, and stores a well-formed one" run once.
+- WHEN `(S=$(cd "$(mktemp -d)" && pwd -P)/store; export FACTORY_STATE=$S; mkdir -p $S/openspec/specs; printf '# F\n\nx\n' > $S.req.md; bin/factory ticket new --file $S.req.md >/dev/null; bin/factory ticket transition T-0001 --to ready-for-spec-writer --by t >/dev/null; R=$(bin/factory run start --role spec_writer --ticket T-0001 | .venv/bin/python -c 'import json,sys; print(json.load(sys.stdin)["run_id"])'); { cat ${TMPDIR:-/tmp}/t0057-wrapped.md; printf 'STATUS: NEEDS-HUMAN\nCONFIDENCE: low, stub\nESCALATIONS: none\n'; } > $S/runs/$R/output.md; bin/factory run finish $R >/dev/null; bin/factory spec add T-0001 --from-run $R >/dev/null; echo "exit=$? versions=$(ls $S/specs/T-0001 | grep -c '^v[0-9]*\.md$')")`
+- THEN it prints exactly `exit=0 versions=1`
+
+=== specs/build-dispatch/spec.md
+## ADDED Requirements
+
+### Requirement: A spec that spec add refuses as malformed goes back to the spec writer as a new round
+When `spec add` refuses a spec writer's READY-FOR-CRITIC or NEEDS-SPLIT output with an error starting `spec not added: `, the driver and the intake Workflow script SHALL send the ticket back to the spec writer, counting the refused draft as one round, while a round is left; the next stored version then goes to the critic as usual, and both runners MUST leave the same records.
+
+#### Scenario: A refused draft goes back to the spec writer and the next well-formed one reaches the critic, in the driver and the script
+Needs the GIVEN block of "spec add refuses a spec whose label wraps or is followed by a word, and stores a well-formed one" run once.
+- WHEN `(for SIDE in script drive; do P='{"spec_writer": ["wrapped:READY-FOR-CRITIC", "good:READY-FOR-CRITIC"], "critic": ["APPROVE"]}'; . ${TMPDIR:-/tmp}/t0057-intake.sh; done)`
+- THEN it prints exactly `awaiting-spec-gate spec=2 versions=1 writer=2 critic=1 reason=` twice, one per line
+
+### Requirement: A spec refused in the last round parks the ticket with the refusal
+When no round is left, the driver and the intake Workflow script SHALL park the ticket with the reason `max rounds: ` followed by the refusal's first line, in which each backtick, `$` and `\` is replaced by `'`, so that no part of it runs as a shell command; both runners MUST record the same reason.
+
+#### Scenario: A refusal in the last round parks with the refusal, quoted safely, in the driver and the script
+Needs the GIVEN block of "spec add refuses a spec whose label wraps or is followed by a word, and stores a well-formed one" run once. The first plays refuse both drafts. The second has the critic send a stored version back and then refuses the second draft.
+- WHEN `(for P in '{"spec_writer": ["ticked:READY-FOR-CRITIC"]}' '{"spec_writer": ["good:READY-FOR-CRITIC", "worded:NEEDS-SPLIT"], "critic": ["REVISE"]}'; do for SIDE in script drive; do . ${TMPDIR:-/tmp}/t0057-intake.sh; done; done)`
+- THEN it prints exactly `parked spec=2 versions=0 writer=2 critic=0 reason=max rounds: spec not added: scenario 'the 'echo hi' thing works' has no NEW/REGRESSION label in verification.md` twice, then `parked spec=2 versions=1 writer=2 critic=1 reason=max rounds: spec not added: scenario 'the thing works' has no NEW/REGRESSION label in verification.md` twice, one per line
+
+=== specs/role-inputs/spec.md
+## ADDED Requirements
+
+### Requirement: The spec writer's run after a refused draft receives the refusal and that draft
+When the ticket's previous finished spec writer run ended READY-FOR-CRITIC or NEEDS-SPLIT, no spec version came from it, and its output fails the format check, the next spec writer run's input SHALL hold a section titled "Your previous output, which the harness refused to store as a spec version" that opens with the refusal and holds that run's output, and that run's `output.md` MUST be among the input's sources; a first spec writer run gets no such section.
+
+#### Scenario: The spec writer's next run receives the refusal and its refused output
+Needs the GIVEN block of "spec add refuses a spec whose label wraps or is followed by a word, and stores a well-formed one" run once.
+- WHEN `(SIDE=drive; P='{"spec_writer": ["wrapped:READY-FOR-CRITIC", "good:READY-FOR-CRITIC"], "critic": ["APPROVE"]}'; . ${TMPDIR:-/tmp}/t0057-intake.sh >/dev/null; I=$S/runs/run-0002-spec_writer/input.md; echo "first=$(grep -c '^## Your previous output, which the harness refused' $S/runs/run-0001-spec_writer/input.md) heading=$(grep -c '^## Your previous output, which the harness refused' $I 2>/dev/null) message=$(grep -c "spec not added: scenario 'the thing works' has no NEW/REGRESSION label in verification.md" $I 2>/dev/null) output=$(grep -cx '  → NEW; fails today' $I 2>/dev/null) source=$(grep -c 'runs/run-0001-spec_writer/output.md' $S/runs/run-0002-spec_writer/meta.yaml 2>/dev/null)")`
+- THEN it prints exactly `first=0 heading=1 message=1 output=1 source=1`
+
+=== specs/harness-docs/spec.md
+## ADDED Requirements
+
+### Requirement: The documents record the format check at spec add and its route back to the spec writer
+`README.md`'s "The intake workflow, step by step" SHALL say that a spec is saved only if it is well-formed and fits current truth, and that otherwise it goes back to the writer, using up a round; its flowchart SHALL draw that route back to the spec writer, and the Spec writer row of "What each role reads and writes" SHALL name the refusal. `docs/design.md`'s routing table SHALL hold the route with `spec add` and `round +1`. `docs/changelog.md` SHALL hold one entry opening `After issue #105 `, numbered without a gap, that names `spec add`, `approve-spec` and the round. This change MUST add at most one line net to `README.md`.
+
+#### Scenario: README, the design doc and the changelog describe the refusal route
+- WHEN `(B=$(git merge-base HEAD main); y() { [ "$1" -gt 0 ] && echo yes || echo no; }; I=$(sed -n '/^### The intake workflow, step by step$/,/^### The build workflow, step by step$/p' README.md); P=$(printf '%s\n' "$I" | awk '/^Intake runs triage once/{f=1} f&&/^$/{exit} f' | tr '\n' ' '); echo "formed=$(y $(printf '%s' "$P" | grep -c 'well-formed')) truth=$(y $(printf '%s' "$P" | grep -c 'current truth')) round=$(y $(printf '%s' "$P" | grep -c 'round')) edge=$(y $(printf '%s\n' "$I" | grep -cE '^ *W -- "[^"]*refused[^"]*" --> W$')) row=$(y $(grep '^| Spec writer (`spec_writer`) |' README.md | grep -c 'refus')) design=$(y $(grep '^| Spec writer | READY-FOR-CRITIC / NEEDS-SPLIT' docs/design.md | grep 'spec add' | grep -c 'round +1')) growth=$(git diff --numstat $B HEAD -- README.md | awk '{print ($1 - $2 <= 1 ? "ok" : "over")}')"; awk '/^[0-9]+\. /{n++; if (index($0, n ". ") != 1) bad=1} END{print (bad ? "GAPPED" : "CONTIGUOUS")}' docs/changelog.md; E=$(grep '^[0-9]*\. After issue #105 ' docs/changelog.md); echo "entries=$(printf '%s\n' "$E" | grep -c .) terms=$(printf '%s' "$E" | grep -oF -e 'spec add' -e 'approve-spec' -e 'round' | sort -u | grep -c .)")`
+- THEN it prints exactly `formed=yes truth=yes round=yes edge=yes row=yes design=yes growth=ok`, then `CONTIGUOUS`, then `entries=1 terms=3`, one per line
+
+=== specs/harness-suite/spec.md
+## ADDED Requirements
+
+### Requirement: The suite passes with this change, which changes only the two test files its decisions overturn
+The harness suite SHALL pass with this change; among existing test files this change MUST modify or delete only `tests/factory/test_spec_store.py` and `tests/factory/test_shepherd.py`, and each test file it adds SHALL fail, with at least one failed test, against the harness code of the change's base.
+
+#### Scenario: The suite passes, only the two listed test files change, and every added test file fails on the base
+Per the standing T-0023 decision, the command gives pytest its own temporary directory under `/tmp` and removes it when it ends. The base is `git merge-base HEAD main`. Its tree is unpacked into that directory, and the added files are copied in beside its tests.
+- WHEN `(P=$(mktemp -d /tmp/t0057-suite.XXXXXX) && TMPDIR=$P uv run --frozen pytest -q -p no:cacheprovider tests/factory 2>&1 | tail -1; B=$(git merge-base HEAD main); echo "changed=$(git diff --name-only --diff-filter=DMR $B HEAD -- tests | sort | paste -sd, -) added=$(git diff --name-only --diff-filter=A $B HEAD -- tests | grep -c '/test_[^/]*\.py$')"; mkdir $P/base && git archive $B | tar -x -C $P/base && for f in $(git diff --name-only --diff-filter=A $B HEAD -- tests); do mkdir -p $P/base/${f%/*} && cp $f $P/base/$f; done; for f in $(git diff --name-only --diff-filter=A $B HEAD -- tests | grep '/test_[^/]*\.py$'); do echo "$f on the base: $(cd $P/base && TMPDIR=$P uv run --frozen pytest -q -p no:cacheprovider $f 2>&1 | tail -1 | sed 's/ in [0-9.]*s.*//')"; done; rm -rf "$P")`
+- THEN the first line reports a number of passed tests and no `failed` or `error`. The second is `changed=<list> added=<n>`, where `<list>` is empty or a comma-separated subset of `tests/factory/test_shepherd.py,tests/factory/test_spec_store.py`, and n is at least 1. Then n lines follow, each `<added test file> on the base: <pytest summary>`, and every summary includes `failed`
+
+=== verification.md
+## Acceptance
+- spec add refuses a spec whose label wraps or is followed by a word, and stores a well-formed one → NEW; on `3e4705a` it prints `wrapped exit=0 versions=1 added=1 err=`, `worded exit=0 versions=2 added=2 err=` and `good exit=0 versions=3 added=3 err=`: every draft is stored.
+- approve-spec still refuses a malformed spec → REGRESSION; it prints `exit=2 spec not pinned: …` on `3e4705a` and on the prototype.
+- A store without current truth stores a malformed spec as before → REGRESSION; `exit=0 versions=1` on both.
+- A spec writer's NEEDS-HUMAN draft is stored even when malformed → REGRESSION; `exit=0 versions=1` on both.
+- A refused draft goes back to the spec writer and the next well-formed one reaches the critic, in the driver and the script → NEW; on `3e4705a` both lines read `awaiting-spec-gate spec=1 versions=1 writer=1 critic=1 reason=`: the wrapped draft is stored and approved, and the writer runs once.
+- A refusal in the last round parks with the refusal, quoted safely, in the driver and the script → NEW; on `3e4705a` the first pair reads `parked spec=1 versions=1 writer=1 critic=1 reason=harness-bug: unknown STATUS UNKNOWN from critic` and the second pair reads `parked spec=2 versions=2 writer=2 critic=2 reason=max rounds`: each malformed draft is stored and judged.
+- The spec writer's next run receives the refusal and its refused output → NEW; on `3e4705a` it prints `first=0 heading= message= output= source=`: no second writer run exists.
+- README, the design doc and the changelog describe the refusal route → NEW; on `3e4705a` it prints every field `no` and `growth=` empty, then `CONTIGUOUS`, then `entries=0 terms=0`.
+- The suite passes, only the two listed test files change, and every added test file fails on the base → NEW; on `3e4705a` the second line is `changed= added=0`, so n is 0, not at least 1.
+
+## Human ruling
+
+Ruling (Green for the operator, 2026-10-25): proceed on spec v2 unchanged. The drift is a sibling ticket's work, not a change to this spec's intent. T-0056 merged just before this build (b863e4ec2, 11080b100) and added `tests/factory/test_transcript_record.py` and `tests/factory/test_scorecard.py`. This spec neither lists nor needs to change them. They are regression tests from now on: they must pass on this branch unchanged. If this change makes either of them fail, that is a defect in the change. Report it BLOCKED, and do not edit those tests. T-0056 also edited `factory/drive.py`, `factory/workflows/intake.js` and `factory/cli.py`: every `run finish` now passes `--transcripts`. Build this change's new `spec add` route on top of those edits, and keep the `--transcripts` argument on every `run finish`.
