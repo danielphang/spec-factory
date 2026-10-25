@@ -46,7 +46,7 @@ def test_writer_and_critic_receive_current_truth_as_input_sources(store):
     rid = writer_run(store)
     assert "### Requirement: trailer-read" in (store / "runs" / rid / "input.md").read_text()
     assert meta(store, rid)["input_sources"] == ["requests/T-0001.md", "openspec/specs/status-parser/spec.md"]
-    finish(store, rid, "=== proposal.md\n## Problem\nx\n", "READY-FOR-CRITIC")
+    finish(store, rid, FOUR_PART.replace("## ADDED Requirements", "## MODIFIED Requirements"), "READY-FOR-CRITIC")
     run(store, "spec", "add", "T-0001", "--from-run", rid)
     run(store, "ticket", "transition", "T-0001", "--to", "ready-for-critic", "--by", "t", "--round", "spec:init")
     cid = js(run(store, "run", "start", "--role", "critic", "--ticket", "T-0001"))["run_id"]
@@ -167,8 +167,9 @@ def test_item_88_gate_refuses_a_delta_that_does_not_apply_and_a_malformed_versio
     bad = FOUR_PART.replace("## ADDED Requirements", "## MODIFIED Requirements").replace("trailer-read", "no-such-req")
     f = tmp_path / "v2.md"
     f.write_text(bad)
-    assert run(store, "spec", "add", "T-0001", "--file", str(f)).returncode == 0
-    cp = run(store, "approve-spec", "T-0001", "--version", "2")
+    cp = run(store, "spec", "add", "T-0001", "--file", str(f))
+    assert cp.returncode == 2 and "spec not added" in cp.stderr and "no-such-req" in cp.stderr
+    cp = run(store, "approve-spec", "T-0001", "--edit", str(f))
     assert cp.returncode == 2 and "no-such-req" in cp.stderr
     t = yaml.safe_load((store / "tickets" / "T-0001.yaml").read_text())
     assert t["spec"]["approved_version"] == 1
@@ -335,12 +336,10 @@ def test_an_empty_op_heading_counts_as_a_heading_and_a_slash_label_is_no_label(s
     assert run(store, "approve-spec", "T-0001").returncode == 0
     f = tmp_path / "v2.md"
     f.write_text(FOUR_PART.replace("→ NEW; today it parks", "→ NEW / REGRESSION"))
-    run(store, "spec", "add", "T-0001", "--file", str(f))
-    cp = run(store, "approve-spec", "T-0001", "--version", "2")
+    cp = run(store, "approve-spec", "T-0001", "--edit", str(f))
     assert cp.returncode == 2 and "no NEW/REGRESSION label" in cp.stderr
     f.write_text(FOUR_PART.replace("- THEN status is NEEDS-HUMAN\n", "- THEN status is NEEDS-HUMAN\n#### Scenario: wrapped confidence\n- WHEN `y`\n- THEN z\n"))
-    run(store, "spec", "add", "T-0001", "--file", str(f))
-    cp = run(store, "approve-spec", "T-0001", "--version", "3")
+    cp = run(store, "approve-spec", "T-0001", "--edit", str(f))
     assert cp.returncode == 2 and "named more than once" in cp.stderr
 
 
@@ -363,7 +362,5 @@ def test_acceptance_labels_allow_ordinary_punctuation_but_not_a_choice(store, tm
     f = tmp_path / "v2.md"
     for bad in ("→ NEW / REGRESSION", "→ NEWS", "→ NEW today it parks"):
         f.write_text(FOUR_PART.replace("→ NEW; today it parks", bad))
-        run(store, "spec", "add", "T-0001", "--file", str(f))
-        v = yaml.safe_load((store / "tickets" / "T-0001.yaml").read_text())["spec"]["version"]
-        cp = run(store, "approve-spec", "T-0001", "--version", str(v))
+        cp = run(store, "approve-spec", "T-0001", "--edit", str(f))
         assert cp.returncode == 2 and "no NEW/REGRESSION label" in cp.stderr, bad

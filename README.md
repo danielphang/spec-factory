@@ -87,7 +87,7 @@ directories and `models` entries use.
 | Role | Reads | Ends with `STATUS:` | What the harness keeps |
 |---|---|---|---|
 | Triage (`triage`) | the request; the capability index, one line per current-truth capability with its spec's path and requirement names; after a human answer, its own earlier output | ACCEPT · CLARIFY · NEEDS-HUMAN · REJECT | the title and type, copied onto the ticket |
-| Spec writer (`spec_writer`) | triage's output, the request; current truth in full for the capabilities triage named, and the capability index for the rest; the whole decision log; after a revision request, the critic's findings and its own previous spec; the human's change requests from the gate; any human answer or ruling | READY-FOR-CRITIC · NEEDS-SPLIT · NEEDS-HUMAN | the spec, saved as its next version, `specs/<ticket>/v<n>.md` |
+| Spec writer (`spec_writer`) | triage's output, the request; current truth in full for the capabilities triage named, and the capability index for the rest; the whole decision log; after a revision request, the critic's findings and its own previous spec; after a spec that `spec add` refused, the refusal and that output; the human's change requests from the gate; any human answer or ruling | READY-FOR-CRITIC · NEEDS-SPLIT · NEEDS-HUMAN | the spec, saved as its next version, `specs/<ticket>/v<n>.md` |
 | Spec critic (`critic`) | the spec version; current truth in full for the capabilities triage named or the spec cites, and the capability index for the rest; the whole decision log; every other approved spec not yet archived, with its decisions; from round 2, its own earlier findings and the previous version; any ruling | APPROVE · REVISE · ESCALATE | the verdict; its findings are attached to the spec when it is pinned |
 | Planner (`planner`) | the approved spec; the whole decision log; rulings; any sub-tickets that already exist | PLANNED · ESCALATE | the plan, `plans/<ticket>.md`, and one sub-ticket per piece, with its dependencies |
 | Implementer (`implementer`) | where it works (its worktree, branch, base commit and the wrapped gate commands), the sub-ticket, the pinned spec; on a revision, both checkers' findings and the gate result | READY-FOR-REVIEW · BLOCKED | its commits on branch `factory/<sub-ticket>` and the head commit; the message itself is the PR description |
@@ -349,12 +349,12 @@ sequenceDiagram
 *The script never touches the store itself; every record goes through the clerk to the harness.*
 
 Intake runs triage once, then alternates the spec writer and the critic. Triage's ACCEPT starts the
-spec writer; REJECT closes the ticket; CLARIFY waits for the requester; NEEDS-HUMAN parks. The spec
-writer's spec is saved as a new version, and the critic judges it. The critic's REVISE sends it back
-once; a REVISE on the critic's second pass parks the ticket. NEEDS-SPLIT, a spec that names how to
-split an oversized request, goes to the critic like READY-FOR-CRITIC. APPROVE moves the ticket to the
-spec gate, where intake stops. From the gate, the human approves or sends the spec back to the
-writer; a requester's answer sends a waiting ticket back to triage.
+spec writer; REJECT closes the ticket; CLARIFY waits for the requester; NEEDS-HUMAN parks. The
+harness saves the spec as a new version only if it is well-formed and fits current truth; if not, it
+goes back to the writer, using up a round. The critic's REVISE sends it back once; a second REVISE,
+or a refused spec in the last round, parks. NEEDS-SPLIT, a spec that names how to split an oversized
+request, goes to the critic like READY-FOR-CRITIC. APPROVE moves the ticket to the spec gate, where
+intake stops. The human approves or sends it back; a requester's answer returns a ticket to triage.
 
 ```mermaid
 flowchart TD
@@ -368,6 +368,7 @@ flowchart TD
   T -- NEEDS-HUMAN --> P["parked"]:::human
   W -- NEEDS-HUMAN --> P
   W -- "READY-FOR-CRITIC or NEEDS-SPLIT" --> K["Spec critic"]:::role
+  W -- "spec refused, a round left" --> W
   K -- "REVISE, first pass" --> W
   K -- "REVISE, second pass" --> P
   K -- ESCALATE --> P

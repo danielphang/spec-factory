@@ -20,7 +20,7 @@ from factory.common import _add_spec_version, _rel, fence, out
 from factory.drift import _check_drift, _check_sibling_tests
 from factory.gates import (_parent_close_verified, archive_cmd, merge_cmd, results_record, results_show,
                            ticket_head, ticket_join, ticket_parent_check)
-from factory.human import approve_spec, decision_add, escape_add, intervention_add, request_changes, resolve, spec_amend
+from factory.human import _refuse_unless_applies, approve_spec, decision_add, escape_add, intervention_add, request_changes, resolve, spec_amend
 from factory.setup import init_cmd, paths_cmd, store_migrate
 from factory.store import Refused
 
@@ -397,8 +397,7 @@ def _at_least_one(v: str) -> int:
 
 def _text_from(a, root) -> str:
     if a.from_run:
-        d = _run_dir(root, a.from_run)
-        p = d / "output.md"
+        p = _run_dir(root, a.from_run) / "output.md"
         if not p.exists():
             raise Refused(f"{a.from_run} has no output.md")
         return status.strip_trailer(p.read_text(encoding="utf-8"))
@@ -408,9 +407,10 @@ def _text_from(a, root) -> str:
 
 
 def spec_add(a, root, cfg):
-    t = store.load_ticket(root, a.id)
-    n = _add_spec_version(root, t, _text_from(a, root), a.from_run or a.file, cfg)
-    out({"ok": True, "id": t["id"], "version": n, "path": f"specs/{t['id']}/v{n}.md"})
+    t, text = store.load_ticket(root, a.id), _text_from(a, root)
+    if specstore.is_active(root) and not (a.from_run and store.read_yaml(root / "runs" / a.from_run / "meta.yaml").get("status") == "NEEDS-HUMAN"):
+        _refuse_unless_applies(root, text, "spec not added")  # a NEEDS-HUMAN draft is stored unchecked, for the operator to read
+    out({"ok": True, "id": t["id"], "version": (n := _add_spec_version(root, t, text, a.from_run or a.file, cfg)), "path": f"specs/{t['id']}/v{n}.md"})
 
 
 def plan_add(a, root, cfg):
