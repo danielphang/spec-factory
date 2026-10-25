@@ -29,6 +29,8 @@ const INSTANCE = LAUNCH ? LAUNCH.instance : args.instance
 let STATE = args.state || null  // set from `factory config` below when not given
 const ENV = ['FACTORY_DISPATCH=1', INSTANCE ? `FACTORY_INSTANCE=${INSTANCE}` : '', STATE ? `FACTORY_STATE=${STATE}` : ''].filter(Boolean).join(' ')
 const BIN = `${ENV ? ENV + ' ' : ''}${REPO}/bin/factory`
+// Where Claude Code keeps transcripts, for `run finish --transcripts`: a plain string, so the clerk's shell expands it.
+const TRANSCRIPTS = '"${CLAUDE_CONFIG_DIR:-$HOME/.claude}/projects"'
 const PREFIX = args.agentPrefix || 'factory-'
 // inlineRoles: the .claude/agents/factory-* definitions are not registered in this session (the
 // directory did not exist at session start), so every role runs as general-purpose and reads its
@@ -123,12 +125,12 @@ async function runOnce(role, phase) {
   } catch (e) {
     // A thrown call (e.g. an agent type that is not installed) gives no result: record the run as
     // killed and park with the error, so no run is left in flight.
-    await clerk(`${BIN} run finish ${runId} --status-override KILLED`, phase, `run finish ${role} (agent call failed)`)
+    await clerk(`${BIN} run finish ${runId} --status-override KILLED --transcripts ${TRANSCRIPTS}`, phase, `run finish ${role} (agent call failed)`)
     await park(`agent call failed: ${role}: ${e && e.message ? e.message : e}`, [runId], phase)
     return null
   }
   // run finish reads the output file for every run: a missing or blank one is EMPTY-OUTPUT.
-  const fin = await clerk(`${BIN} run finish ${runId}`, phase, `run finish ${role}`)
+  const fin = await clerk(`${BIN} run finish ${runId} --transcripts ${TRANSCRIPTS}`, phase, `run finish ${role}`)
   if (!fin.ok) { await park(`harness-bug: run finish ${role}: ${fin.stderr || ''}`, [runId], phase); return null }
   // run finish parked the ticket (the tripwire saw a listed live file change): stop, do not route on STATUS
   if (fin.parked) { log(`${TICKET} parked: ${fin.parked}`); return null }

@@ -25,6 +25,8 @@ let STATE = args.state || null  // set from `factory config` below when not give
 const ENV = ['FACTORY_DISPATCH=1', INSTANCE ? `FACTORY_INSTANCE=${INSTANCE}` : '', STATE ? `FACTORY_STATE=${STATE}` : '',
   args.target ? `FACTORY_REPO=${args.target}` : '', args.integration ? `FACTORY_INTEGRATION_BRANCH=${args.integration}` : ''].filter(Boolean).join(' ')
 const BIN = `${ENV ? ENV + ' ' : ''}${REPO}/bin/factory`
+// Where Claude Code keeps transcripts, for `run finish --transcripts`: a plain string, so the clerk's shell expands it.
+const TRANSCRIPTS = '"${CLAUDE_CONFIG_DIR:-$HOME/.claude}/projects"'
 const PREFIX = args.agentPrefix || 'factory-'
 const INLINE = !!args.inlineRoles
 const CLERK_RULES = 'You are the store clerk of the spec factory: run the one command you are given, once, unchanged, from the repository root; run nothing else, edit nothing, interpret nothing. '
@@ -119,7 +121,7 @@ async function runOnce(role, ticket, phase) {
   } catch (e) {
     // A thrown call (e.g. an agent type that is not installed) gives no result: record the run as
     // killed and park with the error, so no run is left in flight. parallel() would otherwise absorb it.
-    await clerk(`${BIN} run finish ${runId} --status-override KILLED`, phase, `run finish ${role} (agent call failed)`)
+    await clerk(`${BIN} run finish ${runId} --status-override KILLED --transcripts ${TRANSCRIPTS}`, phase, `run finish ${role} (agent call failed)`)
     if (role === 'reviewer' || role === 'verifier') await clerk(`${BIN} run cleanup ${runId}`, phase, `run cleanup ${role}`)
     await park(ticket, `agent call failed: ${role}: ${e && e.message ? e.message : e}`, [runId], phase)
     return null
@@ -131,7 +133,7 @@ async function runOnce(role, ticket, phase) {
     await clerk(`if [ -f ${sh} ]; then (cd ${start.worktree} && sh ${sh}) >/dev/null 2>&1; fi; echo '{"ok": true}'`, phase, `stub script ${role}-${stubCount[role]}`)
   }
   // run finish reads the output file for every run: a missing or blank one is EMPTY-OUTPUT.
-  const fin = await clerk(`${BIN} run finish ${runId}`, phase, `run finish ${role}`)
+  const fin = await clerk(`${BIN} run finish ${runId} --transcripts ${TRANSCRIPTS}`, phase, `run finish ${role}`)
   if (role === 'reviewer' || role === 'verifier') await clerk(`${BIN} run cleanup ${runId}`, phase, `run cleanup ${role}`)
   if (!fin.ok) { await park(ticket, `harness-bug: run finish ${role}: ${fin.stderr || ''}`, [runId], phase); return null }
   // run finish parked the ticket (the tripwire saw a listed live file change): stop, do not route on STATUS

@@ -15,7 +15,7 @@ from pathlib import Path
 
 import yaml
 
-from factory import compose, gitops, instance, launch, specstore, status, store, subtickets, tripwire
+from factory import compose, cost, gitops, instance, launch, specstore, status, store, subtickets, tripwire
 from factory.common import _add_spec_version, _rel, fence, out
 from factory.drift import _check_drift, _check_sibling_tests
 from factory.gates import (_parent_close_verified, archive_cmd, merge_cmd, results_record, results_show,
@@ -339,6 +339,9 @@ def run_finish(a, root, cfg):
                  "escalations_note": parsed.get("escalations_note")})
     if a.reply:
         meta["claude"] = _claude_record(a.reply)
+    if a.transcripts and not isinstance((meta.get("claude") or {}).get("usage"), dict) and (
+            rec := cost.transcript_record(a.transcripts, str(root), a.run, meta["started"])):
+        meta["claude"] = rec
     store.write_yaml(d / "meta.yaml", meta)
     if a.run in t["in_flight"]:
         t["in_flight"].remove(a.run)
@@ -699,6 +702,8 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--status-override")
     p.add_argument("--reply", help="the role process's reply (claude -p --output-format json): its session "
                                    "id, cost, turns and usage are recorded under claude: in meta.yaml")
+    p.add_argument("--transcripts", action="append", default=[], metavar="DIR",
+                   help="Claude Code transcripts: with no reply usage, the run's transcript's tokens are recorded")
     p.set_defaults(fn=run_finish)
     p = rn.add_parser("last-message")
     p.add_argument("run")
