@@ -3,7 +3,7 @@ type: feature
 title: '`factory truth check` replays every current-truth scenario, and the gate runs it'
 request: requests/T-0059.md
 source: /private/tmp/claude-501/-Users-dphang-dev-nanobot/c69bfd1d-97a6-43e3-9d5a-a517c28d382c/scratchpad/requests/req-120.md
-status: parked
+status: awaiting-spec-gate
 round:
   spec: 2
   pr: 0
@@ -12,13 +12,7 @@ spec:
   approved_version: null
 plan: null
 in_flight: []
-parked:
-  reason: max rounds
-  since: '2026-10-25T19:30:18+00:00'
-  from: ready-for-critic
-  outputs:
-  - run-0593-critic
-  question: null
+parked: null
 created: '2026-10-20T06:38:50+00:00'
 history:
 - ts: '2026-10-25T17:18:24+00:00'
@@ -67,6 +61,11 @@ history:
   to: parked
   by: park
   reason: max rounds
+- ts: '2026-10-26T04:18:54+00:00'
+  from: parked
+  to: awaiting-spec-gate
+  by: dphang
+  resolve: to-spec-gate
 parent: null
 depends_on: []
 parallel_safe: true

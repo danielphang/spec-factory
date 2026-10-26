@@ -3161,3 +3161,4 @@
 {"ts": "2026-10-25T19:30:18+00:00", "event": "ticket.parked", "ticket": "T-0059", "from": "ready-for-critic", "reason": "max rounds"}
 {"ts": "2026-10-25T19:30:18+00:00", "event": "escalation.queued", "ticket": "T-0059", "items": ["max rounds"]}
 {"ts": "2026-10-25T19:30:35+00:00", "event": "harness.accepted", "instance": "/Users/dphang/dev/spec-factory/.factory", "old": "6f4d8658252556ed62bd19e130b09634f119f454", "new": "77b7b4026d1fd0d8e9e0b96da651280cdb88395d"}
+{"ts": "2026-10-26T04:18:54+00:00", "event": "human.resolved", "ticket": "T-0059", "kind": "to-spec-gate", "by": "dphang", "from": "parked", "to": "awaiting-spec-gate"}
