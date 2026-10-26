@@ -10,6 +10,8 @@ harness: "/Users/dphang/dev/spec-factory-harness"
 # The live store, relative to the repo root (moved from intake/state by T-0012's post-close step).
 # FACTORY_STATE overrides it.
 state_dir: .factory/store
+# This repo's target is the factory itself: the scorecard reports its merges as factory work (T-0056, #117).
+target_is_factory: true
 # Filled into the preamble's protected-path line at run start as `class (glob, glob), ...`.
 protected_paths:
   infra: [".factory/**"]
