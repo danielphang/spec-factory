@@ -3,9 +3,9 @@ type: feature
 title: '`factory truth check` replays every current-truth scenario, and the gate runs it'
 request: requests/T-0059.md
 source: /private/tmp/claude-501/-Users-dphang-dev-nanobot/c69bfd1d-97a6-43e3-9d5a-a517c28d382c/scratchpad/requests/req-120.md
-status: awaiting-spec-gate
+status: ready-for-spec-writer
 round:
-  spec: 2
+  spec: 0
   pr: 0
 spec:
   version: 3
@@ -66,6 +66,11 @@ history:
   to: awaiting-spec-gate
   by: dphang
   resolve: to-spec-gate
+- ts: '2026-10-26T04:19:00+00:00'
+  from: awaiting-spec-gate
+  to: ready-for-spec-writer
+  by: dphang
+  notes: approvals/T-0059/changes-1.md
 parent: null
 depends_on: []
 parallel_safe: true
