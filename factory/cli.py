@@ -15,7 +15,7 @@ from pathlib import Path
 
 import yaml
 
-from factory import compose, cost, gitops, instance, launch, specstore, status, store, subtickets, tripwire
+from factory import compose, cost, gitops, instance, launch, specstore, status, store, subtickets, tripwire, truth
 from factory.common import _add_spec_version, _rel, fence, out
 from factory.drift import _check_drift, _check_sibling_tests
 from factory.gates import (_parent_close_verified, archive_cmd, merge_cmd, results_record, results_show,
@@ -785,6 +785,7 @@ def build_parser() -> argparse.ArgumentParser:
                         "cost record, and for implementer gate failures (repeatable)")
     p.add_argument("--scorecard", action="store_true", help="print only the north star's scorecard; needs --since")
     p.set_defaults(fn=stats_cmd)
+    truth.add_parser(sp)
     p = sp.add_parser("archive")
     p.add_argument("id")
     p.set_defaults(fn=archive_cmd)
@@ -858,23 +859,22 @@ def build_parser() -> argparse.ArgumentParser:
 
 # ----- live-store fence: only the dispatcher writes a live store during a run ------------------
 
-# `paths` and `stats` never reach the fence (main() runs them before it); they are listed so this set
-# matches the documents' read-only list.
+# `truth check`, `paths` and `stats` never reach the fence (main() runs them before it); they are listed
+# so this set matches the documents' read-only list.
 READ_ONLY = {("ticket", "show"), ("ticket", "join"), ("results", "show"), ("config", None),
-             ("launch-script", None), ("status", "parse"), ("log", "tail"), ("paths", None), ("stats", None)}
+             ("launch-script", None), ("status", "parse"), ("log", "tail"), ("truth", "check"), ("paths", None), ("stats", None)}
 
 
 def main(argv: list[str] | None = None) -> int:
     a = build_parser().parse_args(argv)
     try:
-        if a.cmd in ("init", "paths", "stats") and a.accept_harness:
-            raise Refused(f"factory {a.cmd} never checks the harness lock, so it cannot accept a revision; "
-                          f"run factory --accept-harness {a.accept_harness} config")
-        # exempt from the instance refusal (design B.1); `paths` and `stats` only read, so they also
-        # skip the fence and the harness lock; all three refuse --accept-harness (above, T-0058)
-        if a.cmd in ("init", "paths", "stats"):
-            a.fn(a)
-            return 0
+        if a.cmd in ("init", "paths", "stats", "truth") and a.accept_harness:
+            raise Refused(f"factory {a.cmd}{' ' + a.sub if a.cmd == 'truth' else ''} never checks the harness lock, so it "
+                          f"cannot accept a revision; run factory --accept-harness {a.accept_harness} config")
+        # exempt from the instance refusal (design B.1); `paths`, `stats` and `truth check` only read, so
+        # they also skip the fence and the harness lock; all four refuse --accept-harness (above, T-0058)
+        if a.cmd in ("init", "paths", "stats", "truth"):
+            return a.fn(a) or 0
         inst = instance.require()  # refused when no instance is found: nothing is written
         cfg = instance.load_config(inst)
         root = store.state_root(cfg)
