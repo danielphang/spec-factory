@@ -110,7 +110,7 @@ Most of the factory is plain files and a Python program. Six pieces assume Claud
 | Role agents (`agents/`, copied into a target's `.claude/agents/`) | yes | Claude Code agent definitions, with a tool list per role; Claude Code registers them only when a session starts |
 | Role processes of `factory drive` (`factory/drive.py`) | yes | each role runs as one headless `claude -p` process with `--output-format json` and `--permission-mode auto`, its role's prompt file, model and optional `--effort`, and its tool limits given by `--tools` and `--allowedTools` |
 | Model names (`models` in `instance.yaml`) | yes | Claude model aliases |
-| Token cost per role (`factory/cost.py`) | yes | reads the Workflow tool's transcript files |
+| Token cost per role (`factory/cost.py`), and the benchmark's operator time (`factory/benchmark.py`) | yes | read Claude Code's transcript files: the Workflow tool's, and for the benchmark a session's |
 | Catch and cost per role (`factory stats`, `factory/stats.py`) | no | reads the store's files with no Claude Code; reads Claude Code's transcript files only when given `--transcripts` |
 | A workflow run's token record (`run finish --transcripts`) | yes | reads the token usage in the transcript Claude Code keeps for the run's agent, under `~/.claude/projects` |
 
@@ -1138,6 +1138,7 @@ has not been tried, is in `docs/design.md`, "Running on another agent host".
 | `docs/prompts/` | Each role's prompt block, copied verbatim from the design doc by hand; `00-preamble.md` goes at the top of every role |
 | `docs/north-star.md` | What the factory is for, what it will not trade away, and where it is heading; changes to it are the operator's decision |
 | `STATUS.md`, `docs/reviews/` | The latest scorecard, focus and queue, rewritten only at a review; each review, written from `docs/reviews/TEMPLATE.md`, the first being the hand-counted baseline of 2026-10-19 |
+| `docs/benchmark.md` | The upstream benchmark's method: choosing the tasks, keeping the factory and a plain session blind to the fix, scoring by the fix's own tests, and putting a result in a review; `python -m factory.benchmark` computes each arm's operator time from timestamps, and has not yet run on a benchmark task |
 | `CONTRIBUTING.md` | How work is proposed and chosen: issue, factory ticket, spec gate, under the north star's rule for factory work |
 | `docs/principles.md` | The fourteen learned principles, each with its incident, citation and implementing mechanism |
 | `docs/decided-against.md` | Approaches tried or offered and dropped, with the evidence and what would reopen each |
