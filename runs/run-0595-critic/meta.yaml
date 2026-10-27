@@ -1,0 +1,54 @@
+run_id: run-0595-critic
+role: critic
+ticket: T-0059
+model: fable
+round: 1
+spec_version: 4
+started: '2026-10-26T05:24:25+00:00'
+finished: '2026-10-26T05:33:39+00:00'
+wall_s: 554
+status: APPROVE
+input_sources:
+- specs/T-0059/v4.md
+- openspec/specs/gate-commands/spec.md
+- openspec/specs/harness-code/spec.md
+- openspec/specs/harness-docs/spec.md
+- openspec/specs/harness-suite/spec.md
+- openspec/specs/live-store-guard/spec.md
+- openspec/specs/role-escalations/spec.md
+- openspec/specs/spec-amendment/spec.md
+- decisions.md
+confidence: high, every cited path, count and acceptance command I ran matched the spec; the timing figures
+  rest on the writer's listings, which the verifier re-measures
+escalations: []
+escalations_note: null
+claude:
+  session_id: 1ca312da-54dc-4691-adb0-38e1b0cdd2fd
+  total_cost_usd: 5.24215125
+  num_turns: 21
+  usage:
+    input_tokens: 642
+    cache_creation_input_tokens: 116796
+    cache_read_input_tokens: 4148045
+    output_tokens: 37256
+    output_tokens_details:
+      thinking_tokens: 24254
+    server_tool_use:
+      web_search_requests: 0
+      web_fetch_requests: 0
+    service_tier: standard
+    cache_creation:
+      ephemeral_1h_input_tokens: 116796
+      ephemeral_5m_input_tokens: 0
+    inference_geo: global
+    iterations:
+    - input_tokens: 32
+      output_tokens: 2427
+      cache_read_input_tokens: 253803
+      cache_creation_input_tokens: 5089
+      cache_creation:
+        ephemeral_5m_input_tokens: 0
+        ephemeral_1h_input_tokens: 5089
+      type: message
+    speed: standard
+    fallback_credit: null

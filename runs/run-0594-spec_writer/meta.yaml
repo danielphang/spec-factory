@@ -1,0 +1,57 @@
+run_id: run-0594-spec_writer
+role: spec_writer
+ticket: T-0059
+model: opus
+round: 0
+spec_version: 3
+started: '2026-10-26T04:49:51+00:00'
+finished: '2026-10-26T05:24:24+00:00'
+wall_s: 2073
+status: READY-FOR-CRITIC
+input_sources:
+- runs/run-0577-triage/output.md
+- requests/T-0059.md
+- openspec/specs/gate-commands/spec.md
+- openspec/specs/harness-code/spec.md
+- openspec/specs/harness-docs/spec.md
+- openspec/specs/harness-suite/spec.md
+- openspec/specs/live-store-guard/spec.md
+- openspec/specs/role-escalations/spec.md
+- openspec/specs/spec-amendment/spec.md
+- decisions.md
+- approvals/T-0059/changes-1.md
+confidence: high. Every figure comes from runs of a rebuilt prototype in scratch clones at `7bfbe8f`,
+  at `db28eb1` and on a branch carrying this change's README growth, and the store's own spec checks accept
+  v4. The prototype is not the implementation, so the build's own timings may differ slightly.
+escalations: []
+escalations_note: null
+claude:
+  session_id: 6d8d9db7-79ec-4743-b9cd-bdbf83f12bee
+  total_cost_usd: 7.212914599999999
+  num_turns: 51
+  usage:
+    input_tokens: 98
+    cache_creation_input_tokens: 352915
+    cache_read_input_tokens: 12046013
+    output_tokens: 99000
+    output_tokens_details:
+      thinking_tokens: 22717
+    server_tool_use:
+      web_search_requests: 0
+      web_fetch_requests: 0
+    service_tier: standard
+    cache_creation:
+      ephemeral_1h_input_tokens: 352915
+      ephemeral_5m_input_tokens: 0
+    inference_geo: global
+    iterations:
+    - input_tokens: 2
+      output_tokens: 40139
+      cache_read_input_tokens: 347814
+      cache_creation_input_tokens: 607
+      cache_creation:
+        ephemeral_5m_input_tokens: 0
+        ephemeral_1h_input_tokens: 607
+      type: message
+    speed: standard
+    fallback_credit: null

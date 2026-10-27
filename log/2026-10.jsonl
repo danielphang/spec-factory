@@ -3163,3 +3163,18 @@
 {"ts": "2026-10-25T19:30:35+00:00", "event": "harness.accepted", "instance": "/Users/dphang/dev/spec-factory/.factory", "old": "6f4d8658252556ed62bd19e130b09634f119f454", "new": "77b7b4026d1fd0d8e9e0b96da651280cdb88395d"}
 {"ts": "2026-10-26T04:18:54+00:00", "event": "human.resolved", "ticket": "T-0059", "kind": "to-spec-gate", "by": "dphang", "from": "parked", "to": "awaiting-spec-gate"}
 {"ts": "2026-10-26T04:19:01+00:00", "event": "human.resolved", "ticket": "T-0059", "kind": "request-changes", "by": "dphang", "notes": "approvals/T-0059/changes-1.md"}
+{"ts": "2026-10-26T04:49:51+00:00", "event": "run.started", "ticket": "T-0059", "run": "run-0594-spec_writer", "role": "spec_writer", "model": "opus"}
+{"ts": "2026-10-26T05:24:24+00:00", "event": "run.finished", "ticket": "T-0059", "run": "run-0594-spec_writer", "role": "spec_writer", "status": "READY-FOR-CRITIC", "wall_s": 2073}
+{"ts": "2026-10-26T05:24:24+00:00", "event": "spec.added", "ticket": "T-0059", "version": 4, "source": "run-0594-spec_writer"}
+{"ts": "2026-10-26T05:24:25+00:00", "event": "ticket.transition", "ticket": "T-0059", "from": "ready-for-spec-writer", "to": "ready-for-critic", "by": "workflow", "round": {"spec": 1, "pr": 0}}
+{"ts": "2026-10-26T05:24:25+00:00", "event": "run.started", "ticket": "T-0059", "run": "run-0595-critic", "role": "critic", "model": "fable"}
+{"ts": "2026-10-26T05:33:39+00:00", "event": "run.finished", "ticket": "T-0059", "run": "run-0595-critic", "role": "critic", "status": "APPROVE", "wall_s": 554}
+{"ts": "2026-10-26T05:33:39+00:00", "event": "ticket.transition", "ticket": "T-0059", "from": "ready-for-critic", "to": "awaiting-spec-gate", "by": "workflow", "round": {"spec": 1, "pr": 0}}
+{"ts": "2026-10-26T05:33:40+00:00", "event": "run.started", "ticket": "T-0060", "run": "run-0596-triage", "role": "triage", "model": "opus"}
+{"ts": "2026-10-26T05:36:09+00:00", "event": "run.finished", "ticket": "T-0060", "run": "run-0596-triage", "role": "triage", "status": "NEEDS-HUMAN", "wall_s": 149}
+{"ts": "2026-10-26T05:36:09+00:00", "event": "ticket.parked", "ticket": "T-0060", "from": "ready-for-triage", "reason": "NEEDS-HUMAN from triage"}
+{"ts": "2026-10-26T05:36:09+00:00", "event": "escalation.queued", "ticket": "T-0060", "items": ["NEEDS-HUMAN from triage"]}
+{"ts": "2026-10-27T02:31:00+00:00", "event": "approval.recorded", "ticket": "T-0059", "kind": "spec", "version": 4, "by": "dphang"}
+{"ts": "2026-10-27T02:31:00+00:00", "event": "change.pinned", "ticket": "T-0059", "version": 4, "files": ["openspec/changes/T-0059/proposal.md", "openspec/changes/T-0059/design.md", "openspec/changes/T-0059/specs/truth-check/spec.md", "openspec/changes/T-0059/specs/gate-commands/spec.md", "openspec/changes/T-0059/specs/harness-docs/spec.md", "openspec/changes/T-0059/specs/role-escalations/spec.md", "openspec/changes/T-0059/specs/harness-code/spec.md", "openspec/changes/T-0059/specs/live-store-guard/spec.md", "openspec/changes/T-0059/verification.md"]}
+{"ts": "2026-10-27T02:31:00+00:00", "event": "ticket.transition", "ticket": "T-0059", "from": "awaiting-spec-gate", "to": "ready-for-planner", "by": "dphang"}
+{"ts": "2026-10-27T02:31:25+00:00", "event": "human.resolved", "ticket": "T-0060", "kind": "answer", "by": "dphang", "from": "parked", "to": "ready-for-triage"}

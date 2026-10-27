@@ -1,0 +1,47 @@
+run_id: run-0596-triage
+role: triage
+ticket: T-0060
+model: opus
+round: 0
+spec_version: 0
+started: '2026-10-26T05:33:40+00:00'
+finished: '2026-10-26T05:36:09+00:00'
+wall_s: 149
+status: NEEDS-HUMAN
+input_sources:
+- requests/T-0060.md
+confidence: medium. The intent, the deliverable and the task supply are clear and checked. How to measure
+  operator time is a real conflict with a written rule. Whether the runs themselves belong to this ticket
+  is my inference.
+escalations: []
+escalations_note: null
+claude:
+  session_id: 2076c4c0-399b-4286-8a17-714ecb67c20f
+  total_cost_usd: 0.8711968
+  num_turns: 11
+  usage:
+    input_tokens: 22
+    cache_creation_input_tokens: 36650
+    cache_read_input_tokens: 1811144
+    output_tokens: 10784
+    output_tokens_details:
+      thinking_tokens: 3840
+    server_tool_use:
+      web_search_requests: 0
+      web_fetch_requests: 0
+    service_tier: standard
+    cache_creation:
+      ephemeral_1h_input_tokens: 36650
+      ephemeral_5m_input_tokens: 0
+    inference_geo: global
+    iterations:
+    - input_tokens: 2
+      output_tokens: 2286
+      cache_read_input_tokens: 176253
+      cache_creation_input_tokens: 2493
+      cache_creation:
+        ephemeral_5m_input_tokens: 0
+        ephemeral_1h_input_tokens: 2493
+      type: message
+    speed: standard
+    fallback_credit: null
