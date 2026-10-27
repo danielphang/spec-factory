@@ -3178,3 +3178,32 @@
 {"ts": "2026-10-27T02:31:00+00:00", "event": "change.pinned", "ticket": "T-0059", "version": 4, "files": ["openspec/changes/T-0059/proposal.md", "openspec/changes/T-0059/design.md", "openspec/changes/T-0059/specs/truth-check/spec.md", "openspec/changes/T-0059/specs/gate-commands/spec.md", "openspec/changes/T-0059/specs/harness-docs/spec.md", "openspec/changes/T-0059/specs/role-escalations/spec.md", "openspec/changes/T-0059/specs/harness-code/spec.md", "openspec/changes/T-0059/specs/live-store-guard/spec.md", "openspec/changes/T-0059/verification.md"]}
 {"ts": "2026-10-27T02:31:00+00:00", "event": "ticket.transition", "ticket": "T-0059", "from": "awaiting-spec-gate", "to": "ready-for-planner", "by": "dphang"}
 {"ts": "2026-10-27T02:31:25+00:00", "event": "human.resolved", "ticket": "T-0060", "kind": "answer", "by": "dphang", "from": "parked", "to": "ready-for-triage"}
+{"ts": "2026-10-27T02:31:38+00:00", "event": "ticket.created", "ticket": "T-0059.1", "parent": "T-0059", "status": "ready-for-implementer"}
+{"ts": "2026-10-27T02:31:38+00:00", "event": "tasks.written", "ticket": "T-0059", "source": "plan:whole-spec"}
+{"ts": "2026-10-27T02:31:38+00:00", "event": "plan.skipped", "ticket": "T-0059", "subticket": "T-0059.1", "reason": "one sub-ticket: no NEEDS-SPLIT, no seam heading, no earlier planner run"}
+{"ts": "2026-10-27T02:31:38+00:00", "event": "ticket.transition", "ticket": "T-0059", "from": "ready-for-planner", "to": "planned", "by": "workflow", "round": {"spec": 1, "pr": 0}}
+{"ts": "2026-10-27T02:31:39+00:00", "event": "run.started", "ticket": "T-0059.1", "run": "run-0597-implementer", "role": "implementer", "model": "opus"}
+{"ts": "2026-10-27T02:32:31+00:00", "event": "run.started", "ticket": "T-0060", "run": "run-0598-triage", "role": "triage", "model": "opus"}
+{"ts": "2026-10-27T02:33:21+00:00", "event": "run.finished", "ticket": "T-0060", "run": "run-0598-triage", "role": "triage", "status": "ACCEPT", "wall_s": 50}
+{"ts": "2026-10-27T02:33:22+00:00", "event": "ticket.transition", "ticket": "T-0060", "from": "ready-for-triage", "to": "ready-for-spec-writer", "by": "workflow", "round": {"spec": 0, "pr": 0}}
+{"ts": "2026-10-27T02:33:22+00:00", "event": "run.started", "ticket": "T-0060", "run": "run-0599-spec_writer", "role": "spec_writer", "model": "opus"}
+{"ts": "2026-10-27T02:50:16+00:00", "event": "run.finished", "ticket": "T-0060", "run": "run-0599-spec_writer", "role": "spec_writer", "status": "NEEDS-HUMAN", "wall_s": 1014}
+{"ts": "2026-10-27T02:50:16+00:00", "event": "spec.added", "ticket": "T-0060", "version": 1, "source": "run-0599-spec_writer"}
+{"ts": "2026-10-27T02:50:16+00:00", "event": "ticket.parked", "ticket": "T-0060", "from": "ready-for-spec-writer", "reason": "NEEDS-HUMAN from spec writer"}
+{"ts": "2026-10-27T02:50:16+00:00", "event": "escalation.queued", "ticket": "T-0060", "items": ["NEEDS-HUMAN from spec writer"]}
+{"ts": "2026-10-27T02:53:10+00:00", "event": "run.finished", "ticket": "T-0059.1", "run": "run-0597-implementer", "role": "implementer", "status": "READY-FOR-REVIEW", "wall_s": 1292}
+{"ts": "2026-10-27T02:53:11+00:00", "event": "ticket.transition", "ticket": "T-0059.1", "from": "ready-for-implementer", "to": "checks-in-flight", "by": "workflow", "round": {"spec": 0, "pr": 1}}
+{"ts": "2026-10-27T02:53:11+00:00", "event": "run.started", "ticket": "T-0059.1", "run": "run-0600-reviewer", "role": "reviewer", "model": "fable"}
+{"ts": "2026-10-27T02:53:11+00:00", "event": "run.started", "ticket": "T-0059.1", "run": "run-0601-verifier", "role": "verifier", "model": "opus"}
+{"ts": "2026-10-27T02:58:02+00:00", "event": "run.finished", "ticket": "T-0059.1", "run": "run-0600-reviewer", "role": "reviewer", "status": "APPROVE", "wall_s": 291}
+{"ts": "2026-10-27T02:58:02+00:00", "event": "escalation.queued", "ticket": "T-0059.1", "run": "run-0600-reviewer", "items": ["protected paths touched, all declared in the spec's Risk section: `factory/truth.py`, `factory/cli.py`, `.factory/instance.yaml` (for the record; no action needed)."]}
+{"ts": "2026-10-27T02:58:02+00:00", "event": "result.recorded", "ticket": "T-0059.1", "head": "2588b553013712729323c916c8e9063633b47e29", "role": "reviewer", "status": "APPROVE", "run": "run-0600-reviewer"}
+{"ts": "2026-10-27T03:08:26+00:00", "event": "run.finished", "ticket": "T-0059.1", "run": "run-0601-verifier", "role": "verifier", "status": "VERIFIED", "wall_s": 915}
+{"ts": "2026-10-27T03:08:26+00:00", "event": "result.recorded", "ticket": "T-0059.1", "head": "2588b553013712729323c916c8e9063633b47e29", "role": "verifier", "status": "VERIFIED", "run": "run-0601-verifier"}
+{"ts": "2026-10-27T03:08:26+00:00", "event": "result.recorded", "ticket": "T-0059.1", "head": "2588b553013712729323c916c8e9063633b47e29", "role": "ci", "status": "PASS", "run": "run-0601-verifier"}
+{"ts": "2026-10-27T03:08:29+00:00", "event": "ticket.transition", "ticket": "T-0059.1", "from": "checks-in-flight", "to": "ready-for-merge", "by": "workflow", "round": {"spec": 0, "pr": 1}}
+{"ts": "2026-10-27T03:08:30+00:00", "event": "merge.done", "ticket": "T-0059.1", "head": "2588b553013712729323c916c8e9063633b47e29", "base_before": "db28eb1451e35171b6de62f09d5e378c46a715fa", "main_after": "cfc719f44a3ea69720e12dd870c1fd28b3ca6c9d"}
+{"ts": "2026-10-27T03:08:30+00:00", "event": "ticket.transition", "ticket": "T-0059", "from": "planned", "to": "ready-for-parent-verify", "by": "parent-check"}
+{"ts": "2026-10-27T03:08:31+00:00", "event": "change.archived", "ticket": "T-0059", "archived_to": "openspec/changes/archive/2026-10-27-T-0059", "capabilities": ["gate-commands", "harness-code", "harness-docs", "live-store-guard", "role-escalations", "truth-check"], "decisions": 19}
+{"ts": "2026-10-27T03:08:31+00:00", "event": "ticket.transition", "ticket": "T-0059", "from": "ready-for-parent-verify", "to": "closed", "by": "workflow", "round": {"spec": 1, "pr": 0}}
+{"ts": "2026-10-27T03:08:59+00:00", "event": "human.resolved", "ticket": "T-0060", "kind": "answer", "by": "dphang", "from": "parked", "to": "ready-for-spec-writer"}

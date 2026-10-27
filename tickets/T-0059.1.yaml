@@ -1,0 +1,48 @@
+id: T-0059.1
+type: sub-ticket
+title: '`factory truth check` replays every current-truth scenario, and the gate runs it'
+request: requests/T-0059.md
+source: plan:whole-spec
+status: merged
+round:
+  spec: 0
+  pr: 1
+spec:
+  version: 4
+  approved_version: 4
+plan: null
+in_flight: []
+parked: null
+created: '2026-10-27T02:31:38+00:00'
+history:
+- ts: '2026-10-27T02:53:10+00:00'
+  from: ready-for-implementer
+  to: checks-in-flight
+  by: workflow
+  round:
+    spec: 0
+    pr: 1
+- ts: '2026-10-27T03:08:26+00:00'
+  from: checks-in-flight
+  to: ready-for-merge
+  by: workflow
+  round:
+    spec: 0
+    pr: 1
+- ts: '2026-10-27T03:08:30+00:00'
+  from: ready-for-merge
+  to: merged
+  by: merge
+  head: 2588b553013712729323c916c8e9063633b47e29
+parent: T-0059
+depends_on: []
+parallel_safe: true
+branch: factory/T-0059.1
+head: 2588b553013712729323c916c8e9063633b47e29
+merge:
+  base_before: db28eb1451e35171b6de62f09d5e378c46a715fa
+  main_after: cfc719f44a3ea69720e12dd870c1fd28b3ca6c9d
+parent_base: null
+label: whole-spec
+planned_from: 4
+merge_refused: null

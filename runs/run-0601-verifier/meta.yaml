@@ -1,0 +1,57 @@
+run_id: run-0601-verifier
+role: verifier
+ticket: T-0059.1
+model: opus
+round: 1
+spec_version: 4
+started: '2026-10-27T02:53:11+00:00'
+finished: '2026-10-27T03:08:26+00:00'
+wall_s: 915
+status: VERIFIED
+input_sources:
+- specs/T-0059.1/subticket.md
+- specs/T-0059/v4.md
+- runs/run-0597-implementer/output.md
+- runs/run-0601-verifier/diff.patch
+gate_skipped: []
+environment_files: []
+branch: factory/T-0059.1
+base: db28eb1451e35171b6de62f09d5e378c46a715fa
+head: 2588b553013712729323c916c8e9063633b47e29
+worktree: /Users/dphang/dev/spec-factory/.factory/store/runs/run-0601-verifier/wt
+confidence: high. All 34 acceptance commands match their THENs on the PR, and all 14 NEW ones fail on
+  base for the stated reason. Both gates pass, and the probes and the full live replay show the command
+  handles inputs beyond its tests. The one deviation is the suite scenario's removal of its temporary
+  directory, run on a literal path; it does not change what that scenario checks.
+escalations: []
+escalations_note: null
+claude:
+  session_id: ce32e21c-13a8-49ac-81d1-ddee226987a7
+  total_cost_usd: 2.0984398000000004
+  num_turns: 24
+  usage:
+    input_tokens: 44
+    cache_creation_input_tokens: 90961
+    cache_read_input_tokens: 4332379
+    output_tokens: 25205
+    output_tokens_details:
+      thinking_tokens: 6002
+    server_tool_use:
+      web_search_requests: 0
+      web_fetch_requests: 0
+    service_tier: standard
+    cache_creation:
+      ephemeral_1h_input_tokens: 90961
+      ephemeral_5m_input_tokens: 0
+    inference_geo: global
+    iterations:
+    - input_tokens: 2
+      output_tokens: 4397
+      cache_read_input_tokens: 228163
+      cache_creation_input_tokens: 4894
+      cache_creation:
+        ephemeral_5m_input_tokens: 0
+        ephemeral_1h_input_tokens: 4894
+      type: message
+    speed: standard
+    fallback_credit: null

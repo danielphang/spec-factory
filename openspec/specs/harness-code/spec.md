@@ -156,7 +156,7 @@ T-0001 {'from': 'planned', 'to': 'ready-for-parent-verify', 'by': 'parent-check'
 
 #### Scenario: Spec pinning and planner-run refusals keep their text
 Needs the GIVEN block of "Status transitions write the same events and history entries" run once.
-- WHEN `(. ${TMPDIR:-/tmp}/t0046-store.sh && mkdir $T/s/openspec && bin/factory approve-spec T-0001 2>/dev/null | tail -1; rmdir $T/s/openspec && bin/factory approve-spec T-0001 >/dev/null && bin/factory ticket new --file $T/req2.md >/dev/null && R=$(bin/factory run start --role triage --ticket T-0002 --model m | sed -n 's/.*"run_id": "\([^"]*\)".*/\1/p') && bin/factory subticket add T-0001 2>/dev/null | tail -1; bin/factory subticket add T-0001 --run $R 2>/dev/null | tail -1; bin/factory spec tasks T-0001 --run $R 2>/dev/null | tail -1)`
+- WHEN `(. ${TMPDIR:-/tmp}/t0046-store.sh && mkdir $T/s/openspec && bin/factory approve-spec T-0001 2>/dev/null | tail -1; rmdir $T/s/openspec && bin/factory approve-spec T-0001 >/dev/null && bin/factory ticket new --file $T/req2.md >/dev/null && R=$(bin/factory run start --role triage --ticket T-0002 | sed -n 's/.*"run_id": "\([^"]*\)".*/\1/p') && bin/factory subticket add T-0001 2>/dev/null | tail -1; bin/factory subticket add T-0001 --run $R 2>/dev/null | tail -1; bin/factory spec tasks T-0001 --run $R 2>/dev/null | tail -1)`
 - THEN it prints exactly these 4 lines:
 
 ```
@@ -194,9 +194,9 @@ Per the standing T-0023 decision, the command gives pytest its own temporary dir
 ### Requirement: The command-line code has one module per job
 The harness's command-line code SHALL be split by job: the spec-drift checks in
 `factory/drift.py`, setup in `factory/setup.py`, the gates in `factory/gates.py`, the human
-decisions in `factory/human.py`, and the helpers more than one of them uses, with the live-store
+decisions in `factory/human.py`, the current-truth replay in `factory/truth.py`, and the helpers more than one of them uses, with the live-store
 fence, in `factory/common.py`. `factory/cli.py` MUST keep the parser, the entry point and the role
-list, and be under 900 lines.
+list, and be under 910 lines.
 
 Run every command of this change from the repository root of the checkout under test, after
 `uv sync --frozen`, with `git` on `PATH`.
@@ -221,9 +221,9 @@ Run every command of this change from the repository root of the checkout under 
 - WHEN `uv run --frozen python -B -c 'import factory.human' && grep -oE '^(def [A-Za-z_]+|[A-Z_]+ =)' factory/human.py | sed 's/^def //; s/ =$//' | LC_ALL=C sort | paste -sd' ' -`
 - THEN it prints exactly `_approval_dir _by _copy_record _next_n _refuse_unless_applies _restart_note _set_aside_failed_rows _supersede approve_spec decision_add escape_add intervention_add request_changes resolve spec_amend`
 
-#### Scenario: factory/cli.py keeps the parser, the entry point and the role list, in under 900 lines
+#### Scenario: factory/cli.py keeps the parser, the entry point and the role list, in under 910 lines
 - WHEN `echo "$(wc -l < factory/cli.py | tr -d ' ') $(grep -cE '^(def build_parser\(|def main\(|ROLES = )' factory/cli.py)"`
-- THEN it prints two numbers: the first below 900, the second `3`
+- THEN it prints two numbers: the first below 910, the second `3`
 
 ### Requirement: Splitting the command-line code changes no definition
 Across this change, every top-level function, class and assignment in `factory/*.py` SHALL keep

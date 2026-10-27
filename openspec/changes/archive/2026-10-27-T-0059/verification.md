@@ -183,3 +183,7 @@ Suggested fix: add "resolved" after `--store PATH` in the Inputs bullet.
 ## Out-of-scope observations
 
 - Three scenarios in the four capabilities the nested gate-commands scenario replays need `node` on `PATH`; the scenario says so. A machine without it fails that scenario in every gate, which Risk already covers.
+
+## Verifier results
+
+2588b553013712729323c916c8e9063633b47e29 · T-0059.1 · VERIFIED · run-0601-verifier

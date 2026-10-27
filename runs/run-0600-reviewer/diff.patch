@@ -1,0 +1,676 @@
+diff --git a/.factory/instance.yaml b/.factory/instance.yaml
+index 568fca3..3595a9b 100644
+--- a/.factory/instance.yaml
++++ b/.factory/instance.yaml
+@@ -24,6 +24,8 @@ protected_paths:
+ gate_commands:
+   - "git diff --check main...HEAD"
+   - "uv run --frozen pytest -q -p no:cacheprovider tests/factory"
++  # then current truth, replayed by the integration checkout's harness; WHENs that run the suite are skipped, since the line above runs it
++  - "{integration}/bin/factory truth check --store {integration}/.factory/store --skip-when-contains 'pytest -q -p no:cacheprovider tests/factory'"
+ placeholders: {rounds: 2, spec_lines: 400, audit_n: 5, retro_min: 3}
+ max_rounds: {spec: 2, pr: 2}
+ # Build half, local-commit stand-in (operator, 2026-10-02): no remote, no CI. The merge gate is the
+diff --git a/README.md b/README.md
+index 50fdf61..6daf137 100644
+--- a/README.md
++++ b/README.md
+@@ -10,7 +10,7 @@ attention, with no rise in escaped defects. See `docs/north-star.md`, `STATUS.md
+ 
+ | | |
+ |---|---|
+-| **Status** | Current state as of 2026-10-25. Intake works end to end. Build works, in local-only mode. |
++| **Status** | Current state as of 2026-10-26. Intake works end to end. Build works, in local-only mode. |
+ | **Reader** | Technical, seeing this project for the first time. Terms specific to this system are defined in "Terms used on this page" or at first use. |
+ | **Scope** | What runs now. The intended design and its reasoning are in `docs/design.md`; where the two disagree, this page is right about what runs and the design is amended. |
+ | **Internal references** | Ticket ids, issue numbers and who did what are in "Related work and history" near the end. |
+@@ -614,8 +614,8 @@ can accept a revision while another stays on the old one.
+ The flag cannot clear the other refusal. A runtime with uncommitted edits to the harness code is
+ refused outright; commit or discard them first. Both checks apply only when a command uses the
+ instance's own store. A throwaway store (`FACTORY_STATE` pointing elsewhere, as every test does)
+-skips them. `paths` and `stats` skip both checks on any store because they write nothing, and
+-`init`, `paths` and `stats` refuse `--accept-harness`; every other command accepts it.
++skips them. `paths`, `stats` and `truth check` only read, so they skip both checks on any store
++and refuse `--accept-harness`, as `init` does; every other command accepts it.
+ 
+ ### Upgrading the runtime
+ 
+@@ -904,7 +904,7 @@ runs from the same runtime. Each target's runner then accepts the new revision b
+ A run is in flight from `run start` until `run finish` records its result. While any run on a
+ target is in flight, the harness refuses every write to that target's store that lacks this
+ marker. A write is any command except `ticket show`, `ticket join`, `results show`, `config`,
+-`launch-script`, `status parse`, `log tail`, `paths` and `stats`; a command given
++`launch-script`, `status parse`, `log tail`, `truth check`, `paths` and `stats`; a command given
+ `--accept-harness` is always a write. `factory drive` is exempt from this check and needs no
+ marker, because it is the dispatcher; it guards its own ticket instead ("Driving a ticket from a shell with `factory drive`"). The
+ workflow scripts already put the marker on their own commands. Put it in front of one command at
+@@ -1021,6 +1021,15 @@ changes. A change is a ticket closed in the window after at least one of its sub
+ | Tokens and wall time per change | the median of each change's summed run time, in hours; then the median tokens of the changes whose every run has tokens, how many runs took tokens from a record, a transcript (with `--transcripts`) or neither, and the dollars on the records that carry them |
+ | Lead time | from the ticket's creation to its last merge, in hours: median and range |
+ 
++### Replaying current truth with `factory truth check`
++
++`factory truth check` runs each current-truth scenario's WHEN under `bash` in the git checkout of the
++current directory. A scenario passes only if its WHEN prints exactly the lines its THEN quotes
++(`docs/design.md`, "Replaying current truth"); one it cannot check is listed SKIPPED with its reason.
++`--capability NAME` limits the run, and `--skip-when-contains TEXT` skips each WHEN holding TEXT. It
++folds in approved changes that are merged or under test, so their intended edits are not failures.
++This repo's gate runs it last. A scenario must not replay its own capability, or it replays itself.
++
+ ## What is built and what is not
+ 
+ **Built**
+@@ -1082,6 +1091,8 @@ changes. A change is a ticket closed in the window after at least one of its sub
+ - **The scorecard, escapes and workflow token records.** `factory stats --scorecard`,
+   `factory escape add`, `factory intervention add` and `run finish --transcripts` ("Counting what
+   each role catches and costs"). Not yet run on a real store.
++- **Replaying current truth, `factory truth check`.** The gate replays every current-truth scenario
++  ("Replaying current truth with `factory truth check`"). Not yet run in a real gate.
+ 
+ **Not built**
+ 
+diff --git a/docs/changelog.md b/docs/changelog.md
+index 0b18178..b85d516 100644
+--- a/docs/changelog.md
++++ b/docs/changelog.md
+@@ -88,4 +88,6 @@ Six review rounds ran on this doc, using the reviewer prompt in the appendix. Ro
+ 
+ 78. After issue #105 (2026-10-12), where `approve-spec` refused a spec the critic had approved, over three acceptance labels in `verification.md` that had wrapped onto the next line, and the operator had to fix the spec by hand and approve it again. The format check ran only at the spec gate, so neither the spec writer nor the critic saw its verdict. `spec add` now runs the same check as `approve-spec` on a store with current truth: a spec that is malformed, or whose changes do not apply to current truth, is refused with exit 2 and `spec not added: ` followed by the errors, and nothing is written. A spec writer's NEEDS-HUMAN draft is still stored unchecked, so the operator can read it. Both the driver and the intake workflow script send a refused spec back to the spec writer as a new round, counted against the round limit; the writer's next input holds the refusal and the refused output. When no round is left, the ticket parks as `max rounds: ` followed by the refusal, with each backtick, `$` and `\` replaced by `'`. This overturns, for a refused spec, the 2026-10-07 decision that a format refusal re-dispatches the role once and then parks. Rejected: a routing edge from the spec writer's ready state to itself, which every instance's `instance.yaml` would need; a new round command; and a record of the refusal, which would break the rule that a refusal writes nothing.
+ 
++79. After issue #120 (2026-10-20), where a change merged here could break a current-truth scenario an earlier change was required to keep and nothing would notice: each verifier ran only its own ticket's scenarios once, and the gate ran only a whitespace check and the harness suite. Replayed on `main` at `7bfbe8f`, five scenarios failed. `factory truth check` now replays current truth against the checkout that holds the caller's directory: each WHEN runs under `bash` after the GIVEN blocks it needs, and its stdout is compared with the THEN by the exact-print rule ("Replaying current truth"). A THEN the rule cannot read, a missing GIVEN block or a WHEN the caller skips is listed SKIPPED with its reason. It folds in the approved delta of the ticket whose checkout it runs in, and that of every open ticket with a merged sub-ticket, and skips those deltas' scenarios. It only reads, so it skips the fence and the harness lock and refuses `--accept-harness`. This repo's last gate command now runs it, with the integration checkout's `bin/factory` on the integration checkout's store, skipping the scenarios whose WHEN runs the harness suite, which the gate already runs. Wall time: one capability after another took 687 s at `3e4705a`, over the ten-minute limit on one shell command; all at once took 482 s; all at once without the suite-running scenarios took 157 s there and 127 s at `7bfbe8f`, with this change's delta folded 127 s, and 129 s with the new gate-commands scenario run, on top of the suite's 119 s. The five failing scenarios are restated. Four broke when T-0050 made `run start` refuse a `--model` the instance does not name, and their fixtures still passed one; the restated fixtures pass none. The fifth is T-0057's README check, which measured README growth against `main` and so could pass only on T-0057's own branch; it now measures across each `Merge factory/T-0057.<n>` commit against its first parent. The two live-store-guard lists gain `truth check`, and `factory/cli.py`'s limit rises from under 900 to under 910 lines. Rejected: the runtime's `bin/factory` in the gate, which would leave the gate broken between a merge and the next upgrade; a `{ticket}` placeholder in the gate command, which only an upgraded runtime would fill in; running a folded delta's new scenarios, which would fail a sub-ticket on scenarios a sibling has yet to build; and a contains match, which no passing scenario needs and which would hide extra output.
++
+ Declined: a dedicated merge agent (merging is gate config plus human gates, not a judgment call).
+diff --git a/docs/design.md b/docs/design.md
+index 879121a..21170eb 100644
+--- a/docs/design.md
++++ b/docs/design.md
+@@ -61,11 +61,11 @@ The prompts say what each role does. The harness enforces the wiring rules: fres
+ 
+ **Spec drift.** Between the writing of a spec and the build of one of its sub-tickets, other tickets merge, and a sibling that the sub-ticket's checks rely on may not have merged yet. The harness checks for this before the implementer spends a run on it. Every spec version the store keeps, from `spec add`, a gate edit or `spec amend`, records the integration branch's head when it was stored, as `integration_head` in `specs/<ticket id>/v<n>.yaml`; the value is null when the target repo or branch does not resolve. Before a sub-ticket's implementer run, `run start` checks for drift, ahead of the sibling-tests check. It checks only while the sub-ticket has no finished implementer run and no ruling on file. Two rules find drift. The sibling rule: the sub-ticket's Acceptance field names, by id or by plan label as a whole token, a sibling of the current plan that has not merged and that the sub-ticket does not depend on, directly or through other siblings. Nothing makes such a sibling merge first. The test rule counts from the head recorded with the parent's approved version. It is skipped when that version has no record, because it was stored before the record existed, or when the head is null or not a commit in the target repo. For each first-parent commit on the integration branch since that head that changed a file the version's design part names, each test file the commit changed is a finding, unless the design's `## Tests to change` or the sub-ticket's "Tests to change" lists it. A first-parent commit that is the recorded merge (`main_after`) of a merged sub-ticket of the same parent, from any of its plans, is not counted, because the plan expects its siblings' changes. Every other commit and merge still counts. Named files are the design part's backticked paths that exist at the integration branch's head, other than test files and `.md` documents, which nearly every ticket edits. A test file's name starts with `test_`, ends `_test.<ext>`, or contains `.test.`. The test rule approximates "a test pins behaviour the spec changes". Measured on two stores' history, it would have caught 9 of 10 known breaks, and it parks about half of all sub-tickets. On drift, `run start` refuses with exit 2, writes nothing, and gives an error that starts `BLOCKED from harness: spec drift:` and names each finding. The build parks the sub-ticket with that error as the reason. The human amends the spec (`factory spec amend`, Spec store below), rules, or both; `resolve --ruling` returns the sub-ticket to its implementer, and the ruling on file stops the check from repeating.
+ 
+-**Only the dispatcher writes a live store during a run.** The store CLI fences an instance's own store; a throwaway store (`FACTORY_STATE` naming another) is never fenced. The fence applies to every command except the read-only ones: `ticket show`, `ticket join`, `results show`, `config`, `launch-script`, `status parse`, `log tail`, `paths` and `stats`. A command given `--accept-harness` is always fenced, because it rewrites the lock. The location rule is checked first: a write run from inside the own store's `runs/` or `worktrees/`, where roles do their work, is refused, with or without `FACTORY_DISPATCH=1` and with or without a run in flight. Then the in-flight rule: while any run is in flight on any ticket of the store, a write is refused unless its environment carries `FACTORY_DISPATCH=1`. Both workflow scripts put that marker in front of every clerk command. `factory drive` is the dispatcher, so it is exempt from the in-flight rule: it starts unmarked while runs of other tickets are in flight. It keeps the location rule and the lock, and given `--accept-harness` it is fenced in full, in-flight rule included. In place of the in-flight rule it has a same-ticket guard: it refuses to start on the same ticket, marked or not and on any store, while that ticket or one of its sub-tickets has a run in flight, or while the ticket's status file `drive/<ticket>.yaml` has no `ended` and names a live pid. Once started, it sets the marker in its own environment, so its own store calls are marked whether or not it was started marked. It removes the marker from the environment of every role process it starts, so a role's commands are never marked. The operator, or a runner session, puts it in front of one command that must write during a run, and never exports it. A refusal exits 2, writes nothing, and tells the caller to use a throwaway `FACTORY_STATE`; it never names the marker. The fence is checked before the harness lock, so a fenced command never reaches the lock and a fenced `--accept-harness` rewrites nothing. A marked command still meets the lock and its uncommitted-edit refusal unchanged. The fence guards against accidents, such as a role's test suite running `init` from its scratch directory. It is not isolation: a role that copies the marker and writes from outside the store still gets through.
++**Only the dispatcher writes a live store during a run.** The store CLI fences an instance's own store; a throwaway store (`FACTORY_STATE` naming another) is never fenced. The fence applies to every command except the read-only ones: `ticket show`, `ticket join`, `results show`, `config`, `launch-script`, `status parse`, `log tail`, `truth check`, `paths` and `stats`. A command given `--accept-harness` is always fenced, because it rewrites the lock. The location rule is checked first: a write run from inside the own store's `runs/` or `worktrees/`, where roles do their work, is refused, with or without `FACTORY_DISPATCH=1` and with or without a run in flight. Then the in-flight rule: while any run is in flight on any ticket of the store, a write is refused unless its environment carries `FACTORY_DISPATCH=1`. Both workflow scripts put that marker in front of every clerk command. `factory drive` is the dispatcher, so it is exempt from the in-flight rule: it starts unmarked while runs of other tickets are in flight. It keeps the location rule and the lock, and given `--accept-harness` it is fenced in full, in-flight rule included. In place of the in-flight rule it has a same-ticket guard: it refuses to start on the same ticket, marked or not and on any store, while that ticket or one of its sub-tickets has a run in flight, or while the ticket's status file `drive/<ticket>.yaml` has no `ended` and names a live pid. Once started, it sets the marker in its own environment, so its own store calls are marked whether or not it was started marked. It removes the marker from the environment of every role process it starts, so a role's commands are never marked. The operator, or a runner session, puts it in front of one command that must write during a run, and never exports it. A refusal exits 2, writes nothing, and tells the caller to use a throwaway `FACTORY_STATE`; it never names the marker. The fence is checked before the harness lock, so a fenced command never reaches the lock and a fenced `--accept-harness` rewrites nothing. A marked command still meets the lock and its uncommitted-edit refusal unchanged. The fence guards against accidents, such as a role's test suite running `init` from its scratch directory. It is not isolation: a role that copies the marker and writes from outside the store still gets through.
+ 
+ **Scratch directory per run.** Every run gets its own directory for temporary files, `runs/<run id>/scratch/` in the store, so runs that happen at the same time never write into one shared place and no run leaves files in a repository checkout. `run start` creates it for every role, after every guard has passed, and makes sure the store's `.gitignore` excludes `runs/*/scratch/`: an absent or empty `.gitignore` gets the harness's commented block, and an existing one keeps its own lines and gains only the lines it lacks. The composer names the directory's absolute path in a "Scratch directory" section of the run's input, directly after "Running code", and the shared preamble's SCRATCH FILES rule tells every role to put its own temporary files there and nowhere else, taking precedence over any other instruction to use a session scratchpad. When a ticket's status changes to anything other than `parked`, the harness removes the scratch directory of each finished run of that ticket; runs still in flight, other tickets' runs and every path outside `runs/*/scratch` are left alone. A park keeps the files because a human who answers a parked ticket may need to see what the run built; they are removed once the human sends the ticket on or closes it. So a role that wants a later reader to see what a prototype showed puts that in its output, since the directory is gone by the time the ticket's next role reads it.
+ 
+-**Role-context block.** Every role's input opens with a role-context block, ahead of the INPUT its role prompt declares and anything the routing table's "Receives" column adds. The block is per repo, like `{repo name}` and the protected paths: it says which repository the role works in, how to run commands and tests there, what kind of request to expect, and who reads what the roles write there. Its text is the same for every role. It is a declared input of every role, so composing from *only* declared sources includes it; it travels with the input (piece 3), not in the system prompt. A wrong block misdirects every role at once, and the checkers receive the same block, so they share the error instead of catching it. The block is kept in the repo it describes, at `.factory/context.md`. That directory, `.factory/`, is the repo's instance of the factory: `instance.yaml` (the per-repo config: `{repo name}`, protected paths, `{gate commands}`, the variables kept for code runs (`run_env`), the command that installs each build checkout's environment (`environment_sync`), models, routing, the store's path and the harness checkout it runs with), `context.md`, `harness.lock` (the harness revision the instance has accepted; the harness refuses to touch the instance's store under any other revision until a human accepts it, and logs the acceptance; `paths` and `stats`, which only read, run under any revision; `init`, `paths` and `stats` never check the lock, so they refuse `--accept-harness` and name `config` as the command that accepts a revision) and the store: a git worktree of the repo's `factory-store` branch, at a path the integration branch has never tracked, because a checkout of an older commit would otherwise overwrite live records. That branch is never merged into the integration branch, so a store commit never moves it. A command run from inside a code checkout finds that checkout's own instance, whose store does not exist there, so it reports no such ticket rather than reaching the live store. The harness picks the instance by walking up from the working directory to the nearest `.factory/instance.yaml`, or takes it from an explicit override, and never falls back to an instance of its own; the composer prepends that instance's `context.md`, and the preamble's `{repo name}` and protected paths are filled from its `instance.yaml`, and `{writing standard}` with the path of `docs/writing.md` in the harness checkout that runs it. `{coding standard}`, in the implementer and code reviewer prompts, is filled the same way with the path of `docs/coding.md` in that checkout. The composer also gives every role a "Running code" section: a wrapper that runs one command in a subshell that first drops a Python virtual environment inherited from the launching shell (its `bin/` off `PATH`, `VIRTUAL_ENV` and `PYTHONHOME` unset), then sets `HOME` to a fresh temporary directory and exports any variables the instance lists in `run_env`; `{gate commands}` reach a role already wrapped. When the instance names an `environment_sync` command, `run start` runs it through that wrapper in each build checkout before the role starts, refuses the run if it fails (keeping the command and its output in the run's `environment-sync.log`), and the role's input says the environment is already synced. It is guidance, not a sandbox: a command can still write an absolute path, which the preamble forbids for protected paths outside the repository. Each run leaves its temporary directory behind.
++**Role-context block.** Every role's input opens with a role-context block, ahead of the INPUT its role prompt declares and anything the routing table's "Receives" column adds. The block is per repo, like `{repo name}` and the protected paths: it says which repository the role works in, how to run commands and tests there, what kind of request to expect, and who reads what the roles write there. Its text is the same for every role. It is a declared input of every role, so composing from *only* declared sources includes it; it travels with the input (piece 3), not in the system prompt. A wrong block misdirects every role at once, and the checkers receive the same block, so they share the error instead of catching it. The block is kept in the repo it describes, at `.factory/context.md`. That directory, `.factory/`, is the repo's instance of the factory: `instance.yaml` (the per-repo config: `{repo name}`, protected paths, `{gate commands}`, the variables kept for code runs (`run_env`), the command that installs each build checkout's environment (`environment_sync`), models, routing, the store's path and the harness checkout it runs with), `context.md`, `harness.lock` (the harness revision the instance has accepted; the harness refuses to touch the instance's store under any other revision until a human accepts it, and logs the acceptance; `paths`, `stats` and `truth check`, which only read, run under any revision; `init`, `paths`, `stats` and `truth check` never check the lock, so they refuse `--accept-harness` and name `config` as the command that accepts a revision) and the store: a git worktree of the repo's `factory-store` branch, at a path the integration branch has never tracked, because a checkout of an older commit would otherwise overwrite live records. That branch is never merged into the integration branch, so a store commit never moves it. A command run from inside a code checkout finds that checkout's own instance, whose store does not exist there, so it reports no such ticket rather than reaching the live store. The harness picks the instance by walking up from the working directory to the nearest `.factory/instance.yaml`, or takes it from an explicit override, and never falls back to an instance of its own; the composer prepends that instance's `context.md`, and the preamble's `{repo name}` and protected paths are filled from its `instance.yaml`, and `{writing standard}` with the path of `docs/writing.md` in the harness checkout that runs it. `{coding standard}`, in the implementer and code reviewer prompts, is filled the same way with the path of `docs/coding.md` in that checkout. The composer also gives every role a "Running code" section: a wrapper that runs one command in a subshell that first drops a Python virtual environment inherited from the launching shell (its `bin/` off `PATH`, `VIRTUAL_ENV` and `PYTHONHOME` unset), then sets `HOME` to a fresh temporary directory and exports any variables the instance lists in `run_env`; `{gate commands}` reach a role already wrapped. When the instance names an `environment_sync` command, `run start` runs it through that wrapper in each build checkout before the role starts, refuses the run if it fails (keeping the command and its output in the run's `environment-sync.log`), and the role's input says the environment is already synced. It is guidance, not a sandbox: a command can still write an absolute path, which the preamble forbids for protected paths outside the repository. Each run leaves its temporary directory behind.
+ 
+ **Model per role, starting point.** One rule: a role's model depends on what checks its output. Default Opus. A checker is never weaker than the author it checks, except the verifier, whose check is the commands. Fable goes where a role's output is checked only by a human: the critic, the code reviewer, the retro. Sonnet only where the output is checked mechanically inside the same loop. The verifier is the one checker whose check is the commands themselves; its probe step is judgment, so it drops to Sonnet only where probes rarely matter. Tune effort before changing model; record the model on every run so the retro can compare failure rates by model; this table is the harness's model config, so a retro diff to it is the proposal path. Never let an author and its checker share a model where you can avoid it; the verifier is again the exception. `factory stats` prints the evidence a change to this table needs; its first figures, from 2026-10-11, are in `docs/principles.md`, principle 4, and changelog entry 70.
+ 
+@@ -95,6 +95,8 @@ The prompts say what each role does. The harness enforces the wiring rules: fres
+ 
+ `decisions.md`, one per repo beside `openspec/`, is the decision log: one line per decision, with its ticket id. Roles return text and never write the tree; the harness writes it. The spec writer returns one document in parts (§2 FORMAT), and the store keeps every version. The human spec gate pins one version: it refuses a delta that does not apply to current truth, and writes the pinned version as the change folder, so the planner, implementer and verifier work from the delta the human approved. After the gate, only `factory spec amend <ticket id> --file F --reason "<line>" --intent unchanged` changes the pinned version. A human runs it on a parent ticket whose spec is approved and not yet archived, when another ticket's merge or a checker's finding shows the approved spec is wrong; no workflow script or role prompt names it. It refuses while any run is in flight on the ticket or its sub-tickets. `--intent unchanged` keeps the Problem section, every Decisions line, and each requirement's name, operation and statement, whitespace aside. Scenarios, their setup, Evidence, design text and Tests to change may change. The harness checks that claim against the approved version. It refuses a change of intent, and always refuses `--intent changed`, with a restart note: the merged sub-tickets, which a restart keeps; the unmerged ones, which it discards; and the two ways to restart, re-spec and re-plan through the spec gate, or close and re-file. It also refuses a version that fails the gate's own checks. The amended version becomes the approved one, so every later role run receives it. The re-pin rewrites the change folder as the gate does, but keeps the planner's `tasks.md`, and archive writes the amended scenarios. Each sub-ticket not merged or closed moves to the new version and keeps the version its plan was made from, so an amendment supersedes no plan. The amendment is recorded in `approvals/<ticket id>/amendment-<n>.md`, with the reason, each scenario changed, added or removed, each sub-ticket merged before it, and the diff, and logged as `spec.amended`. It changes no ticket state; the human resumes the ticket by the usual routes. Labels and round-to-round churn stay in `verification.md`, out of the delta. **Archive** is the parent-close step. After the parent-close run returns VERIFIED, or a sub-ticket's VERIFIED run stands in for it (routing table, Merge gate row), the harness applies each delta to current truth (ADDED appends the requirement, MODIFIED replaces the requirement of that name whole, REMOVED deletes it), moves the folder to `openspec/changes/archive/<YYYY-MM-DD>-<ticket id>/`, and appends each line of the proposal's Decisions to `decisions.md` with the date and ticket id; then the parent closes. An archive refusal writes nothing and parks the parent. There are three: a delta that no longer applies (an ADDED name already in current truth, a MODIFIED or REMOVED name missing); no change folder, because the spec was pinned before the repo had an `openspec/` tree; and no spec store at all (no `openspec/` tree). Only the archive step writes current truth. `decisions.md` has three writers: archive; `factory decision add <ticket id> "<line>"`, which a human runs at any ticket state, closed included; and `resolve --answer` or `resolve --close` with `--decision "<line>"`. Each appends `<YYYY-MM-DD> <ticket id> <line>`, with the UTC date. Triage receives the capability index: one line per current-truth capability, with its size, the absolute path of its spec and its requirement names. Triage names the capabilities the request touches on its `Capabilities:` line. The spec writer and the critic receive those capabilities in full, plus each one whose `specs/<name>/spec.md` path the spec they work from cites, and the capability index for the rest (routing table). They and the planner receive the whole decision log, `decisions.md`, when it holds any text, whatever capabilities the ticket names: a standing decision often names no capability, yet every ticket must follow it. A ticket whose latest triage output has no `Capabilities:` line gets every current-truth spec in full.
+ 
++**Replaying current truth.** `factory truth check` replays current truth against a checkout, so a change that breaks a scenario an earlier change was required to keep is caught. It runs every scenario's WHEN under `bash -c`, from the top of the git checkout that holds the caller's directory, with stdin closed, after the GIVEN blocks the scenario needs: the fenced blocks before its WHEN line, and those of each scenario named in double quotes on its other lines, run first. Each block runs once per capability, and a GIVEN block's exit status is ignored. It compares the WHEN's stdout with the THEN by the exact-print rule. A THEN of the form "it prints [exactly|only] …" lists the expected lines in backticks, joined by ", then", ", and", ", " or " and"; the list may open with "[these] N lines:" or read "N lines, each `X`"; an item may be followed by "twice" or "three times", or by a parenthetical note; the THEN may end ", one per line" or "and exits 0"; and a THEN ending "these N lines:" takes them from the fenced block after it. The stdout, less one trailing newline, must equal those lines exactly; stderr is never compared, and the exit status only when the THEN says "and exits 0". A scenario is listed SKIPPED, with its reason, and counted, when it is in a folded delta, has no single backticked WHEN command, has a WHEN that contains a `--skip-when-contains` text, needs a GIVEN block current truth does not hold, or has a THEN the rule cannot read in full. Before it runs, the check folds into current truth, as archive would, the approved delta of the ticket whose checkout it runs in (the parent's, for a sub-ticket; recognised by the store's `worktrees/<id>` and `runs/<run>/wt` layout), and the delta of every unarchived change whose ticket is not closed and has a merged sub-ticket, because that code is on the integration branch before its scenarios reach current truth. The scenarios in those deltas' ADDED and MODIFIED requirements are skipped, since their tickets' verifiers check them; a folded delta that no longer applies refuses the check with exit 2, naming its ticket. Capabilities run at the same time, each in its own fresh `HOME` and `TMPDIR`, with every `FACTORY_` variable removed; within one, scenarios run in file order. It prints one PASS, FAIL or SKIPPED line per scenario, the expected and printed lines under each failure, and a last line with the counts and the wall time, and exits 1 when any scenario failed. It only reads, so like `stats` it skips the instance refusal, the live-store fence and the harness lock, and refuses `--accept-harness`. This repo's last gate command runs it with the integration checkout's `bin/factory` on the integration checkout's store, skipping each scenario whose WHEN runs the harness suite, which the gate's previous command runs; the runtime's `bin/factory` would leave the gate broken between a merge and the next upgrade. A scenario must not run the check over a capability that holds that scenario, or the check replays itself.
++
+ **Routing table.** The dispatcher (piece 2) is this table and nothing else. Each row: a STATUS a role emits, what runs next, and what it receives. "Receives" adds to the INPUT the role prompt already declares. Both follow the role-context block (above).
+ 
+ Rules the table relies on:
+diff --git a/factory/cli.py b/factory/cli.py
+index 7724f8c..b68a202 100644
+--- a/factory/cli.py
++++ b/factory/cli.py
+@@ -15,7 +15,7 @@ from pathlib import Path
+ 
+ import yaml
+ 
+-from factory import compose, cost, gitops, instance, launch, specstore, status, store, subtickets, tripwire
++from factory import compose, cost, gitops, instance, launch, specstore, status, store, subtickets, tripwire, truth
+ from factory.common import _add_spec_version, _rel, fence, out
+ from factory.drift import _check_drift, _check_sibling_tests
+ from factory.gates import (_parent_close_verified, archive_cmd, merge_cmd, results_record, results_show,
+@@ -785,6 +785,7 @@ def build_parser() -> argparse.ArgumentParser:
+                         "cost record, and for implementer gate failures (repeatable)")
+     p.add_argument("--scorecard", action="store_true", help="print only the north star's scorecard; needs --since")
+     p.set_defaults(fn=stats_cmd)
++    truth.add_parser(sp)
+     p = sp.add_parser("archive")
+     p.add_argument("id")
+     p.set_defaults(fn=archive_cmd)
+@@ -858,23 +859,22 @@ def build_parser() -> argparse.ArgumentParser:
+ 
+ # ----- live-store fence: only the dispatcher writes a live store during a run ------------------
+ 
+-# `paths` and `stats` never reach the fence (main() runs them before it); they are listed so this set
+-# matches the documents' read-only list.
++# `truth check`, `paths` and `stats` never reach the fence (main() runs them before it); they are listed
++# so this set matches the documents' read-only list.
+ READ_ONLY = {("ticket", "show"), ("ticket", "join"), ("results", "show"), ("config", None),
+-             ("launch-script", None), ("status", "parse"), ("log", "tail"), ("paths", None), ("stats", None)}
++             ("launch-script", None), ("status", "parse"), ("log", "tail"), ("truth", "check"), ("paths", None), ("stats", None)}
+ 
+ 
+ def main(argv: list[str] | None = None) -> int:
+     a = build_parser().parse_args(argv)
+     try:
+-        if a.cmd in ("init", "paths", "stats") and a.accept_harness:
+-            raise Refused(f"factory {a.cmd} never checks the harness lock, so it cannot accept a revision; "
+-                          f"run factory --accept-harness {a.accept_harness} config")
+-        # exempt from the instance refusal (design B.1); `paths` and `stats` only read, so they also
+-        # skip the fence and the harness lock; all three refuse --accept-harness (above, T-0058)
+-        if a.cmd in ("init", "paths", "stats"):
+-            a.fn(a)
+-            return 0
++        if a.cmd in ("init", "paths", "stats", "truth") and a.accept_harness:
++            raise Refused(f"factory {a.cmd}{' ' + a.sub if a.cmd == 'truth' else ''} never checks the harness lock, so it "
++                          f"cannot accept a revision; run factory --accept-harness {a.accept_harness} config")
++        # exempt from the instance refusal (design B.1); `paths`, `stats` and `truth check` only read, so
++        # they also skip the fence and the harness lock; all four refuse --accept-harness (above, T-0058)
++        if a.cmd in ("init", "paths", "stats", "truth"):
++            return a.fn(a) or 0
+         inst = instance.require()  # refused when no instance is found: nothing is written
+         cfg = instance.load_config(inst)
+         root = store.state_root(cfg)
+diff --git a/factory/truth.py b/factory/truth.py
+new file mode 100644
+index 0000000..e405fe1
+--- /dev/null
++++ b/factory/truth.py
+@@ -0,0 +1,297 @@
++"""`factory truth check`: replay every current-truth scenario against the git checkout that holds the
++caller's directory, and compare each WHEN's output with its THEN by the exact-print rule (design,
++"Replaying current truth"). Like `stats`, it only reads: main() runs it before the instance refusal,
++the live-store fence and the harness lock.
++"""
++from __future__ import annotations
++
++import os
++import re
++import shutil
++import subprocess
++import tempfile
++import time
++from concurrent.futures import ThreadPoolExecutor
++from pathlib import Path
++
++import yaml
++
++from factory import instance, specstore
++from factory.store import Refused
++
++WORDS = {w: i for i, w in enumerate(("two", "three", "four", "five", "six", "seven", "eight", "nine", "ten"), 2)}
++ITEM_RE = re.compile(r"`([^`]*)`(?:,? (twice|three times))?(?: \([^`()]*\))?")
++SEP_RE = re.compile(r", then |, and |, | and ")
++COUNT = {None: 1, "twice": 2, "three times": 3}
++
++
++def _items(s: str) -> list[str] | None:
++    """LIST := ITEM (SEP ITEM)*, read in full, or None."""
++    out, pos = [], 0
++    while m := ITEM_RE.match(s, pos):
++        out += [m.group(1)] * COUNT[m.group(2)]
++        pos = m.end()
++        if pos == len(s):
++            return out
++        if not (sep := SEP_RE.match(s, pos)):
++            return None
++        pos = sep.end()
++    return None
++
++
++def expected(then: str, block: list[str] | None) -> tuple[list[str], bool] | None:
++    """The exact-print rule: (expected lines, whether the exit status must be 0) for the THEN text
++    after `- THEN `, `block` being the fenced block after it; None when the rule cannot read it in full."""
++    m = re.match(r"it prints (?:exactly |only )?(.*)$", then)
++    if not m:
++        return None
++    body = m.group(1).removesuffix(".")
++    exits = body.endswith((" and exits 0", ", and exits 0"))
++    body = re.sub(r",? and exits 0$", "", body).removesuffix(", one per line")
++    if re.fullmatch(r"these (?:\d+|[A-Za-z]+) lines:", body):
++        return (block, exits) if block is not None else None
++    if m := re.fullmatch(r"([a-z]+) lines, each (?:exactly )?(`.*)", body):
++        first = ITEM_RE.match(m.group(2))
++        if m.group(1) not in WORDS or not first:
++            return None
++        rest = m.group(2)[first.end():]
++        tail = _items(rest.removeprefix(", then ")) if rest.startswith(", then ") else ([] if not rest else None)
++        lines = [first.group(1)] * COUNT[first.group(2)] * WORDS[m.group(1)]
++        return (lines + tail, exits) if tail is not None else None
++    body = re.sub(r"^(?:these )?(?:\d+|[A-Za-z]+) lines(?:, one per line)?: ", "", body)
++    lines = _items(body)
++    return (lines, exits) if lines is not None else None
++
++
++class Scenario:
++    """One `#### Scenario:` block, read outside fences: its WHEN and THEN lines, its GIVEN blocks
++    (the fenced blocks before the WHEN line), the fenced block after its THEN, and its quoted strings."""
++
++    def __init__(self, cap: str, name: str, block: str):
++        self.cap, self.name = cap, name
++        self.whens, self.thens, self.given, self.quotes, self.given_quotes = [], [], [], [], []
++        self.then_block: list[str] | None = None
++        fenced = None
++        for line in block.splitlines()[1:]:
++            if line.lstrip().startswith("```"):
++                if fenced is None:
++                    fenced = []
++                    continue
++                if not self.whens:
++                    self.given.append("\n".join(fenced) + "\n")
++                elif self.thens and self.then_block is None and self.thens[0].endswith("lines:"):
++                    self.then_block = fenced
++                fenced = None
++            elif fenced is not None:
++                fenced.append(line)
++            elif line.startswith("- WHEN "):
++                self.whens.append(line)
++            elif line.startswith("- THEN "):
++                self.thens.append(line[len("- THEN "):].rstrip())
++            else:
++                q = re.findall(r'"([^"]+)"', line)
++                self.quotes += q
++                self.given_quotes += q if "GIVEN block" in line else []
++
++    def command(self) -> str:
++        """The WHEN line's text between its first and last backtick."""
++        w = self.whens[0]
++        return w[w.find("`") + 1:w.rfind("`")]
++
++
++def _ticket(root: Path, tid: str) -> dict:
++    p = root / "tickets" / f"{tid}.yaml"
++    return (yaml.safe_load(p.read_text(encoding="utf-8")) or {}) if p.is_file() else {}
++
++
++def _ticket_under_test(root: Path, checkout: Path) -> str | None:
++    """The ticket whose checkout this is, by the store's own layout: `worktrees/<id>` (the
++    implementer's worktree) or `runs/<run>/wt` (a checker's checkout, ticket in the run's meta.yaml)."""
++    if checkout.parent == root / "worktrees":
++        return checkout.name
++    meta = checkout.parent / "meta.yaml"
++    if checkout.name == "wt" and checkout.parent.parent == root / "runs" and meta.is_file():
++        return (yaml.safe_load(meta.read_text(encoding="utf-8")) or {}).get("ticket")
++    return None
++
++
++def folded_ids(root: Path, tid: str | None) -> list[str]:
++    """The ticket under test's change (its parent's, or its own), plus every unarchived change whose
++    ticket is not closed and has a merged sub-ticket: that code is on the integration branch before
++    its scenarios reach current truth."""
++    changes = specstore.root_dir(root) / "changes"
++    tickets = [yaml.safe_load(p.read_text(encoding="utf-8")) or {} for p in sorted((root / "tickets").glob("*.yaml"))]
++    merged = {t.get("parent") for t in tickets if t.get("status") == "merged"}
++    ids = {d.name for d in (changes.iterdir() if changes.is_dir() else ())
++           if d.is_dir() and d.name != "archive" and d.name in merged and _ticket(root, d.name).get("status") != "closed"}
++    if tid:
++        cid = _ticket(root, tid).get("parent") or tid
++        ids |= {cid} if (changes / cid).is_dir() else set()
++    return sorted(ids)
++
++
++def fold(root: Path, ids: list[str]) -> tuple[dict[str, str], dict[tuple[str, str], str]]:
++    """Current truth with each change's delta applied, in order, as archive applies it; and, per
++    (capability, scenario) in an ADDED or MODIFIED requirement of a folded delta, that change's id."""
++    truth = {p.parent.name: p.read_text(encoding="utf-8")
++             for p in sorted((specstore.root_dir(root) / "specs").glob("*/spec.md"))}
++    owner: dict[tuple[str, str], str] = {}
++    for cid in ids:
++        errors = []
++        for part in sorted((specstore.change_dir(root, cid) / "specs").glob("*/spec.md")):
++            cap = part.parent.name
++            ops, errs = specstore.parse_delta(part.read_text(encoding="utf-8"))
++            # specstore.applies' check, against the text folded so far rather than the store's files
++            have = specstore.requirement_blocks(truth.get(cap, ""))
++            errs += [f"ADDED {n!r} is already in current truth ({cap})" for n in ops.get("ADDED", {}) if n in have]
++            errs += [f"{op} {n!r} is not in current truth ({cap})"
++                     for op in ("MODIFIED", "REMOVED") for n in ops.get(op, {}) if n not in have]
++            if errs or not any(ops.values()):
++                errors += errs
++                continue
++            truth[cap] = specstore.apply_delta(truth.get(cap, ""), cap, ops)
++            for op in ("ADDED", "MODIFIED"):
++                for b in ops.get(op, {}).values():
++                    owner.update({(cap, n): cid for n in specstore.scenario_names(b)})
++        if errors:
++            raise Refused(f"truth check: the approved delta of {cid} does not apply to current truth: {'; '.join(errors)}")
++    return truth, owner
++
++
++def skip_reason(sc: Scenario, owner: dict, names: set[str], skip_texts: list[str]) -> str | None:
++    if (sc.cap, sc.name) in owner:
++        return f"in the approved delta of {owner[(sc.cap, sc.name)]}, which that ticket's verifier checks"
++    if len(sc.whens) != 1:
++        return "has no WHEN line" if not sc.whens else "has more than one WHEN line"
++    cmd = sc.command()
++    if sc.whens[0].count("`") < 2 or not cmd.strip():
++        return "its WHEN is not one backticked command"
++    for t in skip_texts:
++        if t in cmd:
++            return f'its WHEN contains "{t}", which this run skips'
++    for q in sc.given_quotes:
++        if q not in names:
++            return f'needs the GIVEN block of "{q}", which current truth does not hold'
++    if not sc.thens:
++        return "has no THEN line"
++    if len(sc.thens) > 1:
++        return "has more than one THEN line"
++    if expected(sc.thens[0], sc.then_block) is None:
++        return f"THEN is not an exact print: {sc.thens[0]}"
++    return None
++
++
++def _bash(text: str, cwd: Path, env: dict) -> subprocess.CompletedProcess:
++    return subprocess.run(["bash", "-c", text], cwd=cwd, env=env, stdin=subprocess.DEVNULL, capture_output=True)
++
++
++def _run_capability(todo: list[Scenario], refs, checkout: Path) -> dict[int, subprocess.CompletedProcess]:
++    """Runs one capability's scenarios in file order, in a fresh HOME and TMPDIR, each after the
++    GIVEN blocks it needs (each reference's needs first, then its own); a block runs at most once."""
++    d = Path(tempfile.mkdtemp(prefix="factory-truth-"))
++    (d / "home").mkdir()
++    (d / "tmp").mkdir()
++    env = {k: v for k, v in os.environ.items() if not k.startswith("FACTORY_")}
++    env.update(HOME=str(d / "home"), TMPDIR=str(d / "tmp"))
++
++    def needs(sc: Scenario, path: tuple[int, ...]) -> list[tuple[tuple[int, int], str]]:
++        out = [k for r in refs(sc) if id(r) not in path for k in needs(r, (*path, id(r)))]
++        return out + [((id(sc), i), b) for i, b in enumerate(sc.given)]
++
++    ran, results = set(), {}
++    try:
++        for sc in todo:
++            for key, block in needs(sc, (id(sc),)):
++                if key not in ran:
++                    ran.add(key)
++                    _bash(block, checkout, env)  # a GIVEN block's exit status is not compared
++            results[id(sc)] = _bash(sc.command(), checkout, env)
++    finally:
++        shutil.rmtree(d, ignore_errors=True)
++    return results
++
++
++def _lines(b: bytes) -> list[str]:
++    s = b.decode("utf-8", errors="replace").removesuffix("\n")
++    return s.split("\n") if s else []
++
++
++def _store(a) -> Path:
++    cwd = instance.caller_cwd()
++    if a.store:
++        return (cwd / Path(a.store).expanduser()).resolve()
++    inst = instance.find()
++    root = instance.env_path("FACTORY_STATE") or (
++        instance.state_root(inst, instance.load_config(inst)) if inst is not None else None)
++    if root is None:
++        raise Refused(f"truth check: no store found: give --store PATH, set FACTORY_STATE, or run from "
++                      f"inside an instance ({instance.not_found_message()})")
++    return root.resolve()
++
++
++def check(a) -> int:
++    """Replays current truth; prints one line per scenario and the counts. 1 when any failed."""
++    root = _store(a)
++    if not (specstore.root_dir(root) / "specs").is_dir():
++        raise Refused(f"truth check: {root} has no current truth (openspec/specs)")
++    for c in a.capability:
++        if not specstore.truth_path(root, c).is_file():
++            raise Refused(f"truth check: no capability {c} in current truth")
++    cwd = instance.caller_cwd()
++    top = subprocess.run(["git", "-C", str(cwd), "rev-parse", "--show-toplevel"], capture_output=True, text=True)
++    if top.returncode != 0:
++        raise Refused(f"truth check: {cwd} is not inside a git checkout")
++    checkout = Path(top.stdout.strip()).resolve()
++    ids = folded_ids(root, _ticket_under_test(root, checkout))
++    start = time.monotonic()
++    truth, owner = fold(root, ids)
++    caps = {c: [Scenario(c, n, b) for n, b in specstore.scenario_blocks(f"=== specs/x/spec.md\n{t}").items()]
++            for c, t in sorted(truth.items())}  # scenario_blocks reads delta parts: give the text one
++    flat = [s for scs in caps.values() for s in scs]
++    names = {s.name for s in flat}
++
++    def refs(sc: Scenario) -> list[Scenario]:
++        order = caps[sc.cap] + flat  # the same capability first, then capability order
++        return [next(s for s in order if s.name == q) for q in sc.quotes if q in names]
++
++    shown = sorted(set(a.capability) or caps)
++    skips = {id(s): skip_reason(s, owner, names, a.skip_when_contains) for c in shown for s in caps.get(c, [])}
++    with ThreadPoolExecutor(max_workers=max(len(shown), 1)) as ex:
++        runs = [ex.submit(_run_capability, [s for s in caps.get(c, []) if not skips[id(s)]], refs, checkout)
++                for c in shown]
++        results = {k: v for f in runs for k, v in f.result().items()}
++    wall = int(time.monotonic() - start)
++    print(f"truth check: {checkout} against {root}; folded: {', '.join(ids) or 'none'}")
++    n = {"PASS": 0, "FAIL": 0, "SKIPPED": 0}
++    for c in shown:
++        for s in caps.get(c, []):
++            if skips[id(s)]:
++                n["SKIPPED"] += 1
++                print(f"SKIPPED {c}: {s.name}: {skips[id(s)]}")
++                continue
++            cp, (want, exits) = results[id(s)], expected(s.thens[0], s.then_block)
++            got = _lines(cp.stdout)
++            verdict = "PASS" if got == want and (cp.returncode == 0 or not exits) else "FAIL"
++            n[verdict] += 1
++            print(f"{verdict} {c}: {s.name}")
++            if verdict == "FAIL":
++                print("\n".join(["  expected:", *(f"    {x}" for x in want), "  got:", *(f"    {x}" for x in got[:40]),
++                                 *([f"    … {len(got) - 40} more lines"] if len(got) > 40 else []),
++                                 f"  exit {cp.returncode}",
++                                 *(["  stderr:", *(f"    {x}" for x in _lines(cp.stderr)[-5:])] if cp.stderr else [])]))
++    print(f"{sum(n.values())} scenarios: {n['PASS']} passed, {n['FAIL']} failed, {n['SKIPPED']} skipped; "
++          f"wall time {wall} s")
++    return 1 if n["FAIL"] else 0
++
++
++def add_parser(sp) -> None:
++    """`factory truth check`, built here so factory/cli.py stays under its line limit."""
++    p = sp.add_parser("truth", help="replay current truth's scenarios against this checkout; reads, writes nothing")
++    p = p.add_subparsers(dest="sub", required=True).add_parser(
++        "check", help="run each current-truth scenario's WHEN under bash and compare its output with the THEN")
++    p.add_argument("--store", metavar="PATH", help="the store to read; default: FACTORY_STATE, else the instance's own store")
++    p.add_argument("--capability", action="append", default=[], metavar="NAME",
++                   help="report and run only this capability (repeatable)")
++    p.add_argument("--skip-when-contains", action="append", default=[], metavar="TEXT",
++                   help="skip, and list, each scenario whose WHEN contains TEXT (repeatable)")
++    p.set_defaults(fn=check)
+diff --git a/tests/factory/test_truth.py b/tests/factory/test_truth.py
+new file mode 100644
+index 0000000..e80e4bc
+--- /dev/null
++++ b/tests/factory/test_truth.py
+@@ -0,0 +1,203 @@
++"""T-0059 (issue #120): `factory truth check` replays every current-truth scenario under bash in the
++checkout under test, compares each WHEN's stdout with its THEN by the exact-print rule, lists what it
++cannot check as skipped with a reason, and folds the approved deltas whose code is under test or
++merged before it runs.
++
++The rule is tested on `factory.truth.expected`, in one Python process run from the repository root
++(tests/factory is itself a package named `factory`); the command black-box through the CLI on
++throwaway stores built from files, each with a scratch git checkout as the caller's directory.
++"""
++from __future__ import annotations
++
++import json
++import subprocess
++import sys
++from pathlib import Path
++
++import pytest
++
++from ._cli import REPO, cli, git_repo, js
++
++F = "```"
++
++
++def read(cases: list) -> list:
++    """`factory.truth.expected(then, block)` for each (then, block), as JSON: a tuple reads as a list."""
++    code = "import json, sys\nfrom factory import truth\nprint(json.dumps([truth.expected(*c) for c in json.load(sys.stdin)]))"
++    cp = subprocess.run([sys.executable, "-c", code], input=json.dumps(cases), cwd=REPO, capture_output=True, text=True)
++    assert cp.returncode == 0, cp.stderr
++    return json.loads(cp.stdout)
++
++
++READ = [
++    ("it prints `hello`", None, (["hello"], False)),
++    ("it prints exactly `hello`.", None, (["hello"], False)),
++    ("it prints only `a  b`, then `c`", None, (["a  b", "c"], False)),
++    ("it prints `a`, and `b`, `c` and `d`", None, (["a", "b", "c", "d"], False)),
++    ("it prints `ok` and exits 0", None, (["ok"], True)),
++    ("it prints `ok`, and exits 0", None, (["ok"], True)),
++    ("it prints exactly `x`, `y`, one per line", None, (["x", "y"], False)),
++    ("it prints exactly `x` twice, then `y`, three times, one per line", None, (["x", "x", "y", "y", "y"], False)),
++    ("it prints `hello`, then `bye` (the farewell second)", None, (["hello", "bye"], False)),
++    ("it prints exactly two lines: `one`, then `two`", None, (["one", "two"], False)),
++    ("it prints exactly these 2 lines, one per line: `one`, then `two`", None, (["one", "two"], False)),
++    ("it prints exactly three lines, each `same`", None, (["same"] * 3, False)),
++    ("it prints exactly two lines, each exactly `s`, then `t`", None, (["s", "s", "t"], False)),
++    ("it prints exactly these 2 lines:", ["a", "b"], (["a", "b"], False)),
++]
++UNREAD = [
++    ("it prints a friendly greeting", None),
++    ("it exits 0", None),
++    ("it prints `x`. The rest is ignored.", None),
++    ("it prints two numbers: the first below 910, the second `3`", None),
++    ("it prints one line, `files=<n>`, with n above 0", None),
++    ("it prints exactly these 2 lines:", None),
++    ("it prints exactly eleven lines, each `x`", None),
++    ("it prints `x` (a note with `ticks`)", None),
++    ("it prints `x` or `y`", None),
++]
++
++
++def test_exact_print_rule_reads_each_form_and_refuses_what_it_cannot_read_in_full():
++    got = read([[t, b] for t, b, _ in READ] + [list(c) for c in UNREAD])
++    assert got[:len(READ)] == [[w[0], w[1]] for _, _, w in READ]
++    assert got[len(READ):] == [None] * len(UNREAD)
++
++
++def scenario(name: str, when: str | None, then: str | None, extra: str = "") -> str:
++    lines = [f"#### Scenario: {name}", *([extra] if extra else []),
++             *([f"- WHEN `{when}`"] if when is not None else []), *([f"- THEN {then}"] if then is not None else [])]
++    return "\n".join(lines) + "\n"
++
++
++def capability(store: Path, cap: str, *scenarios: str, req: str = "It works") -> None:
++    p = store / "openspec" / "specs" / cap / "spec.md"
++    p.parent.mkdir(parents=True, exist_ok=True)
++    p.write_text(f"# {cap}\n\n## Requirements\n\n### Requirement: {req}\nIt SHALL work.\n\n" + "\n".join(scenarios))
++
++
++def write_ticket(store: Path, tid: str, status: str, parent: str | None = None) -> None:
++    (store / "tickets").mkdir(parents=True, exist_ok=True)
++    (store / "tickets" / f"{tid}.yaml").write_text(f"id: {tid}\nstatus: {status}\nparent: {parent or 'null'}\n")
++
++
++def delta(store: Path, cid: str, cap: str, text: str) -> None:
++    p = store / "openspec" / "changes" / cid / "specs" / cap / "spec.md"
++    p.parent.mkdir(parents=True, exist_ok=True)
++    p.write_text(text)
++
++
++def results(cp) -> list[str]:
++    return [ln for ln in cp.stdout.splitlines() if ln.split(" ", 1)[0] in ("PASS", "FAIL", "SKIPPED")]
++
++
++@pytest.fixture
++def repo(tmp_path):
++    return git_repo(tmp_path / "repo")
++
++
++def test_each_skip_reason_is_listed_and_counted_and_never_passed(tmp_path, repo):
++    s = tmp_path / "s"
++    given = f"- GIVEN the block below\n\n{F}sh\necho given > $TMPDIR/g\n{F}\n"
++    capability(s, "a",
++               scenario("No WHEN", None, "it prints `x`"),
++               scenario("Two WHENs", "echo x", "it prints `x`", extra="- WHEN `echo y`"),
++               scenario("A bare WHEN", None, "it prints `x`", extra="- WHEN echo x"),
++               scenario("A slow one", "echo slow-marker", "it prints `slow-marker`"),
++               scenario("A missing fixture", "echo x", "it prints `x`", extra='Needs the GIVEN block of "Nowhere" run once.'),
++               scenario("No THEN", "echo x", None),
++               scenario("Prose", "echo x", "it prints an x"),
++               scenario("A fixture", "cat $TMPDIR/g", "it prints exactly `given`", extra=given),
++               scenario("A reuse", "cat $TMPDIR/g", "it prints exactly `given`",
++                        extra='Needs the GIVEN block of "A fixture" run once.'))
++    cp = cli(repo, "truth", "check", "--store", str(s), "--skip-when-contains", "slow-marker")
++    assert cp.returncode == 0, cp.stderr
++    assert results(cp) == [
++        "SKIPPED a: No WHEN: has no WHEN line",
++        "SKIPPED a: Two WHENs: has more than one WHEN line",
++        "SKIPPED a: A bare WHEN: its WHEN is not one backticked command",
++        'SKIPPED a: A slow one: its WHEN contains "slow-marker", which this run skips',
++        'SKIPPED a: A missing fixture: needs the GIVEN block of "Nowhere", which current truth does not hold',
++        "SKIPPED a: No THEN: has no THEN line",
++        "SKIPPED a: Prose: THEN is not an exact print: it prints an x",
++        "PASS a: A fixture",
++        "PASS a: A reuse",
++    ]
++    assert cp.stdout.splitlines()[-1].startswith("9 scenarios: 2 passed, 0 failed, 7 skipped; wall time ")
++
++
++def test_a_failure_shows_expected_got_exit_and_stderr_and_exits_1(tmp_path, repo):
++    s = tmp_path / "s"
++    capability(s, "a", scenario("Long", "seq 45; echo oops >&2; exit 4", "it prints `1`"),
++               scenario("Status", "echo ok; exit 3", "it prints `ok` and exits 0"))
++    cp = cli(repo, "truth", "check", "--store", str(s))
++    assert cp.returncode == 1, cp.stderr
++    out = cp.stdout.splitlines()
++    assert out[0] == f"truth check: {repo.resolve()} against {s.resolve()}; folded: none"
++    i = out.index("FAIL a: Long")
++    assert out[i + 1:i + 4] == ["  expected:", "    1", "  got:"]
++    assert out[i + 4:i + 44] == [f"    {n}" for n in range(1, 41)]
++    assert out[i + 44:i + 48] == ["    … 5 more lines", "  exit 4", "  stderr:", "    oops"]
++    assert out[i + 48:i + 54] == ["FAIL a: Status", "  expected:", "    ok", "  got:", "    ok", "  exit 3"]
++    assert out[-1].startswith("2 scenarios: 0 passed, 2 failed, 0 skipped;")
++
++
++def test_the_ticket_under_test_and_open_tickets_with_merged_code_are_folded(tmp_path, repo):
++    s = tmp_path / "s"
++    capability(s, "a", scenario("Old greeting", "echo hello", "it prints `hello`"), req="Greets")
++    capability(s, "b", scenario("Same name", "echo b", "it prints `b`"))
++    new = "## MODIFIED Requirements\n\n### Requirement: Greets\nIt SHALL greet anew.\n\n" + scenario(
++        "Same name", "echo new", "it prints `nope`")
++    for cid, status in (("T-0001", "planned"), ("T-0002", "planned"), ("T-0003", "closed"), ("T-0004", "planned")):
++        write_ticket(s, cid, status)
++        delta(s, cid, "a", new)
++    write_ticket(s, "T-0001.1", "checks-in-flight", "T-0001")
++    write_ticket(s, "T-0002.1", "merged", "T-0002")
++    write_ticket(s, "T-0003.1", "merged", "T-0003")
++    wt, k = s / "worktrees" / "T-0001.1", s / "runs" / "run-0002-verifier" / "wt"
++    for co in (wt, k):
++        subprocess.run(["git", "-C", str(repo), "worktree", "add", "-q", "--detach", str(co)], check=True)
++    (k.parent / "meta.yaml").write_text("role: verifier\nticket: T-0004\n")  # a ticket with no parent folds its own
++
++    cp = cli(repo, "truth", "check", "--store", str(s))
++    assert cp.returncode == 0, cp.stderr
++    assert cp.stdout.splitlines()[0] == f"truth check: {repo.resolve()} against {s.resolve()}; folded: T-0002"
++    # a scenario of another capability with the same name still runs
++    assert results(cp) == ["SKIPPED a: Same name: in the approved delta of T-0002, which that ticket's verifier checks",
++                           "PASS b: Same name"]
++    for co, folded in ((wt, "T-0001, T-0002"), (k, "T-0002, T-0004")):
++        cp = cli(co, "truth", "check", "--store", str(s))
++        assert cp.stdout.splitlines()[0] == f"truth check: {co.resolve()} against {s.resolve()}; folded: {folded}"
++        last = folded.split(", ")[-1]  # the later delta's id wins
++        assert results(cp)[0] == f"SKIPPED a: Same name: in the approved delta of {last}, which that ticket's verifier checks"
++
++
++def test_a_delta_that_does_not_apply_is_refused_naming_its_ticket_and_nothing_runs(tmp_path, repo):
++    s = tmp_path / "s"
++    capability(s, "a", scenario("Writes", f"touch {tmp_path}/ran; echo x", "it prints `x`"))
++    write_ticket(s, "T-0005", "planned")
++    write_ticket(s, "T-0005.1", "merged", "T-0005")
++    delta(s, "T-0005", "a", "## ADDED Requirements\n\n### Requirement: It works\nAgain.\n")
++    cp = cli(repo, "truth", "check", "--store", str(s))
++    assert cp.returncode == 2
++    assert cp.stderr.strip() == ("truth check: the approved delta of T-0005 does not apply to current truth: "
++                                 "ADDED 'It works' is already in current truth (a)")
++    assert js(cp)["ok"] is False and not results(cp) and not (tmp_path / "ran").exists()
++
++
++def test_refusals(tmp_path, repo):
++    s = tmp_path / "s"
++    capability(s, "a", scenario("One", "echo 1", "it prints `1`"))
++    (tmp_path / "bare").mkdir()
++    cases = [
++        (repo, ["--store", str(s), "--capability", "nope"], "truth check: no capability nope in current truth"),
++        (repo, ["--store", str(tmp_path / "bare")], f"truth check: {(tmp_path / 'bare').resolve()} has no current truth (openspec/specs)"),
++        (tmp_path / "bare", ["--store", str(s)], f"truth check: {(tmp_path / 'bare').resolve()} is not inside a git checkout"),
++    ]
++    for cwd, argv, err in cases:
++        cp = cli(cwd, "truth", "check", *argv)
++        assert (cp.returncode, cp.stderr.strip(), js(cp)["ok"]) == (2, err, False)
++    z = "0123456789abcdef0123456789abcdef01234567"
++    cp = cli(repo, "--accept-harness", z, "truth", "check", "--store", str(s))
++    assert cp.returncode == 2 and "factory truth check never checks the harness lock" in cp.stderr
++    assert f"factory --accept-harness {z} config" in cp.stderr
