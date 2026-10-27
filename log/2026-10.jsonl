@@ -3208,3 +3208,13 @@
 {"ts": "2026-10-27T03:08:31+00:00", "event": "ticket.transition", "ticket": "T-0059", "from": "ready-for-parent-verify", "to": "closed", "by": "workflow", "round": {"spec": 1, "pr": 0}}
 {"ts": "2026-10-27T03:08:59+00:00", "event": "human.resolved", "ticket": "T-0060", "kind": "answer", "by": "dphang", "from": "parked", "to": "ready-for-spec-writer"}
 {"ts": "2026-10-27T03:09:27+00:00", "event": "harness.accepted", "instance": "/Users/dphang/dev/spec-factory/.factory", "old": "77b7b4026d1fd0d8e9e0b96da651280cdb88395d", "new": "eb6d38301d6d87a2e605cbe609e40555a32d3ad1"}
+{"ts": "2026-10-27T03:11:47+00:00", "event": "run.started", "ticket": "T-0060", "run": "run-0602-spec_writer", "role": "spec_writer", "model": "opus"}
+{"ts": "2026-10-27T03:18:36+00:00", "event": "run.finished", "ticket": "T-0060", "run": "run-0602-spec_writer", "role": "spec_writer", "status": "READY-FOR-CRITIC", "wall_s": 409}
+{"ts": "2026-10-27T03:18:36+00:00", "event": "spec.added", "ticket": "T-0060", "version": 2, "source": "run-0602-spec_writer"}
+{"ts": "2026-10-27T03:18:37+00:00", "event": "ticket.transition", "ticket": "T-0060", "from": "ready-for-spec-writer", "to": "ready-for-critic", "by": "workflow", "round": {"spec": 1, "pr": 0}}
+{"ts": "2026-10-27T03:18:37+00:00", "event": "run.started", "ticket": "T-0060", "run": "run-0603-critic", "role": "critic", "model": "fable"}
+{"ts": "2026-10-27T03:26:51+00:00", "event": "run.finished", "ticket": "T-0060", "run": "run-0603-critic", "role": "critic", "status": "APPROVE", "wall_s": 494}
+{"ts": "2026-10-27T03:26:51+00:00", "event": "ticket.transition", "ticket": "T-0060", "from": "ready-for-critic", "to": "awaiting-spec-gate", "by": "workflow", "round": {"spec": 1, "pr": 0}}
+{"ts": "2026-10-27T04:12:20+00:00", "event": "approval.recorded", "ticket": "T-0060", "kind": "spec", "version": 2, "by": "dphang"}
+{"ts": "2026-10-27T04:12:20+00:00", "event": "change.pinned", "ticket": "T-0060", "version": 2, "files": ["openspec/changes/T-0060/proposal.md", "openspec/changes/T-0060/design.md", "openspec/changes/T-0060/specs/factory-stats/spec.md", "openspec/changes/T-0060/specs/harness-docs/spec.md", "openspec/changes/T-0060/verification.md"]}
+{"ts": "2026-10-27T04:12:20+00:00", "event": "ticket.transition", "ticket": "T-0060", "from": "awaiting-spec-gate", "to": "ready-for-planner", "by": "dphang"}

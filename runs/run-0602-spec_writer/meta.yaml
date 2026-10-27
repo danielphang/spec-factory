@@ -1,0 +1,52 @@
+run_id: run-0602-spec_writer
+role: spec_writer
+ticket: T-0060
+model: opus
+round: 0
+spec_version: 1
+started: '2026-10-27T03:11:47+00:00'
+finished: '2026-10-27T03:18:36+00:00'
+wall_s: 409
+status: READY-FOR-CRITIC
+input_sources:
+- runs/run-0598-triage/output.md
+- requests/T-0060.md
+- openspec/specs/factory-stats/spec.md
+- openspec/specs/harness-docs/spec.md
+- openspec/specs/store-setup/spec.md
+- decisions.md
+- runs/run-0599-spec_writer/output.md
+confidence: medium. The method, command and checks are grounded in runs on this checkout, but the factory
+  arm has never run on a fresh upstream checkout, and README is left with no line to spare.
+escalations: []
+escalations_note: null
+claude:
+  session_id: 86f3feb4-6d40-41b6-86e0-e0bd44f6be51
+  total_cost_usd: 3.4231392
+  num_turns: 32
+  usage:
+    input_tokens: 64
+    cache_creation_input_tokens: 176786
+    cache_read_input_tokens: 6440176
+    output_tokens: 36028
+    output_tokens_details:
+      thinking_tokens: 8967
+    server_tool_use:
+      web_search_requests: 0
+      web_fetch_requests: 0
+    service_tier: standard
+    cache_creation:
+      ephemeral_1h_input_tokens: 176786
+      ephemeral_5m_input_tokens: 0
+    inference_geo: global
+    iterations:
+    - input_tokens: 2
+      output_tokens: 1712
+      cache_read_input_tokens: 247689
+      cache_creation_input_tokens: 1709
+      cache_creation:
+        ephemeral_5m_input_tokens: 0
+        ephemeral_1h_input_tokens: 1709
+      type: message
+    speed: standard
+    fallback_credit: null

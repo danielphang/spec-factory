@@ -1,0 +1,51 @@
+run_id: run-0603-critic
+role: critic
+ticket: T-0060
+model: fable
+round: 1
+spec_version: 2
+started: '2026-10-27T03:18:37+00:00'
+finished: '2026-10-27T03:26:51+00:00'
+wall_s: 494
+status: APPROVE
+input_sources:
+- specs/T-0060/v2.md
+- openspec/specs/factory-stats/spec.md
+- openspec/specs/harness-docs/spec.md
+- openspec/specs/store-setup/spec.md
+- decisions.md
+confidence: high, every cited line and three acceptance commands checked on the checkout, and every exact
+  THEN re-derived from the fixture against cost.py's dedup rule; the truth-check replays rest on the writer's
+  report
+escalations: []
+escalations_note: null
+claude:
+  session_id: 9f287fed-b94c-4713-9e03-e85946099a10
+  total_cost_usd: 5.716646250000001
+  num_turns: 23
+  usage:
+    input_tokens: 676
+    cache_creation_input_tokens: 160833
+    cache_read_input_tokens: 4365505
+    output_tokens: 28037
+    output_tokens_details:
+      thinking_tokens: 14586
+    server_tool_use:
+      web_search_requests: 0
+      web_fetch_requests: 0
+    service_tier: standard
+    cache_creation:
+      ephemeral_1h_input_tokens: 160833
+      ephemeral_5m_input_tokens: 0
+    inference_geo: global
+    iterations:
+    - input_tokens: 32
+      output_tokens: 2574
+      cache_read_input_tokens: 221808
+      cache_creation_input_tokens: 6014
+      cache_creation:
+        ephemeral_5m_input_tokens: 0
+        ephemeral_1h_input_tokens: 6014
+      type: message
+    speed: standard
+    fallback_credit: null
