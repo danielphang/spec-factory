@@ -10,7 +10,7 @@ attention, with no rise in escaped defects. See `docs/north-star.md`, `STATUS.md
 
 | | |
 |---|---|
-| **Status** | Current state as of 2026-10-25. Intake works end to end. Build works, in local-only mode. |
+| **Status** | Current state as of 2026-10-26. Intake works end to end. Build works, in local-only mode. |
 | **Reader** | Technical, seeing this project for the first time. Terms specific to this system are defined in "Terms used on this page" or at first use. |
 | **Scope** | What runs now. The intended design and its reasoning are in `docs/design.md`; where the two disagree, this page is right about what runs and the design is amended. |
 | **Internal references** | Ticket ids, issue numbers and who did what are in "Related work and history" near the end. |
@@ -614,8 +614,8 @@ can accept a revision while another stays on the old one.
 The flag cannot clear the other refusal. A runtime with uncommitted edits to the harness code is
 refused outright; commit or discard them first. Both checks apply only when a command uses the
 instance's own store. A throwaway store (`FACTORY_STATE` pointing elsewhere, as every test does)
-skips them. `paths` and `stats` skip both checks on any store because they write nothing, and
-`init`, `paths` and `stats` refuse `--accept-harness`; every other command accepts it.
+skips them. `paths`, `stats` and `truth check` only read, so they skip both checks on any store
+and refuse `--accept-harness`, as `init` does; every other command accepts it.
 
 ### Upgrading the runtime
 
@@ -904,7 +904,7 @@ runs from the same runtime. Each target's runner then accepts the new revision b
 A run is in flight from `run start` until `run finish` records its result. While any run on a
 target is in flight, the harness refuses every write to that target's store that lacks this
 marker. A write is any command except `ticket show`, `ticket join`, `results show`, `config`,
-`launch-script`, `status parse`, `log tail`, `paths` and `stats`; a command given
+`launch-script`, `status parse`, `log tail`, `truth check`, `paths` and `stats`; a command given
 `--accept-harness` is always a write. `factory drive` is exempt from this check and needs no
 marker, because it is the dispatcher; it guards its own ticket instead ("Driving a ticket from a shell with `factory drive`"). The
 workflow scripts already put the marker on their own commands. Put it in front of one command at
@@ -1021,6 +1021,15 @@ changes. A change is a ticket closed in the window after at least one of its sub
 | Tokens and wall time per change | the median of each change's summed run time, in hours; then the median tokens of the changes whose every run has tokens, how many runs took tokens from a record, a transcript (with `--transcripts`) or neither, and the dollars on the records that carry them |
 | Lead time | from the ticket's creation to its last merge, in hours: median and range |
 
+### Replaying current truth with `factory truth check`
+
+`factory truth check` runs each current-truth scenario's WHEN under `bash` in the git checkout of the
+current directory. A scenario passes only if its WHEN prints exactly the lines its THEN quotes
+(`docs/design.md`, "Replaying current truth"); one it cannot check is listed SKIPPED with its reason.
+`--capability NAME` limits the run, and `--skip-when-contains TEXT` skips each WHEN holding TEXT. It
+folds in approved changes that are merged or under test, so their intended edits are not failures.
+This repo's gate runs it last. A scenario must not replay its own capability, or it replays itself.
+
 ## What is built and what is not
 
 **Built**
@@ -1082,6 +1091,8 @@ changes. A change is a ticket closed in the window after at least one of its sub
 - **The scorecard, escapes and workflow token records.** `factory stats --scorecard`,
   `factory escape add`, `factory intervention add` and `run finish --transcripts` ("Counting what
   each role catches and costs"). Not yet run on a real store.
+- **Replaying current truth, `factory truth check`.** The gate replays every current-truth scenario
+  ("Replaying current truth with `factory truth check`"). Not yet run in a real gate.
 
 **Not built**
 

@@ -24,6 +24,8 @@ protected_paths:
 gate_commands:
   - "git diff --check main...HEAD"
   - "uv run --frozen pytest -q -p no:cacheprovider tests/factory"
+  # then current truth, replayed by the integration checkout's harness; WHENs that run the suite are skipped, since the line above runs it
+  - "{integration}/bin/factory truth check --store {integration}/.factory/store --skip-when-contains 'pytest -q -p no:cacheprovider tests/factory'"
 placeholders: {rounds: 2, spec_lines: 400, audit_n: 5, retro_min: 3}
 max_rounds: {spec: 2, pr: 2}
 # Build half, local-commit stand-in (operator, 2026-10-02): no remote, no CI. The merge gate is the
