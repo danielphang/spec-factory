@@ -3207,3 +3207,4 @@
 {"ts": "2026-10-27T03:08:31+00:00", "event": "change.archived", "ticket": "T-0059", "archived_to": "openspec/changes/archive/2026-10-27-T-0059", "capabilities": ["gate-commands", "harness-code", "harness-docs", "live-store-guard", "role-escalations", "truth-check"], "decisions": 19}
 {"ts": "2026-10-27T03:08:31+00:00", "event": "ticket.transition", "ticket": "T-0059", "from": "ready-for-parent-verify", "to": "closed", "by": "workflow", "round": {"spec": 1, "pr": 0}}
 {"ts": "2026-10-27T03:08:59+00:00", "event": "human.resolved", "ticket": "T-0060", "kind": "answer", "by": "dphang", "from": "parked", "to": "ready-for-spec-writer"}
+{"ts": "2026-10-27T03:09:27+00:00", "event": "harness.accepted", "instance": "/Users/dphang/dev/spec-factory/.factory", "old": "77b7b4026d1fd0d8e9e0b96da651280cdb88395d", "new": "eb6d38301d6d87a2e605cbe609e40555a32d3ad1"}
