@@ -4,14 +4,14 @@ title: Benchmark the factory against one plain Claude Code session on about 10 u
   each scored by that PR's own tests
 request: requests/T-0060.md
 source: /private/tmp/claude-501/-Users-dphang-dev-nanobot/c69bfd1d-97a6-43e3-9d5a-a517c28d382c/scratchpad/requests/req-118.md
-status: ready-for-planner
+status: closed
 round:
   spec: 1
   pr: 0
 spec:
   version: 2
   approved_version: 2
-plan: null
+plan: plans/T-0060.md
 in_flight: []
 parked: null
 created: '2026-10-20T06:38:51+00:00'
@@ -64,6 +64,25 @@ history:
   to: ready-for-planner
   by: dphang
   approved_version: 2
+- ts: '2026-10-27T04:12:33+00:00'
+  from: ready-for-planner
+  to: planned
+  by: workflow
+  round:
+    spec: 1
+    pr: 0
+- ts: '2026-10-27T04:35:17+00:00'
+  from: planned
+  to: ready-for-parent-verify
+  by: parent-check
+- ts: '2026-10-27T04:35:18+00:00'
+  from: ready-for-parent-verify
+  to: closed
+  by: workflow
+  round:
+    spec: 1
+    pr: 0
+  verified_by: run-0606-verifier
 parent: null
 depends_on: []
 parallel_safe: true
@@ -72,4 +91,4 @@ head: null
 merge:
   base_before: null
   main_after: null
-parent_base: null
+parent_base: 9e8f4d3c14d352bf058b1532814d5ff83b6dd14e

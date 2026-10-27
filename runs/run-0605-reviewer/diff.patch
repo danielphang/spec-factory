@@ -1,0 +1,515 @@
+diff --git a/README.md b/README.md
+index 754076a..bb071b6 100644
+--- a/README.md
++++ b/README.md
+@@ -110,7 +110,7 @@ Most of the factory is plain files and a Python program. Six pieces assume Claud
+ | Role agents (`agents/`, copied into a target's `.claude/agents/`) | yes | Claude Code agent definitions, with a tool list per role; Claude Code registers them only when a session starts |
+ | Role processes of `factory drive` (`factory/drive.py`) | yes | each role runs as one headless `claude -p` process with `--output-format json` and `--permission-mode auto`, its role's prompt file, model and optional `--effort`, and its tool limits given by `--tools` and `--allowedTools` |
+ | Model names (`models` in `instance.yaml`) | yes | Claude model aliases |
+-| Token cost per role (`factory/cost.py`) | yes | reads the Workflow tool's transcript files |
++| Token cost per role (`factory/cost.py`), and the benchmark's operator time (`factory/benchmark.py`) | yes | read Claude Code's transcript files: the Workflow tool's, and for the benchmark a session's |
+ | Catch and cost per role (`factory stats`, `factory/stats.py`) | no | reads the store's files with no Claude Code; reads Claude Code's transcript files only when given `--transcripts` |
+ | A workflow run's token record (`run finish --transcripts`) | yes | reads the token usage in the transcript Claude Code keeps for the run's agent, under `~/.claude/projects` |
+ 
+@@ -1138,6 +1138,7 @@ has not been tried, is in `docs/design.md`, "Running on another agent host".
+ | `docs/prompts/` | Each role's prompt block, copied verbatim from the design doc by hand; `00-preamble.md` goes at the top of every role |
+ | `docs/north-star.md` | What the factory is for, what it will not trade away, and where it is heading; changes to it are the operator's decision |
+ | `STATUS.md`, `docs/reviews/` | The latest scorecard, focus and queue, rewritten only at a review; each review, written from `docs/reviews/TEMPLATE.md`, the first being the hand-counted baseline of 2026-10-19 |
++| `docs/benchmark.md` | The upstream benchmark's method: choosing the tasks, keeping the factory and a plain session blind to the fix, scoring by the fix's own tests, and putting a result in a review; `python -m factory.benchmark` computes each arm's operator time from timestamps, and has not yet run on a benchmark task |
+ | `CONTRIBUTING.md` | How work is proposed and chosen: issue, factory ticket, spec gate, under the north star's rule for factory work |
+ | `docs/principles.md` | The fourteen learned principles, each with its incident, citation and implementing mechanism |
+ | `docs/decided-against.md` | Approaches tried or offered and dropped, with the evidence and what would reopen each |
+diff --git a/docs/benchmark.md b/docs/benchmark.md
+new file mode 100644
+index 0000000..1ac5e10
+--- /dev/null
++++ b/docs/benchmark.md
+@@ -0,0 +1,195 @@
++# The upstream benchmark
++
++This page is how to test, on outside work, whether the spec factory is worth its cost. The factory
++is the pipeline of AI agent roles in this repository that turns a written request into merged code.
++The operator is the person who approves each spec (the plan an implementer builds from) and handles
++every stop. The benchmark gives the factory and one ordinary Claude Code session the same real bug
++reports, and scores each fix by the tests its project's own maintainers wrote for it. It is written
++for the operator who runs it and for a technical reader judging its results.
++
++## What the benchmark compares
++
++The question is whether the factory beats one plain Claude Code session at turning a real issue into
++a correct fix, and at what cost in operator attention. The north star,
++[docs/north-star.md](north-star.md), names this test: it is the page that says what the factory is
++for and how it is measured.
++
++Each task is a merged fix pull request (PR) from the public upstream Nanobot project,
++`https://github.com/HKUDS/nanobot`. Its issue goes to two arms, each working from the same commit:
++
++| Arm | What does the work |
++|---|---|
++| The factory arm | The factory, on its own throwaway instance: intake, the spec gate and the build, as for any ticket |
++| The baseline arm | One plain Claude Code session, given the issue's text and reviewed by the operator |
++
++The score of an arm is whether the PR's own tests pass on its result. Beside the score, four measures
++give the cost of reaching it: operator decisions, operator time, tokens and wall time. "The measures"
++says where each comes from.
++
++## Choosing the tasks
++
++1. Fix a cut-off date before the first task starts, and record it in the benchmark's issue.
++2. List upstream's merged fix PRs:
++
++   ```sh
++   gh pr list --repo HKUDS/nanobot --state merged --search "fix in:title" --limit 400 \
++     --json number,title,mergedAt,closingIssuesReferences,files
++   ```
++
++3. Keep a PR merged before the cut-off only if it passes these filters, applied in this order:
++   1. It has exactly one closing issue.
++   2. It adds or changes at least one file whose path contains `test`. Those files are "the PR's
++      tests".
++   3. The issue's title and body hold no patch and no link to the PR. A patch is any line starting
++      `diff --git`, `@@`, `+++ ` or `--- a/`.
++   4. The PR's tests fail at the parent commit and pass at the merge commit, each run with upstream's
++      test command. The parent commit is the first parent of the PR's merge commit. Upstream's test
++      command is the one its CI configuration runs at that commit.
++4. Take the 10 most recently merged PRs that pass. Number them 1 to 10, newest first.
++
++The rule is fixed before any result is seen, so nobody picks tasks that favour one arm.
++
++## Keeping the arms blind
++
++An arm that sees the fix proves nothing about fixing. Five measures keep the fix out of both arms.
++
++1. **Checkouts hold only the parent commit.** Make each arm's checkout this way, with `<parent>` the
++   first parent of the merge commit:
++
++   ```sh
++   git init -b main
++   git fetch --depth 1 https://github.com/HKUDS/nanobot <parent>
++   git reset --hard FETCH_HEAD
++   ```
++
++   No remote is added. Later commits, the fix's among them, are not in the checkout and cannot be
++   fetched by name.
++2. **Both arms get the same task text.** Write it once per task, as `# <issue title>`, a blank line,
++   the preface below, a blank line, then the issue body. Leave out the issue's comments. The preface:
++
++   > Fix the issue below in this checkout. Work only from this checkout and the issue's text: do not
++   > look up the issue, its pull request or this project's repository online, and do not read any
++   > other copy of this project on this machine.
++
++   Give both arms this file unchanged.
++3. **The operator does not see the fix.** Do not open the PR, its diff or its tests until both arms
++   of the task have ended.
++4. **Arm order alternates.** Odd-numbered tasks run the factory arm first; even-numbered tasks run
++   the baseline arm first. Whatever the operator learns from the first arm then falls on each arm
++   equally often.
++5. **Each task ends with an audit.** After both arms end, search their transcripts:
++
++   ```sh
++   grep -rlF -e pull/<PR> -e issues/<issue> -e <first 12 characters of the merge commit> \
++     -e nanobot-upstream ~/.claude/projects/*bench-<PR>-*/
++   ```
++
++   Any file it lists marks that arm leaked. Then read each `WebFetch` or `WebSearch` call, and each
++   `gh` or `git fetch` command, in those transcripts. One that reached the issue, the PR or upstream's
++   later code also marks the arm leaked, and the review names the call. A leaked arm is reported and
++   not scored.
++
++## Running a task
++
++Each arm has its own checkout, outside every live repository: `~/bench/bench-<PR>-factory` and
++`~/bench/bench-<PR>-plain`. Make both as "Keeping the arms blind" says.
++
++**Factory arm.** In its checkout:
++
++1. Point every factory command in this shell at the checkout's own instance and store:
++
++   ```sh
++   export FACTORY_INSTANCE=$PWD/.factory FACTORY_STATE=$PWD/.factory/state
++   ```
++
++   With `FACTORY_INSTANCE` and `FACTORY_STATE` set, no command in this shell can reach a live
++   store, and the scorecard names the instance instead of printing a path.
++2. Follow README's "Adopting the factory in a repo" ([README.md](../README.md)), with
++   `--repo-name bench-<PR>-factory`. Take `gate_commands` and `environment_sync` from upstream's CI
++   configuration at the parent commit. Take `models` from this repository's `.factory/instance.yaml`.
++   Write `context.md` from upstream's own README and CI only.
++3. File the task text with `factory ticket new --file`.
++4. Take the ticket through intake and the build as any real ticket, from a shell or a runner session.
++   A runner session is a Claude Code session in which the operator drives the factory.
++
++**Baseline arm.** In its checkout, start `claude --model <model>`. The model is the one this
++repository's `.factory/instance.yaml` gives the implementer. Paste the task text. Review the result
++the way you review a merge: read the diff, then ask for changes or accept. Commit the result.
++
++**Both arms.** Make no hand edits to code. In the factory arm a gate edit or a ruling is allowed, and
++the scorecard counts it as an intervention or a decision. An arm ends when its ticket closes or when
++the operator accepts the session's result. The operator may instead abandon an arm; its result is
++then scored as it stands.
++
++## Scoring a task
++
++After both arms end, in each arm's checkout:
++
++```sh
++git fetch --depth 1 https://github.com/HKUDS/nanobot <merge commit>
++git checkout FETCH_HEAD -- <the PR's tests>
++```
++
++The checkout puts the PR's tests over the arm's result: the factory arm's `main`, or the baseline
++arm's committed tree. Then run upstream's test command on those files. The arm passes when the
++command exits 0. Keep the command's last line for the review.
++
++## The measures
++
++| Measure | Factory arm | Baseline arm |
++|---|---|---|
++| Operator decisions | the scorecard's "Operator decisions and interventions per change" | the operator messages after the first, from `python -m factory.benchmark`; filing a ticket is not a decision in the scorecard either |
++| Operator time | `python -m factory.benchmark --store $FACTORY_STATE` with the runner sessions' transcripts | `python -m factory.benchmark` with the session's transcript |
++| Tokens | the scorecard's tokens per change, plus the runner sessions' tokens from `python -m factory.benchmark` | the session tokens from `python -m factory.benchmark` |
++| Wall time | the scorecard's lead time, with its summed run time beside it | the elapsed time from `python -m factory.benchmark` |
++
++The scorecard is the north star's table of measures, printed by `factory stats`. For the factory
++arm, run it in the arm's shell, with `$R` the factory's runtime checkout:
++
++```sh
++$R/bin/factory stats --scorecard --store $FACTORY_STATE --since <the day the task started> \
++  --transcripts ~/.claude/projects
++```
++
++Run the report from the dev checkout, `~/dev/spec-factory`, at a commit that contains it:
++
++```sh
++uv run --frozen python -m factory.benchmark [--store $FACTORY_STATE] <session transcript>...
++```
++
++A session's transcript is `<session id>.jsonl` under
++`~/.claude/projects/<the session's start directory, with / and . as ->`. The report reads only the files it is given and writes nothing.
++
++**Operator messages.** An operator message is a `user` record that is not `isMeta` or `isSidechain`
++and holds no `tool_result`. Its `promptSource` must be `typed`, `queued` or `suggestion_accepted`. A
++record with no `promptSource`, as older transcripts write, counts when its text does not start with
++`<`. Task notifications, headless prompts and slash-command lines are not the operator.
++
++**Operator time.** Interactions are the operator messages and the store's spec approvals and
++rulings. Interactions are grouped into sittings: an interaction more than 15 minutes after the one
++before starts a new sitting. A sitting counts from its first interaction to its last, and each
++sitting adds one minute. Operator time is the sum, in minutes.
++
++Operator time measures interactions, not attention. It undercounts reading and review time. The
++sittings rule misses three things:
++
++- reading done before a sitting's first interaction;
++- review done without typing anything;
++- waits inside a sitting, which it counts as attention.
++
++## Putting a result in a review
++
++1. Results go in the next review, `docs/reviews/<date>.md`, written from
++   [docs/reviews/TEMPLATE.md](reviews/TEMPLATE.md). They are not part of this page.
++2. Section 5 of the review, "Experiments and side work", gets one row for the benchmark's issue.
++3. Under it goes a subsection with one block per task. Each block gives the PR number. Then, for
++   each arm: whether it passed, failed or leaked; the test command's last line; and the scorecard's
++   and the report's output, pasted as printed.
++4. No number is typed or adjusted. A total, median or comparison across tasks is written
++   "not yet computed", because no command computes it.
++5. This repository is public. Name upstream PRs by number, and name no private product.
++
++## Spend
++
++One full run is about 10 factory intakes and builds and 10 plain sessions. That spend was approved
++at the spec gate of the ticket that added this page. A larger or repeated run is a new decision.
+diff --git a/factory/benchmark.py b/factory/benchmark.py
+new file mode 100644
+index 0000000..caff2b2
+--- /dev/null
++++ b/factory/benchmark.py
+@@ -0,0 +1,107 @@
++"""One arm's operator measures for the upstream benchmark, read from timestamps. Method: docs/benchmark.md.
++
++  python -m factory.benchmark [--store PATH] [SESSION.jsonl]...
++
++A SESSION is the Claude Code transcript of a session the operator typed into: the baseline arm's
++plain session, or the factory arm's runner sessions. --store is the factory arm's throwaway store.
++Prints a Markdown table of operator messages, the store's gate and ruling events, operator time,
++elapsed time and the sessions' tokens. Writes nothing.
++
++An operator message is a `user` record, not `isMeta` or `isSidechain` and holding no `tool_result`,
++whose `promptSource` is `typed`, `queued` or `suggestion_accepted`; a record with no `promptSource`
++counts when its text does not start with `<`. Interactions are the operator messages and the store's
++decision events (`factory.stats.DECISIONS`). Interactions no more than 15 minutes apart form one
++sitting, counted from its first interaction to its last plus one minute; operator time is the sum.
++It measures interactions, not attention, and undercounts reading and review time.
++"""
++from __future__ import annotations
++
++import argparse
++import os
++import sys
++
++from factory.cost import _log_records, _records, _user_text, _when, transcript_usage
++from factory.stats import DECISIONS
++
++PROMPT_SOURCES = ("typed", "queued", "suggestion_accepted")
++SITTING_GAP = 900  # seconds: a longer gap between interactions starts a new sitting
++SITTING_ADD = 60  # seconds added to each sitting
++
++
++def _operator_message(o: dict) -> bool:
++    text = _user_text(o)
++    if text is None or o.get("isMeta") or o.get("isSidechain") or not o.get("timestamp"):
++        return False
++    content = o["message"]["content"]
++    if isinstance(content, list) and any(isinstance(x, dict) and x.get("type") == "tool_result" for x in content):
++        return False
++    source = o.get("promptSource")
++    return source in PROMPT_SOURCES if source is not None else not text.startswith("<")
++
++
++def sittings(times: list) -> tuple[float, int]:
++    """(operator minutes, sittings) of a list of interaction times."""
++    seconds, count, start, prev = 0.0, 0, None, None
++    for t in sorted(times):
++        if prev is None or (t - prev).total_seconds() > SITTING_GAP:
++            if prev is not None:
++                seconds += (prev - start).total_seconds() + SITTING_ADD
++            start, count = t, count + 1
++        prev = t
++    if prev is not None:
++        seconds += (prev - start).total_seconds() + SITTING_ADD
++    return seconds / 60, count
++
++
++def report(store: str | None, sessions: list[str]) -> list[str]:
++    """The report's table rows, from a store's event log and session transcripts."""
++    messages = decisions = ctx = out = 0
++    interactions, stamps = [], []
++    for path in sessions:
++        for o in _records(path):
++            if o.get("timestamp"):
++                stamps.append(_when(o["timestamp"]))
++            if _operator_message(o):
++                messages += 1
++                interactions.append(_when(o["timestamp"]))
++        _, c, u = transcript_usage(path)
++        ctx, out = ctx + c, out + u
++    for e in _log_records(store) if store else ():
++        when = _when(e.get("ts"))
++        if when is not None:
++            stamps.append(when)
++        if e.get("event") in DECISIONS:
++            decisions += 1
++            if when is not None:
++                interactions.append(when)
++    minutes, count = sittings(interactions)
++    elapsed = f"{(max(stamps) - min(stamps)).total_seconds() / 3600:.2f}" if stamps else "-"
++    return ["| measure | value |", "|---|---|",
++            f"| operator messages | {messages} |",
++            f"| gate and ruling events | {decisions} |",
++            f"| operator time, minutes | {minutes:.1f} ({count} sittings) |",
++            f"| elapsed, hours | {elapsed} |",
++            f"| session tokens | {ctx} context, {out} output |"]
++
++
++def main(argv: list[str]) -> int:
++    ap = argparse.ArgumentParser(prog="factory.benchmark", description=__doc__.splitlines()[0])
++    ap.add_argument("--store")
++    ap.add_argument("sessions", nargs="*", metavar="SESSION.jsonl")
++    args = ap.parse_args(argv)
++    refusal = None
++    if args.store is None and not args.sessions:
++        refusal = "give --store, a session transcript, or both"
++    elif missing := [s for s in args.sessions if not os.path.isfile(s)]:
++        refusal = f"not a file: {missing[0]}"
++    elif args.store is not None and not os.path.isdir(os.path.join(args.store, "log")):
++        refusal = f"store has no log/ directory: {args.store}"
++    if refusal:
++        print(f"factory.benchmark: {refusal}", file=sys.stderr)
++        return 2
++    print("\n".join(report(args.store, args.sessions)))
++    return 0
++
++
++if __name__ == "__main__":
++    sys.exit(main(sys.argv[1:]))
+diff --git a/tests/factory/test_benchmark.py b/tests/factory/test_benchmark.py
+new file mode 100644
+index 0000000..9b47be2
+--- /dev/null
++++ b/tests/factory/test_benchmark.py
+@@ -0,0 +1,174 @@
++"""`python -m factory.benchmark`, one arm's operator measures for the upstream benchmark (T-0060 part B).
++
++- An operator message is a `user` record, not `isMeta` or `isSidechain`, holding no `tool_result`,
++  whose `promptSource` is `typed`, `queued` or `suggestion_accepted`; with no `promptSource`, one
++  whose text does not start with `<`.
++- Interactions are the operator messages and the store's `approval.recorded` and `human.resolved`
++  events. Interactions more than 900 s apart start a new sitting; each sitting counts its span plus
++  60 s.
++- Elapsed covers every timestamped session record and every store event; tokens count each message
++  id once.
++- No input, a session that is not a file and a store with no `log/` are refused with exit 2.
++
++The module runs as a subprocess from the harness checkout: tests/factory is itself a package named
++`factory`, so the harness package is not importable by that name here.
++"""
++from __future__ import annotations
++
++import json
++import subprocess
++import sys
++from pathlib import Path
++
++ROOT = Path(__file__).resolve().parents[2]
++
++
++def _jsonl(path: Path, records: list) -> Path:
++    path.parent.mkdir(parents=True, exist_ok=True)
++    path.write_text("".join((r if isinstance(r, str) else json.dumps(r)) + "\n" for r in records))
++    return path
++
++
++def _user(ts: str, content, **extra) -> dict:
++    return {"type": "user", "timestamp": ts, **extra, "message": {"role": "user", "content": content}}
++
++
++def _reply(ts: str, mid: str, ctx: int, out: int) -> dict:
++    return {"type": "assistant", "timestamp": ts, "message": {"id": mid, "model": "claude-opus-5-5", "usage": {
++        "input_tokens": ctx, "cache_read_input_tokens": 0, "cache_creation_input_tokens": 0, "output_tokens": out}}}
++
++
++def _event(ts: str, event: str) -> dict:
++    return {"ts": ts, "event": event, "ticket": "T-0001"}
++
++
++def bench(*argv: str) -> subprocess.CompletedProcess:
++    return subprocess.run([sys.executable, "-m", "factory.benchmark", *argv], capture_output=True, text=True,
++                          cwd=ROOT)
++
++
++def measures(cp: subprocess.CompletedProcess) -> dict[str, str]:
++    assert cp.returncode == 0, cp.stderr
++    lines = cp.stdout.splitlines()
++    assert lines[:2] == ["| measure | value |", "|---|---|"]
++    return {k: v for k, v in (ln.strip("| ").split(" | ") for ln in lines[2:])}
++
++
++# --- the operator-message rule ----------------------------------------------------------------------
++
++def test_typed_queued_accepted_text_block_and_older_prompts_count(tmp_path):
++    s = _jsonl(tmp_path / "s.jsonl", [
++        _user("2026-10-01T10:00:00Z", "typed", promptSource="typed"),
++        _user("2026-10-01T10:01:00Z", "queued", promptSource="queued"),
++        _user("2026-10-01T10:02:00Z", "accepted", promptSource="suggestion_accepted"),
++        _user("2026-10-01T10:03:00Z", [{"type": "text", "text": "a text block"}], promptSource="typed"),
++        _user("2026-10-01T10:04:00Z", "an older prompt with no promptSource"),
++    ])
++    assert measures(bench(str(s)))["operator messages"] == "5"
++
++
++def test_tool_results_meta_sidechain_system_sdk_and_bracketed_records_do_not_count(tmp_path):
++    s = _jsonl(tmp_path / "s.jsonl", [
++        _user("2026-10-01T10:00:00Z", "the one prompt", promptSource="typed"),
++        _user("2026-10-01T10:01:00Z", [{"type": "tool_result", "tool_use_id": "t1", "content": "ok"}]),
++        _user("2026-10-01T10:02:00Z", [{"type": "tool_result", "tool_use_id": "t2", "content": "ok"}],
++              promptSource="typed"),
++        _user("2026-10-01T10:03:00Z", "caveat", isMeta=True, promptSource="typed"),
++        _user("2026-10-01T10:04:00Z", "a subagent prompt", isSidechain=True, promptSource="typed"),
++        _user("2026-10-01T10:05:00Z", "<task-notification>done</task-notification>", promptSource="system"),
++        _user("2026-10-01T10:06:00Z", "a headless prompt", promptSource="sdk"),
++        _user("2026-10-01T10:07:00Z", "<command-name>/exit</command-name>"),
++        "not json",
++    ])
++    m = measures(bench(str(s)))
++    assert m["operator messages"] == "1"
++    assert m["operator time, minutes"] == "1.0 (1 sittings)"
++
++
++# --- sittings -----------------------------------------------------------------------------------------
++
++def test_exactly_900_seconds_stays_in_the_sitting_and_each_sitting_adds_one_minute(tmp_path):
++    s = _jsonl(tmp_path / "s.jsonl", [
++        _user("2026-10-01T10:00:00Z", "one", promptSource="typed"),
++        _user("2026-10-01T10:15:00Z", "900 s later", promptSource="typed"),
++    ])
++    assert measures(bench(str(s)))["operator time, minutes"] == "16.0 (1 sittings)"
++
++
++def test_901_seconds_starts_a_new_sitting(tmp_path):
++    s = _jsonl(tmp_path / "s.jsonl", [
++        _user("2026-10-01T10:00:00Z", "one", promptSource="typed"),
++        _user("2026-10-01T10:15:01Z", "901 s later", promptSource="typed"),
++    ])
++    assert measures(bench(str(s)))["operator time, minutes"] == "2.0 (2 sittings)"
++
++
++def test_store_decisions_are_interactions_and_other_events_count_only_for_elapsed(tmp_path):
++    store = tmp_path / "store"
++    _jsonl(store / "log" / "2026-10.jsonl", [
++        _event("2026-10-02T08:00:00+00:00", "ticket.created"),
++        _event("2026-10-02T09:00:00+00:00", "approval.recorded"),
++        _event("2026-10-02T09:10:00+00:00", "human.resolved"),
++        _event("2026-10-02T10:00:00+00:00", "merge.done"),
++    ])
++    m = measures(bench("--store", str(store)))
++    assert m["operator messages"] == "0"
++    assert m["gate and ruling events"] == "2"
++    assert m["operator time, minutes"] == "11.0 (1 sittings)"
++    assert m["elapsed, hours"] == "2.00"
++    assert m["session tokens"] == "0 context, 0 output"
++
++
++def test_session_messages_and_store_decisions_share_sittings(tmp_path):
++    store = tmp_path / "store"
++    _jsonl(store / "log" / "2026-10.jsonl", [_event("2026-10-02T09:05:00+00:00", "approval.recorded")])
++    s = _jsonl(tmp_path / "runner.jsonl", [_user("2026-10-02T09:00:00Z", "approve it", promptSource="typed")])
++    m = measures(bench("--store", str(store), str(s)))
++    assert m["operator time, minutes"] == "6.0 (1 sittings)"
++
++
++# --- elapsed and tokens -------------------------------------------------------------------------------
++
++def test_tokens_count_a_repeated_message_id_once_and_elapsed_spans_every_record(tmp_path):
++    a = _jsonl(tmp_path / "a.jsonl", [
++        _user("2026-10-01T10:00:00Z", "go", promptSource="typed"),
++        _reply("2026-10-01T10:00:30Z", "m1", 100, 10),
++        _reply("2026-10-01T10:00:31Z", "m1", 100, 20),
++    ])
++    b = _jsonl(tmp_path / "b.jsonl", [_reply("2026-10-01T13:00:00Z", "m2", 50, 5)])
++    m = measures(bench(str(a), str(b)))
++    assert m["session tokens"] == "150 context, 25 output"
++    assert m["elapsed, hours"] == "3.00"
++
++
++def test_elapsed_is_a_dash_when_nothing_has_a_timestamp(tmp_path):
++    s = _jsonl(tmp_path / "s.jsonl", ["not json"])
++    m = measures(bench(str(s)))
++    assert m["elapsed, hours"] == "-"
++    assert m["operator time, minutes"] == "0.0 (0 sittings)"
++
++
++# --- refusals -----------------------------------------------------------------------------------------
++
++def _refused(cp: subprocess.CompletedProcess, *named: str) -> None:
++    assert cp.returncode == 2
++    assert cp.stdout == ""
++    assert cp.stderr.startswith("factory.benchmark: ")
++    assert cp.stderr.count("\n") == 1
++    for n in named:
++        assert n in cp.stderr
++
++
++def test_no_store_and_no_session_is_refused():
++    _refused(bench())
++
++
++def test_a_session_that_is_not_a_file_is_refused_by_name(tmp_path):
++    good = _jsonl(tmp_path / "good.jsonl", [_user("2026-10-01T10:00:00Z", "go", promptSource="typed")])
++    _refused(bench(str(good), str(tmp_path / "missing.jsonl")), str(tmp_path / "missing.jsonl"))
++    _refused(bench(str(tmp_path)), str(tmp_path))
++
++
++def test_a_store_with_no_log_directory_is_refused_by_name(tmp_path):
++    (tmp_path / "nolog").mkdir()
++    _refused(bench("--store", str(tmp_path / "nolog")), str(tmp_path / "nolog"))
