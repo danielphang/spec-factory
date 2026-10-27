@@ -76,7 +76,7 @@ def capability(store: Path, cap: str, *scenarios: str, req: str = "It works") ->
     p.write_text(f"# {cap}\n\n## Requirements\n\n### Requirement: {req}\nIt SHALL work.\n\n" + "\n".join(scenarios))
 
 
-def ticket(store: Path, tid: str, status: str, parent: str | None = None) -> None:
+def write_ticket(store: Path, tid: str, status: str, parent: str | None = None) -> None:
     (store / "tickets").mkdir(parents=True, exist_ok=True)
     (store / "tickets" / f"{tid}.yaml").write_text(f"id: {tid}\nstatus: {status}\nparent: {parent or 'null'}\n")
 
@@ -149,11 +149,11 @@ def test_the_ticket_under_test_and_open_tickets_with_merged_code_are_folded(tmp_
     new = "## MODIFIED Requirements\n\n### Requirement: Greets\nIt SHALL greet anew.\n\n" + scenario(
         "Same name", "echo new", "it prints `nope`")
     for cid, status in (("T-0001", "planned"), ("T-0002", "planned"), ("T-0003", "closed"), ("T-0004", "planned")):
-        ticket(s, cid, status)
+        write_ticket(s, cid, status)
         delta(s, cid, "a", new)
-    ticket(s, "T-0001.1", "checks-in-flight", "T-0001")
-    ticket(s, "T-0002.1", "merged", "T-0002")
-    ticket(s, "T-0003.1", "merged", "T-0003")
+    write_ticket(s, "T-0001.1", "checks-in-flight", "T-0001")
+    write_ticket(s, "T-0002.1", "merged", "T-0002")
+    write_ticket(s, "T-0003.1", "merged", "T-0003")
     wt, k = s / "worktrees" / "T-0001.1", s / "runs" / "run-0002-verifier" / "wt"
     for co in (wt, k):
         subprocess.run(["git", "-C", str(repo), "worktree", "add", "-q", "--detach", str(co)], check=True)
@@ -175,8 +175,8 @@ def test_the_ticket_under_test_and_open_tickets_with_merged_code_are_folded(tmp_
 def test_a_delta_that_does_not_apply_is_refused_naming_its_ticket_and_nothing_runs(tmp_path, repo):
     s = tmp_path / "s"
     capability(s, "a", scenario("Writes", f"touch {tmp_path}/ran; echo x", "it prints `x`"))
-    ticket(s, "T-0005", "planned")
-    ticket(s, "T-0005.1", "merged", "T-0005")
+    write_ticket(s, "T-0005", "planned")
+    write_ticket(s, "T-0005.1", "merged", "T-0005")
     delta(s, "T-0005", "a", "## ADDED Requirements\n\n### Requirement: It works\nAgain.\n")
     cp = cli(repo, "truth", "check", "--store", str(s))
     assert cp.returncode == 2
