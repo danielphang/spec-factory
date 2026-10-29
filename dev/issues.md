@@ -128,6 +128,7 @@ A fix closes its issue through a reviewed change on `main`; the merge column is 
 | [126](https://github.com/danielphang/spec-factory/issues/126) | Decisions requires a Rejected alternative line; critic rubric 4 flags its absence | not in intake (p2; #96 row 5b; prompt change on the golden replay; same comparison) | — | — |
 | [127](https://github.com/danielphang/spec-factory/issues/127) | `factory drift <capability>`: current truth against the code, read-only | not in intake (p2; #96 row 13b; after the golden baseline; same comparison) | — | — |
 | [128](https://github.com/danielphang/spec-factory/issues/128) | Isolation test: a composed role input carries no operator chat and no instruction-file text | not in intake (p2; #96 row 8a, #89's acceptance; harness test only; #28 as a check; same comparison) | — | — |
+| [129](https://github.com/danielphang/spec-factory/issues/129) | Regroup `.factory/store` into `openspec/` (truth), `record/`, `evidence/`, `live/` with a `store migrate --layout 2` step | not in intake (p2; operator decision 2026-10-28 after the store inventory; truth stays in the store; after the 11-02 review, when neither store has a run in flight) | — | — |
 
 Issues 1–10 are applied and can be closed against their merge; 11 applied (`9168ce1`); 13 and 14 fold into #21 (checklists until it archives); 15 closed as superseded. #12 was a duplicate of #11.
 New findings go straight to GitHub issues; this file is the index.
